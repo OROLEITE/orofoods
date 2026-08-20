@@ -1,0 +1,925 @@
+Usando as configurações de inicialização de .\Orofoods.Web\Properties\launchSettings.json...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (31ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      PRAGMA journal_mode = 'wal';
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "AspNetRoles" (
+          "Id" TEXT NOT NULL CONSTRAINT "PK_AspNetRoles" PRIMARY KEY,
+          "Name" TEXT NULL,
+          "NormalizedName" TEXT NULL,
+          "ConcurrencyStamp" TEXT NULL
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "AspNetUsers" (
+          "Id" TEXT NOT NULL CONSTRAINT "PK_AspNetUsers" PRIMARY KEY,
+          "UserName" TEXT NULL,
+          "NormalizedUserName" TEXT NULL,
+          "Email" TEXT NULL,
+          "NormalizedEmail" TEXT NULL,
+          "EmailConfirmed" INTEGER NOT NULL,
+          "PasswordHash" TEXT NULL,
+          "SecurityStamp" TEXT NULL,
+          "ConcurrencyStamp" TEXT NULL,
+          "PhoneNumber" TEXT NULL,
+          "PhoneNumberConfirmed" INTEGER NOT NULL,
+          "TwoFactorEnabled" INTEGER NOT NULL,
+          "LockoutEnd" TEXT NULL,
+          "LockoutEnabled" INTEGER NOT NULL,
+          "AccessFailedCount" INTEGER NOT NULL
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "CustomerPrices" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_CustomerPrices" PRIMARY KEY AUTOINCREMENT,
+          "CustomerId" INTEGER NOT NULL,
+          "ProductId" INTEGER NOT NULL,
+          "Price" TEXT NOT NULL
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "Customers" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_Customers" PRIMARY KEY AUTOINCREMENT,
+          "LegalName" TEXT NOT NULL,
+          "TradeName" TEXT NOT NULL,
+          "Cnpj" TEXT NOT NULL,
+          "Status" INTEGER NOT NULL,
+          "MinimumOrder" TEXT NOT NULL,
+          "CreditLimit" TEXT NOT NULL,
+          "CreditUsed" TEXT NOT NULL,
+          "PriceTableName" TEXT NOT NULL,
+          "PaymentTerms" TEXT NOT NULL
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "Products" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_Products" PRIMARY KEY AUTOINCREMENT,
+          "Sku" TEXT NOT NULL,
+          "Name" TEXT NOT NULL,
+          "Category" TEXT NOT NULL,
+          "Description" TEXT NOT NULL,
+          "UnitDescription" TEXT NOT NULL,
+          "UnitsPerCase" INTEGER NOT NULL,
+          "MinimumCases" INTEGER NOT NULL,
+          "BasePrice" TEXT NOT NULL,
+          "IsAvailable" INTEGER NOT NULL,
+          "SubstituteProductId" INTEGER NULL,
+          "Accent" TEXT NOT NULL,
+          CONSTRAINT "FK_Products_Products_SubstituteProductId" FOREIGN KEY ("SubstituteProductId") REFERENCES "Products" ("Id") ON DELETE RESTRICT
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "AspNetRoleClaims" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_AspNetRoleClaims" PRIMARY KEY AUTOINCREMENT,
+          "RoleId" TEXT NOT NULL,
+          "ClaimType" TEXT NULL,
+          "ClaimValue" TEXT NULL,
+          CONSTRAINT "FK_AspNetRoleClaims_AspNetRoles_RoleId" FOREIGN KEY ("RoleId") REFERENCES "AspNetRoles" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "AspNetUserClaims" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_AspNetUserClaims" PRIMARY KEY AUTOINCREMENT,
+          "UserId" TEXT NOT NULL,
+          "ClaimType" TEXT NULL,
+          "ClaimValue" TEXT NULL,
+          CONSTRAINT "FK_AspNetUserClaims_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "AspNetUserLogins" (
+          "LoginProvider" TEXT NOT NULL,
+          "ProviderKey" TEXT NOT NULL,
+          "ProviderDisplayName" TEXT NULL,
+          "UserId" TEXT NOT NULL,
+          CONSTRAINT "PK_AspNetUserLogins" PRIMARY KEY ("LoginProvider", "ProviderKey"),
+          CONSTRAINT "FK_AspNetUserLogins_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "AspNetUserRoles" (
+          "UserId" TEXT NOT NULL,
+          "RoleId" TEXT NOT NULL,
+          CONSTRAINT "PK_AspNetUserRoles" PRIMARY KEY ("UserId", "RoleId"),
+          CONSTRAINT "FK_AspNetUserRoles_AspNetRoles_RoleId" FOREIGN KEY ("RoleId") REFERENCES "AspNetRoles" ("Id") ON DELETE CASCADE,
+          CONSTRAINT "FK_AspNetUserRoles_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "AspNetUserTokens" (
+          "UserId" TEXT NOT NULL,
+          "LoginProvider" TEXT NOT NULL,
+          "Name" TEXT NOT NULL,
+          "Value" TEXT NULL,
+          CONSTRAINT "PK_AspNetUserTokens" PRIMARY KEY ("UserId", "LoginProvider", "Name"),
+          CONSTRAINT "FK_AspNetUserTokens_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "CustomerAddresses" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_CustomerAddresses" PRIMARY KEY AUTOINCREMENT,
+          "CustomerId" INTEGER NOT NULL,
+          "Label" TEXT NOT NULL,
+          "Street" TEXT NOT NULL,
+          "City" TEXT NOT NULL,
+          "State" TEXT NOT NULL,
+          "DeliveryDay" TEXT NOT NULL,
+          CONSTRAINT "FK_CustomerAddresses_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "Orders" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_Orders" PRIMARY KEY AUTOINCREMENT,
+          "Number" TEXT NOT NULL,
+          "CustomerId" INTEGER NOT NULL,
+          "DeliveryAddressId" INTEGER NULL,
+          "CreatedAt" TEXT NOT NULL,
+          "RequestedDeliveryDate" TEXT NULL,
+          "Status" INTEGER NOT NULL,
+          "Total" TEXT NOT NULL,
+          "PaymentMethod" TEXT NOT NULL,
+          "Notes" TEXT NOT NULL,
+          CONSTRAINT "FK_Orders_CustomerAddresses_DeliveryAddressId" FOREIGN KEY ("DeliveryAddressId") REFERENCES "CustomerAddresses" ("Id"),
+          CONSTRAINT "FK_Orders_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "OrderItems" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_OrderItems" PRIMARY KEY AUTOINCREMENT,
+          "OrderId" INTEGER NOT NULL,
+          "ProductId" INTEGER NOT NULL,
+          "Quantity" INTEGER NOT NULL,
+          "UnitPrice" TEXT NOT NULL,
+          CONSTRAINT "FK_OrderItems_Orders_OrderId" FOREIGN KEY ("OrderId") REFERENCES "Orders" ("Id") ON DELETE CASCADE,
+          CONSTRAINT "FK_OrderItems_Products_ProductId" FOREIGN KEY ("ProductId") REFERENCES "Products" ("Id") ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_AspNetRoleClaims_RoleId" ON "AspNetRoleClaims" ("RoleId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX "RoleNameIndex" ON "AspNetRoles" ("NormalizedName");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_AspNetUserClaims_UserId" ON "AspNetUserClaims" ("UserId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_AspNetUserLogins_UserId" ON "AspNetUserLogins" ("UserId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_AspNetUserRoles_RoleId" ON "AspNetUserRoles" ("RoleId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "EmailIndex" ON "AspNetUsers" ("NormalizedEmail");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX "UserNameIndex" ON "AspNetUsers" ("NormalizedUserName");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_CustomerAddresses_CustomerId" ON "CustomerAddresses" ("CustomerId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX "IX_CustomerPrices_CustomerId_ProductId" ON "CustomerPrices" ("CustomerId", "ProductId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_OrderItems_OrderId" ON "OrderItems" ("OrderId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_OrderItems_ProductId" ON "OrderItems" ("ProductId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_Orders_CustomerId" ON "Orders" ("CustomerId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_Orders_DeliveryAddressId" ON "Orders" ("DeliveryAddressId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_Products_SubstituteProductId" ON "Products" ("SubstituteProductId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "Products" AS "p")
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@p0='?' (Size = 18), @p1='?' (DbType = Decimal), @p2='?' (DbType = Decimal), @p3='?' (Size = 30), @p4='?' (DbType = Decimal), @p5='?' (Size = 14), @p6='?' (Size = 21), @p7='?' (DbType = Int32), @p8='?' (Size = 14)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Customers" ("Cnpj", "CreditLimit", "CreditUsed", "LegalName", "MinimumOrder", "PaymentTerms", "PriceTableName", "Status", "TradeName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 4), @p3='?' (Size = 57), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 16), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 21), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 4), @p3='?' (Size = 34), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 14), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 21), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 4), @p3='?' (Size = 46), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 15), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 21), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 6), @p3='?' (Size = 41), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 23), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 30), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 6), @p3='?' (Size = 42), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 17), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 28), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 6), @p3='?' (Size = 33), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 13), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 31), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 11), @p3='?' (Size = 45), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 20), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 26), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p11='?' (Size = 8), @p12='?' (DbType = Int32), @p13='?' (Size = 14), @p14='?' (Size = 11), @p15='?' (Size = 2), @p16='?' (Size = 31)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "CustomerAddresses" ("City", "CustomerId", "DeliveryDay", "Label", "State", "Street")
+      VALUES (@p11, @p12, @p13, @p14, @p15, @p16)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 8), @p1='?' (DbType = Int32), @p2='?' (Size = 13), @p3='?' (Size = 14), @p4='?' (Size = 2), @p5='?' (Size = 27)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "CustomerAddresses" ("City", "CustomerId", "DeliveryDay", "Label", "State", "Street")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Decimal), @p2='?' (Size = 6), @p3='?' (Size = 35), @p4='?' (DbType = Boolean), @p5='?' (DbType = Int32), @p6='?' (Size = 13), @p7='?' (Size = 7), @p8='?' (DbType = Int32), @p9='?' (Size = 28), @p10='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Products" ("Accent", "BasePrice", "Category", "Description", "IsAvailable", "MinimumCases", "Name", "Sku", "SubstituteProductId", "UnitDescription", "UnitsPerCase")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Decimal), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "CustomerPrices" ("CustomerId", "Price", "ProductId")
+      VALUES (@p0, @p1, @p2)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Decimal), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "CustomerPrices" ("CustomerId", "Price", "ProductId")
+      VALUES (@p0, @p1, @p2)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Decimal), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "CustomerPrices" ("CustomerId", "Price", "ProductId")
+      VALUES (@p0, @p1, @p2)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Decimal), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "CustomerPrices" ("CustomerId", "Price", "ProductId")
+      VALUES (@p0, @p1, @p2)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?' (DbType = DateTime), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32), @p3='?', @p4='?' (Size = 15), @p5='?' (Size = 13), @p6='?' (DbType = DateTime), @p7='?' (DbType = Int32), @p8='?' (DbType = Decimal)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Orders" ("CreatedAt", "CustomerId", "DeliveryAddressId", "Notes", "Number", "PaymentMethod", "RequestedDeliveryDate", "Status", "Total")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p9='?' (DbType = Int32), @p10='?' (DbType = Int32), @p11='?' (DbType = Int32), @p12='?' (DbType = Decimal)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "OrderItems" ("OrderId", "ProductId", "Quantity", "UnitPrice")
+      VALUES (@p9, @p10, @p11, @p12)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32), @p3='?' (DbType = Decimal)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "OrderItems" ("OrderId", "ProductId", "Quantity", "UnitPrice")
+      VALUES (@p0, @p1, @p2, @p3)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32), @p3='?' (DbType = Decimal)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "OrderItems" ("OrderId", "ProductId", "Quantity", "UnitPrice")
+      VALUES (@p0, @p1, @p2, @p3)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32), @p3='?' (DbType = Decimal)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "OrderItems" ("OrderId", "ProductId", "Quantity", "UnitPrice")
+      VALUES (@p0, @p1, @p2, @p3)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?' (Size = 13)], CommandType='Text', CommandTimeout='30']
+      SELECT "a"."Id", "a"."ConcurrencyStamp", "a"."Name", "a"."NormalizedName"
+      FROM "AspNetRoles" AS "a"
+      WHERE "a"."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?' (Size = 13)], CommandType='Text', CommandTimeout='30']
+      SELECT "a"."Id", "a"."ConcurrencyStamp", "a"."Name", "a"."NormalizedName"
+      FROM "AspNetRoles" AS "a"
+      WHERE "a"."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?' (Size = 36), @p1='?' (Size = 36), @p2='?' (Size = 13), @p3='?' (Size = 13)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "AspNetRoles" ("Id", "ConcurrencyStamp", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?' (Size = 8)], CommandType='Text', CommandTimeout='30']
+      SELECT "a"."Id", "a"."ConcurrencyStamp", "a"."Name", "a"."NormalizedName"
+      FROM "AspNetRoles" AS "a"
+      WHERE "a"."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?' (Size = 8)], CommandType='Text', CommandTimeout='30']
+      SELECT "a"."Id", "a"."ConcurrencyStamp", "a"."Name", "a"."NormalizedName"
+      FROM "AspNetRoles" AS "a"
+      WHERE "a"."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?' (Size = 36), @p1='?' (Size = 36), @p2='?' (Size = 8), @p3='?' (Size = 8)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "AspNetRoles" ("Id", "ConcurrencyStamp", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?' (Size = 7)], CommandType='Text', CommandTimeout='30']
+      SELECT "a"."Id", "a"."ConcurrencyStamp", "a"."Name", "a"."NormalizedName"
+      FROM "AspNetRoles" AS "a"
+      WHERE "a"."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?' (Size = 7)], CommandType='Text', CommandTimeout='30']
+      SELECT "a"."Id", "a"."ConcurrencyStamp", "a"."Name", "a"."NormalizedName"
+      FROM "AspNetRoles" AS "a"
+      WHERE "a"."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?' (Size = 36), @p1='?' (Size = 36), @p2='?' (Size = 7), @p3='?' (Size = 7)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "AspNetRoles" ("Id", "ConcurrencyStamp", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3);
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+fail: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[43]
+      An exception occurred while trying to decrypt the element.
+      System.Security.Cryptography.CryptographicException: Error occurred during a cryptographic operation.
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore(Byte* pbProtectedData, UInt32 cbProtectedData, Byte* pbOptionalEntropy, UInt32 cbOptionalEntropy)
+         at Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapi(Byte[] protectedSecret)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[24]
+      An exception occurred while processing the key element '<key id="ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff" version="1" />'.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass8_0.<Define>g__Log|0(ILogger logger, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor.Decrypt(XElement encryptedElement)
+         at Microsoft.AspNetCore.DataProtection.XmlEncryption.XmlEncryptionExtensions.DecryptElement(XElement element, IActivator activator)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver[12]
+      Key {ce6e19c3-1cd0-4cfb-bc5d-b8e71472fdff} is ineligible to be the default key because its CreateEncryptor method failed after the maximum number of retries.
+      System.AggregateException: One or more errors occurred. (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)) (An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.))
+       ---> System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)
+         --- End of inner exception stack trace ---
+       ---> (Inner Exception #1) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #2) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #3) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #4) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #5) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #6) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #7) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #8) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #9) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+       ---> (Inner Exception #10) System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass10_0`1.<Define>g__Log|0(ILogger logger, T1 arg1, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.WriteKeyDeserializationErrorToLog(Exception error, XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager.Microsoft.AspNetCore.DataProtection.KeyManagement.Internal.IInternalXmlKeyManager.DeserializeDescriptorFromKeyElement(XElement keyElement)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.get_Descriptor()
+         at Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngGcmAuthenticatedEncryptorFactory.CreateEncryptorInstance(IKey key)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.Key.CreateEncryptor()
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)<---
+      
+fail: Microsoft.AspNetCore.DataProtection.KeyManagement.KeyRingProvider[48]
+      An error occurred while reading the key ring.
+      System.AggregateException: An error occurred while writing to logger(s). (Cannot open log for source '.NET Runtime'. You may not have write access.)
+       ---> System.InvalidOperationException: Cannot open log for source '.NET Runtime'. You may not have write access.
+       ---> System.ComponentModel.Win32Exception (5): Acesso negado.
+         --- End of inner exception stack trace ---
+         at System.Diagnostics.EventLogInternal.OpenForWrite(String currentMachineName)
+         at System.Diagnostics.EventLogInternal.InternalWriteEvent(UInt32 eventID, UInt16 category, EventLogEntryType type, String[] strings, Byte[] rawData, String currentMachineName)
+         at System.Diagnostics.EventLogInternal.WriteEvent(EventInstance instance, Byte[] data, Object[] values)
+         at Microsoft.Extensions.Logging.EventLog.WindowsEventLog.WriteEntry(String message, EventLogEntryType type, Int32 eventID, Int16 category)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.WriteMessage(String message, EventLogEntryType eventLogEntryType, Int32 eventId)
+         at Microsoft.Extensions.Logging.EventLog.EventLogLogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger.<Log>g__LoggerLog|14_0[TState](LogLevel logLevel, EventId eventId, ILogger logger, Exception exception, Func`3 formatter, List`1& exceptions, TState& state)
+         --- End of inner exception stack trace ---
+         at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+         at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.Logger`1.Microsoft.Extensions.Logging.ILogger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+         at Microsoft.Extensions.Logging.LoggerMessage.<>c__DisplayClass12_0`2.<Define>g__Log|0(ILogger logger, T1 arg1, T2 arg2, Exception exception)
+         at Microsoft.Extensions.Logging.LoggingExtensions.KeyIsIneligibleToBeTheDefaultKeyBecauseItsMethodFailed(ILogger logger, Guid keyId, String methodName, Exception exception)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.CanCreateAuthenticatedEncryptor(IKey key, Int32& retriesRemaining)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.FindDefaultKey(DateTimeOffset now, IEnumerable`1 allKeys, IKey& fallbackKey)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver.ResolveDefaultKeyPolicy(DateTimeOffset now, IEnumerable`1 allKeys)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.KeyRingProvider.CreateCacheableKeyRingCore(DateTimeOffset now, IKey keyJustAdded)
+         at Microsoft.AspNetCore.DataProtection.KeyManagement.KeyRingProvider.GetCurrentKeyRingCoreNew(DateTime utcNow, Boolean forceRefresh)
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5291
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\TarcisioSassi\OneDrive - Empresas\Área de Trabalho\VSCODE\OroFoods\Orofoods.Web
