@@ -1,0 +1,16 @@
+@using Orofoods.Web.Services.Pricing
+@model Orofoods.Web.Models.Catalog.Product
+@{
+    ViewData["Title"] = Model.Name;
+    var resolvedPrice = (ResolvedPrice?)ViewBag.Price;
+    var price = resolvedPrice?.EffectivePrice ?? Model.PromotionalPrice ?? Model.BasePrice;
+    var primaryImage = Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
+}
+<section class="page-hero"><div class="container"><a class="back-link" asp-action="Catalog">&larr; Cat&aacute;logo</a><div class="eyebrow light mt-4"><span></span> @Model.Category</div><h1>@Model.Name</h1><p>@Model.Sku | @Model.Brand</p></div></section>
+<section class="section"><div class="container product-detail"><figure class="product-detail-media" style="--accent:@Model.Accent">@if (primaryImage is not null) { <img src="@primaryImage.Url" alt="@primaryImage.AltText" /> }<figcaption>Imagem ilustrativa do produto.</figcaption></figure>
+    <div class="product-detail-copy"><p class="product-detail-kicker">@Model.Brand &middot; @Model.UnitDescription</p><h2>Descrição do produto</h2><p>@Model.Description</p><div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ caixa</span></div><p>@(Model.IsCommerciallyAvailable ? "Disponível para pedido" : "Indisponível no momento")</p>
+        <form asp-action="AddToCart" method="post" class="d-flex gap-2"><input type="hidden" name="productId" value="@Model.Id" /><input class="form-control" style="max-width:100px" type="number" name="quantity" min="@Model.MinimumCases" value="@Model.MinimumCases" /><button class="btn btn-gold" type="submit" disabled="@(!Model.IsCommerciallyAvailable)">Adicionar ao carrinho</button></form>
+        @if (!string.IsNullOrWhiteSpace(Model.StorageInformation)) { <h3 class="mt-4">Armazenamento</h3><p>@Model.StorageInformation</p> }
+        @if (!string.IsNullOrWhiteSpace(Model.Ingredients)) { <h3>Ingredientes</h3><p>@Model.Ingredients</p> }
+    </div>
+</div></section>

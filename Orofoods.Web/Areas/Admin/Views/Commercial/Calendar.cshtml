@@ -1,0 +1,33 @@
+@model Orofoods.Web.ViewModels.CommercialCalendarViewModel
+@using Orofoods.Web.Models.Commercial
+@{
+    ViewData["Title"] = "Agenda de Atendimento";
+    var days = Enumerable.Range(0, 7).Select(offset => Model.WeekStart.AddDays(offset)).ToList();
+    string TypeLabel(CommercialActivityType type) => type switch
+    {
+        CommercialActivityType.WhatsApp => "WhatsApp",
+        CommercialActivityType.Visit => "Visita",
+        CommercialActivityType.Return => "Retorno",
+        CommercialActivityType.Order => "Pedido",
+        _ => "Ligar"
+    };
+}
+
+<section class="commercial-calendar-page"><div class="container">
+    <header class="commercial-calendar-hero"><div><p class="eyebrow"><span></span> Rotina da equipe</p><h1>Agenda de Atendimento</h1><p>Organize os contatos comerciais e acompanhe os próximos compromissos.</p></div><a asp-action="Create" class="btn btn-gold"><i class="fa-solid fa-plus"></i> Nova tarefa</a></header>
+    <form method="get" asp-action="Calendar" class="commercial-calendar-filters"><input type="hidden" name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" /><label>Vendedor<select name="salesRepresentativeId"><option value="">Todos os vendedores</option>@foreach (var seller in Model.SalesRepresentatives) { <option value="@seller.Value" selected="@seller.Selected">@seller.Text</option> }</select></label><label>Tipo de contato<select name="type"><option value="">Todos os tipos</option>@foreach (var item in Html.GetEnumSelectList<CommercialActivityType>()) { <option value="@item.Value" selected="@(item.Value == ((int?)Model.Type)?.ToString())">@item.Text</option> }</select></label><label>Cidade<select name="city"><option value="">Todas as cidades</option>@foreach (var item in Model.Cities) { <option value="@item.Value" selected="@item.Selected">@item.Text</option> }</select></label><label>Status<select name="status"><option value="">Todos os status</option>@foreach (var item in Html.GetEnumSelectList<CommercialActivityStatus>()) { <option value="@item.Value" selected="@(item.Value == ((int?)Model.Status)?.ToString())">@item.Text</option> }</select></label><button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter"></i> Aplicar filtros</button></form>
+    <section class="commercial-calendar-toolbar"><a asp-action="Calendar" asp-route-weekStart="@Model.WeekStart.AddDays(-7).ToString("yyyy-MM-dd")" asp-route-salesRepresentativeId="@Model.SalesRepresentativeId" asp-route-type="@Model.Type" asp-route-city="@Model.City" asp-route-status="@Model.Status" aria-label="Semana anterior"><i class="fa-solid fa-chevron-left"></i></a><a asp-action="Calendar" asp-route-weekStart="@DateTime.Today.ToString("yyyy-MM-dd")" asp-route-salesRepresentativeId="@Model.SalesRepresentativeId" asp-route-type="@Model.Type" asp-route-city="@Model.City" asp-route-status="@Model.Status" class="btn btn-outline-dark">Hoje</a><strong>@Model.WeekStart.ToString("dd/MM") - @Model.WeekStart.AddDays(6).ToString("dd/MM/yyyy")</strong><a asp-action="Calendar" asp-route-weekStart="@Model.WeekStart.AddDays(7).ToString("yyyy-MM-dd")" asp-route-salesRepresentativeId="@Model.SalesRepresentativeId" asp-route-type="@Model.Type" asp-route-city="@Model.City" asp-route-status="@Model.Status" aria-label="Próxima semana"><i class="fa-solid fa-chevron-right"></i></a></section>
+    <section class="commercial-calendar-grid">
+        @foreach (var day in days)
+        {
+            var dayActivities = Model.Activities.Where(activity => activity.ScheduledAt.Date == day.Date).ToList();
+            <article class="commercial-calendar-day @(day.Date == DateTime.Today ? "is-today" : "")"><header><span>@day.ToString("ddd", new System.Globalization.CultureInfo("pt-BR"))</span><strong>@day.Day</strong></header><div>
+                @foreach (var activity in dayActivities)
+                {
+                    <a class="commercial-calendar-event event-@activity.Type.ToString().ToLowerInvariant()" asp-action="Index" asp-route-date="@day.ToString("yyyy-MM-dd")"><time>@activity.ScheduledAt.ToString("HH:mm")</time><strong>@activity.Customer.TradeName</strong><span>@TypeLabel(activity.Type)</span></a>
+                }
+                @if (!dayActivities.Any()) { <p class="commercial-calendar-empty">Sem atividades</p> }
+            </div></article>
+        }
+    </section>
+</div></section>

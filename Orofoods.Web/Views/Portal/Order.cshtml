@@ -1,0 +1,33 @@
+@model Orofoods.Web.Models.Orders.Order
+@{ ViewData["Title"] = Model.Number; var steps = new[] { OrderStatus.Received, OrderStatus.Approved, OrderStatus.Picking, OrderStatus.Invoiced, OrderStatus.OutForDelivery, OrderStatus.Delivered }; var current = Array.IndexOf(steps, Model.Status); }
+<section class="page-hero">
+    <div class="container">
+        <a class="back-link" asp-action="Orders">&larr; Meus pedidos</a>
+        <div class="eyebrow light mt-4"><span></span> @Model.Status.ToDisplayName()</div>
+        <h1>@Model.Number</h1>
+        <p>@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") | @Model.Total.ToString("C")</p>
+    </div>
+</section>
+<section class="section">
+    <div class="container">
+        <div class="status-track">@for (var i = 0; i < steps.Length; i++) { <i class="@(i <= current ? "done" : "")"></i> }</div>
+        <div class="status-labels">@foreach (var step in steps) { <span>@step.ToDisplayName()</span> }</div>
+        <div class="mt-5">
+            <div class="eyebrow"><span></span> Atualizacoes</div>
+            <h2>Historico do pedido</h2>
+            <ol class="list-group list-group-flush mt-3">
+                @foreach (var entry in Model.StatusHistory.OrderByDescending(x => x.ChangedAt))
+                {
+                    <li class="list-group-item d-flex justify-content-between px-0"><strong>@entry.Status.ToDisplayName()</strong><time>@entry.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time></li>
+                }
+            </ol>
+        </div>
+        <div class="order-items mt-5">
+            @foreach (var item in Model.Items)
+            {
+                <div class="order-row"><div><small>@item.SkuSnapshot</small><h3>@item.ProductNameSnapshot</h3><span>@item.Quantity x @item.UnitPrice.ToString("C")</span></div><strong>@item.Subtotal.ToString("C")</strong></div>
+            }
+        </div>
+        <a class="btn btn-gold mt-4" asp-action="Repeat" asp-route-id="@Model.Id">Repetir este pedido</a>
+    </div>
+</section>

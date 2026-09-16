@@ -1,0 +1,16 @@
+@{
+    ViewData["Title"] = "Cadastro em an&aacute;lise";
+}
+<section class="section">
+    <div class="container" style="max-width: 720px;">
+        <div class="success-card">
+            <div class="eyebrow"><span></span> Cadastro recebido</div>
+            <h1>Seu cadastro est&aacute; em an&aacute;lise.</h1>
+            <p>Voc&ecirc; j&aacute; pode entrar com seu login, mas o portal comercial, os pre&ccedil;os e os pedidos ser&atilde;o liberados apenas ap&oacute;s aprova&ccedil;&atilde;o administrativa.</p>
+            <div class="d-flex gap-3 justify-content-center mt-4">
+                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-dark">Entrar</a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-gold">Voltar ao in&iacute;cio</a>
+            </div>
+        </div>
+    </div>
+</section>

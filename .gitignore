@@ -1,0 +1,10 @@
+bin/
+obj/
+*.log
+*.db
+*.db-shm
+*.db-wal
+DataProtectionKeys/
+Orofoods.Web/DataProtectionKeys/
+Orofoods.Web/Logs/
+.worktrees/

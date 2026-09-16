@@ -1,0 +1,68 @@
+@model Orofoods.Web.ViewModels.CheckoutViewModel
+@{ ViewData["Title"] = "Checkout"; }
+
+<section class="page-hero page-hero--compact">
+    <div class="container">
+        <div class="eyebrow light"><span></span> Checkout</div>
+        <h1>Revise e confirme.</h1>
+        <p>Os valores e regras comerciais s&atilde;o validados novamente antes do envio.</p>
+    </div>
+</section>
+
+<section class="checkout-page">
+    <div class="container">
+        <form asp-action="Checkout" method="post" class="checkout-layout">
+            <div class="checkout-form-panel">
+                <div asp-validation-summary="ModelOnly" class="checkout-validation" role="alert"></div>
+
+                <section class="checkout-panel">
+                    <header><span>01</span><div><small>ENTREGA</small><h2>Quando e onde entregar?</h2></div></header>
+                    <div class="checkout-form-grid">
+                        <div class="checkout-field checkout-field-wide">
+                            <label asp-for="AddressId">Endere&ccedil;o de entrega</label>
+                            <select asp-for="AddressId">
+                                @foreach (var address in Model.Addresses)
+                                {
+                                    <option value="@address.Id">@address.Label | @address.Street, @address.Number - @address.City</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="checkout-field"><label asp-for="RequestedDeliveryDate">Data desejada</label><input asp-for="RequestedDeliveryDate" /></div>
+                    </div>
+                </section>
+
+                <section class="checkout-panel">
+                    <header><span>02</span><div><small>PAGAMENTO</small><h2>Condi&ccedil;&atilde;o e observa&ccedil;&otilde;es</h2></div></header>
+                    <div class="checkout-form-grid">
+                        <div class="checkout-field">
+                            <label asp-for="PaymentTermId">Condi&ccedil;&atilde;o de pagamento</label>
+                            <select asp-for="PaymentTermId">
+                                @foreach (var term in Model.PaymentTerms)
+                                {
+                                    <option value="@term.Id">@term.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="checkout-field checkout-field-wide"><label asp-for="Notes">Observa&ccedil;&otilde;es do pedido</label><textarea asp-for="Notes" rows="4" placeholder="Ex.: hor&aacute;rio preferencial para recebimento"></textarea></div>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="checkout-summary">
+                <div class="summary-label">03. REVIS&Atilde;O</div>
+                <h2>Resumo do pedido</h2>
+                <div class="checkout-items">
+                    @foreach (var item in Model.Cart.Items)
+                    {
+                        <div><span>@item.Quantity x @item.Name</span><strong>@item.Subtotal.ToString("C")</strong></div>
+                    }
+                </div>
+                <div class="minimum"><small>@(Model.Cart.RemainingForMinimum > 0 ? $"Faltam {Model.Cart.RemainingForMinimum:C} para o pedido mínimo." : "Pedido mínimo atingido.")</small></div>
+                <div class="summary-total"><span>Total</span><strong>@Model.Cart.Total.ToString("C")</strong></div>
+                <button class="btn btn-gold w-100" type="submit" disabled="@(Model.Cart.RemainingForMinimum > 0 || !Model.Cart.Items.Any())">Confirmar pedido</button>
+                <a class="btn btn-outline-dark w-100 mt-2" asp-action="Catalog"><i class="fa-solid fa-cart-plus"></i> Adicionar produtos</a>
+                <p class="checkout-security">Seu pedido ser&aacute; enviado para valida&ccedil;&atilde;o comercial.</p>
+            </aside>
+        </form>
+    </div>
+</section>

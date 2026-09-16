@@ -1,0 +1,78 @@
+namespace Orofoods.Web.Tests.Views;
+
+public class InstitutionalViewTests
+{
+    [Fact]
+    public void Contact_view_contains_antiforgery_form_and_privacy_link()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Contact.cshtml"));
+        var markup = File.ReadAllText(path);
+
+        Assert.Contains("asp-antiforgery=\"true\"", markup);
+        Assert.Contains("asp-action=\"Privacy\"", markup);
+    }
+
+    [Fact]
+    public void Home_view_sends_product_interest_to_customer_access()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
+        var markup = File.ReadAllText(path);
+
+        Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", markup);
+        Assert.Contains("asp-area=\"Identity\" asp-page=\"/Account/Login\"", markup);
+        Assert.Contains("asp-route-returnUrl=\"/Portal/Dashboard\"", markup);
+    }
+
+    [Fact]
+    public void Home_view_has_a_commercial_command_bar_and_featured_product_section()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
+        var markup = File.ReadAllText(path);
+
+        Assert.Contains("home-command-bar", markup);
+        Assert.Contains("home-feature-grid", markup);
+        Assert.Contains("home-catalog-cta", markup);
+    }
+
+    [Fact]
+    public void Home_carousel_uses_non_overlapping_slide_transitions()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
+        var markup = File.ReadAllText(path);
+
+        Assert.Contains("class=\"carousel slide\"", markup);
+        Assert.DoesNotContain("carousel-fade", markup);
+    }
+
+    [Fact]
+    public void Home_carousel_keeps_a_full_bleed_background()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
+        var markup = File.ReadAllText(path);
+
+        Assert.Contains("<section class=\"home-showcase\">", markup);
+        Assert.DoesNotContain("max-width:1600px", markup);
+    }
+
+    [Fact]
+    public void Home_carousel_aligns_copy_with_the_site_content_column()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
+        var markup = File.ReadAllText(path);
+
+        Assert.Contains("padding-left:max(32px,calc((100vw - 1180px)/2))", markup);
+    }
+
+    [Fact]
+    public void Institutional_pages_use_the_shared_photo_treatment_and_clear_copy()
+    {
+        var webRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var about = File.ReadAllText(Path.Combine(webRoot, "Views/Home/About.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(webRoot, "wwwroot/css/site.css"));
+
+        Assert.Contains("about-story", about);
+        Assert.Contains("orofoods-institutional-kitchen.png", about);
+        Assert.Contains("/images/orofoods-institutional-kitchen.png", styles);
+        Assert.Contains(".institutional-photo", styles);
+    }
+}

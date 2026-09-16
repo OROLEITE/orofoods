@@ -1,47 +1,77 @@
-# Orofoods — portal B2B de pedidos recorrentes
+# Orofoods - portal B2B de pedidos recorrentes
 
-Primeira versão funcional em ASP.NET Core MVC 10, Razor Views, Entity Framework Core, SQLite, Identity e Bootstrap 5. O produto foi desenhado em torno do fluxo **“pedido em 30 segundos”**, não como um e-commerce genérico.
+Portal B2B da Orofoods, marca comercial da JPL Serviços e Transportes Ltda., desenvolvido em ASP.NET Core MVC 10, Razor Views, Entity Framework Core, PostgreSQL, Identity, Bootstrap e Font Awesome.
 
-## O que está implementado
+O sistema atende dois contextos distintos:
 
-- Home institucional responsiva com identidade premium e imagem original.
-- Dashboard B2B com último pedido, condição comercial, pedido mínimo, crédito e dia regional de entrega.
-- Repetição do último pedido com quantidades pré-preenchidas e edição sem recarregar a página.
-- Preço personalizado por cliente, múltiplos endereços, mínimos por caixa, mínimo do pedido e limite de crédito.
-- Produto indisponível com indicação de substituto.
-- Checkout compacto, persistência real do pedido e número `ORO-AAAA-000000`.
-- Catálogo pesquisável com preços da tabela do cliente.
-- Identity com roles Administrador, Vendedor e Cliente, lockout e schema incluído na migration.
+- **Portal do cliente:** empresas compradoras consultam o catálogo, preços e condições comerciais, montam pedidos e acompanham o histórico.
+- **Administração Orofoods (JPL):** equipe interna controla clientes, catálogo, estoque, regras comerciais, pedidos, usuários e integrações.
 
-## Arquitetura desta primeira versão
+## Recursos implementados
 
-O projeto está organizado por responsabilidade dentro de `Orofoods.Web`: `Models`, `ViewModels`, `Data`, `Controllers`, `Views` e `wwwroot`. É uma escolha intencional para o MVP; quando regras administrativas e integrações crescerem, os modelos e serviços podem ser extraídos para projetos Domain/Application/Infrastructure.
+- Catálogo público responsivo com produtos, busca, categorias, marcas e imagens.
+- Cadastro e aprovação comercial de clientes empresariais.
+- Autenticação com perfis `Administrador`, `Vendedor` e `Cliente`; somente administradores acessam a área administrativa.
+- Preços por cliente, endereços de entrega, condições de pagamento, pedido mínimo, crédito e disponibilidade.
+- Carrinho, checkout, confirmação de pedido e numeração no formato `ORO-AAAA-000000`.
+- Histórico de pedidos, repetição de pedido, favoritos e produtos frequentes.
+- Administração de produtos, categorias, imagens, estoque, ajustes, clientes, usuários, tabelas de preço e relatórios.
+- Banco de dados PostgreSQL com migrations separadas para o provedor ativo.
+- Exportação WMC em arquivo `.txt` para homologação, com códigos WMC de cliente e produto, auditoria por pedido e proteção contra sobrescrita em reprocessamentos.
+- Painel de integrações com falhas ERP e o status da exportação WMC mais recente de cada pedido.
+- Logs diários locais em `Orofoods.Web/Logs`, correlação por requisição com `X-Correlation-ID`, página de erro em português e cabeçalhos de segurança.
 
-Entidades centrais: `Customer`, `CustomerAddress`, `Product`, `CustomerPrice`, `Order` e `OrderItem`. O preço efetivo segue `CustomerPrice -> Product.BasePrice`. A confirmação recalcula valores e valida regras no servidor — a interface JavaScript serve apenas como feedback imediato.
+## Integração WMC
 
-## Executar
+A exportação atual usa o exemplo de arquivo fornecido para **homologação**. Ela não deve ser considerada o contrato definitivo do WMC enquanto o layout oficial não for disponibilizado.
 
-Requisitos: .NET SDK 10.
+Para habilitar a saída por arquivo em desenvolvimento, configure `WmcFileDrop` em `appsettings.Development.json`:
+
+```json
+"WmcFileDrop": {
+  "Enabled": true,
+  "AutoRetryEnabled": false,
+  "OutputDirectory": "C:\\WMC\\NEOGRID\\IN"
+}
+```
+
+O modo automático permanece desativado durante a homologação. A exportação manual valida os códigos WMC obrigatórios e registra usuário, data, arquivo e resultado no histórico do pedido.
+
+## Executar localmente
+
+Requisitos:
+
+- .NET SDK 10
+- PostgreSQL disponível
+
+Configure a conexão em `ConnectionStrings:DefaultConnection` e a chave JWT por User Secrets ou variável de ambiente. Não grave credenciais reais no repositório.
 
 ```powershell
 dotnet restore
 dotnet run --project .\Orofoods.Web\Orofoods.Web.csproj
 ```
 
-Abra a URL exibida no terminal e use **Área do cliente**. A base `orofoods.db` e os dados demonstrativos são criados automaticamente pela migration na primeira execução.
+O endpoint `GET /health` informa a disponibilidade do banco e o estado da configuração de saída WMC, sem expor o caminho do diretório.
 
-## Dados demonstrativos
+## Estrutura principal
 
-O cliente de demonstração é a **Burger da Vila**, com dois endereços, tabela “Hamburgueria Parceira”, limite de crédito, condições de pagamento e um pedido entregue pronto para repetição.
+- `Orofoods.Web/Areas/Admin`: administração da Orofoods/JPL.
+- `Orofoods.Web/Controllers` e `Views`: portal público e do cliente.
+- `Orofoods.Web/Services`: regras de catálogo, comercial, pedidos, identidade, relatórios e integrações.
+- `Orofoods.Web/Integrations/Erp/Wmc`: geração e entrega de arquivos WMC.
+- `Orofoods.Web/Data/MigrationsPostgreSql`: migrations do PostgreSQL.
+- `Orofoods.Web.Tests`: testes automatizados de serviços, integração, segurança, controllers e views.
 
-## Próximos módulos recomendados
+## Observabilidade e segurança
 
-1. Vincular `Customer` ao usuário Identity autenticado e proteger o portal com `[Authorize]`.
-2. Completar cadastro/aprovação de clientes e telas administrativas CRUD.
-3. Adicionar histórico/status, favoritos, pedidos-modelo e recuperação de senha por provedor real.
-4. Migrar SQLite para SQL Server em produção e adicionar testes automatizados.
-5. Implementar notificações e integrações de ERP/WhatsApp via interfaces de aplicação.
+- `X-Correlation-ID` identifica cada requisição e aparece nos logs diários.
+- Os arquivos de log persistem somente o identificador de correlação dos escopos; dados de clientes não são incluídos automaticamente.
+- Respostas autenticadas usam `Cache-Control: no-store`.
+- Cabeçalhos `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` e `Permissions-Policy` são aplicados globalmente.
 
-## Ativo visual
+## Validação
 
-`wwwroot/images/orofoods-hero.png` foi gerado para este projeto com a ferramenta integrada de geração de imagens. Prompt final: fotografia publicitária food-service, hambúrguer smash com pão brioche e pães frescos à direita, cozinha profissional escura, luz âmbar, espaço negativo à esquerda, sem texto, logo, pessoas ou embalagem.
+```powershell
+dotnet build .\Orofoods.Web\Orofoods.Web.csproj --no-restore
+dotnet test .\Orofoods.Web.Tests\Orofoods.Web.Tests.csproj --no-restore
+```

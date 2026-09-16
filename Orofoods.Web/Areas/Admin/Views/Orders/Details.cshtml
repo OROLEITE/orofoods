@@ -1,0 +1,88 @@
+@model Orofoods.Web.Models.Orders.Order
+@{ ViewData["Title"] = Model.Number; }
+
+<section class="section">
+    <div class="container">
+        <div class="portal-top">
+            <div><small>@Model.Customer?.TradeName</small><h1>@Model.Number</h1></div>
+            <a asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+        </div>
+
+        <div class="commercial-bar">
+            <div><small>STATUS</small><strong>@Model.Status.ToDisplayName()</strong></div>
+            <div><small>INTEGRA&#199;&#195;O ERP</small><strong>@Model.IntegrationStatus.ToDisplayName()</strong></div>
+            <div><small>ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
+            <div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div>
+        </div>
+
+        <form asp-action="UpdateStatus" method="post" class="d-flex gap-2 mb-4">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <select name="status" class="form-select">
+                @foreach (var status in Enum.GetValues<OrderStatus>())
+                {
+                    <option value="@status" selected="@(status == Model.Status)">@status.ToDisplayName()</option>
+                }
+            </select>
+            <button class="btn btn-gold">Atualizar status</button>
+        </form>
+
+        <form asp-action="ReprocessIntegration" method="post" class="mb-4">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button class="btn btn-outline-dark">Reprocessar integra&#231;&#227;o</button>
+            @if (!string.IsNullOrWhiteSpace(Model.IntegrationError))
+            {
+                <small class="d-block text-danger mt-2">@Model.IntegrationError</small>
+            }
+        </form>
+
+        <h2 class="mt-5">Hist&oacute;rico de status</h2>
+        <ol class="list-group list-group-numbered mb-5">
+            @foreach (var entry in Model.StatusHistory.OrderByDescending(x => x.ChangedAt))
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                    <div><strong>@entry.Status.ToDisplayName()</strong><br /><small>@(entry.ChangedByUser?.Email ?? "Sistema")</small></div>
+                    <time>@entry.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+                </li>
+            }
+        </ol>
+
+        <h2>Hist&oacute;rico de exporta&#231;&otilde;es WMC</h2>
+        @if (!Model.WmcExportAudits.Any())
+        {
+            <p class="text-muted mb-5">Nenhuma exporta&#231;&#227;o WMC registrada para este pedido.</p>
+        }
+        else
+        {
+            <ol class="list-group list-group-numbered mb-5">
+                @foreach (var entry in Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt))
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>@(entry.Succeeded ? "Arquivo gerado" : "Falha na exportação")</strong>
+                            @if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail))
+                            {
+                                <small class="d-block">@entry.ExportedByEmail</small>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(entry.FileName))
+                            {
+                                <small class="d-block">@entry.FileName</small>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(entry.Error))
+                            {
+                                <small class="d-block text-danger">@entry.Error</small>
+                            }
+                        </div>
+                        <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+                    </li>
+                }
+            </ol>
+        }
+
+        <div class="order-items">
+            @foreach (var item in Model.Items)
+            {
+                <div class="order-row"><div><small>@item.SkuSnapshot</small><h3>@item.ProductNameSnapshot</h3></div><span>@item.Quantity x @item.UnitPrice.ToString("C")</span><strong>@item.Subtotal.ToString("C")</strong></div>
+            }
+        </div>
+    </div>
+</section>

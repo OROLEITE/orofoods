@@ -1,0 +1,96 @@
+@model Orofoods.Web.ViewModels.CustomerRegistrationViewModel
+@{
+    ViewData["Title"] = "Cadastro B2B";
+}
+
+<section class="registration-page">
+    <div class="container registration-container">
+        <header class="registration-hero">
+            <div>
+                <div class="eyebrow"><span></span> Cadastro empresarial</div>
+                <h1>Solicite seu acesso<br />ao portal B2B.</h1>
+                <p>Preencha os dados da sua empresa. A equipe comercial analisar&aacute; o cadastro antes de liberar o cat&aacute;logo e as condi&ccedil;&otilde;es de compra.</p>
+            </div>
+            <div class="registration-hero-photo" role="img" aria-label="P&atilde;es para food service em uma cozinha profissional"></div>
+        </header>
+
+        <form method="post" class="registration-layout">
+            <main class="registration-form">
+                <div asp-validation-summary="ModelOnly" class="registration-validation"></div>
+
+                <section class="registration-card">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-building" aria-hidden="true"></i></span><div><small>01. Empresa</small><h2>Dados da empresa</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label asp-for="LegalName" class="form-label">Raz&atilde;o social</label><input asp-for="LegalName" class="form-control" autocomplete="organization" /><span asp-validation-for="LegalName" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="TradeName" class="form-label">Nome fantasia</label><input asp-for="TradeName" class="form-control" /><span asp-validation-for="TradeName" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="Cnpj" class="form-label">CNPJ</label><input asp-for="Cnpj" class="form-control" inputmode="numeric" /><span asp-validation-for="Cnpj" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="StateRegistration" class="form-label">Inscri&ccedil;&atilde;o estadual <em>Opcional</em></label><input asp-for="StateRegistration" class="form-control" /></div>
+                    </div>
+                </section>
+
+                <section class="registration-card">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-user-tie" aria-hidden="true"></i></span><div><small>02. Contato</small><h2>Respons&aacute;vel pela conta</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-8"><label asp-for="ResponsibleName" class="form-label">Respons&aacute;vel</label><input asp-for="ResponsibleName" class="form-control" autocomplete="name" /><span asp-validation-for="ResponsibleName" class="text-danger"></span></div>
+                        <div class="col-md-4"><label asp-for="ResponsibleDocument" class="form-label">CPF <em>Opcional</em></label><input asp-for="ResponsibleDocument" class="form-control" inputmode="numeric" /></div>
+                        <div class="col-md-4"><label asp-for="Email" class="form-label">E-mail</label><input asp-for="Email" class="form-control" autocomplete="email" /><span asp-validation-for="Email" class="text-danger"></span></div>
+                        <div class="col-md-4"><label asp-for="Phone" class="form-label">Telefone</label><input asp-for="Phone" class="form-control" autocomplete="tel" inputmode="tel" /><span asp-validation-for="Phone" class="text-danger"></span></div>
+                        <div class="col-md-4"><label asp-for="WhatsApp" class="form-label">WhatsApp</label><input asp-for="WhatsApp" class="form-control" autocomplete="tel" inputmode="tel" /><span asp-validation-for="WhatsApp" class="text-danger"></span></div>
+                    </div>
+                </section>
+
+                <section class="registration-card">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-location-dot" aria-hidden="true"></i></span><div><small>03. Endere&ccedil;o</small><h2>Local de entrega</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-4"><label asp-for="ZipCode" class="form-label">CEP</label><input asp-for="ZipCode" class="form-control" autocomplete="postal-code" inputmode="numeric" /><span asp-validation-for="ZipCode" class="text-danger"></span></div>
+                        <div class="col-md-8"><label asp-for="Street" class="form-label">Endere&ccedil;o</label><input asp-for="Street" class="form-control" autocomplete="street-address" /><span asp-validation-for="Street" class="text-danger"></span></div>
+                        <div class="col-md-3"><label asp-for="Number" class="form-label">N&uacute;mero</label><input asp-for="Number" class="form-control" /><span asp-validation-for="Number" class="text-danger"></span></div>
+                        <div class="col-md-5"><label asp-for="Complement" class="form-label">Complemento <em>Opcional</em></label><input asp-for="Complement" class="form-control" /></div>
+                        <div class="col-md-4"><label asp-for="District" class="form-label">Bairro</label><input asp-for="District" class="form-control" /><span asp-validation-for="District" class="text-danger"></span></div>
+                        <div class="col-md-8"><label asp-for="City" class="form-label">Cidade</label><input asp-for="City" class="form-control" autocomplete="address-level2" /><span asp-validation-for="City" class="text-danger"></span></div>
+                        <div class="col-md-4"><label asp-for="State" class="form-label">Estado</label><input asp-for="State" class="form-control text-uppercase" maxlength="2" autocomplete="address-level1" /><span asp-validation-for="State" class="text-danger"></span></div>
+                    </div>
+                </section>
+
+                <section class="registration-card registration-card--access">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span><div><small>04. Acesso</small><h2>Crie sua senha</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label asp-for="Password" class="form-label">Senha</label><div class="input-group"><input asp-for="Password" class="form-control" autocomplete="new-password" /><button class="btn btn-outline-dark password-toggle" type="button" data-password-toggle="Password" aria-label="Mostrar senha"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></div><span asp-validation-for="Password" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="ConfirmPassword" class="form-label">Confirmar senha</label><div class="input-group"><input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" /><button class="btn btn-outline-dark password-toggle" type="button" data-password-toggle="ConfirmPassword" aria-label="Mostrar confirma&ccedil;&atilde;o de senha"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></div><span asp-validation-for="ConfirmPassword" class="text-danger"></span></div>
+                    </div>
+                    <label class="registration-consent"><input type="checkbox" id="AcceptPrivacyPolicy" name="AcceptPrivacyPolicy" value="true" /><span>Li e aceito a pol&iacute;tica de privacidade.</span></label>
+                    <span asp-validation-for="AcceptPrivacyPolicy" class="text-danger d-block"></span>
+                </section>
+
+                <footer class="registration-actions"><a asp-controller="Home" asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</a><button type="submit" class="btn btn-gold">Enviar para an&aacute;lise <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></footer>
+            </main>
+
+            <aside class="registration-aside">
+                <div class="registration-aside-card">
+                    <span class="registration-aside-icon"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i></span>
+                    <p class="eyebrow"><span></span> Pr&oacute;ximos passos</p>
+                    <h2>Seu acesso em tr&ecirc;s etapas.</h2>
+                    <ol>
+                        <li><b>Envie o cadastro</b><span>Informe os dados da empresa e do respons&aacute;vel.</span></li>
+                        <li><b>Aguarde a an&aacute;lise</b><span>O comercial valida sua solicita&ccedil;&atilde;o.</span></li>
+                        <li><b>Compre com seguran&ccedil;a</b><span>Receba acesso ao cat&aacute;logo e fa&ccedil;a pedidos.</span></li>
+                    </ol>
+                </div>
+                <p class="registration-help"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Precisa de ajuda? Fale com a equipe Orofoods.</p>
+            </aside>
+        </form>
+    </div>
+</section>
+
+<partial name="_ValidationScriptsPartial" />
+<script>
+document.querySelectorAll("[data-password-toggle]").forEach(button => {
+    button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.passwordToggle);
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        button.setAttribute("aria-label", isPassword ? "Ocultar senha" : "Mostrar senha");
+        button.querySelector("i").className = isPassword ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
+    });
+});
+</script>

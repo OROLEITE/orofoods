@@ -1,4 +1,22 @@
-@model IReadOnlyList<Orofoods.Web.Models.Product>
-@{ ViewData["Title"] = "Catálogo B2B"; var prices=(Dictionary<int,decimal>)ViewBag.Prices; }
-<section class="page-hero"><div class="container"><div class="eyebrow light"><span></span> Catálogo personalizado</div><h1>Produtos para a sua operação.</h1><p>Os preços abaixo já consideram sua tabela comercial.</p></div></section>
-<section class="section"><div class="container"><form class="catalog-tools"><input name="q" value="@Context.Request.Query["q"]" placeholder="Pesquisar brioche, barbecue, maionese..."/><select name="category"><option value="">Todas as categorias</option><option>Pães</option><option>Molhos</option><option>Condimentos</option></select><button class="btn btn-dark">Buscar</button></form><div class="product-grid">@foreach(var p in Model){var price=prices.GetValueOrDefault(p.Id,p.BasePrice);<article class="product-card @(p.IsAvailable?"":"unavailable")"><div class="product-visual" style="--accent:@p.Accent"><span>@(p.Category == "Pães" ? "◒" : "●")</span><small>@p.Category</small>@if(!p.IsAvailable){<b>INDISPONÍVEL</b>}</div><div class="p-4"><small>@p.Sku · mínimo @p.MinimumCases cx.</small><h3>@p.Name</h3><p>@p.UnitDescription</p><div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ caixa</span></div><button class="btn @(p.IsAvailable?"btn-gold":"btn-light") w-100" disabled="@(!p.IsAvailable)">@(p.IsAvailable?"Adicionar ao pedido":"Consulte um substituto")</button></div></article>}</div></div></section>
+@model IReadOnlyList<Orofoods.Web.Models.Catalog.Product>
+@{
+    ViewData["Title"] = "Cat&aacute;logo B2B";
+    var prices = (Dictionary<int, decimal>)ViewBag.Prices;
+    var brands = (IEnumerable<string>)ViewBag.Brands;
+}
+<section class="page-hero">
+    <div class="container"><div class="portal-catalog-heading"><div><div class="eyebrow light"><span></span> Portal do Cliente</div><h1>Cat&aacute;logo de produtos</h1><p>Adicione v&aacute;rios produtos ao carrinho antes de seguir para o checkout.</p></div><a class="btn btn-gold" asp-action="Cart"><i class="fa-solid fa-cart-shopping"></i> Ver carrinho</a></div></div>
+</section>
+<section class="section"><div class="container">
+    <form class="catalog-tools"><input name="q" value="@Context.Request.Query["q"]" placeholder="Pesquisar por nome, SKU ou marca" />
+        <select name="category"><option value="">Todas as categorias</option>@foreach (var category in Model.Select(x => x.ProductCategory).OfType<ProductCategory>().DistinctBy(x => x.Id).OrderBy(x => x.SortOrder)) { <option value="@category.Name" selected="@(Context.Request.Query["category"] == category.Name)">@category.Name</option> }</select>
+        <select name="brand"><option value="">Todas as marcas</option>@foreach (var brand in brands) { <option value="@brand" selected="@(Context.Request.Query["brand"] == brand)">@brand</option> }</select><button class="btn btn-dark">Buscar</button>
+    </form>
+    <div class="product-grid">@foreach (var product in Model) { var price = prices.GetValueOrDefault(product.Id, product.BasePrice); var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
+        <article class="product-card @(product.IsCommerciallyAvailable ? "" : "unavailable")"><div class="product-visual" style="--accent:@product.Accent">@if (image is not null) { <img src="@image.Url" alt="@image.AltText" /> } else { <span>&bull;</span> }<small>@product.Category</small>@if (!product.IsCommerciallyAvailable) { <b>INDISPON&Iacute;VEL</b> }</div>
+            <div class="p-4"><small>@product.Sku | m&iacute;nimo @product.MinimumCases cx.</small><h3>@product.Name</h3><p>@product.UnitDescription</p><div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ caixa</span></div><a class="text-link d-inline-block mb-3" asp-action="Product" asp-route-id="@product.Id">Ver detalhes</a>
+                <form asp-action="AddToCart" method="post" class="catalog-add-form"><input type="hidden" name="productId" value="@product.Id" /><label for="quantity-@product.Id">Quantidade</label><div class="catalog-add-controls"><input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumCases" value="@product.MinimumCases" inputmode="numeric" aria-label="Quantidade de @product.Name" /><button class="btn btn-gold" type="submit" disabled="@(!product.IsCommerciallyAvailable)">Adicionar ao carrinho</button></div></form>
+            </div>
+        </article> }
+    </div>
+</div></section>

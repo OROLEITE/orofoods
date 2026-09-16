@@ -1,0 +1,2 @@
+@model (string Title, List<Orofoods.Web.Services.Reports.ReportRankingRow> Rows)
+<div class="summary-card"><h2>@Model.Title</h2>@if(!Model.Rows.Any()){<p>Nenhum dado no periodo.</p>}else{<table class="table"><thead><tr><th>Nome</th><th>Qtd.</th><th>Total</th></tr></thead><tbody>@foreach(var row in Model.Rows){<tr><td>@row.Name</td><td>@row.Quantity</td><td>@row.Total.ToString("C")</td></tr>}</tbody></table>}</div>

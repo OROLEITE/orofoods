@@ -1,7 +1,63 @@
-@model IReadOnlyList<Orofoods.Web.Models.Product>
-@{ ViewData["Title"] = "Distribuição B2B para food service"; }
-<section class="hero"><div class="container hero-content"><div class="eyebrow light"><span></span> Distribuição B2B · Campinas e região</div><h1>O pedido da sua<br/>hamburgueria em<br/><em>30 segundos.</em></h1><p>Entre, repita seu último pedido, altere só o que mudou e pronto. Pães, molhos e congelados com a condição comercial da sua empresa.</p><div class="d-flex flex-wrap gap-3"><a class="btn btn-gold btn-lg" asp-controller="Portal" asp-action="Dashboard">Repetir meu pedido →</a><a class="btn btn-ghost btn-lg" asp-controller="Portal" asp-action="Catalog">Ver catálogo</a></div><div class="hero-proof"><strong>4,9</strong><span class="stars">★★★★★</span><span>Operação confiável para<br/>mais de 180 negócios</span></div></div></section>
-<section class="trust-strip"><div class="container"><span>FEITO PARA O FOOD SERVICE</span><span>Preço por cliente</span><span>Entrega programada</span><span>Reposição sem atrito</span><span>Atendimento humano</span></div></section>
-<section class="section" id="como-funciona"><div class="container"><div class="section-heading"><div><div class="eyebrow"><span></span> Menos cliques, mais operação</div><h2>Seu estoque resolvido<br/>antes do café esfriar.</h2></div><p>A plataforma já conhece sua rotina, condição comercial e dia de entrega. Você só confere o que mudou.</p></div><div class="steps-grid"><article><b>01</b><div class="step-icon">↗</div><h3>Entre na sua conta</h3><p>Seu catálogo, preços e condições já aparecem personalizados.</p></article><article class="featured"><b>02</b><div class="step-icon">↻</div><h3>Repita o último pedido</h3><p>Quantidades vêm preenchidas. Ajuste só o necessário.</p></article><article><b>03</b><div class="step-icon">✓</div><h3>Confira e confirme</h3><p>Veja mínimos, crédito e próxima entrega antes de enviar.</p></article></div><div class="text-center mt-5"><a class="text-link" asp-controller="Portal" asp-action="Dashboard">Experimentar o pedido em 30 segundos →</a></div></div></section>
-<section class="section products-section"><div class="container"><div class="section-heading"><div><div class="eyebrow"><span></span> Seleção Orofoods</div><h2>Os essenciais da<br/>sua chapa.</h2></div><a class="text-link" asp-controller="Portal" asp-action="Catalog">Ver catálogo completo →</a></div><div class="product-grid">@foreach(var p in Model){<article class="product-card"><div class="product-visual" style="--accent:@p.Accent"><span>@(p.Category == "Pães" ? "◒" : "●")</span><small>@p.Category</small></div><div class="p-4"><small>@p.Sku · @p.UnitDescription</small><h3>@p.Name</h3><p>@p.Description</p><a asp-controller="Portal" asp-action="Catalog">Ver no catálogo →</a></div></article>}</div></div></section>
-<section class="section about" id="sobre"><div class="container about-grid"><div><div class="eyebrow light"><span></span> Parceiro de verdade</div><h2>Não entregamos caixas.<br/>Entregamos constância.</h2></div><div><p>A Orofoods entende que produto padronizado, entrega previsível e reposição rápida mantêm sua cozinha girando. Por isso unimos curadoria, distribuição e tecnologia em uma relação feita para durar.</p><div class="stats"><div><strong>98%</strong><span>entregas no prazo</span></div><div><strong>180+</strong><span>operações atendidas</span></div><div><strong>12h</strong><span>resposta comercial</span></div></div></div></div></section>
+@model IReadOnlyList<Orofoods.Web.Models.Catalog.Product>
+@{
+    ViewData["Title"] = "Orofoods | Pães congelados para food service";
+    var highlights = Model.Take(3).ToList();
+    var featuredProducts = Model.Take(4).ToList();
+}
+
+@if (TempData["RegistrationSuccess"] is string registrationSuccess)
+{
+    <div class="container pt-4"><div class="alert alert-success mb-0" role="status">@registrationSuccess</div></div>
+}
+
+<section class="home-showcase">
+    <div id="productShowcase" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6500">
+        <div class="carousel-indicators">
+            @for (var index = 0; index < highlights.Count; index++)
+            {
+                <button type="button" data-bs-target="#productShowcase" data-bs-slide-to="@index" class="@(index == 0 ? "active" : "")" aria-label="Produto em destaque @(index + 1)"></button>
+            }
+        </div>
+        <div class="carousel-inner">
+            @if (highlights.Count == 0)
+            {
+                <div class="carousel-item active"><div class="showcase-empty container"><p class="eyebrow light"><span></span> Orofoods</p><h1>Produtos selecionados para sua opera&ccedil;&atilde;o.</h1></div></div>
+            }
+            @for (var index = 0; index < highlights.Count; index++)
+            {
+                var product = highlights[index];
+                var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
+                <div class="carousel-item @(index == 0 ? "active" : "")">
+                    <article class="showcase-slide showcase-slide--renewed" style="--product-accent:@product.Accent">
+                        <div class="showcase-copy container" style="padding-left:max(32px,calc((100vw - 1180px)/2))"><div>
+                            <p class="eyebrow light"><span></span> @product.Brand | @product.Category</p>
+                            <p class="showcase-overline">P&Atilde;ES CONGELADOS PARA FOOD SERVICE</p>
+                            <h1>@product.Name</h1>
+                            <p class="showcase-description">@product.Description</p>
+                            <div class="showcase-actions"><a class="btn btn-gold btn-lg" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="/Portal/Dashboard">Fazer pedido <i class="fa-solid fa-arrow-right ms-2" aria-hidden="true"></i></a><a class="showcase-link" asp-controller="Home" asp-action="Products">Ver linha completa <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
+                            <p class="showcase-note"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Acesso comercial para empresas cadastradas.</p>
+                        </div></div>
+                        <div class="showcase-media">@if (image is not null) { <img src="@image.Url" alt="@image.AltText" /> } else { <span>@product.Brand</span> }</div>
+                    </article>
+                </div>
+            }
+        </div>
+        @if (highlights.Count > 1)
+        {
+            <button class="carousel-control-prev" type="button" data-bs-target="#productShowcase" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span><span class="visually-hidden">Anterior</span></button>
+            <button class="carousel-control-next" type="button" data-bs-target="#productShowcase" data-bs-slide="next"><span class="carousel-control-next-icon"></span><span class="visually-hidden">Pr&oacute;ximo</span></button>
+        }
+    </div>
+</section>
+
+<section class="home-command-bar" aria-label="Diferenciais Orofoods"><div class="container"><div><i class="fa-solid fa-snowflake" aria-hidden="true"></i><span>Produtos congelados</span></div><div><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span>Pedido por caixa</span></div><div><i class="fa-solid fa-truck-fast" aria-hidden="true"></i><span>Entrega programada</span></div><a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="/Portal/Dashboard">Acessar portal <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div></section>
+
+<section class="section home-catalog" id="produtos"><div class="container"><div class="section-heading home-catalog-heading"><div><div class="eyebrow"><span></span> Cat&aacute;logo Orofoods</div><h2>O p&atilde;o certo,<br />no ritmo da sua cozinha.</h2></div><div><p>Uma sele&ccedil;&atilde;o pr&aacute;tica para opera&ccedil;&otilde;es que precisam de padr&atilde;o a cada pedido.</p><a class="text-link" asp-controller="Home" asp-action="Products">Explorar todos os produtos <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i></a></div></div><div class="home-feature-grid">
+@foreach (var product in featuredProducts)
+{
+    var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
+    <a class="home-product-card" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Ver produto @product.Name"><div class="home-product-image" style="--product-accent:@product.Accent">@if (image is not null) { <img src="@image.Url" alt="@image.AltText" /> } else { <span>@product.Brand</span> }<small>@product.Category</small></div><div class="home-product-body"><p>@product.Brand</p><h3>@product.Name</h3><span>@product.UnitDescription</span><strong>Ver produto <b>+</b></strong></div></a>
+}
+</div><div class="home-catalog-cta"><div><div class="eyebrow"><span></span> Compra B2B simplificada</div><h2>J&aacute; compra com a Orofoods?</h2><p>Entre para repetir pedidos, consultar sua tabela comercial e acompanhar as entregas.</p></div><div class="home-catalog-cta-actions"><a class="btn btn-dark" asp-area="Identity" asp-page="/Account/Login">Entrar</a><a class="btn btn-outline-dark" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar empresa</a></div></div></div></section>
+
+<section class="home-operation"><div class="container home-operation-grid"><div class="home-operation-copy"><div class="eyebrow light"><span></span> Parceiro de opera&ccedil;&atilde;o</div><h2>Mais previsibilidade para quem n&atilde;o pode parar.</h2><p>Da escolha do produto &agrave; reposi&ccedil;&atilde;o programada, a Orofoods organiza uma compra recorrente, simples e transparente.</p><a class="btn btn-gold" asp-controller="Home" asp-action="HowItWorks">Como funciona <i class="fa-solid fa-arrow-right ms-2" aria-hidden="true"></i></a></div><div class="home-operation-points"><div><i class="fa-solid fa-layer-group" aria-hidden="true"></i><strong>Cat&aacute;logo objetivo</strong><span>Itens selecionados para alto giro.</span></div><div><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i><strong>Condi&ccedil;&otilde;es por empresa</strong><span>Pre&ccedil;os e pagamentos conforme cadastro.</span></div><div><i class="fa-solid fa-people-group" aria-hidden="true"></i><strong>Atendimento pr&oacute;ximo</strong><span>Suporte para acompanhar sua opera&ccedil;&atilde;o.</span></div></div></div></section>

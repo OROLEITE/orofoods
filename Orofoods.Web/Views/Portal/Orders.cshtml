@@ -1,0 +1,16 @@
+@model Orofoods.Web.ViewModels.OrderHistoryViewModel
+@{ ViewData["Title"] = "Meus pedidos"; }
+<section class="page-hero"><div class="container"><div class="eyebrow light"><span></span> Hist&oacute;rico</div><h1>Meus pedidos</h1><p>Acompanhe compras, entregas e reposi&ccedil;&otilde;es anteriores.</p></div></section>
+<section class="section">
+    <div class="container">
+        <form class="catalog-tools"><input name="q" value="@Model.Query" placeholder="Buscar pelo n&uacute;mero do pedido"/><select name="status"><option value="">Todos os status</option>@foreach (var status in Enum.GetValues<OrderStatus>()) { <option value="@status" selected="@(Model.Status == status.ToString())">@status.ToDisplayName()</option> }</select><button class="btn btn-dark">Filtrar</button></form>
+        @if (!Model.Orders.Any())
+        {
+            <div class="empty-state"><h2>Nenhum pedido encontrado.</h2><a class="btn btn-gold" asp-action="Catalog">Novo pedido</a></div>
+        }
+        else
+        {
+            <div class="order-items">@foreach (var order in Model.Orders) { <a class="order-row" asp-action="Order" asp-route-id="@order.Id"><div><small>@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</small><h3>@order.Number</h3><span>@order.Items.Count @(order.Items.Count == 1 ? "item" : "itens")</span></div><div><small>@order.Status.ToDisplayName()</small><strong>@order.Total.ToString("C")</strong></div></a> }</div>
+        }
+    </div>
+</section>

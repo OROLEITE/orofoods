@@ -1,33 +1,166 @@
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Localization;
+using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
+using System.Threading.RateLimiting;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Identity;
+using Orofoods.Web.Services.Customers;
+using Orofoods.Web.Services.Catalog;
+using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Pricing;
+using Orofoods.Web.Services.Orders;
+using Orofoods.Web.Services.Reports;
+using Orofoods.Web.Services.Integrations;
+using Orofoods.Web.Integrations.Erp;
+using Orofoods.Web.Integrations.Erp.Wmc;
+using Orofoods.Web.Infrastructure;
+using Orofoods.Web.Infrastructure.Logging;
+
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")));
+var fileLoggingEnabled = builder.Configuration.GetValue<bool>("FileLogging:Enabled");
+if (fileLoggingEnabled)
+{
+    var fileLogDirectory = builder.Configuration["FileLogging:Directory"] ?? "Logs";
+    var resolvedFileLogDirectory = Path.IsPathFullyQualified(fileLogDirectory)
+        ? fileLogDirectory
+        : Path.Combine(builder.Environment.ContentRootPath, fileLogDirectory);
+    var fileLogLevel = builder.Configuration.GetValue("FileLogging:MinimumLevel", LogLevel.Information);
+    builder.Logging.AddDailyFile(resolvedFileLogDirectory, fileLogLevel);
+}
+var dataProtection = builder.Services.AddDataProtection();
+if (builder.Environment.IsDevelopment())
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")));
+}
+else
+{
+    var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
+    if (string.IsNullOrWhiteSpace(keyDirectory) || !Path.IsPathFullyQualified(keyDirectory))
+    {
+        throw new InvalidOperationException("Defina DataProtection:KeyDirectory como um diretório absoluto fora da aplicação.");
+    }
 
-// Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+    if (!OperatingSystem.IsWindows())
+    {
+        throw new PlatformNotSupportedException("Configure um provedor de proteção de chaves compatível com o ambiente de produção.");
+    }
+
+    dataProtection
+        .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
+        .ProtectKeysWithDpapi();
+}
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString));
+builder.Services.AddScoped<ApplicationDbContext>(provider => provider.GetRequiredService<PostgreSqlApplicationDbContext>());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options =>
+builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
         options.Lockout.MaxFailedAccessAttempts = 5;
     })
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddEntityFrameworkStores<PostgreSqlApplicationDbContext>()
+    .AddSignInManager<ActiveUserSignInManager>();
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Defina Jwt:Key por variável de ambiente ou User Secrets.");
+builder.Services.AddAuthentication().AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"], ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"], ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), ValidateLifetime = true };
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("api", limiter =>
+    {
+        limiter.PermitLimit = 60;
+        limiter.Window = TimeSpan.FromMinutes(1);
+    });
+    options.AddPolicy("auth", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
+
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.Zero;
+});
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.AccessDeniedPath = "/CustomerRegistration/Pending";
+});
+
+builder.Services.AddScoped<CustomerAccessService>();
+builder.Services.AddScoped<SalesRepresentativeAccessService>();
+builder.Services.AddScoped<AdminCustomerContextService>();
+builder.Services.AddScoped<CustomerApprovalService>();
+builder.Services.AddScoped<CustomerRegistrationService>();
+builder.Services.AddScoped<PriceService>();
+builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<FrequentProductService>();
+builder.Services.AddScoped<CustomerDashboardService>();
+builder.Services.AddScoped<SavedOrderService>();
+builder.Services.AddScoped<AdminCatalogService>();
+builder.Services.AddScoped<AdminOrderService>();
+builder.Services.AddScoped<AdminCommercialService>();
+builder.Services.AddScoped<AdminUserService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<ApiTokenService>();
+builder.Services.AddScoped<OrderIntegrationService>();
+builder.Services.AddScoped<OrderReservationService>();
+builder.Services.AddScoped<WmcExportAuditService>();
+builder.Services.AddSingleton<WmcOrderFileGenerator>();
+builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
+builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();
+builder.Services.AddHostedService<ErpRetryBackgroundService>();
+builder.Services.AddScoped<IAuthorizationHandler, ApprovedCustomerHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        OrofoodsPolicies.ApprovedCustomer,
+        policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
+});
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var brazilianPortuguese = new CultureInfo("pt-BR");
+    options.DefaultRequestCulture = new RequestCulture(brazilianPortuguese);
+    options.SupportedCultures = [brazilianPortuguese];
+    options.SupportedUICultures = [brazilianPortuguese];
+});
+builder.Services.AddOpenApi();
 builder.Services.AddSession();
+builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseRequestLocalization();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
@@ -35,27 +168,74 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseRouting();
+app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
+app.UseMiddleware<AuthenticatedResponseCacheMiddleware>();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+app.MapControllers();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
 app.MapRazorPages()
-   .WithStaticAssets();
+    .WithStaticAssets();
+
+app.MapGet("/health", async (
+    HttpResponse response,
+    ApplicationDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    response.Headers.CacheControl = "no-store";
+
+    try
+    {
+        var databaseOnline = await db.Database.CanConnectAsync(cancellationToken);
+        return databaseOnline
+            ? Results.Ok(new { status = "healthy" })
+            : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+    catch
+    {
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+});
 
 using (var scope = app.Services.CreateScope())
-    await SeedData.InitializeAsync(scope.ServiceProvider);
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    if (app.Environment.IsDevelopment())
+    {
+        db.Database.EnsureCreated();
+        await SeedData.InitializeAsync(scope.ServiceProvider);
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+    }
+}
 
 app.Run();

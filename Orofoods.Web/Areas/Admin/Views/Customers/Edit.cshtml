@@ -1,0 +1,73 @@
+@model Orofoods.Web.ViewModels.AdminCustomerApprovalViewModel
+@{
+    ViewData["Title"] = "Aprovar cliente";
+}
+
+<section class="customer-approval-page">
+    <div class="container customer-approval-container">
+        <nav class="customer-approval-breadcrumb" aria-label="Navega&ccedil;&atilde;o administrativa">
+            <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="fa-solid fa-house" aria-hidden="true"></i> Administra&ccedil;&atilde;o</a>
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            <a asp-action="Index">Clientes</a>
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            <span>Configura&ccedil;&atilde;o comercial</span>
+        </nav>
+
+        <header class="customer-approval-hero">
+            <div>
+                <div class="eyebrow"><span></span> Aprova&ccedil;&atilde;o de cadastro</div>
+                <h1>@Model.TradeName</h1>
+                <p>@Model.LegalName <span>&bull;</span> @Model.Cnpj</p>
+            </div>
+            <div class="customer-status-panel">
+                <small>Status atual</small>
+                <strong class="@(Model.Status == Orofoods.Web.Models.Customers.CustomerStatus.Pending ? "is-pending" : "")"><i class="fa-solid fa-clock" aria-hidden="true"></i> @if (Model.Status == Orofoods.Web.Models.Customers.CustomerStatus.Pending) { <text>Aguardando aprova&ccedil;&atilde;o</text> } else if (Model.Status == Orofoods.Web.Models.Customers.CustomerStatus.Approved) { <text>Aprovado</text> } else if (Model.Status == Orofoods.Web.Models.Customers.CustomerStatus.Blocked) { <text>Bloqueado</text> } else { <text>Inativo</text> }</strong>
+            </div>
+        </header>
+
+        <form method="post" class="customer-approval-layout">
+            <input asp-for="Id" type="hidden" />
+            <main class="customer-approval-form">
+                <section class="registration-card">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-circle-check" aria-hidden="true"></i></span><div><small>01. Libera&ccedil;&atilde;o</small><h2>Defina o acesso comercial</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="Status" class="form-label">Situa&ccedil;&atilde;o do cliente</label>
+                            <select asp-for="Status" class="form-select"><option value="Pending">Pendente de aprova&ccedil;&atilde;o</option><option value="Approved">Aprovado</option><option value="Blocked">Bloqueado</option><option value="Inactive">Inativo</option></select>
+                        </div>
+                        <div class="col-md-4"><label asp-for="MinimumOrder" class="form-label">Pedido m&iacute;nimo</label><div class="input-group"><span class="input-group-text">R$</span><input asp-for="MinimumOrder" asp-format="{0:N2}" class="form-control" inputmode="decimal" /></div></div>
+                        <div class="col-md-4"><label asp-for="CreditLimit" class="form-label">Limite de cr&eacute;dito</label><div class="input-group"><span class="input-group-text">R$</span><input asp-for="CreditLimit" asp-format="{0:N2}" class="form-control" inputmode="decimal" /></div></div>
+                    </div>
+                    <p class="customer-approval-hint"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Ao aprovar, o cliente passa a acessar o cat&aacute;logo conforme as regras configuradas abaixo.</p>
+                </section>
+
+                <section class="registration-card">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-tags" aria-hidden="true"></i></span><div><small>02. Condi&ccedil;&otilde;es comerciais</small><h2>Pre&ccedil;o, vendedor e pagamento</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-4"><label asp-for="WmcCode" class="form-label">C&oacute;digo do cliente no WMC <em>Opcional</em></label><input asp-for="WmcCode" class="form-control" inputmode="numeric" placeholder="Ex.: 755066" /></div>
+                        <div class="col-md-4"><label asp-for="PriceTableId" class="form-label">Tabela de pre&ccedil;os</label><select asp-for="PriceTableId" class="form-select" asp-items="Model.PriceTables"><option value="">Selecione uma tabela</option></select></div>
+                        <div class="col-md-4"><label asp-for="SalesRepresentativeId" class="form-label">Vendedor respons&aacute;vel</label><select asp-for="SalesRepresentativeId" class="form-select" asp-items="Model.SalesRepresentatives"><option value="">Selecione um vendedor</option></select></div>
+                        <div class="col-12"><label asp-for="PaymentTermIds" class="form-label">Condi&ccedil;&otilde;es de pagamento</label><select asp-for="PaymentTermIds" class="form-select customer-payment-terms" asp-items="Model.PaymentTerms" multiple size="3"></select><small class="customer-field-help">Use Ctrl (Windows) ou Command (Mac) para selecionar mais de uma condi&ccedil;&atilde;o.</small></div>
+                    </div>
+                </section>
+
+                <footer class="registration-actions"><a asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para clientes</a><button type="submit" name="approve" value="true" class="btn btn-gold"><i class="fa-solid fa-user-check" aria-hidden="true"></i> Aprovar e salvar</button></footer>
+            </main>
+
+            <aside class="customer-approval-aside">
+                <div class="customer-approval-summary">
+                    <span class="registration-aside-icon"><i class="fa-solid fa-user-check" aria-hidden="true"></i></span>
+                    <p class="eyebrow"><span></span> Checklist</p>
+                    <h2>Antes de liberar</h2>
+                    <ul>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Cadastro conferido</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Tabela de pre&ccedil;os definida</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Pagamento selecionado</li>
+                    </ul>
+                    <p>O c&oacute;digo WMC pode ser informado depois, quando o cadastro for integrado ao ERP.</p>
+                </div>
+                <a asp-action="Index" class="customer-approval-list-link"><i class="fa-solid fa-users" aria-hidden="true"></i> Ver todos os clientes</a>
+            </aside>
+        </form>
+    </div>
+</section>

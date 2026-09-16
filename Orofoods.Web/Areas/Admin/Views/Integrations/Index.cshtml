@@ -1,0 +1,110 @@
+@using Orofoods.Web.Models.Integrations
+@model IReadOnlyList<Orofoods.Web.Models.Orders.Order>
+@{ ViewData["Title"] = "Integra&ccedil;&otilde;es ERP"; }
+
+<section class="section">
+    <div class="container">
+        <div class="portal-top">
+            <div>
+                <div class="eyebrow"><span></span> Opera&ccedil;&atilde;o</div>
+                <h1>Integra&ccedil;&otilde;es ERP</h1>
+                <p>Acompanhe as tentativas de envio, erros e refer&ecirc;ncias do ERP.</p>
+            </div>
+            <a class="btn btn-outline-dark" asp-controller="Dashboard">Voltar ao painel</a>
+        </div>
+
+        @if (TempData["WmcError"] is string wmcError)
+        {
+            <div class="alert alert-warning mt-4" role="alert">@wmcError</div>
+        }
+
+        <form class="catalog-tools mt-4">
+            <input name="q" value="@ViewBag.Query" placeholder="N&uacute;mero ou cliente" />
+            <select name="status" class="form-select">
+                <option value="">Todos os status</option>
+                @foreach (var item in Enum.GetValues<IntegrationStatus>())
+                {
+                    <option value="@item" selected="@(ViewBag.Status?.ToString() == item.ToString())">@item.ToDisplayName()</option>
+                }
+            </select>
+            <select name="wmcStatus" class="form-select">
+                <option value="">Todas as exporta&ccedil;&otilde;es WMC</option>
+                <option value="failed" selected="@(ViewBag.WmcStatus == "failed")">&Uacute;ltima exporta&ccedil;&atilde;o com falha</option>
+                <option value="succeeded" selected="@(ViewBag.WmcStatus == "succeeded")">&Uacute;ltima exporta&ccedil;&atilde;o gerada</option>
+                <option value="none" selected="@(ViewBag.WmcStatus == "none")">Sem exporta&ccedil;&atilde;o</option>
+            </select>
+            <button class="btn btn-dark" type="submit">Filtrar</button>
+        </form>
+
+        <div class="table-responsive mt-4">
+            <table class="table table-dark table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Pedido</th>
+                        <th>Cliente</th>
+                        <th>Integra&ccedil;&atilde;o</th>
+                        <th>&Uacute;ltima tentativa</th>
+                        <th>Refer&ecirc;ncia ERP</th>
+                        <th>&Uacute;ltima exporta&ccedil;&atilde;o WMC</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).FirstOrDefault();
+                        <tr>
+                            <td><a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.Number</a></td>
+                            <td>@order.Customer?.TradeName</td>
+                            <td>
+                                <strong>@order.IntegrationStatus.ToDisplayName()</strong>
+                                @if (!string.IsNullOrWhiteSpace(order.IntegrationError))
+                                {
+                                    <small class="d-block text-danger mt-1">@order.IntegrationError</small>
+                                }
+                            </td>
+                            <td>@(order.LastIntegrationAttempt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</td>
+                            <td>@(order.ErpOrderNumber ?? order.ExternalOrderId ?? "Pendente")</td>
+                            <td>
+                                @if (lastWmcExport is null)
+                                {
+                                    <span class="text-muted">Nunca</span>
+                                }
+                                else
+                                {
+                                    <strong>@(lastWmcExport.Succeeded ? "Gerado" : "Falhou")</strong>
+                                    <small class="d-block">@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                                    @if (!string.IsNullOrWhiteSpace(lastWmcExport.FileName))
+                                    {
+                                        <small class="d-block">@lastWmcExport.FileName</small>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(lastWmcExport.Error))
+                                    {
+                                        <small class="d-block text-danger">@lastWmcExport.Error</small>
+                                    }
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex flex-column gap-2 align-items-end">
+                                    <form asp-action="ExportWmc" method="post">
+                                        <input type="hidden" name="id" value="@order.Id" />
+                                        <button class="btn btn-sm btn-outline-light" type="submit">Exportar WMC</button>
+                                    </form>
+                                    <form asp-action="Reprocess" method="post">
+                                        <input type="hidden" name="id" value="@order.Id" />
+                                        <button class="btn btn-sm btn-gold" type="submit">Reprocessar</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!Model.Any())
+        {
+            <div class="empty-state mt-4"><h3>Nenhuma integra&ccedil;&atilde;o encontrada.</h3></div>
+        }
+    </div>
+</section>

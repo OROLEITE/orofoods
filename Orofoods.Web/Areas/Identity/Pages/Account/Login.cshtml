@@ -1,0 +1,58 @@
+@page
+@model Orofoods.Web.Areas.Identity.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Acessar conta";
+    ViewData["BodyClass"] = "auth-screen";
+}
+
+<section class="auth-page">
+    <div class="auth-orbit auth-orbit-one"></div>
+    <div class="auth-orbit auth-orbit-two"></div>
+    <div class="auth-layout container">
+        <aside class="auth-intro">
+            <a asp-area="" asp-controller="Home" asp-action="Index" aria-label="Orofoods - in&#237;cio">
+                <img class="auth-operation-photo" src="~/images/orofoods-institutional-kitchen.png" asp-append-version="true" alt="Preparo profissional de produtos para food service" />
+            </a>
+            <div>
+                <p class="auth-kicker">&Aacute;REA EXCLUSIVA</p>
+                <h1>Seu abastecimento,<br /><em>sob controle.</em></h1>
+                <p class="auth-copy">Acesse seus pedidos, produtos e condi&ccedil;&otilde;es comerciais em um &uacute;nico lugar.</p>
+            </div>
+            <div class="auth-assurance"><span></span> Compra B2B simples, segura e recorrente.</div>
+        </aside>
+        <div class="auth-card-wrap">
+            <div class="auth-card">
+                <div class="auth-card-heading"><p class="auth-kicker">BEM-VINDO DE VOLTA</p><h2>Acesse sua conta</h2><p>Use o e-mail cadastrado da sua empresa.</p></div>
+                <form id="account" method="post" class="auth-form">
+                    <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
+                    <div class="auth-field"><label asp-for="Input.Email"></label><input asp-for="Input.Email" autocomplete="username" placeholder="nome@empresa.com.br" /><span asp-validation-for="Input.Email"></span></div>
+                    <div class="auth-field">
+                        <div class="auth-field-label"><label asp-for="Input.Password"></label><a asp-page="./ForgotPassword">Esqueci minha senha</a></div>
+                        <div class="auth-password-control"><input asp-for="Input.Password" autocomplete="current-password" placeholder="Sua senha" /><button class="password-toggle" type="button" data-password-toggle="Input_Password" aria-label="Mostrar senha"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></div>
+                        <span asp-validation-for="Input.Password"></span>
+                    </div>
+                    <label class="auth-check"><input asp-for="Input.RememberMe" /> <span>@Html.DisplayNameFor(m => m.Input.RememberMe)</span></label>
+                    <button id="login-submit" type="submit" class="btn btn-gold auth-submit">Entrar no Portal do Cliente <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+                </form>
+                <p class="auth-register">Ainda n&atilde;o tem acesso? <a asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a></p>
+            </div>
+            <a class="auth-back" asp-area="" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para o site</a>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="/lib/jquery/dist/jquery.min.js"></script>
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll("[data-password-toggle]").forEach(button => {
+            button.addEventListener("click", () => {
+                const input = document.getElementById(button.dataset.passwordToggle);
+                const isPassword = input.type === "password";
+                input.type = isPassword ? "text" : "password";
+                button.setAttribute("aria-label", isPassword ? "Ocultar senha" : "Mostrar senha");
+                button.querySelector("i").className = isPassword ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
+            });
+        });
+    </script>
+}

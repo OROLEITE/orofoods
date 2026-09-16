@@ -1,0 +1,36 @@
+@model IReadOnlyList<Orofoods.Web.Models.Customers.Customer>
+@{
+    ViewData["Title"] = "Selecionar cliente";
+    var returnUrl = ViewBag.ReturnUrl as string;
+}
+
+<section class="order-page">
+    <div class="container contact-wrap">
+        <a class="back-link" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para a Administra&#231;&#227;o Orofoods</a>
+        <div class="contact-form customer-selector-card mt-4">
+            <div class="eyebrow"><span></span> CONTEXTO DE COMPRA</div>
+            <h1>Escolha o cliente</h1>
+            <p>Voc&#234; acessar&#225; o portal usando as condi&#231;&#245;es comerciais da empresa selecionada.</p>
+            <form method="post" class="customer-selector-form">
+                <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <div class="row g-3 align-items-start">
+                    <div class="col-md customer-selector-field">
+                        <label class="form-label" for="customerId">Cliente ativo</label>
+                        <select id="customerId" name="customerId" class="form-select form-select-lg" required>
+                            <option value="">Selecione uma empresa</option>
+                            @foreach (var customer in Model)
+                            {
+                                <option value="@customer.Id">@customer.TradeName</option>
+                            }
+                        </select>
+                        <div class="form-text">As condi&#231;&#245;es comerciais ser&#227;o aplicadas ao abrir o portal.</div>
+                    </div>
+                    <div class="col-md-auto d-grid customer-selector-action">
+                        <button class="btn btn-gold customer-selector-submit" type="submit"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Abrir portal</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
