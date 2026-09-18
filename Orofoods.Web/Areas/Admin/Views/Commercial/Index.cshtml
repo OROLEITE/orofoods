@@ -22,13 +22,39 @@
 <section class="commercial-dashboard-page">
     <div class="container">
         <header class="commercial-dashboard-hero">
-            <div><p class="eyebrow"><span></span> Operação comercial</p><h1>Dashboard Comercial</h1><p>Organize os atendimentos, retornos e oportunidades da sua equipe.</p></div>
+            <div><p class="eyebrow"><span></span> CRM comercial</p><h1>Visão geral</h1><p>Bom dia, @(User.Identity?.Name ?? "equipe comercial").</p></div>
             <a class="btn btn-gold" asp-action="Create"><i class="fa-solid fa-plus"></i> Nova atividade</a>
         </header>
 
-        <div class="commercial-metric-grid">
-            <article><i class="fa-solid fa-users"></i><small>CLIENTES DO DIA</small><strong>@Model.CustomersToday</strong><span>com atendimento programado</span></article>
-            <article><i class="fa-solid fa-clock"></i><small>RETORNOS PENDENTES</small><strong>@Model.PendingReturns</strong><span>precisam de atenção</span></article>
+        <section class="commercial-overview-today">
+            <div class="commercial-section-kicker"><span></span> Hoje</div>
+            <div class="commercial-metric-grid">
+                <article><i class="fa-solid fa-calendar-day"></i><small>ATENDIMENTOS</small><strong>@Model.Attention.TodayAppointments</strong><span>compromissos do dia</span></article>
+                <article><i class="fa-solid fa-clock"></i><small>RETORNOS VENCIDOS</small><strong>@Model.Attention.OverdueReturns</strong><span>precisam de atenção</span></article>
+                <article><i class="fa-solid fa-rotate"></i><small>POSSÍVEIS RECOMPRAS</small><strong>@Model.Attention.RepurchasesDue</strong><span>no momento de contato</span></article>
+                <article><i class="fa-solid fa-hourglass-half"></i><small>SEM COMPRAR HÁ +30 DIAS</small><strong>@Model.Attention.CustomersWithoutPurchase</strong><span>clientes para acompanhar</span></article>
+            </div>
+        </section>
+
+        <section class="commercial-routine-panel">
+            <header class="commercial-panel-heading"><div><p class="eyebrow"><span></span> Operação comercial</p><h2>Minha rotina</h2></div><span>Fila de atenção do dia</span></header>
+            <div class="commercial-routine-list commercial-routine-list--overview">
+                @foreach (var item in Model.Attention.Routine.Where(x => x.ScheduledAt.Date == Model.ReferenceDate.Date || x.ActivityId is null))
+                {
+                    <article class="commercial-routine-item commercial-routine-item--@item.Priority.ToLowerInvariant()"><time>@(item.ActivityId is null ? "--:--" : item.ScheduledAt.ToLocalTime().ToString("HH:mm"))</time><div><small>@item.Kind</small><strong>@item.CustomerName</strong><span>@item.Title</span></div><a asp-controller="Customers" asp-action="Details" asp-route-id="@item.CustomerId" aria-label="Ver @item.CustomerName"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></article>
+                }
+                @if (!Model.Attention.Routine.Any(x => x.ScheduledAt.Date == Model.ReferenceDate.Date || x.ActivityId is null)) { <p class="commercial-empty-column">Nenhum item na rotina de hoje.</p> }
+            </div>
+        </section>
+
+        <section class="commercial-priority-legend" aria-label="Prioridades comerciais">
+            <div><i class="fa-solid fa-circle priority-dot priority-dot--urgent"></i><span>Retornos vencidos</span></div>
+            <div><i class="fa-solid fa-circle priority-dot priority-dot--repurchase"></i><span>Recompra provável</span></div>
+            <div><i class="fa-solid fa-circle priority-dot priority-dot--no-purchase"></i><span>Clientes sem comprar</span></div>
+            <div><i class="fa-solid fa-circle priority-dot priority-dot--first-contact"></i><span>Primeiro contato</span></div>
+        </section>
+
+        <div class="commercial-metric-grid commercial-metric-grid--secondary">
             <article><i class="fa-solid fa-file-invoice"></i><small>PEDIDOS DO DIA</small><strong>@Model.OrdersToday</strong><span>registrados no portal</span></article>
             <article><i class="fa-solid fa-chart-line"></i><small>FATURAMENTO DO DIA</small><strong>@Model.TodayRevenue.ToString("C")</strong><span>pedidos não cancelados</span></article>
         </div>

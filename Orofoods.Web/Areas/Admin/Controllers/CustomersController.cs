@@ -138,6 +138,8 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             .OrderByDescending(payment => payment.CreatedAt)
             .Take(25)
             .ToListAsync();
+        var opportunities = await db.CrmOpportunities.AsNoTracking().Include(x => x.AssignedUser).Include(x => x.RelatedOrder)
+            .Where(x => x.CustomerId == id).OrderBy(x => x.ExpectedCloseAt).ThenByDescending(x => x.UpdatedAt).Take(25).ToListAsync();
 
         var userRoles = await (from user in db.Users.AsNoTracking()
                                where user.CustomerId == id
@@ -198,6 +200,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             ,OutstandingAmount = payments.Where(payment => payment.Status is PaymentStatus.Pending or PaymentStatus.Issued or PaymentStatus.Overdue).Sum(payment => payment.Amount)
             ,OverdueAmount = payments.Where(payment => payment.Status == PaymentStatus.Overdue).Sum(payment => payment.Amount)
             ,Attention = (await attentionService.GetAsync(User, DateTime.Now)).Customers.SingleOrDefault(x => x.CustomerId == id)
+            ,Opportunities = opportunities
         });
     }
 

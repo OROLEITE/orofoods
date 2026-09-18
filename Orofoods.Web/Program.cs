@@ -138,6 +138,8 @@ builder.Services.AddScoped<OrderIntegrationService>();
 builder.Services.AddScoped<OrderReservationService>();
 builder.Services.Configure<CrmOptions>(builder.Configuration.GetSection(CrmOptions.SectionName));
 builder.Services.AddScoped<CommercialAttentionService>();
+builder.Services.AddScoped<CrmOpportunityService>();
+builder.Services.AddScoped<UserNotificationService>();
 builder.Services.AddScoped<WmcExportAuditService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();
