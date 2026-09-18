@@ -1,0 +1,44 @@
+@model Orofoods.Web.ViewModels.PixPaymentViewModel
+@{
+    ViewData["Title"] = "Pagamento PIX";
+}
+<section class="success-page">
+    <div class="success-card pix-page">
+        <div class="eyebrow"><span></span> PAGAMENTO PIX</div>
+        <h1>@Model.StatusLabel</h1>
+        <p>Pedido #@Model.OrderId &middot; <strong>@Model.FormattedAmount</strong></p>
+
+        <div class="success-pix">
+            @if (Model.HasQrCode)
+            {
+                <img src="@Model.QrCodeDataUri" alt="QR Code PIX" class="success-pix-qrcode pix-qrcode" />
+            }
+            else
+            {
+                <p>QR Code indispon&iacute;vel para este pagamento.</p>
+            }
+
+            @if (Model.HasCopyPaste)
+            {
+                <label for="pixCopyPaste" class="pix-copy-label">PIX copia e cola</label>
+                <textarea id="pixCopyPaste" readonly class="success-pix-copy-paste pix-copy-input">@Model.PixCopyPaste</textarea>
+                <button type="button" id="pixCopyButton" class="btn btn-dark pix-copy-button">Copiar código PIX</button>
+                <p id="pixCopyFeedback" class="pix-copy-feedback" role="status" aria-live="polite"></p>
+            }
+
+            @if (Model.FormattedExpiration is not null)
+            {
+                <p><small>Expira em @Model.FormattedExpiration</small></p>
+            }
+        </div>
+
+        <div class="d-flex justify-content-center gap-3 mt-4">
+            <a class="btn btn-dark" asp-action="Orders">Meus pedidos</a>
+            <a class="btn btn-gold" asp-action="Dashboard">Voltar ao painel</a>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/pix.js" asp-append-version="true"></script>
+}

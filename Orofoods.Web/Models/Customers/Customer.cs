@@ -20,10 +20,17 @@ public class Customer
     public decimal MinimumOrder { get; set; }
     public decimal CreditLimit { get; set; }
     public decimal CreditUsed { get; set; }
+    public bool CreditOverrideEnabled { get; set; }
+    public int? MaximumPaymentTermDays { get; set; }
+    public bool CreditBlocked { get; set; }
+    public DateTime? CreditReleaseDate { get; set; }
+    [MaxLength(1000)] public string? CreditNotes { get; set; }
     public int? PriceTableId { get; set; }
     public PriceTable? PriceTable { get; set; }
     public int? SalesRepresentativeId { get; set; }
     public SalesRepresentative? SalesRepresentative { get; set; }
+    public string? InternalSalesUserId { get; set; }
+    public ApplicationUser? InternalSalesUser { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ApprovedAt { get; set; }
     public bool IsActive { get; set; } = true;

@@ -16,6 +16,7 @@ public class OrderReservationService(ApplicationDbContext db)
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         var currentOrder = await db.Orders
             .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
             .SingleAsync(x => x.Id == order.Id, cancellationToken);
@@ -73,7 +74,10 @@ public class OrderReservationService(ApplicationDbContext db)
     public async Task ReleaseAsync(Order order, CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        var currentOrder = await db.Orders.Include(x => x.Customer).SingleAsync(x => x.Id == order.Id, cancellationToken);
+        var currentOrder = await db.Orders
+            .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
+            .SingleAsync(x => x.Id == order.Id, cancellationToken);
         var reservations = await db.InventoryReservations
             .Where(x => x.OrderId == order.Id && x.Status == InventoryReservationStatus.Active)
             .ToListAsync(cancellationToken);
@@ -104,5 +108,7 @@ public class OrderReservationService(ApplicationDbContext db)
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private static bool UsesCredit(Order order) => !string.Equals(order.PaymentMethod, "PIX", StringComparison.OrdinalIgnoreCase);
+    private static bool UsesCredit(Order order) => order.PaymentTerm is not null
+        ? order.PaymentTerm.DaysUntilDue > 0
+        : !string.Equals(order.PaymentMethod, "PIX", StringComparison.OrdinalIgnoreCase);
 }

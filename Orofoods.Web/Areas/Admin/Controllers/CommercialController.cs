@@ -5,14 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
-[Authorize(Roles = "Administrador,Vendedor")]
-public class CommercialController(ApplicationDbContext db, SalesRepresentativeAccessService accessService) : Controller
+[Authorize(Roles = "Administrador,Vendedor,GerenteComercial")]
+public class CommercialController(ApplicationDbContext db, SalesRepresentativeAccessService accessService, CommercialAttentionService attentionService) : Controller
 {
     public async Task<IActionResult> Index(DateTime? date)
     {
@@ -24,6 +25,7 @@ public class CommercialController(ApplicationDbContext db, SalesRepresentativeAc
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.SalesRepresentative)
+            .Include(x => x.AssignedUser)
             .Where(x => scopedCustomerIds.Contains(x.CustomerId) && x.ScheduledAt >= referenceDate && x.ScheduledAt < nextDate)
             .OrderBy(x => x.ScheduledAt)
             .ToListAsync();
@@ -40,10 +42,12 @@ public class CommercialController(ApplicationDbContext db, SalesRepresentativeAc
             UpcomingActivities = await db.CommercialActivities
                 .AsNoTracking()
                 .Include(x => x.Customer)
+                .Include(x => x.AssignedUser)
                 .Where(x => scopedCustomerIds.Contains(x.CustomerId) && x.ScheduledAt >= referenceDate && x.ScheduledAt < referenceDate.AddDays(7) && x.Status != CommercialActivityStatus.Cancelled && x.Status != CommercialActivityStatus.Completed)
                 .OrderBy(x => x.ScheduledAt)
                 .Take(8)
-                .ToListAsync()
+                .ToListAsync(),
+            Attention = await attentionService.GetAsync(User, DateTime.Now)
         });
     }
 
@@ -57,10 +61,6 @@ public class CommercialController(ApplicationDbContext db, SalesRepresentativeAc
     {
         var scope = await accessService.GetScopeAsync(User);
         var scopedCustomerIds = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope).Select(x => x.Id);
-        if (scope.IsRestricted)
-        {
-            salesRepresentativeId = scope.SalesRepresentativeId;
-        }
         var selectedDate = (weekStart ?? DateTime.Today).Date;
         var mondayOffset = ((int)selectedDate.DayOfWeek + 6) % 7;
         var start = selectedDate.AddDays(-mondayOffset);
@@ -70,7 +70,11 @@ public class CommercialController(ApplicationDbContext db, SalesRepresentativeAc
             .Include(x => x.Customer)
             .Include(x => x.SalesRepresentative)
             .Where(x => scopedCustomerIds.Contains(x.CustomerId) && x.ScheduledAt >= start && x.ScheduledAt < start.AddDays(7));
-        if (salesRepresentativeId.HasValue)
+        if (scope.IsRestricted)
+        {
+            activitiesQuery = activitiesQuery.Where(x => x.SalesRepresentativeId == scope.SalesRepresentativeId || x.AssignedUserId == scope.UserId);
+        }
+        else if (salesRepresentativeId.HasValue)
         {
             activitiesQuery = activitiesQuery.Where(x => x.SalesRepresentativeId == salesRepresentativeId);
         }
@@ -130,6 +134,7 @@ public class CommercialController(ApplicationDbContext db, SalesRepresentativeAc
         {
             CustomerId = input.CustomerId,
             SalesRepresentativeId = scope.SalesRepresentativeId ?? input.SalesRepresentativeId,
+            AssignedUserId = input.AssignedUserId,
             Type = input.Type,
             Status = input.Status,
             ScheduledAt = input.ScheduledAt,
@@ -153,6 +158,11 @@ public class CommercialController(ApplicationDbContext db, SalesRepresentativeAc
             .Where(x => x.IsActive && (!scope.IsRestricted || x.Id == scope.SalesRepresentativeId))
             .OrderBy(x => x.Name)
             .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
+            .ToListAsync();
+        input.InternalSalesUsers = await db.Users
+            .Where(x => x.IsActive && x.CustomerId == null)
+            .OrderBy(x => x.Email)
+            .Select(x => new SelectListItem(x.Email ?? x.UserName!, x.Id))
             .ToListAsync();
         return input;
     }

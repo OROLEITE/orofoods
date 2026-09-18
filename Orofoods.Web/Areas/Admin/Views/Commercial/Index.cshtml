@@ -33,6 +33,24 @@
             <article><i class="fa-solid fa-chart-line"></i><small>FATURAMENTO DO DIA</small><strong>@Model.TodayRevenue.ToString("C")</strong><span>pedidos não cancelados</span></article>
         </div>
 
+        <section class="commercial-attention-panel">
+            <header class="commercial-panel-heading"><div><p class="eyebrow"><span></span> Fila operacional</p><h2>Atenção comercial</h2></div><span>Indicadores calculados com pedidos válidos e agenda local.</span></header>
+            <div class="commercial-attention-grid">
+                <a asp-action="Index" class="commercial-attention-card"><small>ATENDIMENTOS DE HOJE</small><strong>@Model.Attention.TodayAppointments</strong></a>
+                <a asp-action="Index" class="commercial-attention-card commercial-attention-card--urgent"><small>RETORNOS VENCIDOS</small><strong>@Model.Attention.OverdueReturns</strong></a>
+                <a asp-action="Index" class="commercial-attention-card"><small>CLIENTES SEM COMPRAR</small><strong>@Model.Attention.CustomersWithoutPurchase</strong></a>
+                <a asp-action="Index" class="commercial-attention-card"><small>POSSÍVEIS RECOMPRAS</small><strong>@Model.Attention.RepurchasesDue</strong></a>
+                <a asp-action="Index" class="commercial-attention-card"><small>PRIMEIRO CONTATO</small><strong>@Model.Attention.NewCustomers</strong></a>
+            </div>
+            <div class="commercial-routine-list">
+                @foreach (var item in Model.Attention.Routine)
+                {
+                    <article class="commercial-routine-item"><div><small>@item.Kind · @item.Priority</small><strong>@item.CustomerName</strong><span>@item.Title</span></div><a asp-controller="Customers" asp-action="Details" asp-route-id="@item.CustomerId">Ver cliente</a></article>
+                }
+                @if (!Model.Attention.Routine.Any()) { <p class="commercial-empty-column">Nenhuma atenção pendente.</p> }
+            </div>
+        </section>
+
         <div class="commercial-dashboard-layout">
             <section class="commercial-kanban-panel">
                 <header class="commercial-panel-heading"><div><p class="eyebrow"><span></span> Acompanhamento</p><h2>Kanban de atendimentos</h2></div><a asp-action="Index" asp-route-date="@Model.ReferenceDate.AddDays(-1).ToString("yyyy-MM-dd")" aria-label="Dia anterior"><i class="fa-solid fa-chevron-left"></i></a><strong>@Model.ReferenceDate.ToString("dd/MM/yyyy")</strong><a asp-action="Index" asp-route-date="@Model.ReferenceDate.AddDays(1).ToString("yyyy-MM-dd")" aria-label="Próximo dia"><i class="fa-solid fa-chevron-right"></i></a></header>
@@ -42,7 +60,7 @@
                         <div class="commercial-kanban-column"><header><span>@StatusLabel(status)</span><strong>@Model.Activities.Count(x => x.Status == status)</strong></header>
                             @foreach (var activity in Model.Activities.Where(x => x.Status == status))
                             {
-                                <a class="commercial-activity-card @(activity.IsPriority ? "is-priority" : "")" asp-area="Admin" asp-controller="Customers" asp-action="Details" asp-route-id="@activity.CustomerId"><small>@activity.ScheduledAt.ToString("HH:mm") · @TypeLabel(activity.Type)</small><strong>@activity.Customer.TradeName</strong><span>@activity.Title</span><footer><span>@(activity.SalesRepresentative?.Name ?? "Sem vendedor")</span><i class="fa-solid @(activity.Type == CommercialActivityType.WhatsApp ? "fa-whatsapp" : activity.Type == CommercialActivityType.Visit ? "fa-location-dot" : "fa-phone")"></i></footer></a>
+                                <a class="commercial-activity-card @(activity.IsPriority ? "is-priority" : "")" asp-area="Admin" asp-controller="Customers" asp-action="Details" asp-route-id="@activity.CustomerId"><small>@activity.ScheduledAt.ToString("HH:mm") · @TypeLabel(activity.Type)</small><strong>@activity.Customer.TradeName</strong><span>@activity.Title</span><footer><span>Vendedor: @(activity.SalesRepresentative?.Name ?? "Sem vendedor")<br />Atendimento: @(activity.AssignedUser?.Email ?? "Não atribuído")</span><i class="fa-solid @(activity.Type == CommercialActivityType.WhatsApp ? "fa-whatsapp" : activity.Type == CommercialActivityType.Visit ? "fa-location-dot" : "fa-phone")"></i></footer></a>
                             }
                             @if (!Model.Activities.Any(x => x.Status == status)) { <p class="commercial-empty-column">Nenhum atendimento</p> }
                         </div>

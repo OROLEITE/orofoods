@@ -11,6 +11,7 @@
                 <p>Acompanhe as tentativas de envio, erros e refer&ecirc;ncias do ERP.</p>
             </div>
             <a class="btn btn-outline-dark" asp-controller="Dashboard">Voltar ao painel</a>
+            <a class="btn btn-outline-dark" asp-action="Wmc">Sincroniza&ccedil;&atilde;o WMC</a>
         </div>
 
         @if (TempData["WmcError"] is string wmcError)

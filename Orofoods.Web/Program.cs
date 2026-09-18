@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Threading.RateLimiting;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Identity;
@@ -18,6 +19,7 @@ using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Services.Orders;
+using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
@@ -118,11 +120,14 @@ builder.Services.AddScoped<SalesRepresentativeAccessService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
+builder.Services.Configure<PaymentEligibilityOptions>(builder.Configuration.GetSection(PaymentEligibilityOptions.SectionName));
+builder.Services.AddScoped<IPaymentEligibilityService, PaymentEligibilityService>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<FrequentProductService>();
 builder.Services.AddScoped<CustomerDashboardService>();
 builder.Services.AddScoped<SavedOrderService>();
+builder.Services.AddScoped<AssistedOrderService>();
 builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
 builder.Services.AddScoped<AdminCommercialService>();
@@ -131,11 +136,35 @@ builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ApiTokenService>();
 builder.Services.AddScoped<OrderIntegrationService>();
 builder.Services.AddScoped<OrderReservationService>();
+builder.Services.Configure<CrmOptions>(builder.Configuration.GetSection(CrmOptions.SectionName));
+builder.Services.AddScoped<CommercialAttentionService>();
 builder.Services.AddScoped<WmcExportAuditService>();
+builder.Services.AddScoped<PaymentService>();
+builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();
+builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
+builder.Services.AddHttpClient<IPaymentGateway, MercadoPagoPaymentGateway>((sp, client) =>
+{
+    client.BaseAddress = sp.GetRequiredService<IOptions<MercadoPagoOptions>>().Value.BaseAddress;
+});
+builder.Services.AddScoped<IMercadoPagoWebhookSignatureValidator, MercadoPagoWebhookSignatureValidator>();
+builder.Services.AddScoped<IPaymentApprovalHandler, NoOpPaymentApprovalHandler>();
+builder.Services.AddScoped<PaymentOrchestrationService>();
 builder.Services.AddSingleton<WmcOrderFileGenerator>();
 builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
 builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();
 builder.Services.AddHostedService<ErpRetryBackgroundService>();
+builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
+builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
+builder.Services.AddScoped<IWmcConnectionFactory, WmcFirebirdConnectionFactory>();
+builder.Services.AddScoped<IWmcFirebirdReader, WmcFirebirdReader>();
+builder.Services.AddScoped<IWmcSchemaInspector, WmcSchemaInspector>();
+builder.Services.AddScoped<IWmcCustomerReader, WmcCustomerReader>();
+builder.Services.AddScoped<IWmcProductReader, WmcProductReader>();
+builder.Services.AddScoped<IWmcSellerReader, UndiscoveredWmcSellerReader>();
+builder.Services.AddScoped<WmcSyncService>();
+builder.Services.AddSingleton<WmcSyncCoordinator>();
+builder.Services.AddHostedService<WmcSyncWorker>();
+builder.Services.AddHealthChecks().AddCheck<WmcFirebirdHealthCheck>("wmc-firebird");
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedCustomerHandler>();
 builder.Services.AddAuthorization(options =>
 {
@@ -222,6 +251,8 @@ app.MapGet("/health", async (
         return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
     }
 });
+
+app.MapHealthChecks("/health/wmc").RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
 using (var scope = app.Services.CreateScope())
 {

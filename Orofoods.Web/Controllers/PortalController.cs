@@ -3,10 +3,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Payments;
+using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.ViewModels;
@@ -23,8 +27,14 @@ public class PortalController(
     CartService cartService,
     CustomerDashboardService customerDashboardService,
     SavedOrderService savedOrderService,
-    OrderReservationService orderReservationService) : Controller
+    OrderReservationService orderReservationService,
+    IPaymentEligibilityService paymentEligibilityService,
+    PaymentOrchestrationService paymentOrchestrationService,
+    IOptions<MercadoPagoOptions> mercadoPagoOptions,
+    AssistedOrderService assistedOrderService) : Controller
 {
+    private static readonly TimeZoneInfo BrazilTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
     public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         context.ActionDescriptor.RouteValues.TryGetValue("action", out var action);
@@ -118,6 +128,7 @@ public class PortalController(
             .Select(x => x.ProductId)
             .ToListAsync();
         ViewBag.Brands = products.Select(x => x.Brand).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x).ToList();
+        ViewBag.CartQuantity = (await cartService.GetAsync(customer.Id, HttpContext.Session)).Items.Sum(item => item.Quantity);
         return View(products);
     }
 
@@ -297,47 +308,95 @@ public class PortalController(
             return View(checkout);
         }
 
-        if (!string.Equals(checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId).Name, "PIX", StringComparison.OrdinalIgnoreCase) && checkout.Cart.Total > customer.CreditLimit - customer.CreditUsed)
+        var eligibility = await paymentEligibilityService.ValidateAsync(customer.Id, input.PaymentTermId);
+        if (!eligibility.IsAllowed)
+        {
+            ModelState.AddModelError(string.Empty, eligibility.ErrorMessage!);
+            return View(checkout);
+        }
+
+        if (checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId).DaysUntilDue > 0 && checkout.Cart.Total > customer.CreditLimit - customer.CreditUsed)
         {
             ModelState.AddModelError(string.Empty, "O total ultrapassa o crédito disponível.");
             return View(checkout);
         }
 
         var paymentTerm = checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId);
-        var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
-        var createdAt = DateTime.UtcNow;
-        var order = new Order { CustomerId = customer.Id, CreatedByUserId = userId, DeliveryAddressId = input.AddressId, PaymentTermId = input.PaymentTermId, PaymentMethod = paymentTerm.Name, RequestedDeliveryDate = input.RequestedDeliveryDate, Notes = input.Notes, Status = OrderStatus.Received, CreatedAt = createdAt };
-        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Received, ChangedAt = createdAt, ChangedByUserId = userId });
-        foreach (var item in checkout.Cart.Items.Where(x => x.IsAvailable))
+        if (paymentTerm.Code == "CREDIT_CARD" && (string.IsNullOrWhiteSpace(input.CardToken) || string.IsNullOrWhiteSpace(input.CardPaymentMethodId)))
         {
-            order.Items.Add(new OrderItem { ProductId = item.ProductId, ProductNameSnapshot = item.Name, SkuSnapshot = item.Sku, Quantity = item.Quantity, UnitPrice = item.UnitPrice, Subtotal = item.Subtotal });
-        }
-        order.Subtotal = order.Items.Sum(x => x.Subtotal);
-        order.Total = order.Subtotal;
-        db.Orders.Add(order);
-        await db.SaveChangesAsync();
-        var reservation = await orderReservationService.ReserveAsync(order);
-        if (!reservation.IsValid)
-        {
-            db.Orders.Remove(order);
-            await db.SaveChangesAsync();
-            ModelState.AddModelError(string.Empty, reservation.ErrorMessage!);
+            ModelState.AddModelError(string.Empty, "Não foi possível validar os dados do cartão. Tente novamente.");
             return View(checkout);
         }
 
-        order.Number = $"ORO-{DateTime.UtcNow:yyyy}-{order.Id:000000}";
-        order.ConfirmedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
+        var result = await assistedOrderService.CreateAsync(
+            customer.Id,
+            userId,
+            input.AddressId,
+            input.PaymentTermId,
+            input.RequestedDeliveryDate,
+            input.Notes,
+            checkout.Cart.Items.Where(x => x.IsAvailable).Select(x => (x.ProductId, x.Quantity)).ToList());
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, result.ErrorMessage!);
+            return View(checkout);
+        }
+
+        var order = await db.Orders.Include(x => x.PaymentTerm).SingleAsync(x => x.Id == result.OrderId);
+
+        Payment? payment = null;
+        if (paymentTerm.Code is "PIX" or "CREDIT_CARD")
+        {
+            try
+            {
+                payment = paymentTerm.Code == "PIX"
+                    ? await paymentOrchestrationService.CreatePixAsync(order.Id, customer.Id, input.AttemptKey)
+                    : await paymentOrchestrationService.CreateCreditCardAsync(
+                        order.Id, customer.Id, input.AttemptKey, input.CardToken!, input.CardPaymentMethodId!, input.CardInstallments);
+
+                if (payment.Status is PaymentStatus.Rejected or PaymentStatus.Failed)
+                {
+                    await orderReservationService.ReleaseAsync(order);
+                    order.Status = OrderStatus.Cancelled;
+                    order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Cancelled, ChangedAt = DateTime.UtcNow, ChangedByUserId = userId });
+                    await db.SaveChangesAsync();
+                    ModelState.AddModelError(string.Empty, "O pagamento não foi aprovado. Tente novamente ou selecione outra condição de pagamento.");
+                    return View(checkout);
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                await orderReservationService.ReleaseAsync(order);
+                order.Status = OrderStatus.Cancelled;
+                order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Cancelled, ChangedAt = DateTime.UtcNow, ChangedByUserId = userId });
+                await db.SaveChangesAsync();
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return View(checkout);
+            }
+        }
+
         cartService.Clear(HttpContext.Session);
+        if (paymentTerm.Code == "PIX" && payment is not null)
+        {
+            return RedirectToAction(nameof(Pix), new { id = payment.Id });
+        }
+
         return RedirectToAction(nameof(Success), new { id = order.Id });
     }
 
-    private async Task<CheckoutViewModel> BuildCheckoutAsync(Customer customer) => new()
+    private async Task<CheckoutViewModel> BuildCheckoutAsync(Customer customer)
     {
-        Cart = await cartService.GetAsync(customer.Id, HttpContext.Session),
-        Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-        PaymentTerms = await db.CustomerPaymentTerms.Where(x => x.CustomerId == customer.Id && x.IsActive).Include(x => x.PaymentTerm).Select(x => x.PaymentTerm!).OrderBy(x => x.SortOrder).ToListAsync()
-    };
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id);
+        return new CheckoutViewModel
+        {
+            Cart = await cartService.GetAsync(customer.Id, HttpContext.Session),
+            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
+            PaymentTerms = eligibility.PaymentMethods,
+            PaymentEligibility = eligibility,
+            MercadoPagoPublicKey = mercadoPagoOptions.Value.PublicKey
+        };
+    }
 
     public async Task<IActionResult> Repeat(int id)
     {
@@ -374,12 +433,7 @@ public class PortalController(
             SourceOrder = order,
             Items = items,
             Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-            PaymentTerms = await db.CustomerPaymentTerms
-                .Where(x => x.CustomerId == customer.Id && x.IsActive && x.PaymentTerm!.IsActive)
-                .Include(x => x.PaymentTerm)
-                .Select(x => x.PaymentTerm!)
-                .OrderBy(x => x.SortOrder)
-                .ToListAsync()
+            PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList()
         });
     }
 
@@ -402,15 +456,14 @@ public class PortalController(
             return Forbid();
         }
 
-        var paymentTerm = await db.CustomerPaymentTerms
-            .Include(x => x.PaymentTerm)
-            .Where(x => x.CustomerId == customer.Id && x.IsActive && x.PaymentTerm!.IsActive)
-            .Select(x => x.PaymentTerm)
-            .SingleOrDefaultAsync(term => term!.Id == input.PaymentTermId);
-        if (paymentTerm is null)
+        var eligibility = await paymentEligibilityService.ValidateAsync(customer.Id, input.PaymentTermId);
+        if (!eligibility.IsAllowed)
         {
-            return Forbid();
+            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = eligibility.ErrorMessage });
         }
+
+        var paymentTerm = await db.PaymentTerms.SingleOrDefaultAsync(term => term.Id == input.PaymentTermId && term.IsActive);
+        if (paymentTerm is null) return Forbid();
 
         var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
         var products = await db.Products
@@ -458,7 +511,7 @@ public class PortalController(
             ? "Nenhum item deste pedido está disponível no momento. Escolha produtos disponíveis no catálogo."
             : order.Total < customer.MinimumOrder
             ? $"O pedido mínimo é {customer.MinimumOrder:C}."
-            : !string.Equals(paymentTerm.Name, "PIX", StringComparison.OrdinalIgnoreCase) && order.Total > customer.CreditLimit - customer.CreditUsed
+            : paymentTerm.DaysUntilDue > 0 && order.Total > customer.CreditLimit - customer.CreditUsed
                 ? "O total ultrapassa o credito disponivel."
             : null;
 
@@ -490,8 +543,17 @@ public class PortalController(
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
             .Include(x => x.DeliveryAddress)
+            .Include(x => x.Payments)
             .SingleAsync(x => x.Id == id && x.CustomerId == customer.Id);
         return View(order);
+    }
+
+    public async Task<IActionResult> Pix(int id)
+    {
+        var customer = await GetCurrentCustomerAsync();
+        var payment = await db.Payments.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.CustomerId == customer.Id);
+        return payment is null ? NotFound() : View(PixPaymentViewModel.FromPayment(payment, BrazilTimeZone));
     }
 
     public async Task<IActionResult> Orders(string? q, string? status)

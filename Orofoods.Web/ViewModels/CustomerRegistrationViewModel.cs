@@ -15,13 +15,13 @@ public class CustomerRegistrationViewModel
     public string Cnpj { get; set; } = "";
 
     [Display(Name = "Inscricao estadual")]
-    public string StateRegistration { get; set; } = "";
+    public string? StateRegistration { get; set; }
 
     [Required(ErrorMessage = "Informe o responsável."), Display(Name = "Responsável")]
     public string ResponsibleName { get; set; } = "";
 
     [Display(Name = "CPF do responsavel")]
-    public string ResponsibleDocument { get; set; } = "";
+    public string? ResponsibleDocument { get; set; }
 
     [Required(ErrorMessage = "Informe o e-mail."), EmailAddress(ErrorMessage = "Informe um e-mail válido.")]
     public string Email { get; set; } = "";
@@ -41,7 +41,7 @@ public class CustomerRegistrationViewModel
     [Required]
     public string Number { get; set; } = "";
 
-    public string Complement { get; set; } = "";
+    public string? Complement { get; set; }
 
     [Required, Display(Name = "Bairro")]
     public string District { get; set; } = "";
@@ -71,13 +71,23 @@ public class AdminCustomerApprovalViewModel
     public CustomerStatus Status { get; set; }
     public decimal MinimumOrder { get; set; }
     public decimal CreditLimit { get; set; }
+    public int ValidPurchaseCount { get; set; }
+    public bool InvoiceCreditEnabled { get; set; }
+    public int EffectiveMaximumPaymentTermDays { get; set; }
+    public DateTime? EffectiveCreditReleaseDate { get; set; }
+    public bool CreditOverrideEnabled { get; set; }
+    [Range(0, 14)] public int? MaximumPaymentTermDays { get; set; }
+    public bool CreditBlocked { get; set; }
+    [StringLength(1000)] public string? CreditNotes { get; set; }
     [Display(Name = "Codigo WMC")]
     [StringLength(30)]
     public string? WmcCode { get; set; }
     public int? PriceTableId { get; set; }
     public int? SalesRepresentativeId { get; set; }
+    public string? InternalSalesUserId { get; set; }
     public List<int> PaymentTermIds { get; set; } = [];
     public List<SelectListItem> PriceTables { get; set; } = [];
     public List<SelectListItem> SalesRepresentatives { get; set; } = [];
+    public List<SelectListItem> InternalSalesUsers { get; set; } = [];
     public List<SelectListItem> PaymentTerms { get; set; } = [];
 }

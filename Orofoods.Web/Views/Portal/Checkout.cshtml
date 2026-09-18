@@ -11,9 +11,13 @@
 
 <section class="checkout-page">
     <div class="container">
-        <form asp-action="Checkout" method="post" class="checkout-layout">
+        <form asp-action="Checkout" method="post" class="checkout-layout" id="checkoutForm" data-cart-total="@Model.Cart.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+            <input type="hidden" asp-for="AttemptKey" />
+            <input type="hidden" asp-for="CardToken" id="CardToken" />
+            <input type="hidden" asp-for="CardPaymentMethodId" id="CardPaymentMethodId" />
+            <input type="hidden" asp-for="CardInstallments" id="CardInstallments" />
             <div class="checkout-form-panel">
-                <div asp-validation-summary="ModelOnly" class="checkout-validation" role="alert"></div>
+                <div asp-validation-summary="All" class="checkout-validation" role="alert"></div>
 
                 <section class="checkout-panel">
                     <header><span>01</span><div><small>ENTREGA</small><h2>Quando e onde entregar?</h2></div></header>
@@ -33,16 +37,48 @@
 
                 <section class="checkout-panel">
                     <header><span>02</span><div><small>PAGAMENTO</small><h2>Condi&ccedil;&atilde;o e observa&ccedil;&otilde;es</h2></div></header>
+                    @if (Model.PaymentEligibility?.InvoiceCreditEnabled == true)
+                    {
+                        <p class="checkout-security"><strong>Condi&ccedil;&atilde;o de pagamento liberada</strong><br />Agora voc&ecirc; possui condi&ccedil;&otilde;es de pagamento de at&eacute; 14 dias.</p>
+                    }
+                    else
+                    {
+                        <p class="checkout-security"><strong>Condi&ccedil;&otilde;es iniciais de pagamento</strong><br />Nas tr&ecirc;s primeiras compras, os pedidos Orofoods s&atilde;o realizados &agrave; vista, via PIX ou cart&atilde;o de cr&eacute;dito. Ap&oacute;s esse per&iacute;odo, poder&atilde;o ser disponibilizados boletos de at&eacute; 14 dias.</p>
+                    }
                     <div class="checkout-form-grid">
                         <div class="checkout-field">
                             <label asp-for="PaymentTermId">Condi&ccedil;&atilde;o de pagamento</label>
-                            <select asp-for="PaymentTermId">
+                            <select asp-for="PaymentTermId" id="paymentTermSelect">
                                 @foreach (var term in Model.PaymentTerms)
                                 {
-                                    <option value="@term.Id">@term.Name</option>
+                                    <option value="@term.Id" data-code="@term.Code">@term.Name</option>
                                 }
                             </select>
                         </div>
+                        <fieldset id="creditCardForm" class="checkout-card-form checkout-field-wide" hidden>
+                            <legend>Dados do cartão</legend>
+                            <div class="checkout-card-visual" aria-hidden="true">
+                                <div class="checkout-card-brand">OROFOODS</div>
+                                <div id="cardNumberPreview" class="checkout-card-number">•••• •••• •••• ••••</div>
+                                <div class="checkout-card-footer"><div><small>TITULAR</small><strong id="cardHolderPreview">SEU NOME</strong></div><div><small>VALIDADE</small><strong id="cardExpiryPreview">MM/AA</strong></div></div>
+                            </div>
+                            <p class="checkout-card-notice">Os dados do cartão são tokenizados no navegador pelo Mercado Pago e nunca chegam aos servidores da Orofoods.</p>
+                            <div id="cardUnavailableNotice" class="text-danger" role="alert" hidden>O pagamento por cartão está indisponível no momento. Escolha outra condição de pagamento.</div>
+                            <div class="checkout-form-grid">
+                                <div class="checkout-field checkout-field-wide"><label for="cardNumberInput">Número do cartão</label><input id="cardNumberInput" inputmode="numeric" autocomplete="cc-number" maxlength="19" placeholder="0000 0000 0000 0000" /></div>
+                                <div class="checkout-field"><label for="cardHolderInput">Nome do titular</label><input id="cardHolderInput" autocomplete="cc-name" maxlength="120" placeholder="Como no cartão" /></div>
+                                <div class="checkout-field"><label for="cardExpiryInput">Validade</label><input id="cardExpiryInput" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/AA" /></div>
+                                <div class="checkout-field"><label for="cardCvvInput">Código de segurança</label><input id="cardCvvInput" type="password" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVV" /></div>
+                                <div class="checkout-field checkout-field-wide">
+                                    <label for="cardInstallmentsSelect">Parcelas</label>
+                                    <select id="cardInstallmentsSelect" disabled>
+                                        <option value="1">1x sem juros</option>
+                                    </select>
+                                    <small id="cardInstallmentsHint" class="checkout-card-notice">Informe o número do cartão para ver as opções de parcelamento.</small>
+                                </div>
+                            </div>
+                            <div id="cardTokenError" class="text-danger" role="alert"></div>
+                        </fieldset>
                         <div class="checkout-field checkout-field-wide"><label asp-for="Notes">Observa&ccedil;&otilde;es do pedido</label><textarea asp-for="Notes" rows="4" placeholder="Ex.: hor&aacute;rio preferencial para recebimento"></textarea></div>
                     </div>
                 </section>
@@ -66,3 +102,9 @@
         </form>
     </div>
 </section>
+
+@section Scripts {
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <script>window.__mercadoPagoPublicKey = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MercadoPagoPublicKey));</script>
+    <script src="~/js/checkout.js" asp-append-version="true"></script>
+}

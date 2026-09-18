@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Api;
 using Orofoods.Web.Data;
+using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Pricing;
 
 namespace Orofoods.Web.Controllers.Api.V1;
@@ -14,7 +15,7 @@ namespace Orofoods.Web.Controllers.Api.V1;
 [Route("api/v1")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [EnableRateLimiting("api")]
-public class CustomerController(ApplicationDbContext db, PriceService priceService) : ControllerBase
+public class CustomerController(ApplicationDbContext db, PriceService priceService, IPaymentEligibilityService paymentEligibilityService) : ControllerBase
 {
     [HttpGet("customer")]
     public async Task<ActionResult> Current(CancellationToken cancellationToken)
@@ -55,6 +56,24 @@ public class CustomerController(ApplicationDbContext db, PriceService priceServi
         var items = await query.OrderBy(x => x.PaymentTerm!.SortOrder).Skip(request.Skip).Take(request.PageSize)
             .Select(x => (object)new { x.PaymentTerm!.Id, x.PaymentTerm.Name, x.PaymentTerm.SortOrder }).ToListAsync(cancellationToken);
         return Ok(new PagedResult<object>(items, request.Page, request.PageSize, totalItems));
+    }
+
+    [HttpGet("customers/me/payment-options")]
+    public async Task<ActionResult> PaymentOptions(CancellationToken cancellationToken)
+    {
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(CustomerId, cancellationToken);
+        return Ok(new
+        {
+            eligibility.ValidPurchases,
+            eligibility.InvoiceCreditEnabled,
+            eligibility.MaximumTermDays,
+            PaymentMethods = eligibility.PaymentMethods.Select(term => new
+            {
+                term.Code,
+                Description = term.Name,
+                TermDays = term.DaysUntilDue
+            })
+        });
     }
 
     private int CustomerId => int.TryParse(User.FindFirstValue("customer_id"), out var id) ? id : throw new UnauthorizedAccessException();

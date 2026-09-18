@@ -14,4 +14,20 @@ public class CheckoutViewLayoutTests
         Assert.Contains("asp-action=\"Catalog\"", markup);
         Assert.Contains("Adicionar produtos", markup);
     }
+
+    [Fact]
+    public void Checkout_never_posts_raw_card_data_and_uses_the_browser_tokenization_boundary()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Checkout.cshtml"));
+        var script = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "checkout.js"));
+
+        Assert.DoesNotContain("asp-for=\"CardNumber\"", markup);
+        Assert.DoesNotContain("asp-for=\"CardCvv\"", markup);
+        Assert.DoesNotContain("asp-for=\"CardExpiryDate\"", markup);
+        Assert.Contains("sdk.mercadopago.com/js/v2", markup);
+        Assert.Contains("asp-for=\"CardToken\"", markup);
+        Assert.Contains("asp-for=\"CardPaymentMethodId\"", markup);
+        Assert.Contains("createCardToken", script);
+    }
 }

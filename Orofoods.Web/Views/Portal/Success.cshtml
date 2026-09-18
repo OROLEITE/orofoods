@@ -1,3 +1,25 @@
 @model Orofoods.Web.Models.Orders.Order
-@{ ViewData["Title"] = "Pedido confirmado"; }
-<section class="success-page"><div class="success-card"><div class="success-icon">✓</div><div class="eyebrow"><span></span> PEDIDO RECEBIDO</div><h1>Tudo certo!</h1><p>Seu pedido <strong>@Model.Number</strong> foi recebido e já entrou na nossa operação.</p><div class="success-details"><div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div><div><small>ENTREGA SOLICITADA</small><strong>@Model.RequestedDeliveryDate?.ToString("dd/MM/yyyy")</strong></div><div><small>DESTINO</small><strong>@Model.DeliveryAddress?.Label</strong></div></div><div class="status-track"><i class="done"></i><i></i><i></i><i></i></div><div class="status-labels"><span>Recebido</span><span>Análise</span><span>Separação</span><span>Entrega</span></div><div class="d-flex justify-content-center gap-3 mt-5"><a class="btn btn-dark" asp-action="Dashboard">Voltar ao painel</a><a class="btn btn-gold" href="https://wa.me/5519999999999?text=@Uri.EscapeDataString($"Olá! Quero acompanhar o pedido {Model.Number}")">Enviar pelo WhatsApp</a></div></div></section>
+@{
+    ViewData["Title"] = "Pedido confirmado";
+    var payment = Model.Payments.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+}
+<section class="success-page"><div class="success-card"><div class="success-icon">✓</div><div class="eyebrow"><span></span> PEDIDO RECEBIDO</div><h1>Tudo certo!</h1><p>Seu pedido <strong>@Model.Number</strong> foi recebido e já entrou na nossa operação.</p><div class="success-details"><div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div><div><small>ENTREGA SOLICITADA</small><strong>@Model.RequestedDeliveryDate?.ToString("dd/MM/yyyy")</strong></div><div><small>DESTINO</small><strong>@Model.DeliveryAddress?.Label</strong></div></div>
+@if (payment?.Method == Orofoods.Web.Models.Payments.PaymentMethodType.Pix && !string.IsNullOrEmpty(payment.PixCopyPaste))
+{
+    <div class="success-pix"><h2>Pagamento via PIX</h2><p>Escaneie o QR Code ou copie o código abaixo para concluir o pagamento.</p>
+    @if (!string.IsNullOrEmpty(payment.PixQrCodeBase64))
+    {
+        <img src="data:image/png;base64,@payment.PixQrCodeBase64" alt="QR Code PIX" class="success-pix-qrcode" />
+    }
+    <textarea readonly class="success-pix-copy-paste" onclick="this.select()">@payment.PixCopyPaste</textarea>
+    @if (payment.ExpiresAt is not null)
+    {
+        <p><small>Expira em @payment.ExpiresAt?.ToString("dd/MM/yyyy HH:mm")</small></p>
+    }
+    </div>
+}
+else if (payment?.Method == Orofoods.Web.Models.Payments.PaymentMethodType.CreditCard)
+{
+    <div class="success-pix"><h2>Pagamento com cartão</h2><p>Status: @payment.Status</p></div>
+}
+<div class="status-track"><i class="done"></i><i></i><i></i><i></i></div><div class="status-labels"><span>Recebido</span><span>Análise</span><span>Separação</span><span>Entrega</span></div><div class="d-flex justify-content-center gap-3 mt-5"><a class="btn btn-dark" asp-action="Dashboard">Voltar ao painel</a><a class="btn btn-gold" href="https://wa.me/5519999999999?text=@Uri.EscapeDataString($"Olá! Quero acompanhar o pedido {Model.Number}")">Enviar pelo WhatsApp</a></div></div></section>

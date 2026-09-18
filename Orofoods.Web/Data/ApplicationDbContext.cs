@@ -20,6 +20,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<CustomerPaymentTerm> CustomerPaymentTerms => Set<CustomerPaymentTerm>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<ProductInventory> ProductInventories => Set<ProductInventory>();
@@ -62,6 +63,15 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasForeignKey(x => x.SalesRepresentativeId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Entity<Customer>()
+            .HasOne(x => x.InternalSalesUser)
+            .WithMany()
+            .HasForeignKey(x => x.InternalSalesUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Customer>()
+            .HasIndex(x => x.InternalSalesUserId);
+
         builder.Entity<ProductCategory>()
             .HasIndex(x => x.Slug)
             .IsUnique();
@@ -103,6 +113,15 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasForeignKey(x => x.SalesRepresentativeId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Entity<CommercialActivity>()
+            .HasOne(x => x.AssignedUser)
+            .WithMany()
+            .HasForeignKey(x => x.AssignedUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<CommercialActivity>()
+            .HasIndex(x => x.AssignedUserId);
+
         builder.Entity<OrderStatusHistory>()
             .HasIndex(x => new { x.OrderId, x.ChangedAt });
 
@@ -110,6 +129,31 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasOne(x => x.ChangedByUser)
             .WithMany()
             .HasForeignKey(x => x.ChangedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.OrderId);
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.IdempotencyKey)
+            .IsUnique();
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.GatewayOrderId);
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.GatewayPaymentId);
+
+        builder.Entity<Payment>()
+            .HasOne(x => x.Order)
+            .WithMany(x => x.Payments)
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Payment>()
+            .HasOne(x => x.Customer)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<ProductInventory>()
@@ -163,5 +207,6 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<Order>().Property(x => x.Total).HasPrecision(12, 2);
         builder.Entity<OrderItem>().Property(x => x.UnitPrice).HasPrecision(12, 2);
         builder.Entity<OrderItem>().Property(x => x.Subtotal).HasPrecision(12, 2);
+        builder.Entity<Payment>().Property(x => x.Amount).HasPrecision(12, 2);
     }
 }

@@ -15,7 +15,9 @@ public class IntegrationsController(
     ApplicationDbContext db,
     OrderIntegrationService integrationService,
     WmcOrderFileGenerator wmcOrderFileGenerator,
-    WmcExportAuditService wmcExportAuditService) : Controller
+    WmcExportAuditService wmcExportAuditService,
+    WmcSyncCoordinator wmcSyncCoordinator,
+    WmcSyncService wmcSyncService) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -93,4 +95,22 @@ public class IntegrationsController(
 
     private string? CurrentUserId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     private string? CurrentUserEmail => User.Identity?.Name;
+
+    public IActionResult Wmc()
+    {
+        ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
+        ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcSyncNow(CancellationToken cancellationToken)
+    {
+        var result = await wmcSyncCoordinator.RunExclusivelyAsync(() => wmcSyncService.SyncAllAsync(cancellationToken), cancellationToken);
+        TempData["WmcSyncMessage"] = result is null
+            ? "Sincroniza\u00e7\u00e3o j\u00e1 em andamento."
+            : "Sincroniza\u00e7\u00e3o conclu\u00edda.";
+        return RedirectToAction(nameof(Wmc));
+    }
 }

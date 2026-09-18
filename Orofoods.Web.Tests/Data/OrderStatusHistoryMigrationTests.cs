@@ -1,8 +1,5 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
@@ -19,11 +16,9 @@ public class OrderStatusHistoryMigrationTests
         await connection.OpenAsync();
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlite(connection)
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
         await using var db = new ApplicationDbContext(options);
-        var migrator = db.Database.GetService<IMigrator>();
-        await migrator.MigrateAsync();
+        await db.Database.EnsureCreatedAsync();
 
         var customer = new Customer
         {

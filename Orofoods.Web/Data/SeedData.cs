@@ -11,7 +11,7 @@ public static class SeedData
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
-        foreach (var role in new[] { "Administrador", "Vendedor", "Cliente" })
+        foreach (var role in new[] { "Administrador", "Vendedor", "GerenteComercial", "Cliente" })
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
@@ -30,14 +30,30 @@ public static class SeedData
             await db.SaveChangesAsync();
         }
 
-        if (!await db.PaymentTerms.AnyAsync())
+        var paymentTerms = new[]
         {
-            db.PaymentTerms.AddRange(
-                new PaymentTerm { Name = "PIX", SortOrder = 1, IsActive = true },
-                new PaymentTerm { Name = "7 dias", SortOrder = 2, IsActive = true },
-                new PaymentTerm { Name = "14 dias", SortOrder = 3, IsActive = true });
-            await db.SaveChangesAsync();
+            new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, SortOrder = 1, IsActive = true },
+            new PaymentTerm { Code = "CASH", Name = "À vista", DaysUntilDue = 0, SortOrder = 2, IsActive = true },
+            new PaymentTerm { Code = "CREDIT_CARD", Name = "Cartão de crédito", DaysUntilDue = 0, SortOrder = 3, IsActive = true },
+            new PaymentTerm { Code = "BOLETO_7D", Name = "Boleto bancário — 7 dias", DaysUntilDue = 7, SortOrder = 4, IsActive = true },
+            new PaymentTerm { Code = "BOLETO_14D", Name = "Boleto bancário — 14 dias", DaysUntilDue = 14, SortOrder = 5, IsActive = true }
+        };
+        foreach (var paymentTerm in paymentTerms)
+        {
+            var existing = await db.PaymentTerms.SingleOrDefaultAsync(term => term.Code == paymentTerm.Code || term.Name == paymentTerm.Name || (paymentTerm.Code == "BOLETO_7D" && term.Name == "7 dias") || (paymentTerm.Code == "BOLETO_14D" && term.Name == "14 dias"));
+            if (existing is null)
+            {
+                db.PaymentTerms.Add(paymentTerm);
+                continue;
+            }
+
+            existing.Code = paymentTerm.Code;
+            existing.Name = paymentTerm.Name;
+            existing.DaysUntilDue = paymentTerm.DaysUntilDue;
+            existing.SortOrder = paymentTerm.SortOrder;
+            existing.IsActive = true;
         }
+        await db.SaveChangesAsync();
 
         var salesRepresentative = await db.SalesRepresentatives.FirstOrDefaultAsync(x => x.Email == "vendedor@orofoods.local");
         if (salesRepresentative is null)
@@ -171,8 +187,8 @@ public static class SeedData
         await db.SaveChangesAsync();
 
         var burgerPriceTable = await db.PriceTables.SingleAsync(x => x.Name == "Tabela Hamburgueria");
-        var pix = await db.PaymentTerms.SingleAsync(x => x.Name == "PIX");
-        var fourteenDays = await db.PaymentTerms.SingleAsync(x => x.Name == "14 dias");
+        var pix = await db.PaymentTerms.SingleAsync(x => x.Code == "PIX");
+        var fourteenDays = await db.PaymentTerms.SingleAsync(x => x.Code == "BOLETO_14D");
 
         var approvedCustomer = await db.Customers
             .Include(x => x.Addresses)

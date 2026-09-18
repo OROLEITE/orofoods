@@ -374,6 +374,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AssignedUserId")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -408,6 +411,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssignedUserId");
 
                     b.HasIndex("CustomerId");
 
@@ -491,9 +496,22 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<bool>("CreditBlocked")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("CreditLimit")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("CreditNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("CreditOverrideEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("CreditReleaseDate")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("CreditUsed")
                         .HasPrecision(12, 2)
@@ -504,6 +522,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<string>("InternalSalesUserId")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -511,6 +532,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .IsRequired()
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
+
+                    b.Property<int?>("MaximumPaymentTermDays")
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("MinimumOrder")
                         .HasPrecision(12, 2)
@@ -563,6 +587,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.HasIndex("Cnpj")
                         .IsUnique();
+
+                    b.HasIndex("InternalSalesUserId");
 
                     b.HasIndex("PriceTableId");
 
@@ -1112,6 +1138,127 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("SavedOrderItems");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Payments.Payment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("AuthorizationCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("BankSlipUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CardBrand")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DigitableLine")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExternalPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ExternalReference")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Gateway")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("GatewayOrderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GatewayPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("Installments")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastFourDigits")
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("PixCopyPaste")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("PixQrCodeBase64")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("GatewayOrderId");
+
+                    b.HasIndex("GatewayPaymentId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Payments");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.CustomerPaymentTerm", b =>
                 {
                     b.Property<int>("Id")
@@ -1146,6 +1293,14 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("DaysUntilDue")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -1317,6 +1472,11 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
             modelBuilder.Entity("Orofoods.Web.Models.Commercial.CommercialActivity", b =>
                 {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "AssignedUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -1328,6 +1488,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasForeignKey("SalesRepresentativeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("AssignedUser");
+
                     b.Navigation("Customer");
 
                     b.Navigation("SalesRepresentative");
@@ -1335,6 +1497,11 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
             modelBuilder.Entity("Orofoods.Web.Models.Customers.Customer", b =>
                 {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "InternalSalesUser")
+                        .WithMany()
+                        .HasForeignKey("InternalSalesUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Orofoods.Web.Models.Pricing.PriceTable", "PriceTable")
                         .WithMany("Customers")
                         .HasForeignKey("PriceTableId")
@@ -1344,6 +1511,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .WithMany("Customers")
                         .HasForeignKey("SalesRepresentativeId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("InternalSalesUser");
 
                     b.Navigation("PriceTable");
 
@@ -1528,6 +1697,25 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("SavedOrder");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Payments.Payment", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithMany("Payments")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.CustomerPaymentTerm", b =>
                 {
                     b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
@@ -1600,6 +1788,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
             modelBuilder.Entity("Orofoods.Web.Models.Orders.Order", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("Payments");
 
                     b.Navigation("StatusHistory");
 

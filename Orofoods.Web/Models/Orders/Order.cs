@@ -31,5 +31,6 @@ public class Order
     [MaxLength(2000)] public string? IntegrationError { get; set; }
     public List<OrderItem> Items { get; set; } = [];
     public List<OrderStatusHistory> StatusHistory { get; set; } = [];
+    public List<Payment> Payments { get; set; } = [];
     public List<WmcExportAudit> WmcExportAudits { get; set; } = [];
 }

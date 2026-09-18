@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Controllers;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
@@ -8,8 +10,10 @@ using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Orders;
+using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Tests.Infrastructure;
 using Orofoods.Web.ViewModels;
@@ -18,6 +22,14 @@ namespace Orofoods.Web.Tests.Controllers;
 
 public class PortalControllerRepeatOrderTests
 {
+    private sealed class UnusedPaymentGateway : IPaymentGateway
+    {
+        public Task<PaymentGatewayOrder> CreatePixAsync(CreatePixPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<PaymentGatewayOrder> RefundAsync(RefundPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
     [Fact]
     public async Task Confirm_forbids_using_an_address_owned_by_another_customer()
     {
@@ -104,7 +116,18 @@ public class PortalControllerRepeatOrderTests
             new CartService(db, priceService),
             new CustomerDashboardService(db, new FrequentProductService(db, priceService), TimeProvider.System),
             new SavedOrderService(db),
-            new OrderReservationService(db));
+            new OrderReservationService(db),
+            new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())),
+            new PaymentOrchestrationService(
+                db,
+                new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())),
+                new UnusedPaymentGateway(),
+                new NoOpPaymentApprovalHandler(),
+                Options.Create(new MercadoPagoOptions()),
+                TimeProvider.System,
+                NullLogger<PaymentOrchestrationService>.Instance),
+            Options.Create(new MercadoPagoOptions()),
+            new AssistedOrderService(db, priceService, new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())), new OrderReservationService(db)));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
