@@ -1,0 +1,46 @@
+@{
+    Layout = "_Layout";
+    ViewData["BodyClass"] = "portal-authenticated";
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var activeSection = action switch
+    {
+        "Catalog" or "Product" => "catalog",
+        "Orders" or "Order" => "orders",
+        "Favorites" => "favorites",
+        "Cart" or "Checkout" or "Pix" or "Success" or "Repeat" or "SavedOrders" or "EditSavedOrder" => "cart",
+        _ => "dashboard"
+    };
+    var customerName = ViewData["PortalCustomerName"] as string ?? "Portal do Cliente";
+}
+
+<div class="portal-app-shell" data-portal-shell>
+    <button class="portal-menu-overlay" type="button" aria-label="Fechar menu" data-portal-menu-close></button>
+    <aside id="portalSidebar" class="portal-app-sidebar" aria-label="Navegação do portal">
+        <div class="portal-company"><small>PORTAL DO CLIENTE</small><h3>@customerName</h3><span>Conta comercial ativa</span></div>
+        <button class="portal-menu-close" type="button" aria-label="Fechar menu" data-portal-menu-close><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        <nav class="portal-app-nav">
+            <a class="@(activeSection == "dashboard" ? "active" : null)" asp-controller="Portal" asp-action="Dashboard"><span class="portal-nav-icon"><i class="fa-solid fa-house" aria-hidden="true"></i></span><span class="portal-nav-label">Vis&atilde;o geral</span></a>
+            <a class="@(activeSection == "catalog" ? "active" : null)" asp-controller="Portal" asp-action="Catalog"><span class="portal-nav-icon"><i class="fa-solid fa-box-open" aria-hidden="true"></i></span><span class="portal-nav-label">Cat&aacute;logo</span></a>
+            <a class="@(activeSection == "orders" ? "active" : null)" asp-controller="Portal" asp-action="Orders"><span class="portal-nav-icon"><i class="fa-solid fa-receipt" aria-hidden="true"></i></span><span class="portal-nav-label">Meus pedidos</span></a>
+            <a class="@(activeSection == "favorites" ? "active" : null)" asp-controller="Portal" asp-action="Favorites"><span class="portal-nav-icon"><i class="fa-solid fa-heart" aria-hidden="true"></i></span><span class="portal-nav-label">Favoritos</span></a>
+            <a class="@(activeSection == "cart" ? "active" : null)" asp-controller="Portal" asp-action="Cart"><span class="portal-nav-icon"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></span><span class="portal-nav-label">Carrinho</span></a>
+        </nav>
+        <div class="side-help"><span>Precisa de ajuda?</span><a asp-controller="Home" asp-action="Contact">Falar com a Orofoods</a></div>
+    </aside>
+    <div class="portal-app-content">
+        <div class="portal-app-toolbar">
+            <button class="portal-mobile-trigger" type="button" aria-expanded="false" aria-controls="portalSidebar" data-portal-menu-toggle><i class="fa-solid fa-bars" aria-hidden="true"></i> Menu</button>
+            <span>Portal do Cliente</span>
+        </div>
+        <main class="portal-app-main"><div class="portal-main-inner">@RenderBody()</div></main>
+    </div>
+</div>
+
+@section Head {
+    @await RenderSectionAsync("Head", required: false)
+}
+
+@section Scripts {
+    <script src="~/js/portal-navigation.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+}

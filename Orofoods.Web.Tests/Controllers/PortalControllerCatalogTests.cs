@@ -70,6 +70,45 @@ public class PortalControllerCatalogTests
         Assert.Equal(5, controller.ViewData["CartQuantity"] as int?);
     }
 
+    [Fact]
+    public async Task Catalog_exposes_products_already_in_the_cart()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda",
+            TradeName = "Cliente",
+            Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved,
+            IsActive = true
+        };
+        var category = new ProductCategory { Name = "Congelados", Slug = "congelados", IsActive = true };
+        var product = CreateProduct("BIM-001", "Pao Brioche", category);
+        var user = new ApplicationUser
+        {
+            Id = "customer-user",
+            UserName = "customer@orofoods.local",
+            NormalizedUserName = "CUSTOMER@OROFOODS.LOCAL",
+            Email = "customer@orofoods.local",
+            NormalizedEmail = "CUSTOMER@OROFOODS.LOCAL",
+            Customer = customer,
+            IsActive = true
+        };
+        db.AddRange(customer, category, product, user);
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 20 });
+        await db.SaveChangesAsync();
+
+        var session = new TestSession();
+        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":2}}");
+        var controller = CreateController(db, session);
+
+        await controller.Catalog(null, null, null, null);
+
+        var quantities = Assert.IsType<Dictionary<int, int>>(controller.ViewData["CartProductQuantities"]);
+        Assert.Equal(2, quantities[product.Id]);
+    }
+
     private static Product CreateProduct(string sku, string name, ProductCategory category) => new()
     {
         Sku = sku,

@@ -3,7 +3,7 @@ using Orofoods.Web.Models.Identity;
 
 namespace Orofoods.Web.Models.Commercial;
 
-public enum UserNotificationType { TaskAssigned, AppointmentReminder, OverdueReturn, RepurchaseDue, CustomerNoPurchase, FirstContact, OpportunityAssigned, OpportunityDue, OpportunityWon, OrderCreated }
+public enum UserNotificationType { TaskAssigned, AppointmentReminder, OverdueReturn, RepurchaseDue, CustomerNoPurchase, FirstContact, OpportunityAssigned, OpportunityDue, OpportunityWon, OrderCreated, WhatsAppMessageReceived }
 
 public class UserNotification
 {

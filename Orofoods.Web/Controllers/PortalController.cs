@@ -128,7 +128,9 @@ public class PortalController(
             .Select(x => x.ProductId)
             .ToListAsync();
         ViewBag.Brands = products.Select(x => x.Brand).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x).ToList();
-        ViewBag.CartQuantity = (await cartService.GetAsync(customer.Id, HttpContext.Session)).Items.Sum(item => item.Quantity);
+        var cart = await cartService.GetAsync(customer.Id, HttpContext.Session);
+        ViewBag.CartQuantity = cart.Items.Sum(item => item.Quantity);
+        ViewBag.CartProductQuantities = cart.Items.ToDictionary(item => item.ProductId, item => item.Quantity);
         return View(products);
     }
 
@@ -161,10 +163,10 @@ public class PortalController(
     public async Task<IActionResult> Favorites()
     {
         var customer = await GetCurrentCustomerAsync();
-        var products = await db.FavoriteProducts
-            .Where(x => x.CustomerId == customer.Id && x.Product!.IsActive)
-            .Select(x => x.Product!)
+        var products = await db.Products
             .Include(x => x.ProductCategory)
+            .Where(x => x.IsActive && db.FavoriteProducts.Any(favorite =>
+                favorite.CustomerId == customer.Id && favorite.ProductId == x.Id))
             .OrderBy(x => x.Name)
             .ToListAsync();
 
@@ -265,7 +267,25 @@ public class PortalController(
     public async Task<IActionResult> AddToCart(int productId, int quantity = 1)
     {
         var customer = await GetCurrentCustomerAsync();
-        await cartService.AddAsync(customer.Id, productId, quantity, HttpContext.Session);
+        try
+        {
+            await cartService.AddAsync(customer.Id, productId, quantity, HttpContext.Session);
+        }
+        catch (InvalidOperationException exception) when (IsCatalogRequest())
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+
+        if (IsCatalogRequest())
+        {
+            var cart = await cartService.GetAsync(customer.Id, HttpContext.Session);
+            return Json(new
+            {
+                cartQuantity = cart.Items.Sum(item => item.Quantity),
+                quantity = cart.Items.Single(item => item.ProductId == productId).Quantity
+            });
+        }
+
         return RedirectToAction(nameof(Catalog));
     }
 
@@ -284,6 +304,11 @@ public class PortalController(
         cartService.Remove(productId, HttpContext.Session);
         return RedirectToAction(nameof(Cart));
     }
+
+    private bool IsCatalogRequest() => string.Equals(
+        Request.Headers["X-Requested-With"],
+        "XMLHttpRequest",
+        StringComparison.OrdinalIgnoreCase);
 
     public async Task<IActionResult> Checkout()
     {
@@ -576,6 +601,7 @@ public class PortalController(
 
     private async Task<Customer> GetCurrentCustomerAsync()
     {
+        Customer? customer = null;
         if (User.IsInRole("Administrador"))
         {
             var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session);
@@ -584,14 +610,20 @@ public class PortalController(
                 var selectedCustomer = await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value);
                 if (selectedCustomer is not null)
                 {
-                    return selectedCustomer;
+                    customer = selectedCustomer;
                 }
             }
         }
 
-        var userId = userManager.GetUserId(User);
-        return await customerAccessService.GetApprovedCustomerAsync(userId)
-            ?? throw new InvalidOperationException("No approved customer is linked to the current user.");
+        if (customer is null)
+        {
+            var userId = userManager.GetUserId(User);
+            customer = await customerAccessService.GetApprovedCustomerAsync(userId)
+                ?? throw new InvalidOperationException("No approved customer is linked to the current user.");
+        }
+
+        ViewData["PortalCustomerName"] = customer.TradeName;
+        return customer;
     }
 
     private async Task ApplyCommercialAvailabilityAsync(IEnumerable<Product> products)

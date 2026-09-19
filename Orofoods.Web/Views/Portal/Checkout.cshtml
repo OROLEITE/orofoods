@@ -1,15 +1,15 @@
 @model Orofoods.Web.ViewModels.CheckoutViewModel
 @{ ViewData["Title"] = "Checkout"; }
 
-<section class="page-hero page-hero--compact">
+<section class="page-hero page-hero--compact portal-page-hero">
     <div class="container">
-        <div class="eyebrow light"><span></span> Checkout</div>
-        <h1>Revise e confirme.</h1>
-        <p>Os valores e regras comerciais s&atilde;o validados novamente antes do envio.</p>
+        <div class="eyebrow light"><span></span> Finaliza&ccedil;&atilde;o</div>
+        <h1>Finalizar pedido</h1>
+        <p>Revise os dados de entrega, pagamento e o resumo antes de confirmar.</p>
     </div>
 </section>
 
-<section class="checkout-page">
+<section class="checkout-page portal-page">
     <div class="container">
         <form asp-action="Checkout" method="post" class="checkout-layout" id="checkoutForm" data-cart-total="@Model.Cart.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">
             <input type="hidden" asp-for="AttemptKey" />

@@ -1,0 +1,32 @@
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@{
+    Layout = "_Layout";
+    ViewData["BodyClass"] = "admin-authenticated";
+    var desktopNavigationData = new ViewDataDictionary(ViewData) { ["AdminNavPrefix"] = "desktop" };
+    var mobileNavigationData = new ViewDataDictionary(ViewData) { ["AdminNavPrefix"] = "mobile" };
+}
+
+<div class="admin-shell">
+    <aside class="admin-sidebar d-none d-lg-flex" aria-label="Navegação administrativa">
+        @await Html.PartialAsync("_AdminNavigation", viewData: desktopNavigationData)
+    </aside>
+    <div class="admin-content">
+        <div class="admin-mobile-toolbar d-lg-none">
+            <button class="btn admin-mobile-trigger" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminNavigation" aria-controls="adminNavigation"><i class="fa-solid fa-bars" aria-hidden="true"></i> Administração</button>
+        </div>
+        <main class="admin-main"><div class="admin-main-inner">@RenderBody()</div></main>
+    </div>
+</div>
+
+<div class="offcanvas offcanvas-start admin-offcanvas" tabindex="-1" id="adminNavigation" aria-labelledby="adminNavigationLabel">
+    <div class="offcanvas-header"><h2 id="adminNavigationLabel">Administração</h2><button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
+    <div class="offcanvas-body">@await Html.PartialAsync("_AdminNavigation", viewData: mobileNavigationData)</div>
+</div>
+
+@section Head {
+    @await RenderSectionAsync("Head", required: false)
+}
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

@@ -140,6 +140,13 @@ builder.Services.Configure<CrmOptions>(builder.Configuration.GetSection(CrmOptio
 builder.Services.AddScoped<CommercialAttentionService>();
 builder.Services.AddScoped<CrmOpportunityService>();
 builder.Services.AddScoped<UserNotificationService>();
+builder.Services.AddScoped<WhatsAppConversationService>();
+builder.Services.Configure<WhatsAppBusinessOptions>(builder.Configuration.GetSection(WhatsAppBusinessOptions.SectionName));
+builder.Services.AddHttpClient<IWhatsAppBusinessGateway, MetaWhatsAppBusinessGateway>((sp, client) =>
+{
+    client.BaseAddress = new Uri("https://graph.facebook.com/");
+    client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
+});
 builder.Services.AddScoped<WmcExportAuditService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();

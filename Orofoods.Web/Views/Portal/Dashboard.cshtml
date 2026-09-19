@@ -1,28 +1,9 @@
 @model Orofoods.Web.ViewModels.DashboardVm
 @{ ViewData["Title"] = "Painel do cliente"; }
-<div class="portal-shell portal-dashboard">
-    <aside class="portal-side">
-        <div class="portal-company"><small>PORTAL DO CLIENTE</small><h3>@Model.Customer.TradeName</h3><span>Conta comercial ativa</span></div>
-        <nav>
-            <a class="active" asp-action="Dashboard"><span>01</span> Vis&atilde;o geral</a>
-            <a asp-action="Catalog"><span>02</span> Cat&aacute;logo</a>
-            <a asp-action="Orders"><span>03</span> Meus pedidos</a>
-            <a asp-action="Favorites"><span>04</span> Favoritos</a>
-            <a asp-action="Cart"><span>05</span> Carrinho</a>
-        </nav>
-        <div class="side-help"><span>Precisa de ajuda?</span><a asp-controller="Home" asp-action="Contact">Falar com a Orofoods</a></div>
-    </aside>
-    <div class="portal-main">
-        <nav class="portal-mobile-nav" aria-label="Navegação do portal">
-            <a class="active" asp-action="Dashboard"><i class="fa-solid fa-house"></i> Visão geral</a>
-            <a asp-action="Catalog"><i class="fa-solid fa-box-open"></i> Catálogo</a>
-            <a asp-action="Orders"><i class="fa-solid fa-receipt"></i> Pedidos</a>
-            <a asp-action="Favorites"><i class="fa-solid fa-star"></i> Favoritos</a>
-            <a asp-action="Cart"><i class="fa-solid fa-cart-shopping"></i> Carrinho</a>
-        </nav>
+<div class="portal-dashboard">
         <div class="portal-top">
             <div><div class="eyebrow"><span></span> Compra recorrente</div><h1>Ol&aacute;, @Model.Customer.TradeName!</h1><p>Seu pr&oacute;ximo abastecimento est&aacute; a poucos cliques.</p></div>
-            <a class="btn btn-dark btn-lg" asp-action="Catalog">Novo pedido</a>
+            <a class="btn btn-dark portal-primary-action" asp-action="Catalog">Novo pedido</a>
         </div>
         <div class="commercial-bar">
             <div><small>SUA TABELA</small><strong>@Model.Customer.PriceTableName</strong></div>
@@ -56,5 +37,4 @@
             </section>
         }
         <div class="metric-grid"><article><small>PEDIDOS EM ABERTO</small><strong>@Model.OpenOrders</strong></article><article><small>COMPRAS NO M&Ecirc;S</small><strong>@Model.MonthTotal.ToString("C")</strong></article></div>
-    </div>
 </div>

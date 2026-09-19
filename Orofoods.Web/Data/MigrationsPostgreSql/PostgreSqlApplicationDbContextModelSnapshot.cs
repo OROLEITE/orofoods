@@ -608,6 +608,122 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("UserNotifications");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppConversation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AssignedUserId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastInboundAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("LastMessageAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("LastOutboundAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UnreadCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedUserId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("LastMessageAt");
+
+                    b.HasIndex("PhoneNumber");
+
+                    b.ToTable("WhatsAppConversations");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ConversationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ExternalMessageId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TextBody")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalMessageId")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ConversationId", "CreatedAt");
+
+                    b.ToTable("WhatsAppMessages");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Contact.ContactMessage", b =>
                 {
                     b.Property<int>("Id")
@@ -1761,6 +1877,34 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppConversation", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "AssignedUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AssignedUser");
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppMessage", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Commercial.WhatsAppConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Customers.Customer", b =>
                 {
                     b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "InternalSalesUser")
@@ -2033,6 +2177,11 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
             modelBuilder.Entity("Orofoods.Web.Models.Commercial.CrmOpportunity", b =>
                 {
                     b.Navigation("History");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppConversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Customers.Customer", b =>

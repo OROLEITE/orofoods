@@ -1,7 +1,7 @@
 @model Orofoods.Web.ViewModels.OrderHistoryViewModel
 @{ ViewData["Title"] = "Meus pedidos"; }
-<section class="page-hero orders-history-hero"><div class="container"><div class="eyebrow light"><span></span> Hist&oacute;rico</div><h1>Meus pedidos</h1><p>Acompanhe compras, entregas e reposi&ccedil;&otilde;es anteriores.</p></div></section>
-<section class="section orders-history-section">
+<section class="page-hero orders-history-hero portal-page-hero"><div class="container"><div class="eyebrow light"><span></span> Hist&oacute;rico</div><h1>Meus pedidos</h1><p>Acompanhe seus pedidos, entregas e compras anteriores.</p></div></section>
+<section class="section orders-history-section portal-page">
     <div class="container">
         <form class="catalog-tools orders-history-tools"><input name="q" value="@Model.Query" placeholder="Buscar pelo n&uacute;mero do pedido"/><select name="status"><option value="">Todos os status</option>@foreach (var status in Enum.GetValues<OrderStatus>()) { <option value="@status" selected="@(Model.Status == status.ToString())">@status.ToDisplayName()</option> }</select><button class="btn btn-dark">Filtrar</button></form>
         @if (!Model.Orders.Any())

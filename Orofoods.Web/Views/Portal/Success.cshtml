@@ -3,7 +3,7 @@
     ViewData["Title"] = "Pedido confirmado";
     var payment = Model.Payments.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
 }
-<section class="success-page"><div class="success-card"><div class="success-icon">✓</div><div class="eyebrow"><span></span> PEDIDO RECEBIDO</div><h1>Tudo certo!</h1><p>Seu pedido <strong>@Model.Number</strong> foi recebido e já entrou na nossa operação.</p><div class="success-details"><div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div><div><small>ENTREGA SOLICITADA</small><strong>@Model.RequestedDeliveryDate?.ToString("dd/MM/yyyy")</strong></div><div><small>DESTINO</small><strong>@Model.DeliveryAddress?.Label</strong></div></div>
+<section class="success-page portal-page"><div class="success-card"><div class="success-icon">✓</div><div class="eyebrow"><span></span> PEDIDO RECEBIDO</div><h1>Tudo certo!</h1><p>Seu pedido <strong>@Model.Number</strong> foi recebido e já entrou na nossa operação.</p><div class="success-details"><div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div><div><small>ENTREGA SOLICITADA</small><strong>@Model.RequestedDeliveryDate?.ToString("dd/MM/yyyy")</strong></div><div><small>DESTINO</small><strong>@Model.DeliveryAddress?.Label</strong></div></div>
 @if (payment?.Method == Orofoods.Web.Models.Payments.PaymentMethodType.Pix && !string.IsNullOrEmpty(payment.PixCopyPaste))
 {
     <div class="success-pix"><h2>Pagamento via PIX</h2><p>Escaneie o QR Code ou copie o código abaixo para concluir o pagamento.</p>
