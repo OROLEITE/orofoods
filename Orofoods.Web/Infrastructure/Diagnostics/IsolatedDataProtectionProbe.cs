@@ -19,23 +19,45 @@ internal static class IsolatedDataProtectionProbeEndpoint
     internal static bool IsAvailable(IHostEnvironment environment, IConfiguration configuration) =>
         environment.IsStaging() && configuration.GetValue<bool>("Diagnostics:CredentialProbe");
 
+    internal static void MapIfAvailable(WebApplication app)
+    {
+        var registered = IsAvailable(app.Environment, app.Configuration);
+        app.Logger.LogInformation(
+            "Diagnostic DP probe route registration evaluated: registered={Registered} environment={Environment} credentialProbeEnabled={CredentialProbeEnabled}",
+            registered,
+            app.Environment.EnvironmentName,
+            app.Configuration.GetValue<bool>("Diagnostics:CredentialProbe"));
+
+        if (registered)
+        {
+            Map(app);
+        }
+    }
+
     internal static void Map(WebApplication app)
     {
         app.MapPost(Route, async (
             HttpContext context,
             IsolatedDataProtectionProbe probe,
             CancellationToken cancellationToken) =>
-        {
-            if (!probe.IsAuthorized(context.Request.Headers["X-Orofoods-Diagnostic-Key"].ToString()))
-            {
-                return Results.NotFound();
-            }
+            await HandleAsync(context, probe, cancellationToken));
+    }
 
-            var result = await probe.ExecuteAsync(cancellationToken);
-            return result.Success
-                ? Results.Ok(new { success = true })
-                : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
-        });
+    internal static async Task<IResult> HandleAsync(
+        HttpContext context,
+        IsolatedDataProtectionProbe probe,
+        CancellationToken cancellationToken)
+    {
+        if (!probe.IsAuthorized(context.Request.Headers["X-Orofoods-Diagnostic-Key"].ToString()))
+        {
+            return Results.NotFound();
+        }
+
+        probe.LogHandlerEntered();
+        var result = await probe.ExecuteAsync(cancellationToken);
+        return result.Success
+            ? Results.Ok(new { success = true })
+            : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
     }
 }
 
@@ -52,15 +74,31 @@ internal sealed class IsolatedDataProtectionProbe(
     public bool IsAuthorized(string providedKey)
     {
         var configuredKey = configuration["Diagnostics:ProbeKey"];
-        if (string.IsNullOrEmpty(configuredKey) || string.IsNullOrEmpty(providedKey))
+        if (string.IsNullOrEmpty(configuredKey))
         {
+            logger.LogInformation("Diagnostic DP probe request rejected: configured key absent");
             return false;
         }
 
-        return CryptographicOperations.FixedTimeEquals(
+        if (string.IsNullOrEmpty(providedKey))
+        {
+            logger.LogInformation("Diagnostic DP probe request rejected: missing header");
+            return false;
+        }
+
+        var authorized = CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(configuredKey),
             Encoding.UTF8.GetBytes(providedKey));
+        if (!authorized)
+        {
+            logger.LogInformation("Diagnostic DP probe request rejected: invalid key");
+        }
+
+        return authorized;
     }
+
+    public void LogHandlerEntered() =>
+        logger.LogInformation("Diagnostic DP probe handler entered");
 
     public Task<IsolatedDataProtectionProbeResult> ExecuteAsync(CancellationToken cancellationToken)
     {
