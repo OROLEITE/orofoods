@@ -25,6 +25,7 @@ using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure;
+using Orofoods.Web.Infrastructure.Diagnostics;
 using Orofoods.Web.Infrastructure.Logging;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -194,6 +195,11 @@ builder.Services.AddSession();
 builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
+
+AzureIdentityDiagnostics.EnableIfConfigured(
+    builder.Environment,
+    builder.Configuration,
+    app.Services.GetRequiredService<ILoggerFactory>());
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
