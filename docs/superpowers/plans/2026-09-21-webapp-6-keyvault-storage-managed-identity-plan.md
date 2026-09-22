@@ -33,7 +33,7 @@
 - `dp-orofoods-stg` is a Key Vault **Key**, not a Key Vault Secret. Application credentials remain Secrets.
 - Secret values must be supplied through a protected interactive/local mechanism and must never appear in shell history, debug output, Git, or reports.
 - The current code has typed Storage/Data Protection options and `DefaultAzureCredential`, but the actual Azure Data Protection provider calls still need implementation and focused tests.
-- The current `AzureBlobProductImageStorage` uploads and deletes blobs and returns a blob URI; private image delivery requires a later authenticated application endpoint or short-lived SAS design before user-facing images are enabled.
+- The current `AzureBlobProductImageStorage` uploads and deletes blobs and returns an opaque Blob reference; user-facing delivery requires the approved application endpoint before private images are enabled. Anonymous delivery is limited to `Product.IsActive=true`; Portal preserves `ApprovedCustomer`, Admin preserves `Administrador`; no SAS is used in this phase.
 
 ## Task 1: Pre-flight Azure State and Names
 
@@ -103,7 +103,7 @@
 
 - [ ] Create `product-images` with anonymous public access disabled.
 - [ ] Validate its access level is private and no permanent SAS is created.
-- [ ] Record that the current `AzureBlobProductImageStorage` needs an authenticated application delivery path before production-like private images can be displayed.
+- [ ] Record that the current `AzureBlobProductImageStorage` needs the approved application-mediated delivery path before production-like private images can be displayed; do not add SAS.
 - [ ] Rollback: remove an accidental public access setting in place; do not delete existing product data.
 - [ ] Checkpoint: stop if the container is public or if the command requires a credential that would be exposed in history.
 
@@ -312,40 +312,54 @@
 
 ## Task 16: Configure AzureBlobProductImageStorage
 
+**Current status:** BLOCKED. Resume only after this amended plan is approved and implement the complete private image delivery contract below. Do not mark this task complete during planning or before the implementation review passes.
+
 **Files:**
-- Modify: `Orofoods.Web/Services/Storage/AzureBlobProductImageStorage.cs` only if runtime requirements or private delivery require a contract fix
-- Modify: `Orofoods.Web/Program.cs` only if registration/health diagnostics need adjustment
-- Modify: `Orofoods.Web/Models/Configuration/StorageOptions.cs` only if separate container/URI configuration is required
-- Test: `Orofoods.Web.Tests/Infrastructure/ProductImageStorageTests.cs`
+- Modify: `Orofoods.Web/Services/Storage/IProductImageStorage.cs` with the minimum application-level read contract (`OpenReadAsync` or equivalent)
+- Modify: `Orofoods.Web/Services/Storage/LocalProductImageStorage.cs` and `Orofoods.Web/Services/Storage/AzureBlobProductImageStorage.cs` to implement the same read contract
+- Create/modify: application media endpoint for `GET /media/products/{imageId:int}` using existing MVC routing and authorization patterns
+- Modify: product image View/DTO consumers under Home, Portal, Admin Products, and `Controllers/Api/V1/CatalogController.cs` to generate application URLs
+- Modify: `Program.cs` only for required route/registration wiring; do not alter Azure infrastructure configuration
+- Test: focused storage, media endpoint, consumer, authorization, cache, and security tests in `Orofoods.Web.Tests`
 
 **Interfaces:**
-- Consumes: `Storage:Provider=AzureBlob`, Storage service URI, `product-images` container, `DefaultAzureCredential`
-- Produces: private blob upload/replace/delete behavior with generated safe names
+- Consumes: `Storage:Provider=AzureBlob`, Storage service URI, private `product-images` container, `DefaultAzureCredential`, `ProductImage` ID/reference, existing `ApprovedCustomer` policy, and `Administrador` role
+- Produces: `IProductImageStorage` read/write/delete behavior, application URL `GET /media/products/{imageId:int}`, validated stream/content type, and no direct Blob URI exposure
 
 - [ ] Keep Development default `Storage:Provider=Local` and verify no Azure call occurs in Local mode.
 - [ ] Configure Staging to use the `product-images` container and private access.
 - [ ] Preserve current file validation, generated names, content-type checks, and delete/replace semantics.
-- [ ] Add a private delivery path before enabling user-facing image reads; do not make the container public and do not add permanent SAS.
-- [ ] Add tests for provider selection, missing Azure settings, private container assumptions, and no filename/path traversal regressions.
+- [ ] Extend `IProductImageStorage` with the minimum application-level read result containing only `Stream`, validated `ContentType`, and strictly necessary filename/metadata; do not expose Azure SDK types to controllers.
+- [ ] Implement `OpenReadAsync` (or the approved equivalent) in Local and Azure providers. Local must resolve only its own generated references; Azure must resolve only the configured `product-images` container through `DefaultAzureCredential`.
+- [ ] Implement `GET /media/products/{imageId:int}` using a database-controlled `ProductImage` ID. Reject arbitrary Blob URI, path, filesystem path, account, container, external URL, traversal, SSRF, and open-redirect inputs.
+- [ ] For anonymous requests, deliver only images whose product has `Product.IsActive=true`; do not use `Product.IsAvailable` as the publication predicate. Preserve `ApprovedCustomer` for Portal access and `Administrador` for Admin access, including inactive products managed by Admin.
+- [ ] Return `200` with a stream and validated Content-Type, `404` for missing image/product/blob/reference, and sanitized errors without Storage details, URI, credentials, or tokens.
+- [ ] Update Home, public catalog, Portal, Admin Products, `CatalogController`/`ImageUrl`, and all discovered partial/card consumers to emit `/media/products/{imageId}` via `Url.Action`, `LinkGenerator`, or existing equivalent. Never expose `ProductImage.Url` directly and never persist `/media/products/...` or SAS.
+- [ ] Apply `Cache-Control: public, max-age=300, must-revalidate` only to anonymous active-product delivery; use `Cache-Control: private, max-age=300, must-revalidate` for Portal/Admin, including inactive products.
+- [ ] Keep `product-images` private and use only `DefaultAzureCredential` -> System Assigned Managed Identity. Do not add AccountKey, permanent SAS, dynamic SAS, public access, RBAC, Storage, Key Vault, PostgreSQL, or migration changes.
+- [ ] Add tests for existing/missing image and image ID, missing blob/reference, invalid reference, traversal, Content-Type, `Product.IsActive`, public catalog, `ApprovedCustomer`, `Administrador`, inactive products, Local provider, Azure provider without Azure calls, public/private cache, no Blob URI/SAS/Storage key exposure, and preserved replace/delete behavior.
+- [ ] Add consumer/source assertions proving no View, DTO, API response, or card renders a private Blob URI.
 - [ ] Rollback: select Local only in Development; in Staging fail fast rather than silently writing to ephemeral local storage.
-- [ ] Checkpoint: focused tests and build pass before runtime smoke tests.
+- [ ] Checkpoint: focused tests, security review, build, full test suite, and Release publish pass. Record existing NU1903 warnings separately; do not suppress or attribute them automatically to this task.
 
 ## Task 17: Integrated Validation and Security Smoke Tests
 
 **Files:**
 - Create: focused integration test or deployment smoke-test notes only when needed
-- Modify: no functional production file unless a prior task identifies a tested contract gap
+- Modify: no functional production file; Task 16 owns the private delivery implementation
 - Test: solution build, unit tests, publish, and authorized Staging smoke tests
 
 **Interfaces:**
 - Consumes: configured identity, Key Vault, Blob containers, PostgreSQL private network, deployed application
 - Produces: evidence of secure runtime behavior
 
+**Preconditions:** Task 16 is `COMPLETE` and its independent private image delivery review is `PASS`. No Task 17 deployment or runtime smoke test may bypass either condition.
+
 - [ ] Run `dotnet build --nologo`.
 - [ ] Run `dotnet test --nologo`.
 - [ ] Run `dotnet publish Orofoods.Web/Orofoods.Web.csproj -c Release -o /tmp/orofoods-webapp-publish`.
 - [ ] Validate the Managed Identity can read an approved Key Vault secret without logging its value.
-- [ ] Validate the identity can upload, read through the approved authenticated delivery path, replace, and delete a test image while `product-images` remains private.
+- [ ] Validate the identity can upload, read through the approved application-mediated delivery path, replace, and delete a test image while `product-images` remains private. Cover anonymous active-product delivery, `ApprovedCustomer` Portal delivery, and `Administrador` delivery for inactive products.
 - [ ] Validate the Data Protection key ring is persisted in `data-protection` and remains usable after an App Service restart/redeploy.
 - [ ] Validate login cookie continuity across restart; do not use a local filesystem key ring in Staging.
 - [ ] Validate PostgreSQL connectivity through App Service VNet Integration without enabling public access or firewall rules.
@@ -390,7 +404,7 @@
 - [ ] B1 quota was explicitly checked before App Service creation; no automatic SKU substitution occurred.
 - [ ] PostgreSQL remains private-only and unchanged.
 - [ ] Data Protection uses Azure Blob plus Key Vault in Staging and Local filesystem only in Development.
-- [ ] Product image storage uses the Azure provider only in Staging and has a private authenticated delivery path.
+- [ ] Product image storage uses the Azure provider only in Staging and has the approved application-mediated private delivery path with the anonymous active-product/Portal/Admin authorization matrix.
 - [ ] No real secret appears in Git, command history, logs, or reports.
 - [ ] Build, tests, publish, identity, secret, Blob, Data Protection restart, cookie, and PostgreSQL private-connectivity checks pass.
 - [ ] The temporary PostgreSQL credential file is removed only after successful validation.
