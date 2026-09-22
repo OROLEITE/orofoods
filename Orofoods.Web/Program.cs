@@ -221,6 +221,8 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddSession();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IIsolatedDataProtectionProviderFactory, IsolatedDataProtectionProviderFactory>();
+builder.Services.AddSingleton<IsolatedDataProtectionProbe>();
 
 var app = builder.Build();
 
@@ -291,6 +293,11 @@ app.MapGet("/health", async (
 });
 
 app.MapHealthChecks("/health/wmc").RequireAuthorization(policy => policy.RequireRole("Administrador"));
+
+if (IsolatedDataProtectionProbeEndpoint.IsAvailable(builder.Environment, builder.Configuration))
+{
+    IsolatedDataProtectionProbeEndpoint.Map(app);
+}
 
 using (var scope = app.Services.CreateScope())
 {
