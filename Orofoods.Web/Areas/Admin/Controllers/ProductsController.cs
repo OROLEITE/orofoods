@@ -4,12 +4,13 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Services.Catalog;
+using Orofoods.Web.Services.Storage;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Roles = "Administrador")]
-public class ProductsController(ApplicationDbContext db, AdminCatalogService catalogService, IWebHostEnvironment environment) : Controller
+public class ProductsController(ApplicationDbContext db, AdminCatalogService catalogService, IProductImageStorage productImageStorage) : Controller
 {
     public async Task<IActionResult> Index(string? q, bool includeInactive = false)
     {
@@ -66,15 +67,20 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
             return RedirectToAction(nameof(Edit), new { id = productId });
         }
 
-        var directory = Path.Combine(environment.WebRootPath, "uploads", "products");
-        Directory.CreateDirectory(directory);
-        var fileName = $"{Guid.NewGuid():N}{extension}";
-        await using (var stream = System.IO.File.Create(Path.Combine(directory, fileName)))
+        await using var stream = image.OpenReadStream();
+        var storedUrl = await productImageStorage.SaveAsync(stream, image.FileName, image.ContentType);
+
+        try
         {
-            await image.CopyToAsync(stream);
+            var product = await db.Products.AsNoTracking().SingleAsync(item => item.Id == productId);
+            await catalogService.AddProductImageAsync(productId, storedUrl, string.IsNullOrWhiteSpace(altText) ? product.Name : altText.Trim());
         }
-        var product = await db.Products.AsNoTracking().SingleAsync(item => item.Id == productId);
-        await catalogService.AddProductImageAsync(productId, $"/uploads/products/{fileName}", string.IsNullOrWhiteSpace(altText) ? product.Name : altText.Trim());
+        catch
+        {
+            await productImageStorage.DeleteAsync(storedUrl);
+            throw;
+        }
+
         return RedirectToAction(nameof(Edit), new { id = productId });
     }
 
@@ -90,7 +96,13 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveImage(int productId, int imageId)
     {
-        await catalogService.RemoveProductImageAsync(productId, imageId);
+        var image = await db.ProductImages.SingleOrDefaultAsync(item => item.ProductId == productId && item.Id == imageId);
+        if (image is not null)
+        {
+            await catalogService.RemoveProductImageAsync(productId, imageId);
+            await productImageStorage.DeleteAsync(image.Url);
+        }
+
         return RedirectToAction(nameof(Edit), new { id = productId });
     }
 
