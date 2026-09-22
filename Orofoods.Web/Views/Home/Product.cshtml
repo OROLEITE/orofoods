@@ -4,7 +4,7 @@
 <section class="section">
     <div class="container product-detail">
         <figure class="product-detail-media" style="--accent:@Model.Accent">
-            @if (primaryImage is not null) { <img src="@primaryImage.Url" alt="@primaryImage.AltText" /> }
+            @if (primaryImage is not null) { <img src="@Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id })" alt="@primaryImage.AltText" /> }
             <figcaption>Imagem ilustrativa do produto.</figcaption>
         </figure>
         <div class="product-detail-copy">
