@@ -1,3 +1,4 @@
+using Azure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -12,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
+using AppDataProtectionOptions = Orofoods.Web.Models.Configuration.DataProtectionOptions;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Catalog;
@@ -43,27 +45,50 @@ if (fileLoggingEnabled)
     var fileLogLevel = builder.Configuration.GetValue("FileLogging:MinimumLevel", LogLevel.Information);
     builder.Logging.AddDailyFile(resolvedFileLogDirectory, fileLogLevel);
 }
-var dataProtection = builder.Services.AddDataProtection();
+var dataProtectionSettings = builder.Configuration.GetSection("DataProtection").Get<AppDataProtectionOptions>() ?? new AppDataProtectionOptions();
+var applicationName = dataProtectionSettings.ApplicationName;
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(applicationName))
+{
+    throw new InvalidOperationException("DataProtection:ApplicationName deve estar configurado fora de Development.");
+}
+
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName(string.IsNullOrWhiteSpace(applicationName) ? "Orofoods.Web" : applicationName);
 if (builder.Environment.IsDevelopment())
 {
     dataProtection.PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")));
 }
 else
 {
+    var azureSettings = dataProtectionSettings.Azure;
+    var azureEnabled = azureSettings is not null && azureSettings.Enabled;
+    if (azureEnabled)
+    {
+        var blobUri = azureSettings!.BlobUri;
+        var keyVaultKeyIdentifier = azureSettings.KeyVaultKeyIdentifier;
+        if (string.IsNullOrWhiteSpace(blobUri) || string.IsNullOrWhiteSpace(keyVaultKeyIdentifier) || string.IsNullOrWhiteSpace(applicationName))
+        {
+            throw new InvalidOperationException("DataProtection:Azure habilitado exige ApplicationName, BlobUri e KeyVaultKeyIdentifier configurados para produção.");
+        }
+
+        var azureCredential = new DefaultAzureCredential();
+        dataProtection
+            .PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)
+            .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
+    }
+
     var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
-    if (string.IsNullOrWhiteSpace(keyDirectory) || !Path.IsPathFullyQualified(keyDirectory))
+    if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
     {
-        throw new InvalidOperationException("Defina DataProtection:KeyDirectory como um diretório absoluto fora da aplicação.");
-    }
+        if (!OperatingSystem.IsWindows())
+        {
+            throw new PlatformNotSupportedException("Configure um provedor de proteção de chaves compatível com o ambiente de produção.");
+        }
 
-    if (!OperatingSystem.IsWindows())
-    {
-        throw new PlatformNotSupportedException("Configure um provedor de proteção de chaves compatível com o ambiente de produção.");
+        dataProtection
+            .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
+            .ProtectKeysWithDpapi();
     }
-
-    dataProtection
-        .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
-        .ProtectKeysWithDpapi();
 }
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
