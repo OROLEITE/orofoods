@@ -71,7 +71,10 @@ else
             throw new InvalidOperationException("DataProtection:Azure habilitado exige ApplicationName, BlobUri e KeyVaultKeyIdentifier configurados para produção.");
         }
 
-        var azureCredential = new DefaultAzureCredential();
+        var azureCredential = AzureIdentityDiagnostics.WrapDataProtectionCredential(
+            new DefaultAzureCredential(),
+            builder.Environment,
+            builder.Configuration);
         dataProtection
             .PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)
             .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
@@ -220,11 +223,6 @@ builder.Services.AddSession();
 builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
-
-AzureIdentityDiagnostics.EnableIfConfigured(
-    builder.Environment,
-    builder.Configuration,
-    app.Services.GetRequiredService<ILoggerFactory>());
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
