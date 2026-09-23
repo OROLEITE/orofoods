@@ -223,6 +223,8 @@ builder.Services.AddSession();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IIsolatedDataProtectionProviderFactory, IsolatedDataProtectionProviderFactory>();
 builder.Services.AddSingleton<IsolatedDataProtectionProbe>();
+builder.Services.AddSingleton<IMainDataProtectionBlobReadClientFactory, MainDataProtectionBlobReadClientFactory>();
+builder.Services.AddSingleton<IMainDataProtectionBlobReadDiagnostic, MainDataProtectionBlobReadDiagnostic>();
 
 var app = builder.Build();
 
@@ -298,6 +300,7 @@ if (IsolatedDataProtectionProbeEndpoint.IsAvailable(builder.Environment, builder
 {
     IsolatedDataProtectionProbeEndpoint.Map(app);
 }
+MainDataProtectionBlobReadEndpoint.MapIfAvailable(app);
 
 using (var scope = app.Services.CreateScope())
 {
