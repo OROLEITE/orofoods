@@ -27,7 +27,6 @@ using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure;
-using Orofoods.Web.Infrastructure.Diagnostics;
 using Orofoods.Web.Infrastructure.Logging;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -71,10 +70,7 @@ else
             throw new InvalidOperationException("DataProtection:Azure habilitado exige ApplicationName, BlobUri e KeyVaultKeyIdentifier configurados para produção.");
         }
 
-        var azureCredential = AzureIdentityDiagnostics.WrapDataProtectionCredential(
-            new DefaultAzureCredential(),
-            builder.Environment,
-            builder.Configuration);
+        var azureCredential = new DefaultAzureCredential();
         dataProtection
             .PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)
             .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
@@ -221,10 +217,6 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddSession();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<IIsolatedDataProtectionProviderFactory, IsolatedDataProtectionProviderFactory>();
-builder.Services.AddSingleton<IsolatedDataProtectionProbe>();
-builder.Services.AddSingleton<IMainDataProtectionBlobReadClientFactory, MainDataProtectionBlobReadClientFactory>();
-builder.Services.AddSingleton<IMainDataProtectionBlobReadDiagnostic, MainDataProtectionBlobReadDiagnostic>();
 
 var app = builder.Build();
 
@@ -295,12 +287,6 @@ app.MapGet("/health", async (
 });
 
 app.MapHealthChecks("/health/wmc").RequireAuthorization(policy => policy.RequireRole("Administrador"));
-
-if (IsolatedDataProtectionProbeEndpoint.IsAvailable(builder.Environment, builder.Configuration))
-{
-    IsolatedDataProtectionProbeEndpoint.Map(app);
-}
-MainDataProtectionBlobReadEndpoint.MapIfAvailable(app);
 
 using (var scope = app.Services.CreateScope())
 {
