@@ -16,6 +16,7 @@ using Orofoods.Web.Configuration;
 using Orofoods.Web.Data;
 using AppDataProtectionOptions = Orofoods.Web.Models.Configuration.DataProtectionOptions;
 using Orofoods.Web.Models.Identity;
+using Orofoods.Web.Models.Configuration;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Commercial;
@@ -25,6 +26,7 @@ using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
 using Orofoods.Web.Services.Sellers;
+using Orofoods.Web.Services.Storage;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -98,6 +100,14 @@ builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<ApplicationDbContext>(provider => provider.GetRequiredService<PostgreSqlApplicationDbContext>());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+builder.Services.AddSingleton<IProductImageStorage>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
+    return options.Provider.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase)
+        ? new AzureBlobProductImageStorage(options)
+        : new LocalProductImageStorage(serviceProvider.GetRequiredService<IWebHostEnvironment>(), options);
+});
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
@@ -144,6 +154,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddScoped<CustomerAccessService>();
 builder.Services.AddScoped<SalesRepresentativeAccessService>();
 builder.Services.AddScoped<SellerWorkspaceService>();
+builder.Services.AddScoped<SellerCatalogService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerRegistrationService>();

@@ -1,0 +1,18 @@
+.seller-area-page .page-context-bar .container { min-height: 34px; }
+.seller-area-page .section { padding-top: 1rem; padding-bottom: 3.5rem; }
+.seller-catalog-container > header { margin-bottom: 1.5rem !important; }
+.seller-product-grid { align-items: stretch; }
+.seller-product-card { padding: 1rem; border: 1px solid rgba(35, 35, 35, .1); box-shadow: 0 8px 24px rgba(35, 35, 35, .06); }
+.seller-product-image { height: 190px; display: grid; place-items: center; margin: -.25rem -.25rem 1rem; overflow: hidden; background: #f7f4ef; border-radius: .5rem; }
+.seller-product-image img { width: 100%; height: 100%; object-fit: contain; }
+.seller-product-image--empty { background: linear-gradient(135deg, #f7f4ef, #eee7dc); }
+.seller-product-name { min-height: 2.7rem; margin-top: .5rem; }
+.seller-product-description { min-height: 3.2rem; margin-bottom: .75rem; }
+.seller-product-price { color: #9b5f08; font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.seller-product-unit { min-height: 1.5rem; color: #6d6a64; font-size: .82rem; margin-bottom: 1rem; }
+.seller-add-form { margin-top: auto; }
+.seller-stepper { display: grid; grid-template-columns: 2.25rem minmax(3rem, 1fr) 2.25rem; gap: .35rem; }
+.seller-stepper .btn, .seller-stepper .form-control { min-height: 2.6rem; padding: .35rem; text-align: center; }
+.seller-add-button { width: 100%; min-height: 2.75rem; margin-top: .65rem; }
+.seller-cart-line { border: 1px solid rgba(35, 35, 35, .1); }
+@media (max-width: 767.98px) { .seller-product-image { height: 175px; } .seller-product-description { min-height: 0; } .seller-catalog-container form[role="search"] .btn { width: 100%; } }

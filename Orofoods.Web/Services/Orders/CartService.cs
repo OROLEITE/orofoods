@@ -34,6 +34,11 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
 
     public async Task AddAsync(int customerId, int productId, int quantity, ISession session, CartScope? scope = null)
     {
+        if (quantity <= 0)
+        {
+            throw new InvalidOperationException("Informe uma quantidade válida.");
+        }
+
         var product = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable)
             ?? throw new InvalidOperationException("Produto indisponível.");
         var quantities = Read(session, scope);
@@ -52,6 +57,25 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
         var quantities = Read(session, scope);
         if (quantity <= 0) quantities.Remove(productId); else quantities[productId] = quantity;
         Write(session, quantities, scope);
+    }
+
+    public async Task UpdateAsync(int customerId, int productId, int quantity, ISession session, CartScope? scope = null)
+    {
+        if (quantity <= 0)
+        {
+            throw new InvalidOperationException("Informe uma quantidade válida.");
+        }
+
+        var product = await db.Products.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable)
+            ?? throw new InvalidOperationException("Produto indisponível.");
+        var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId);
+        if (inventory is null || inventory.AvailableQuantity < Math.Max(quantity, product.MinimumCases))
+        {
+            throw new InvalidOperationException("Produto indisponível no estoque atual.");
+        }
+
+        Update(productId, quantity, session, scope);
     }
 
     public void Remove(int productId, ISession session, CartScope? scope = null)
