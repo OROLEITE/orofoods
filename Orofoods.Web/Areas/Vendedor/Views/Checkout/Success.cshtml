@@ -1,0 +1,18 @@
+@model Orofoods.Web.ViewModels.SellerOrderSuccessViewModel
+@{
+    ViewData["Title"] = "Pedido realizado";
+    ViewData["BodyClass"] = "seller-area-page";
+}
+
+<section class="section">
+    <div class="container seller-success-container">
+        <div class="summary-card seller-success-card text-center">
+            <span class="seller-success-icon" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
+            <span class="eyebrow"><span></span> Venda assistida</span>
+            <h1>Pedido realizado</h1>
+            <p class="text-muted">O pedido foi registrado para <strong>@Model.CustomerName</strong>.</p>
+            <div class="seller-success-summary"><small>PEDIDO</small><strong>#@Model.OrderNumber</strong><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong><small>PAGAMENTO</small><span>@Model.PaymentMethod</span><small>STATUS</small><span>@Model.Status</span></div>
+            <div class="d-flex flex-wrap justify-content-center gap-2 mt-4"><a class="btn btn-gold" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@Context.Request.RouteValues["customerId"]">Voltar para cliente</a><a class="btn btn-outline-dark" asp-area="Vendedor" asp-controller="Catalog" asp-action="Index" asp-route-customerId="@Context.Request.RouteValues["customerId"]">Nova venda</a></div>
+        </div>
+    </div>
+</section>
