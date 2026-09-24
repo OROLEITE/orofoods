@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Services.Orders;
 
@@ -89,6 +90,47 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
             .SingleOrDefaultAsync(cancellationToken);
 
         return new SalesRepresentativeScope(true, representative?.Id, representative?.Region, userId);
+    }
+
+    public async Task<bool> CanAccessConversationAsync(ClaimsPrincipal user, long conversationId, CancellationToken cancellationToken = default)
+    {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return false;
+        }
+
+        if (user.IsInRole("Administrador") || user.IsInRole("GerenteComercial"))
+        {
+            return true;
+        }
+
+        if (!user.IsInRole("Vendedor"))
+        {
+            return false;
+        }
+
+        var scope = await GetScopeAsync(user, cancellationToken);
+        var conversation = await db.WhatsAppConversations
+            .AsNoTracking()
+            .Where(x => x.Id == conversationId)
+            .Select(x => new
+            {
+                x.CustomerId,
+                x.AssignedUserId,
+                CustomerSalesRepresentativeId = x.Customer != null ? x.Customer.SalesRepresentativeId : null,
+                CustomerInternalSalesUserId = x.Customer != null ? x.Customer.InternalSalesUserId : null
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (conversation is null)
+        {
+            return false;
+        }
+
+        return conversation.AssignedUserId == userId ||
+            conversation.CustomerInternalSalesUserId == userId ||
+            (scope.SalesRepresentativeId.HasValue && conversation.CustomerSalesRepresentativeId == scope.SalesRepresentativeId);
     }
 
     public IQueryable<Customer> ApplyCustomerScope(IQueryable<Customer> query, SalesRepresentativeScope scope)

@@ -1,13 +1,20 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Options;
+using Moq;
+using Orofoods.Web.Areas.Admin.Controllers;
+using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Tests.Infrastructure;
 
 namespace Orofoods.Web.Tests.Services;
@@ -113,6 +120,101 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Index_marks_an_authorized_conversation_as_read()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (user, conversation) = await CreateAssignedConversationAsync(db, unreadCount: 2);
+        var controller = CreateController(db, user.Id, new TrackingWhatsAppGateway());
+
+        var result = await controller.Index(conversation.Id, CancellationToken.None);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Equal(0, db.WhatsAppConversations.Single(x => x.Id == conversation.Id).UnreadCount);
+    }
+
+    [Fact]
+    public async Task Send_rejects_manipulated_conversation_id_without_calling_gateway_or_persisting_message()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (userA, _) = await CreateAssignedConversationAsync(db, userId: "user-a");
+        var (_, conversationB) = await CreateAssignedConversationAsync(db, userId: "user-b", phoneNumber: "5511000000002");
+        var gateway = new TrackingWhatsAppGateway();
+        var controller = CreateController(db, userA.Id, gateway);
+
+        var result = await controller.Send(conversationB.Id, "Mensagem forjada", CancellationToken.None);
+
+        Assert.IsType<ForbidResult>(result);
+        Assert.Equal(0, gateway.Calls);
+        Assert.Empty(db.WhatsAppMessages);
+        Assert.Equal(2, db.WhatsAppConversations.Single(x => x.Id == conversationB.Id).UnreadCount);
+    }
+
+    [Fact]
+    public async Task Send_rejects_missing_closed_and_whitespace_conversations_before_calling_gateway()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (user, openConversation) = await CreateAssignedConversationAsync(db);
+        var closedConversation = new WhatsAppConversation
+        {
+            PhoneNumber = "5511000000003",
+            AssignedUserId = user.Id,
+            Status = WhatsAppConversationStatus.Closed
+        };
+        db.Add(closedConversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingWhatsAppGateway();
+        var controller = CreateController(db, user.Id, gateway);
+
+        Assert.IsType<ForbidResult>(await controller.Send(9999, "Mensagem", CancellationToken.None));
+        Assert.IsType<RedirectToActionResult>(await controller.Send(closedConversation.Id, "Mensagem", CancellationToken.None));
+        Assert.IsType<RedirectToActionResult>(await controller.Send(openConversation.Id, "  ", CancellationToken.None));
+
+        Assert.Equal(0, gateway.Calls);
+        Assert.Empty(db.WhatsAppMessages);
+    }
+
+    private static async Task<(ApplicationUser User, WhatsAppConversation Conversation)> CreateAssignedConversationAsync(
+        ApplicationDbContext db,
+        string userId = "user-a",
+        string phoneNumber = "5511000000001",
+        int unreadCount = 2)
+    {
+        var user = new ApplicationUser { Id = userId, UserName = userId, Email = $"{userId}@test.local", IsActive = true };
+        var customer = new Customer
+        {
+            LegalName = userId,
+            TradeName = userId,
+            Cnpj = userId == "user-a" ? "11.111.111/0001-11" : "22.222.222/0001-22",
+            WhatsApp = phoneNumber,
+            Status = CustomerStatus.Approved,
+            IsActive = true,
+            InternalSalesUserId = user.Id
+        };
+        var conversation = new WhatsAppConversation { PhoneNumber = phoneNumber, Customer = customer, AssignedUserId = user.Id, UnreadCount = unreadCount };
+        db.AddRange(user, customer, conversation);
+        await db.SaveChangesAsync();
+        return (user, conversation);
+    }
+
+    private static WhatsAppController CreateController(ApplicationDbContext db, string userId, IWhatsAppBusinessGateway gateway)
+    {
+        var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, "Vendedor")], "TestAuth"))
+        };
+
+        return new WhatsAppController(db, new SalesRepresentativeAccessService(db), gateway)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = httpContext
+            },
+            TempData = new TempDataDictionary(httpContext, new Mock<ITempDataProvider>().Object)
+        };
+    }
+
+    [Fact]
     public async Task Gateway_returns_sanitized_error_for_meta_failure_and_disabled_mode()
     {
         var failingClient = new HttpClient(new FakeHandler(HttpStatusCode.Unauthorized)) { BaseAddress = new Uri("https://graph.facebook.com/") };
@@ -153,5 +255,16 @@ public class WhatsAppBusinessTests
     private sealed class TimeoutHandler : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromCanceled<HttpResponseMessage>(cancellationToken);
+    }
+
+    private sealed class TrackingWhatsAppGateway : IWhatsAppBusinessGateway
+    {
+        public int Calls { get; private set; }
+
+        public Task<WhatsAppSendResult> SendTextAsync(string phoneNumber, string text, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            return Task.FromResult(new WhatsAppSendResult(true, "wamid.test", null, null));
+        }
     }
 }
