@@ -16,6 +16,7 @@
         {
             <div class="alert alert-warning" role="alert">@Model.ErrorMessage</div>
         }
+        <div asp-validation-summary="All" class="text-danger mb-2"></div>
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
         <form asp-area="Vendedor" asp-controller="Checkout" asp-action="Index" asp-route-customerId="@Model.CustomerId" method="post" id="checkoutForm" data-cart-total="@Model.Cart.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">
             @Html.AntiForgeryToken()

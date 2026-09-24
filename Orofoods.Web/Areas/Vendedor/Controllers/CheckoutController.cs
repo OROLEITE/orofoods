@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Orders;
@@ -39,6 +40,13 @@ public sealed class CheckoutController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(int customerId, SellerCheckoutViewModel input, CancellationToken cancellationToken)
     {
+        if (Request.Form.TryGetValue(nameof(input.RequestedDeliveryDate), out var rawDate)
+            && DateTime.TryParseExact(rawDate.ToString(), "dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR"), DateTimeStyles.None, out var requestedDate))
+        {
+            input.RequestedDeliveryDate = requestedDate;
+            ModelState.Remove(nameof(input.RequestedDeliveryDate));
+        }
+
         var checkout = await checkoutService.GetAsync(User, customerId, HttpContext.Session, cancellationToken);
         if (checkout is null) return Forbid();
         var attemptMarker = GetAttemptMarker(customerId, input.AttemptKey);

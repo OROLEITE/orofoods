@@ -5,8 +5,8 @@ namespace Orofoods.Web.ViewModels;
 public sealed class SellerCheckoutViewModel : CheckoutViewModel
 {
     public required int CustomerId { get; init; }
-    public required string CustomerCode { get; init; }
-    public required string CustomerName { get; init; }
+    public string CustomerCode { get; init; } = "";
+    public string CustomerName { get; init; } = "";
     public string? ErrorMessage { get; set; }
 }
 
