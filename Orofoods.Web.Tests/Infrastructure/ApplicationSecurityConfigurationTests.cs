@@ -27,6 +27,21 @@ public sealed class ApplicationSecurityConfigurationTests
     }
 
     [Fact]
+    public void Production_uses_restricted_forwarded_headers_before_https_redirection()
+    {
+        var source = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Program.cs"));
+
+        Assert.Contains("ForwardedHeadersOptions", source);
+        Assert.Contains("XForwardedFor | ForwardedHeaders.XForwardedProto", source);
+        Assert.Contains("10.0.0.0/8", source);
+        Assert.Contains("172.16.0.0/12", source);
+        Assert.Contains("192.168.0.0/16", source);
+        Assert.True(source.IndexOf("app.UseForwardedHeaders();", StringComparison.Ordinal) < source.IndexOf("app.UseHttpsRedirection();", StringComparison.Ordinal));
+        Assert.DoesNotContain("IsolatedDataProtectionProbe", source);
+        Assert.DoesNotContain("AzureIdentityDiagnostics", source);
+    }
+
+    [Fact]
     public void Production_data_protection_uses_an_external_protected_key_directory()
     {
         var source = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Program.cs"));
