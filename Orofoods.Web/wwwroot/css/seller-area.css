@@ -62,3 +62,18 @@
 .seller-checkout-container form > .row { --bs-gutter-y: .75rem; --bs-gutter-x: .75rem; }
 .seller-checkout-page .section { padding-top: .5rem; padding-bottom: 0; }
 .seller-checkout-page .site-footer { display: none !important; }
+.seller-order-detail-header { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: .8rem; }
+.seller-order-detail-header h1 { margin: .15rem 0 .2rem; font-size: clamp(2rem, 3vw, 2.7rem); line-height: 1.05; }
+.seller-order-detail-header p { margin: 0; color: #6d6a64; font-size: .9rem; }
+.seller-order-payment-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1rem; margin-bottom: .9rem; padding: .75rem 1rem; border: 1px solid rgba(35, 35, 35, .1); border-radius: .5rem; background: #f7f4ef; }
+.seller-order-payment-strip div { display: grid; gap: .15rem; }
+.seller-order-payment-strip small { color: #766b5b; font-size: .65rem; font-weight: 800; letter-spacing: .1em; }
+.seller-order-payment-strip strong { font-size: .95rem; }
+.seller-order-payment-strip span { color: #6d6a64; font-size: .78rem; }
+.seller-order-items { padding: .9rem 1rem; }
+.seller-order-items .seller-checkout-item { padding: .55rem 0; }
+.seller-orders-filter { display: grid; grid-template-columns: minmax(0, 1fr) 180px 150px auto; gap: .5rem; }
+.seller-orders-filter .form-control, .seller-orders-filter .form-select { min-height: 2.35rem; }
+.seller-orders-pagination { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: .75rem; color: #6d6a64; font-size: .82rem; }
+@media (max-width: 767.98px) { .seller-orders-filter { grid-template-columns: 1fr; } .seller-orders-pagination { align-items: stretch; flex-direction: column; } }
+@media (max-width: 767.98px) { .seller-order-detail-header { align-items: flex-start; flex-direction: column; } .seller-order-payment-strip { grid-template-columns: 1fr; gap: .65rem; } }
