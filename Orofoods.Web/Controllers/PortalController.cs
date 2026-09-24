@@ -354,21 +354,23 @@ public class PortalController(
         }
 
         var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
-        var result = await assistedOrderService.CreateAsync(
+        var result = await assistedOrderService.PlaceAsync(
             customer.Id,
             userId,
-            input.AddressId,
-            input.PaymentTermId,
-            input.RequestedDeliveryDate,
-            input.Notes,
-            checkout.Cart.Items.Where(x => x.IsAvailable).Select(x => (x.ProductId, x.Quantity)).ToList());
+            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes),
+            HttpContext.Session,
+            CartScope.CustomerSelfService,
+            clearCart: false);
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, result.ErrorMessage!);
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error);
+            }
             return View(checkout);
         }
 
-        var order = await db.Orders.Include(x => x.PaymentTerm).SingleAsync(x => x.Id == result.OrderId);
+        var order = await db.Orders.Include(x => x.PaymentTerm).SingleAsync(x => x.Id == result.Order!.Id);
 
         Payment? payment = null;
         if (paymentTerm.Code is "PIX" or "CREDIT_CARD")

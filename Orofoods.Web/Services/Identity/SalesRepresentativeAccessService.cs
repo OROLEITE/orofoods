@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
+using Orofoods.Web.Services.Orders;
 
 namespace Orofoods.Web.Services.Identity;
 
@@ -9,6 +10,43 @@ public sealed record SalesRepresentativeScope(bool IsRestricted, int? SalesRepre
 
 public class SalesRepresentativeAccessService(ApplicationDbContext db)
 {
+    public async Task<CartScope?> GetSellerCartScopeAsync(
+        ClaimsPrincipal user,
+        int customerId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!user.IsInRole("Vendedor") || customerId <= 0)
+        {
+            return null;
+        }
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return null;
+        }
+
+        var representativeId = await db.Users
+            .Where(x => x.Id == userId && x.IsActive && x.SalesRepresentative != null && x.SalesRepresentative.IsActive)
+            .Select(x => x.SalesRepresentativeId)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (!representativeId.HasValue)
+        {
+            return null;
+        }
+
+        var customerIsInPortfolio = await db.Customers.AnyAsync(x =>
+            x.Id == customerId &&
+            x.SalesRepresentativeId == representativeId &&
+            x.IsActive &&
+            x.Status == CustomerStatus.Approved,
+            cancellationToken);
+
+        return customerIsInPortfolio
+            ? CartScope.ForSeller(representativeId.Value, customerId)
+            : null;
+    }
+
     public async Task<SalesRepresentativeScope> GetScopeAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
         if (user.IsInRole("Administrador") || user.IsInRole("GerenteComercial"))

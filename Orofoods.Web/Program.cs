@@ -152,6 +152,7 @@ builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<FrequentProductService>();
 builder.Services.AddScoped<CustomerDashboardService>();
 builder.Services.AddScoped<SavedOrderService>();
+builder.Services.AddScoped<OrderPlacementService>();
 builder.Services.AddScoped<AssistedOrderService>();
 builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
