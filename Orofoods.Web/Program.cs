@@ -12,6 +12,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
+using Orofoods.Web.Configuration;
 using Orofoods.Web.Data;
 using AppDataProtectionOptions = Orofoods.Web.Models.Configuration.DataProtectionOptions;
 using Orofoods.Web.Models.Identity;
@@ -90,8 +91,7 @@ else
     }
 }
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
 
 builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
