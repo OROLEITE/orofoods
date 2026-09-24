@@ -24,6 +24,7 @@ using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
+using Orofoods.Web.Services.Sellers;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -142,6 +143,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddScoped<CustomerAccessService>();
 builder.Services.AddScoped<SalesRepresentativeAccessService>();
+builder.Services.AddScoped<SellerWorkspaceService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
@@ -201,11 +203,15 @@ builder.Services.AddSingleton<WmcSyncCoordinator>();
 builder.Services.AddHostedService<WmcSyncWorker>();
 builder.Services.AddHealthChecks().AddCheck<WmcFirebirdHealthCheck>("wmc-firebird");
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedCustomerHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, LinkedSalesRepresentativeHandler>();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
         OrofoodsPolicies.ApprovedCustomer,
         policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
+    options.AddPolicy(
+        OrofoodsPolicies.LinkedSalesRepresentative,
+        policy => policy.RequireAuthenticatedUser().RequireRole("Vendedor").AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RequestLocalizationOptions>(options =>

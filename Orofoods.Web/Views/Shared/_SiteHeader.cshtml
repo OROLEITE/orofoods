@@ -8,7 +8,9 @@
     var accountContext = customerName ?? (isAdministrator ? "Administrador" : isCommercialManager ? "Gerente comercial" : isSalesRepresentative ? "Vendedor" : "Cliente");
     var panelUrl = isAdministrator
         ? Url.Action("Index", "Dashboard", new { area = "Admin" })
-        : isCommercialManager || isSalesRepresentative
+        : isSalesRepresentative
+            ? Url.Action("Index", "Dashboard", new { area = "Vendedor" })
+            : isCommercialManager
             ? Url.Action("Index", "Commercial", new { area = "Admin" })
             : Url.Action("Dashboard", "Portal", new { area = "" });
 }
@@ -24,7 +26,7 @@
                 <div class="header-account ms-lg-4">
                     @if (isAuthenticated)
                     {
-                        <div class="dropdown account-dropdown"><button class="btn account-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="menu" aria-label="Abrir menu da conta"><span class="account-avatar" aria-hidden="true">M</span><span class="account-copy"><strong class="account-name">@accountName</strong><small class="account-context">@accountContext</small></span></button><ul class="dropdown-menu dropdown-menu-end account-menu"><li><a class="dropdown-item" href="@panelUrl"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Meu painel</a></li>@if (isAdministrator) { <li><a class="dropdown-item" asp-area="" asp-controller="Portal" asp-action="SelectCustomer"><i class="fa-solid fa-building-user" aria-hidden="true"></i> Acessar portal de cliente</a></li> }<li><hr class="dropdown-divider" /></li><li><form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/"><button class="dropdown-item account-logout" type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button></form></li></ul></div>
+                        <div class="dropdown account-dropdown"><button class="btn account-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="menu" aria-label="Abrir menu da conta"><span class="account-avatar" aria-hidden="true">M</span><span class="account-copy"><strong class="account-name">@accountName</strong><small class="account-context">@accountContext</small></span></button><ul class="dropdown-menu dropdown-menu-end account-menu"><li><a class="dropdown-item" href="@panelUrl"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Meu painel</a></li>@if (isSalesRepresentative) { <li><a class="dropdown-item" asp-area="Vendedor" asp-controller="Customers" asp-action="Index"><i class="fa-solid fa-building" aria-hidden="true"></i> Minha carteira</a></li> } @if (isAdministrator) { <li><a class="dropdown-item" asp-area="" asp-controller="Portal" asp-action="SelectCustomer"><i class="fa-solid fa-building-user" aria-hidden="true"></i> Acessar portal de cliente</a></li> }<li><hr class="dropdown-divider" /></li><li><form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/"><button class="dropdown-item account-logout" type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button></form></li></ul></div>
                     }
                     else
                     {

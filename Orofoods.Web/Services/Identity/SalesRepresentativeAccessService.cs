@@ -10,6 +10,32 @@ public sealed record SalesRepresentativeScope(bool IsRestricted, int? SalesRepre
 
 public class SalesRepresentativeAccessService(ApplicationDbContext db)
 {
+    public async Task<bool> HasActiveSellerAccessAsync(
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken = default) =>
+        user.IsInRole("Vendedor") && await GetActiveRepresentativeAsync(user, cancellationToken) is not null;
+
+    public Task<SalesRepresentative?> GetActiveRepresentativeAsync(
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken = default)
+    {
+        if (!user.IsInRole("Vendedor"))
+        {
+            return Task.FromResult<SalesRepresentative?>(null);
+        }
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Task.FromResult<SalesRepresentative?>(null);
+        }
+
+        return db.Users
+            .Where(x => x.Id == userId && x.IsActive && x.SalesRepresentative != null && x.SalesRepresentative.IsActive)
+            .Select(x => x.SalesRepresentative)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<CartScope?> GetSellerCartScopeAsync(
         ClaimsPrincipal user,
         int customerId,
@@ -26,24 +52,21 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
             return null;
         }
 
-        var representativeId = await db.Users
-            .Where(x => x.Id == userId && x.IsActive && x.SalesRepresentative != null && x.SalesRepresentative.IsActive)
-            .Select(x => x.SalesRepresentativeId)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (!representativeId.HasValue)
+        var representative = await GetActiveRepresentativeAsync(user, cancellationToken);
+        if (representative is null)
         {
             return null;
         }
 
         var customerIsInPortfolio = await db.Customers.AnyAsync(x =>
             x.Id == customerId &&
-            x.SalesRepresentativeId == representativeId &&
+            x.SalesRepresentativeId == representative.Id &&
             x.IsActive &&
             x.Status == CustomerStatus.Approved,
             cancellationToken);
 
         return customerIsInPortfolio
-            ? CartScope.ForSeller(representativeId.Value, customerId)
+            ? CartScope.ForSeller(representative.Id, customerId)
             : null;
     }
 
