@@ -51,6 +51,21 @@ public sealed class ApplicationSecurityConfigurationTests
     }
 
     [Fact]
+    public void Data_protection_configures_local_development_keys_and_validated_azure_blob_key_vault_storage()
+    {
+        var source = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Program.cs"));
+
+        Assert.Contains("if (builder.Environment.IsDevelopment())", source);
+        Assert.Contains("PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, \"DataProtectionKeys\")))", source);
+        Assert.Contains("string.IsNullOrWhiteSpace(blobUri) || string.IsNullOrWhiteSpace(keyVaultKeyIdentifier)", source);
+        Assert.Contains("DataProtection:Azure habilitado exige ApplicationName, BlobUri e KeyVaultKeyIdentifier", source);
+        Assert.Contains("new DefaultAzureCredential()", source);
+        Assert.DoesNotContain("new ClientSecretCredential", source);
+        Assert.Contains("PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)", source);
+        Assert.Contains("ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential)", source);
+    }
+
+    [Fact]
     public void Card_payment_types_never_expose_a_full_card_number_or_security_code_field()
     {
         var forbidden = new[] { "cardnumber", "pan", "cvv", "securitycode" };
