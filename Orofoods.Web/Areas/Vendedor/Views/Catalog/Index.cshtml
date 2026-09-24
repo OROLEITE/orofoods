@@ -7,18 +7,18 @@
 <section class="section">
     <div class="container seller-catalog-container">
         <nav class="mb-3" aria-label="Navegação do vendedor"><a asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId">Workspace</a><span class="text-muted"> / Catálogo</span></nav>
-        <header class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
-            <div>
+        <header class="seller-catalog-header">
+            <div class="seller-catalog-heading">
                 <span class="eyebrow"><span></span> Venda assistida</span>
                 <h1>Catálogo</h1>
-                <p class="text-muted mb-0">@Model.CustomerName</p>
+                <div class="seller-catalog-customer">@Model.CustomerName</div>
             </div>
-            <a class="btn btn-gold seller-cart-link" asp-area="Vendedor" asp-controller="Cart" asp-action="Index" asp-route-customerId="@Model.CustomerId"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Carrinho (@Model.CartItemCount)</a>
+            <a class="btn btn-gold seller-cart-button" asp-area="Vendedor" asp-controller="Cart" asp-action="Index" asp-route-customerId="@Model.CustomerId"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Carrinho (@Model.CartItemCount)</a>
         </header>
 
-        <form method="get" class="row g-2 mb-4" role="search">
-            <div class="col-md-9"><label class="visually-hidden" for="catalog-search">Buscar produto</label><input id="catalog-search" class="form-control" name="q" value="@Model.Query" placeholder="Buscar por nome, descrição ou código" /></div>
-            <div class="col-md-3"><button class="btn btn-outline-dark w-100" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button></div>
+        <form method="get" class="seller-catalog-search" role="search">
+            <div><label class="visually-hidden" for="catalog-search">Buscar produto</label><input id="catalog-search" class="form-control" name="q" value="@Model.Query" placeholder="Buscar por nome, descrição ou código" /></div>
+            <button class="btn btn-outline-dark" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
         </form>
 
         @if (TempData["SellerCartError"] is string error)
@@ -33,15 +33,15 @@
                     <article class="summary-card seller-product-card h-100 d-flex flex-column">
                         @if (product.ImageId is int imageId)
                         {
-                            <div class="seller-product-image"><img class="img-fluid" src="/media/products/@imageId" alt="@product.Name" loading="lazy" /></div>
+                            <div class="seller-product-image-wrapper"><img class="seller-product-image" src="/media/products/@imageId" alt="@product.Name" loading="lazy" /></div>
                         }
-                        else { <div class="seller-product-image seller-product-image--empty" aria-hidden="true"></div> }
+                        else { <div class="seller-product-image-wrapper seller-product-image-wrapper--empty" aria-hidden="true"></div> }
                         <small>@product.Sku</small>
                         <h2 class="h5 seller-product-name">@product.Name</h2>
                         <p class="text-muted small seller-product-description">@product.Description</p>
                         <p class="seller-product-price mb-0">@product.UnitPrice.ToString("C")</p>
                         <p class="seller-product-unit">@product.UnitDescription</p>
-                        <form asp-area="Vendedor" asp-controller="Cart" asp-action="Add" asp-route-customerId="@Model.CustomerId" method="post" class="seller-add-form">
+                        <form asp-area="Vendedor" asp-controller="Cart" asp-action="Add" asp-route-customerId="@Model.CustomerId" method="post" class="seller-add-form seller-product-actions">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="productId" value="@product.Id" />
                             <label class="form-label small mb-1" for="quantity-@product.Id">Quantidade</label>
