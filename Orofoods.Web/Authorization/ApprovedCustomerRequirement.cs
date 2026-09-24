@@ -7,6 +7,7 @@ namespace Orofoods.Web.Authorization;
 public static class OrofoodsPolicies
 {
     public const string ApprovedCustomer = "ApprovedCustomer";
+    public const string LinkedSalesRepresentative = "LinkedSalesRepresentative";
 }
 
 public class ApprovedCustomerRequirement : IAuthorizationRequirement;

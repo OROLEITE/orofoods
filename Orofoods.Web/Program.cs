@@ -12,9 +12,11 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
+using Orofoods.Web.Configuration;
 using Orofoods.Web.Data;
 using AppDataProtectionOptions = Orofoods.Web.Models.Configuration.DataProtectionOptions;
 using Orofoods.Web.Models.Identity;
+using Orofoods.Web.Models.Configuration;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Commercial;
@@ -23,11 +25,12 @@ using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
+using Orofoods.Web.Services.Sellers;
+using Orofoods.Web.Services.Storage;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure;
-using Orofoods.Web.Infrastructure.Diagnostics;
 using Orofoods.Web.Infrastructure.Logging;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -71,10 +74,7 @@ else
             throw new InvalidOperationException("DataProtection:Azure habilitado exige ApplicationName, BlobUri e KeyVaultKeyIdentifier configurados para produção.");
         }
 
-        var azureCredential = AzureIdentityDiagnostics.WrapDataProtectionCredential(
-            new DefaultAzureCredential(),
-            builder.Environment,
-            builder.Configuration);
+        var azureCredential = new DefaultAzureCredential();
         dataProtection
             .PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)
             .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
@@ -94,13 +94,20 @@ else
     }
 }
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
 
 builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<ApplicationDbContext>(provider => provider.GetRequiredService<PostgreSqlApplicationDbContext>());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+builder.Services.AddSingleton<IProductImageStorage>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
+    return options.Provider.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase)
+        ? new AzureBlobProductImageStorage(options)
+        : new LocalProductImageStorage(serviceProvider.GetRequiredService<IWebHostEnvironment>(), options);
+});
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
@@ -146,6 +153,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddScoped<CustomerAccessService>();
 builder.Services.AddScoped<SalesRepresentativeAccessService>();
+builder.Services.AddScoped<SellerWorkspaceService>();
+builder.Services.AddScoped<SellerCatalogService>();
+builder.Services.AddScoped<SellerCheckoutService>();
+builder.Services.AddScoped<SellerOrderHistoryService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
@@ -156,6 +167,7 @@ builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<FrequentProductService>();
 builder.Services.AddScoped<CustomerDashboardService>();
 builder.Services.AddScoped<SavedOrderService>();
+builder.Services.AddScoped<OrderPlacementService>();
 builder.Services.AddScoped<AssistedOrderService>();
 builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
@@ -204,11 +216,15 @@ builder.Services.AddSingleton<WmcSyncCoordinator>();
 builder.Services.AddHostedService<WmcSyncWorker>();
 builder.Services.AddHealthChecks().AddCheck<WmcFirebirdHealthCheck>("wmc-firebird");
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedCustomerHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, LinkedSalesRepresentativeHandler>();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
         OrofoodsPolicies.ApprovedCustomer,
         policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
+    options.AddPolicy(
+        OrofoodsPolicies.LinkedSalesRepresentative,
+        policy => policy.RequireAuthenticatedUser().RequireRole("Vendedor").AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -221,8 +237,6 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddSession();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<IIsolatedDataProtectionProviderFactory, IsolatedDataProtectionProviderFactory>();
-builder.Services.AddSingleton<IsolatedDataProtectionProbe>();
 
 var app = builder.Build();
 
@@ -293,11 +307,6 @@ app.MapGet("/health", async (
 });
 
 app.MapHealthChecks("/health/wmc").RequireAuthorization(policy => policy.RequireRole("Administrador"));
-
-if (IsolatedDataProtectionProbeEndpoint.IsAvailable(builder.Environment, builder.Configuration))
-{
-    IsolatedDataProtectionProbeEndpoint.Map(app);
-}
 
 using (var scope = app.Services.CreateScope())
 {

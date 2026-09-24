@@ -24,7 +24,7 @@
 - [ ] Write a test asserting project references `Npgsql.EntityFrameworkCore.PostgreSQL`, `Program.cs` calls `UseNpgsql(connectionString)`, and does not call `UseSqlite(connectionString)`.
 - [ ] Run `dotnet test Orofoods.Web.Tests/Orofoods.Web.Tests.csproj --no-restore --filter FullyQualifiedName~PostgreSqlConfigurationTests`; expect failure.
 - [ ] Replace the runtime SQLite package with Npgsql provider version compatible with EF Core 10; configure `UseNpgsql(connectionString)`.
-- [ ] Use `Host=localhost;Port=5432;Database=orofoods;Username=orofoods;Password=CHANGE_ME` only as an example configuration. Document `ConnectionStrings__DefaultConnection` for runtime secrets.
+- [ ] Use `Host=<postgres-host>;Database=<database>;Username=<username>;Password=<secret-from-secure-source>` only as an example configuration. Document `ConnectionStrings__DefaultConnection` for runtime secrets.
 - [ ] Run the focused test; expect pass.
 
 ### Task 2: Migration Runbook

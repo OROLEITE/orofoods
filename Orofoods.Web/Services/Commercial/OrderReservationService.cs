@@ -14,6 +14,25 @@ public class OrderReservationService(ApplicationDbContext db)
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var result = await ReserveWithinTransactionAsync(order, cancellationToken);
+        if (result.IsValid)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return result;
+    }
+
+    public Task<CommercialValidationResult> ReserveWithinTransactionAsync(Order order, CancellationToken cancellationToken = default) =>
+        ReserveCoreAsync(order, cancellationToken);
+
+    private async Task<CommercialValidationResult> ReserveCoreAsync(Order order, CancellationToken cancellationToken)
+    {
+        if (order.Id == 0)
+        {
+            return CommercialValidationResult.Failure("O pedido precisa ser gravado antes da reserva comercial.");
+        }
+
         var currentOrder = await db.Orders
             .Include(x => x.Customer)
             .Include(x => x.PaymentTerm)
@@ -25,7 +44,6 @@ public class OrderReservationService(ApplicationDbContext db)
             .AnyAsync(x => x.OrderId == order.Id && x.Status == InventoryReservationStatus.Active, cancellationToken);
         if (activeReservations)
         {
-            await transaction.CommitAsync(cancellationToken);
             return CommercialValidationResult.Success();
         }
 
@@ -67,7 +85,6 @@ public class OrderReservationService(ApplicationDbContext db)
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
         return CommercialValidationResult.Success();
     }
 

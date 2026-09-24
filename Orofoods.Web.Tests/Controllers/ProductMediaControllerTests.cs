@@ -105,6 +105,32 @@ public sealed class ProductMediaControllerTests
     }
 
     [Fact]
+    public async Task Active_seller_can_read_active_product_with_private_cache()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var product = new Product { Sku = "ACT-SELLER", Name = "Ativo", Brand = "Orofoods", IsActive = true };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.webp" };
+        db.ProductImages.Add(image);
+        await db.SaveChangesAsync();
+
+        var storage = CreateStorage(new ProductImageReadResult(new MemoryStream([1]), "image/webp", "image.webp"));
+        var authorization = new Mock<IAuthorizationService>();
+        authorization.Setup(item => item.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), OrofoodsPolicies.ApprovedCustomer))
+            .ReturnsAsync(AuthorizationResult.Failed());
+        authorization.Setup(item => item.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), OrofoodsPolicies.LinkedSalesRepresentative))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var controller = CreateController(db, storage.Object, new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, "seller"), new Claim(ClaimTypes.Role, "Vendedor")], "test")), authorization.Object);
+
+        var result = await controller.Get(image.Id, CancellationToken.None);
+
+        Assert.IsType<FileStreamResult>(result);
+        Assert.Equal("private, max-age=300, must-revalidate", controller.Response.Headers.CacheControl.ToString());
+    }
+
+    [Fact]
     public async Task Unapproved_authenticated_user_cannot_read_an_active_product()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

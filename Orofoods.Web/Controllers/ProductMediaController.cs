@@ -35,8 +35,10 @@ public sealed class ProductMediaController(
         }
         else if (User.Identity?.IsAuthenticated == true)
         {
-            var authorized = await authorizationService.AuthorizeAsync(User, OrofoodsPolicies.ApprovedCustomer);
-            if (!authorized.Succeeded)
+            var approvedCustomer = await authorizationService.AuthorizeAsync(User, OrofoodsPolicies.ApprovedCustomer);
+            var linkedSeller = approvedCustomer.Succeeded
+                || (await authorizationService.AuthorizeAsync(User, OrofoodsPolicies.LinkedSalesRepresentative))?.Succeeded == true;
+            if (!linkedSeller)
             {
                 return Forbid();
             }

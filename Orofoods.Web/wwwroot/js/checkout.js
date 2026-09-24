@@ -81,18 +81,18 @@
     const updateNumber = () => {
         const digits = (cardNumber?.value ?? "").replace(/\D/g, "").slice(0, 19);
         if (cardNumber) cardNumber.value = digits.replace(/(.{4})/g, "$1 ").trim();
-        numberPreview.textContent = digits ? digits.padEnd(16, "•").replace(/(.{4})/g, "$1 ").trim() : "•••• •••• •••• ••••";
+        if (numberPreview) numberPreview.textContent = digits ? digits.padEnd(16, "•").replace(/(.{4})/g, "$1 ").trim() : "•••• •••• •••• ••••";
         updateInstallments(digits);
     };
     const updateExpiry = () => {
         const digits = (cardExpiry?.value ?? "").replace(/\D/g, "").slice(0, 4);
         if (cardExpiry) cardExpiry.value = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
-        expiryPreview.textContent = cardExpiry?.value || "MM/AA";
+        if (expiryPreview) expiryPreview.textContent = cardExpiry?.value || "MM/AA";
     };
 
     paymentTermSelect.addEventListener("change", updateVisibility);
     cardNumber?.addEventListener("input", updateNumber);
-    cardHolder?.addEventListener("input", () => { holderPreview.textContent = cardHolder.value.trim().toUpperCase() || "SEU NOME"; });
+    cardHolder?.addEventListener("input", () => { if (holderPreview) holderPreview.textContent = cardHolder.value.trim().toUpperCase() || "SEU NOME"; });
     cardExpiry?.addEventListener("input", updateExpiry);
     updateVisibility();
     updateNumber();
