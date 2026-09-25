@@ -1,3 +1,40 @@
 @model IReadOnlyList<Orofoods.Web.Models.Catalog.ProductCategory>
 @{ ViewData["Title"] = "Categorias"; }
-<section class="section"><div class="container"><div class="portal-top"><h1>Categorias</h1><a class="btn btn-gold" asp-action="Edit">Nova categoria</a></div><div class="table-responsive mt-4"><table class="table table-dark table-striped admin-mobile-table"><thead><tr><th>Ordem</th><th>Nome</th><th>Slug</th><th>Produtos</th><th>Status</th><th></th></tr></thead><tbody>@foreach (var item in Model) { <tr><td data-label="Ordem">@item.SortOrder</td><td data-label="Nome">@item.Name</td><td data-label="Slug">@item.Slug</td><td data-label="Produtos">@item.Products.Count</td><td data-label="Status">@(item.IsActive ? "Ativa" : "Inativa")</td><td data-label="Ações" class="text-end"><a class="btn btn-sm btn-gold" asp-action="Edit" asp-route-id="@item.Id">Editar</a>@if(item.IsActive){<form asp-action="Deactivate" method="post" class="d-inline"><input type="hidden" name="id" value="@item.Id"/><button class="btn btn-sm btn-outline-light">Desativar</button></form>}</td></tr> }</tbody></table></div></div></section>
+
+<section class="admin-registration-page">
+	<header class="admin-page-header">
+		<div>
+			<p class="eyebrow"><span></span> Cat&aacute;logo</p>
+			<h1>Categorias</h1>
+			<p>Organize os produtos dispon&iacute;veis no cat&aacute;logo.</p>
+		</div>
+		<a class="btn admin-primary-action" asp-action="Edit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Nova categoria</a>
+	</header>
+
+	<div class="admin-table-card">
+		<div class="table-responsive">
+			<table class="table admin-table align-middle">
+				<thead><tr><th>Ordem</th><th>Nome</th><th>Slug</th><th>Produtos</th><th>Status</th><th>A&ccedil;&otilde;es</th></tr></thead>
+				<tbody>
+					@foreach (var item in Model)
+					{
+						<tr>
+							<td class="admin-table-secondary" data-label="Ordem">@item.SortOrder</td>
+							<td class="admin-table-name" data-label="Nome"><strong>@item.Name</strong></td>
+							<td class="admin-table-secondary admin-table-slug" data-label="Slug">@item.Slug</td>
+							<td class="admin-table-products" data-label="Produtos"><span class="admin-count-badge">@item.Products.Count</span></td>
+							<td class="admin-table-status" data-label="Status"><span class="status-badge @(item.IsActive ? "status-badge--active" : "status-badge--inactive")"><i aria-hidden="true"></i>@(item.IsActive ? "Ativa" : "Inativa")</span></td>
+							<td class="admin-table-actions" data-label="A&ccedil;&otilde;es">
+								<a class="btn admin-edit-action" asp-action="Edit" asp-route-id="@item.Id"><i class="fa-solid fa-pen" aria-hidden="true"></i> Editar</a>
+								@if (item.IsActive)
+								{
+									<form asp-action="Deactivate" method="post"><input type="hidden" name="id" value="@item.Id" /><button class="btn admin-secondary-action admin-deactivate-action" type="submit">Desativar</button></form>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</section>

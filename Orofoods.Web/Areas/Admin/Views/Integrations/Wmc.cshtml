@@ -52,7 +52,7 @@
 
         <form method="post" asp-action="WmcSyncNow" class="mt-4">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-dark" @(isRunning ? "disabled" : "")>Sincronizar agora</button>
+            <button type="submit" class="btn admin-primary-action" @(isRunning ? "disabled" : "")>Sincronizar agora</button>
         </form>
     </div>
 </section>

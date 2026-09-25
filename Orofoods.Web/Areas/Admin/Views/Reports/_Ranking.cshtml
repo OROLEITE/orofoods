@@ -1,3 +1,38 @@
-@model (string Title, List<Orofoods.Web.Services.Reports.ReportRankingRow> Rows)
-@{ var detail = Model.Title switch { "Produtos mais vendidos" => ("fa-box", "Ranking por faturamento"), "Clientes que mais compram" => ("fa-building", "Clientes com maior volume de compras"), "Vendas por categoria" => ("fa-tags", "Resultado consolidado por categoria"), "Vendas por vendedor" => ("fa-user-tie", "Desempenho comercial por vendedor"), _ => ("fa-chart-column", "Resultado consolidado da opera&ccedil;&atilde;o") }; }
-<div class="summary-card report-card"><header class="report-card-heading"><span class="report-card-icon"><i class="fa-solid @detail.Item1" aria-hidden="true"></i></span><div><h2>@Model.Title</h2><p>@Html.Raw(detail.Item2)</p></div></header>@if(!Model.Rows.Any()){<p>Nenhum dado no periodo.</p>}else{<table class="table"><thead><tr><th>Nome</th><th>Qtd.</th><th>Total</th></tr></thead><tbody>@foreach(var row in Model.Rows){<tr><td>@row.Name</td><td>@row.Quantity</td><td>@row.Total.ToString("C")</td></tr>}</tbody></table>}</div>
+@model (string Title, List<Orofoods.Web.Services.Reports.ReportRankingRow> Rows, decimal Total)
+@{
+	var detail = Model.Title switch
+	{
+		"Produtos mais vendidos" => "PRODUTOS",
+		"Clientes que mais compram" => "CLIENTES",
+		"Vendas por vendedor" => "EQUIPE",
+		_ => "DISTRIBUI&Ccedil;&Atilde;O"
+	};
+	var maximum = Model.Rows.Count == 0 ? 0 : Model.Rows.Max(row => row.Total);
+	var quantityLabel = Model.Title == "Produtos mais vendidos" ? "itens" : "pedidos";
+}
+<article class="reports-panel report-ranking-card">
+	<header><div><small>@Html.Raw(detail)</small><h2>@Model.Title</h2></div><span>Top @Model.Rows.Count</span></header>
+	@if (!Model.Rows.Any())
+	{
+		<div class="reports-empty">Nenhum dado no per&iacute;odo.</div>
+	}
+	else
+	{
+		<ol class="report-ranking-list">
+			@for (var index = 0; index < Model.Rows.Count; index++)
+			{
+				var row = Model.Rows[index];
+				var width = maximum == 0 ? 0 : row.Total / maximum * 100;
+				var share = Model.Total == 0 ? 0 : row.Total / Model.Total * 100;
+				<li>
+					<span class="report-ranking-position">@(index + 1)</span>
+					<div class="report-ranking-data">
+						<div><strong title="@row.Name">@row.Name</strong><span>@row.Total.ToString("C")</span></div>
+						<div class="report-ranking-track" role="img" aria-label="@row.Name: @share.ToString("N1")% do total"><i class="report-ranking-bar" style="--ranking-width: @width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></i></div>
+						<small>@row.Quantity @quantityLabel &middot; @share.ToString("N1")%</small>
+					</div>
+				</li>
+			}
+		</ol>
+	}
+</article>

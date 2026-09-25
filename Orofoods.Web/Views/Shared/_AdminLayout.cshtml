@@ -6,12 +6,15 @@
     var mobileNavigationData = new ViewDataDictionary(ViewData) { ["AdminNavPrefix"] = "mobile" };
 }
 
-<div class="admin-shell">
-    <aside class="admin-sidebar d-none d-lg-flex" aria-label="Navegação administrativa">
+<div class="admin-shell" data-admin-shell>
+    <aside id="adminSidebar" class="admin-sidebar d-none d-xl-flex" aria-label="Navegação administrativa">
+        <button class="admin-sidebar-toggle" type="button" data-admin-sidebar-toggle aria-controls="adminSidebar" aria-expanded="true" aria-label="Recolher menu lateral" title="Recolher menu lateral">
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
         @await Html.PartialAsync("_AdminNavigation", viewData: desktopNavigationData)
     </aside>
     <div class="admin-content">
-        <div class="admin-mobile-toolbar d-lg-none">
+        <div class="admin-mobile-toolbar d-xl-none">
             <button class="btn admin-mobile-trigger" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminNavigation" aria-controls="adminNavigation"><i class="fa-solid fa-bars" aria-hidden="true"></i> Administração</button>
         </div>
         <main class="admin-main"><div class="admin-main-inner">@RenderBody()</div></main>
@@ -24,9 +27,11 @@
 </div>
 
 @section Head {
+    <link rel="stylesheet" href="~/css/admin-registrations.css" asp-append-version="true" />
     @await RenderSectionAsync("Head", required: false)
 }
 
 @section Scripts {
+    <script src="~/js/admin-navigation.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 }

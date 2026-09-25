@@ -23,7 +23,7 @@
                 <div><label for="erpQuery">N&uacute;mero ou cliente</label><div class="erp-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="erpQuery" name="q" value="@ViewBag.Query" class="form-control" placeholder="N&uacute;mero ou cliente" /></div></div>
                 <div><label for="integrationStatus">Integra&ccedil;&atilde;o</label><select id="integrationStatus" name="status" class="form-select"><option value="">Todos os status</option>@foreach (var item in Enum.GetValues<IntegrationStatus>()) { <option value="@item" selected="@(ViewBag.Status?.ToString() == item.ToString())">@item.ToDisplayName()</option> }</select></div>
                 <div><label for="wmcStatus">Exporta&ccedil;&atilde;o WMC</label><select id="wmcStatus" name="wmcStatus" class="form-select"><option value="">Todas as exporta&ccedil;&otilde;es WMC</option><option value="failed" selected="@(ViewBag.WmcStatus == "failed")">&Uacute;ltima exporta&ccedil;&atilde;o com falha</option><option value="succeeded" selected="@(ViewBag.WmcStatus == "succeeded")">&Uacute;ltima exporta&ccedil;&atilde;o gerada</option><option value="none" selected="@(ViewBag.WmcStatus == "none")">Sem exporta&ccedil;&atilde;o</option></select></div>
-                <button class="btn btn-dark erp-filter-submit" type="submit">Filtrar</button>
+                <button class="btn admin-primary-action erp-filter-submit" type="submit">Filtrar</button>
             </div>
         </form>
 
