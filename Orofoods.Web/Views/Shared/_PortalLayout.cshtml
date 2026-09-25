@@ -1,5 +1,6 @@
 @{
     Layout = "_Layout";
+    ViewData["LayoutBodyHasMain"] = true;
     ViewData["BodyClass"] = "portal-authenticated";
     var action = ViewContext.RouteData.Values["action"]?.ToString();
     var activeSection = action switch
@@ -16,6 +17,7 @@
 <div class="portal-app-shell" data-portal-shell>
     <button class="portal-menu-overlay" type="button" aria-label="Fechar menu" data-portal-menu-close></button>
     <aside id="portalSidebar" class="portal-app-sidebar" aria-label="Navegação do portal">
+        <button class="portal-sidebar-toggle" type="button" data-portal-sidebar-toggle aria-controls="portalSidebar" aria-expanded="true" aria-label="Recolher menu lateral" title="Recolher menu lateral"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
         <div class="portal-company"><small>PORTAL DO CLIENTE</small><h3>@customerName</h3><span>Conta comercial ativa</span></div>
         <button class="portal-menu-close" type="button" aria-label="Fechar menu" data-portal-menu-close><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         <nav class="portal-app-nav">
@@ -37,6 +39,7 @@
 </div>
 
 @section Head {
+    <link rel="stylesheet" href="~/css/portal-navigation.css" asp-append-version="true" />
     @await RenderSectionAsync("Head", required: false)
 }
 

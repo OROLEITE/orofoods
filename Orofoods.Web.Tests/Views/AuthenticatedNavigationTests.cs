@@ -67,6 +67,45 @@ public class AuthenticatedNavigationTests
         Assert.Contains("fa-receipt", layout);
         Assert.Contains("fa-heart", layout);
         Assert.Contains("fa-cart-shopping", layout);
+        Assert.Contains("data-portal-sidebar-toggle", layout);
+        Assert.Contains("portal-navigation.css", layout);
         Assert.DoesNotContain(">01<", layout);
+    }
+
+    [Fact]
+    public void Portal_shell_keeps_its_single_semantic_main_inside_the_shell()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var portalLayout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PortalLayout.cshtml"));
+
+        Assert.Contains("ViewData[\"LayoutBodyHasMain\"] = true", portalLayout);
+        Assert.Contains("ViewData[\"LayoutBodyHasMain\"] is true", layout);
+        Assert.Contains("if (layoutBodyHasMain)", layout);
+        Assert.Contains("<main class=\"portal-app-main\">", portalLayout);
+        Assert.Contains("<main class=\"site-main\">@RenderBody()</main>", layout);
+    }
+
+    [Fact]
+    public void Portal_sidebar_uses_one_width_for_the_sidebar_and_main_content()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var navigation = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
+        var density = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-density.css"));
+        var shell = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-shell.css"));
+        var catalog = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
+
+        Assert.Contains("--portal-sidebar-width: 248px", navigation);
+        Assert.Contains("--portal-sidebar-collapsed-width: 76px", navigation);
+        Assert.Contains("grid-template-columns: var(--portal-sidebar-width) minmax(0, 1fr)", navigation);
+        Assert.Contains("inline-size: 0", navigation);
+        Assert.Contains("opacity: 0", navigation);
+        Assert.DoesNotContain("--portal-sidebar-width", density);
+        Assert.DoesNotContain("245px", density);
+        Assert.DoesNotContain("264px", navigation);
+        Assert.DoesNotContain("80px", navigation);
+        Assert.DoesNotContain("--portal-sidebar-width", catalog);
+        Assert.DoesNotContain("grid-template-columns:var(--portal-sidebar-width)", density);
+        Assert.DoesNotContain(".portal-app-sidebar{", shell);
     }
 }
