@@ -64,6 +64,21 @@ public class InstitutionalViewTests
     }
 
     [Fact]
+    public void Home_showcase_uses_the_compact_desktop_geometry()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/wwwroot/css/home-showcase.css"));
+        var styles = File.ReadAllText(path);
+
+        Assert.Contains("height: 350px", styles);
+        Assert.Contains("font-size: 46px", styles);
+        Assert.Contains("min-height: 54px", styles);
+        Assert.Contains("grid-template-columns: 57% 43%", styles);
+        Assert.Contains("padding-top: 0", styles);
+        Assert.Contains("height: 150px", styles);
+        Assert.Contains("font-size: 34px", styles);
+    }
+
+    [Fact]
     public void Institutional_pages_use_the_shared_photo_treatment_and_clear_copy()
     {
         var webRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
