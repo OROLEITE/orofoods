@@ -8,6 +8,8 @@ using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
+using Orofoods.Web.Models.Pricing;
+using Orofoods.Web.ViewModels;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Customers;
@@ -107,6 +109,58 @@ public class PortalControllerCatalogTests
 
         var quantities = Assert.IsType<Dictionary<int, int>>(controller.ViewData["CartProductQuantities"]);
         Assert.Equal(2, quantities[product.Id]);
+    }
+
+    [Fact]
+    public async Task Catalog_ajax_add_reuses_cart_action_and_preserves_minimum_and_customer_price()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var priceTable = new PriceTable { Name = "Tabela Hamburgueria", IsActive = true };
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda",
+            TradeName = "Cliente",
+            Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved,
+            IsActive = true,
+            PriceTable = priceTable
+        };
+        var category = new ProductCategory { Name = "Congelados", Slug = "congelados", IsActive = true };
+        var product = CreateProduct("BIM-003", "Pao Australiano", category);
+        product.BasePrice = 110m;
+        product.MinimumCases = 3;
+        var user = new ApplicationUser
+        {
+            Id = "customer-user",
+            UserName = "customer@orofoods.local",
+            NormalizedUserName = "CUSTOMER@OROFOODS.LOCAL",
+            Email = "customer@orofoods.local",
+            NormalizedEmail = "CUSTOMER@OROFOODS.LOCAL",
+            Customer = customer,
+            IsActive = true
+        };
+        db.AddRange(customer, category, product, user);
+        await db.SaveChangesAsync();
+        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = priceTable.Id, ProductId = product.Id, Price = 94.50m });
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 20 });
+        await db.SaveChangesAsync();
+
+        var session = new TestSession();
+        var controller = CreateController(db, session);
+        controller.HttpContext.Request.Headers["X-Requested-With"] = "XMLHttpRequest";
+
+        var addResult = Assert.IsType<JsonResult>(await controller.AddToCart(product.Id, 1));
+        using var response = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(addResult.Value));
+        Assert.Equal(3, response.RootElement.GetProperty("quantity").GetInt32());
+        Assert.Equal(3, response.RootElement.GetProperty("cartQuantity").GetInt32());
+
+        var cartResult = Assert.IsType<ViewResult>(await controller.Cart());
+        var cart = Assert.IsType<CartViewModel>(cartResult.Model);
+        var line = Assert.Single(cart.Items);
+        Assert.Equal(product.Id, line.ProductId);
+        Assert.Equal(3, line.Quantity);
+        Assert.Equal(94.50m, line.UnitPrice);
+        Assert.Equal(283.50m, line.Subtotal);
     }
 
     private static Product CreateProduct(string sku, string name, ProductCategory category) => new()
