@@ -56,6 +56,22 @@ public class AuthenticatedNavigationTests
     }
 
     [Fact]
+    public void Home_order_and_portal_ctas_keep_role_aware_destinations_and_login_return_urls()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var home = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
+
+        Assert.Contains("""User.Identity?.IsAuthenticated == true""", home);
+        Assert.Contains("""Url.Action("Catalog", "Portal", new { area = "" })""", home);
+        Assert.Contains("""Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl })""", home);
+        Assert.Contains("""?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog""", home);
+        Assert.Contains("""Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl })""", home);
+        Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Admin" })""", home);
+        Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Vendedor" })""", home);
+        Assert.Contains("""Url.Action("Index", "Commercial", new { area = "Admin" })""", home);
+    }
+
+    [Fact]
     public void Portal_layout_uses_font_awesome_icons_for_the_shared_navigation()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

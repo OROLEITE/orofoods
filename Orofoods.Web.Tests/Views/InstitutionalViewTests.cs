@@ -19,8 +19,10 @@ public class InstitutionalViewTests
         var markup = File.ReadAllText(path);
 
         Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", markup);
-        Assert.Contains("asp-area=\"Identity\" asp-page=\"/Account/Login\"", markup);
-        Assert.Contains("asp-route-returnUrl=\"/Portal/Dashboard\"", markup);
+        Assert.Contains("Url.Page(\"/Account/Login\", values: new { area = \"Identity\", returnUrl = customerCatalogUrl })", markup);
+        Assert.Contains("Url.Action(\"Catalog\", \"Portal\", new { area = \"\" })", markup);
+        Assert.Contains("returnUrl = customerDashboardUrl", markup);
+        Assert.Contains("User.Identity?.IsAuthenticated == true", markup);
     }
 
     [Fact]
