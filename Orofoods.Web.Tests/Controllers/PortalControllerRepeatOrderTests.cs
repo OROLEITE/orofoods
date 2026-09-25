@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -8,6 +9,7 @@ using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
+using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Customers;
@@ -102,6 +104,66 @@ public class PortalControllerRepeatOrderTests
 
         Assert.IsType<ForbidResult>(result);
         Assert.Empty(db.Orders);
+    }
+
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("Deixar na doca lateral", "Deixar na doca lateral")]
+    public async Task Confirm_persists_order_when_notes_are_missing_or_provided(string? notes, string expectedNotes)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer
+        {
+            LegalName = "Cliente A Ltda",
+            TradeName = "Cliente A",
+            Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved,
+            IsActive = true,
+            MinimumOrder = 1m,
+            CreditLimit = 1000m
+        };
+        var address = new CustomerAddress
+        {
+            Label = "Principal", Street = "Rua A", Number = "1", District = "Centro",
+            City = "Campinas", State = "SP", ZipCode = "13000-000", IsActive = true,
+            IsPrimary = true, Customer = customer
+        };
+        var user = new Orofoods.Web.Models.Identity.ApplicationUser
+        {
+            Id = "customer-user", UserName = "customer@orofoods.local", Email = "customer@orofoods.local",
+            NormalizedUserName = "CUSTOMER@OROFOODS.LOCAL", NormalizedEmail = "CUSTOMER@OROFOODS.LOCAL",
+            Customer = customer, IsActive = true
+        };
+        var product = new Orofoods.Web.Models.Catalog.Product
+        {
+            Sku = "BIM-001", Name = "Pao", ProductCategory = new() { Name = "Paes", Slug = "paes" },
+            Brand = "BIMBO", Unit = "caixa", BasePrice = 10m, MinimumCases = 1,
+            IsActive = true, IsAvailable = true
+        };
+        var paymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, IsActive = true };
+        var sourceOrder = new Orofoods.Web.Models.Orders.Order
+        {
+            Customer = customer, CreatedByUser = user, Number = "ORO-ORIGINAL", Status = Orofoods.Web.Models.Orders.OrderStatus.Received
+        };
+        db.AddRange(customer, address, user, product, paymentTerm, sourceOrder, new Orofoods.Web.Models.Inventory.ProductInventory { Product = product, QuantityOnHand = 10 });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, user.Id);
+        var result = await controller.Confirm(new ConfirmOrderVm
+        {
+            SourceOrderId = sourceOrder.Id,
+            AddressId = address.Id,
+            PaymentTermId = paymentTerm.Id,
+            RequestedDate = DateTime.Today.AddDays(1),
+            ProductIds = [product.Id],
+            Quantities = [1],
+            Notes = notes!
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var createdOrder = await db.Orders.SingleAsync(order => order.Id != sourceOrder.Id);
+        Assert.Equal(expectedNotes, createdOrder.Notes);
+        Assert.Equal(10m, createdOrder.Total);
     }
 
     private static PortalController CreateController(Orofoods.Web.Data.ApplicationDbContext db, string userId)

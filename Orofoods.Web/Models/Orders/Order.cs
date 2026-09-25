@@ -5,6 +5,8 @@ namespace Orofoods.Web.Models.Orders;
 
 public class Order
 {
+    private string notes = string.Empty;
+
     public int Id { get; set; }
     [MaxLength(30)] public string Number { get; set; } = "";
     public int CustomerId { get; set; }
@@ -22,7 +24,11 @@ public class Order
     public decimal Freight { get; set; }
     public decimal Total { get; set; }
     [MaxLength(40)] public string PaymentMethod { get; set; } = "PIX";
-    [MaxLength(500)] public string Notes { get; set; } = "";
+    [MaxLength(500)] public string Notes
+    {
+        get => notes;
+        set => notes = value ?? string.Empty;
+    }
     public DateTime? ConfirmedAt { get; set; }
     [MaxLength(100)] public string? ExternalOrderId { get; set; }
     [MaxLength(100)] public string? ErpOrderNumber { get; set; }
