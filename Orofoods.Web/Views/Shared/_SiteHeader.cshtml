@@ -1,7 +1,16 @@
 @{
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var customerName = ViewData["PortalCustomerName"] as string;
-    var accountName = "Minha conta";
+    var identityName = User.Identity?.Name;
+    var accountName = customerName ?? (string.IsNullOrWhiteSpace(identityName) ? "Minha conta" : identityName.Split('@')[0].Replace('.', ' ').Replace('_', ' '));
+    var accountInitial = string.IsNullOrWhiteSpace(accountName) ? 'M' : char.ToUpperInvariant(accountName[0]);
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var isHomeActive = controller == "Home" && action == "Index";
+    var isProductsActive = controller == "Home" && action is "Products" or "Product";
+    var isAboutActive = controller == "Home" && action == "About";
+    var isHowItWorksActive = controller == "Home" && action == "HowItWorks";
+    var isContactActive = controller == "Home" && action == "Contact";
     var isAdministrator = User.IsInRole("Administrador");
     var isCommercialManager = User.IsInRole("GerenteComercial");
     var isSalesRepresentative = User.IsInRole("Vendedor");
@@ -21,12 +30,12 @@
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Abrir navega&#231;&#227;o"><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="mainNavbar">
                 <ul class="navbar-nav mx-lg-auto align-items-lg-center main-nav">
-                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">In&#237;cio</a></li><li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Products">Produtos</a></li><li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="About">Sobre n&#243;s</a></li><li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="HowItWorks">Como funciona</a></li><li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Contact">Contato</a></li>
+                    <li class="nav-item"><a class="nav-link @(isHomeActive ? "active" : null)" aria-current="@(isHomeActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Index">In&#237;cio</a></li><li class="nav-item"><a class="nav-link @(isProductsActive ? "active" : null)" aria-current="@(isProductsActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Products">Produtos</a></li><li class="nav-item"><a class="nav-link @(isAboutActive ? "active" : null)" aria-current="@(isAboutActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="About">Sobre n&#243;s</a></li><li class="nav-item"><a class="nav-link @(isHowItWorksActive ? "active" : null)" aria-current="@(isHowItWorksActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="HowItWorks">Como funciona</a></li><li class="nav-item"><a class="nav-link @(isContactActive ? "active" : null)" aria-current="@(isContactActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Contact">Contato</a></li>
                 </ul>
                 <div class="header-account ms-lg-4">
                     @if (isAuthenticated)
                     {
-                        <div class="dropdown account-dropdown"><button class="btn account-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="menu" aria-label="Abrir menu da conta"><span class="account-avatar" aria-hidden="true">M</span><span class="account-copy"><strong class="account-name">@accountName</strong><small class="account-context">@accountContext</small></span></button><ul class="dropdown-menu dropdown-menu-end account-menu"><li><a class="dropdown-item" href="@panelUrl"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Meu painel</a></li>@if (isSalesRepresentative) { <li><a class="dropdown-item" asp-area="Vendedor" asp-controller="Customers" asp-action="Index"><i class="fa-solid fa-building" aria-hidden="true"></i> Minha carteira</a></li> } @if (isAdministrator) { <li><a class="dropdown-item" asp-area="" asp-controller="Portal" asp-action="SelectCustomer"><i class="fa-solid fa-building-user" aria-hidden="true"></i> Acessar portal de cliente</a></li> }<li><hr class="dropdown-divider" /></li><li><form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/"><button class="dropdown-item account-logout" type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button></form></li></ul></div>
+                        <div class="dropdown account-dropdown"><button class="btn account-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="menu" aria-label="Abrir menu da conta"><span class="account-avatar" aria-hidden="true">@accountInitial</span><span class="account-copy"><strong class="account-name">@accountName</strong><small class="account-context">@accountContext</small></span></button><ul class="dropdown-menu dropdown-menu-end account-menu"><li><a class="dropdown-item" href="@panelUrl"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Meu painel</a></li>@if (isSalesRepresentative) { <li><a class="dropdown-item" asp-area="Vendedor" asp-controller="Customers" asp-action="Index"><i class="fa-solid fa-building" aria-hidden="true"></i> Minha carteira</a></li> } @if (isAdministrator) { <li><a class="dropdown-item" asp-area="" asp-controller="Portal" asp-action="SelectCustomer"><i class="fa-solid fa-building-user" aria-hidden="true"></i> Acessar portal de cliente</a></li> }<li><hr class="dropdown-divider" /></li><li><form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/"><button class="dropdown-item account-logout" type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button></form></li></ul></div>
                     }
                     else
                     {

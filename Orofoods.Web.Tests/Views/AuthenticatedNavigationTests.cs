@@ -6,13 +6,23 @@ public class AuthenticatedNavigationTests
     public void Shared_layout_switches_public_actions_for_authenticated_users()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
+
+        Assert.Contains("User.Identity?.IsAuthenticated", header);
+        Assert.Contains("User.IsInRole(\"Administrador\")", header);
+        Assert.Contains("Url.Action(\"Index\", \"Dashboard\", new { area = \"Admin\" })", header);
+        Assert.Contains("Sair", header);
+        Assert.Contains("/Account/Logout", header);
+    }
+
+    [Fact]
+    public void Client_layout_uses_one_shared_header_partial_without_legacy_header_markup()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
 
-        Assert.Contains("User.Identity?.IsAuthenticated", layout);
-        Assert.Contains("User.IsInRole(\"Administrador\")", layout);
-        Assert.Contains("asp-area=\"Admin\" asp-controller=\"Dashboard\" asp-action=\"Index\"", layout);
-        Assert.Contains("Sair", layout);
-        Assert.Contains("/Account/Logout", layout);
+        Assert.DoesNotContain("<header class=\"site-header\">", layout);
+        Assert.Equal(1, layout.Split("PartialAsync(\"_SiteHeader\")", StringSplitOptions.None).Length - 1);
     }
 
     [Fact]
@@ -89,6 +99,30 @@ public class AuthenticatedNavigationTests
     }
 
     [Fact]
+    public void Shared_layout_scopes_customer_styles_from_the_explicit_portal_body_class()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+
+        Assert.Contains("var isPortalExperience =", layout);
+        Assert.Contains("Contains(\"portal-authenticated\", StringComparer.Ordinal)", layout);
+        Assert.Contains("isPortalExperience || currentArea == \"Identity\"", layout);
+    }
+
+    [Fact]
+    public void Customer_experience_uses_shared_design_system_and_a_four_step_registration_wizard()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var registration = File.ReadAllText(Path.Combine(projectPath, "Views", "CustomerRegistration", "Register.cshtml"));
+
+        Assert.Contains("customer-experience", layout);
+        Assert.Contains("customer-experience.css", layout);
+        Assert.Contains("data-registration-wizard", registration);
+        Assert.Equal(4, registration.Split("data-registration-step=\"").Length - 1);
+    }
+
+    [Fact]
     public void Portal_shell_keeps_its_single_semantic_main_inside_the_shell()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
@@ -123,5 +157,23 @@ public class AuthenticatedNavigationTests
         Assert.DoesNotContain("--portal-sidebar-width", catalog);
         Assert.DoesNotContain("grid-template-columns:var(--portal-sidebar-width)", density);
         Assert.DoesNotContain(".portal-app-sidebar{", shell);
+    }
+
+    [Fact]
+    public void Portal_desktop_sidebar_is_fixed_without_covering_the_reserved_main_column()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var navigation = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
+
+        Assert.Contains("@media (min-width: 901px)", navigation);
+        Assert.Contains("position: fixed", navigation);
+        Assert.Contains("top: var(--portal-header-height)", navigation);
+        Assert.Contains("width: var(--portal-sidebar-width)", navigation);
+        Assert.Contains("transition: width 240ms ease", navigation);
+        Assert.Contains("grid-template-columns: var(--portal-sidebar-width) minmax(0, 1fr)", navigation);
+        Assert.Contains("overflow-y: auto", navigation);
+        Assert.Contains("@media (max-width: 900px)", navigation);
+        Assert.Contains("width: min(86vw, 300px)", navigation);
+        Assert.Contains("transform: translateX(-105%)", navigation);
     }
 }

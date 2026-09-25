@@ -3,30 +3,44 @@
 <section class="page-hero orders-history-hero portal-page-hero"><div class="container"><div class="eyebrow light"><span></span> Hist&oacute;rico</div><h1>Meus pedidos</h1><p>Acompanhe seus pedidos, entregas e compras anteriores.</p></div></section>
 <section class="section orders-history-section portal-page">
     <div class="container">
-        <form class="catalog-tools orders-history-tools"><input name="q" value="@Model.Query" placeholder="Buscar pelo n&uacute;mero do pedido"/><select name="status"><option value="">Todos os status</option>@foreach (var status in Enum.GetValues<OrderStatus>()) { <option value="@status" selected="@(Model.Status == status.ToString())">@status.ToDisplayName()</option> }</select><button class="btn btn-dark">Filtrar</button></form>
+        <form class="catalog-tools orders-history-tools">
+            <input name="q" value="@Model.Query" placeholder="Buscar pelo n&uacute;mero do pedido" aria-label="Busca por número do pedido" />
+            <select name="status" aria-label="Status do pedido">
+                <option value="">Todos os status</option>
+                @foreach (var status in Enum.GetValues<OrderStatus>())
+                {
+                    <option value="@status" selected="@(Model.Status == status.ToString())">@status.ToDisplayName()</option>
+                }
+            </select>
+            <button class="btn btn-dark" type="submit">Filtrar</button>
+        </form>
         @if (!Model.Orders.Any())
         {
             <div class="empty-state"><h2>Nenhum pedido encontrado.</h2><a class="btn btn-gold" asp-action="Catalog">Novo pedido</a></div>
         }
         else
         {
-            <div class="orders-history-list">@foreach (var order in Model.Orders)
-            {
-                var shortNumber = order.Number.Split('-').LastOrDefault() ?? order.Number;
-                var statusClass = order.Status.ToString().ToLowerInvariant();
-                <article class="orders-history-card">
-                    <a class="orders-history-card-main" asp-action="Order" asp-route-id="@order.Id" aria-label="Ver detalhes do pedido @order.Number">
-                        <div class="orders-history-card-header"><time>@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</time><span class="orders-status-badge orders-status-badge--@statusClass">@order.Status.ToDisplayName()</span></div>
-                        <h2>Pedido #@shortNumber</h2>
-                        <div class="orders-history-card-summary"><span>@order.Items.Count @(order.Items.Count == 1 ? "item" : "itens")</span><strong>@order.Total.ToString("C")</strong></div>
-                        <span class="orders-history-details">Ver detalhes <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
-                    </a>
-                    @if (order.Status == OrderStatus.Delivered)
-                    {
-                        <a class="orders-repeat-link" asp-action="Repeat" asp-route-id="@order.Id"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Comprar novamente</a>
-                    }
-                </article>
-            }</div>
+            <div class="orders-history-list" role="list" aria-label="Histórico de pedidos">
+                @foreach (var order in Model.Orders)
+                {
+                    var shortNumber = order.Number.Split('-').LastOrDefault() ?? order.Number;
+                    var statusClass = order.Status.ToString().ToLowerInvariant();
+                    <article class="orders-history-row" role="listitem">
+                        <a class="orders-history-number" asp-action="Order" asp-route-id="@order.Id" aria-label="Ver pedido @order.Number">#@shortNumber</a>
+                        <time class="orders-history-date" datetime="@order.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")">@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</time>
+                        <span class="orders-history-quantity">@order.Items.Count @(order.Items.Count == 1 ? "item" : "itens")</span>
+                        <strong class="orders-history-total">@order.Total.ToString("C")</strong>
+                        <span class="orders-status-badge orders-status-badge--@statusClass">@order.Status.ToDisplayName()</span>
+                        <div class="orders-history-row-actions">
+                            <a class="orders-history-details" asp-action="Order" asp-route-id="@order.Id">Ver detalhes <span aria-hidden="true">&rarr;</span></a>
+                            @if (order.Status == OrderStatus.Delivered)
+                            {
+                                <a class="orders-history-repeat" asp-action="Repeat" asp-route-id="@order.Id"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Repetir pedido</a>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
         }
     </div>
 </section>
