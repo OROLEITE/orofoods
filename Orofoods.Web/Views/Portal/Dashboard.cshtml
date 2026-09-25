@@ -1,40 +1,166 @@
 @model Orofoods.Web.ViewModels.DashboardVm
-@{ ViewData["Title"] = "Painel do cliente"; }
-<div class="portal-dashboard">
-        <div class="portal-top">
-            <div><div class="eyebrow"><span></span> Compra recorrente</div><h1>Ol&aacute;, @Model.Customer.TradeName!</h1><p>Seu pr&oacute;ximo abastecimento est&aacute; a poucos cliques.</p></div>
-            <a class="btn btn-dark portal-primary-action" asp-action="Catalog">Novo pedido</a>
+@using System.Globalization
+@using Orofoods.Web.Models.Orders
+@{
+    ViewData["Title"] = "Visão geral";
+    var ptBr = CultureInfo.GetCultureInfo("pt-BR");
+    var maxMonthlyTotal = Model.MonthlyPurchases.Count == 0 ? 0m : Model.MonthlyPurchases.Max(item => item.Total);
+    var maxProductQuantity = Model.FrequentProducts.Count == 0 ? 0 : Model.FrequentProducts.Max(item => item.OrderedQuantity);
+}
+<div class="portal-dashboard customer-dashboard">
+    <header class="customer-dashboard-heading">
+        <div>
+            <div class="eyebrow"><span></span> Visão geral</div>
+            <h1>Olá, @Model.Customer.TradeName!</h1>
+            <p>Acompanhe suas compras e continue seu abastecimento.</p>
         </div>
-        <div class="commercial-bar">
-            <div><small>SUA TABELA</small><strong>@Model.Customer.PriceTableName</strong></div>
-            <div><small>PEDIDO M&Iacute;NIMO</small><strong>@Model.Customer.MinimumOrder.ToString("C")</strong></div>
-            <div><small>CR&Eacute;DITO DISPON&Iacute;VEL</small><strong>@((Model.Customer.CreditLimit - Model.Customer.CreditUsed).ToString("C"))</strong></div>
+        <a class="btn btn-dark portal-primary-action" asp-action="Catalog"><i class="fa-solid fa-plus" aria-hidden="true"></i> Novo pedido</a>
+    </header>
+
+    <section class="customer-kpi-grid" aria-label="Resumo comercial">
+        <article class="customer-kpi-card">
+            <span class="customer-kpi-icon"><i class="fa-solid fa-basket-shopping" aria-hidden="true"></i></span>
+            <small>COMPRAS NO MÊS</small>
+            <strong>@Model.MonthTotal.ToString("C", ptBr)</strong>
+        </article>
+        <article class="customer-kpi-card">
+            <span class="customer-kpi-icon"><i class="fa-solid fa-receipt" aria-hidden="true"></i></span>
+            <small>PEDIDOS NO MÊS</small>
+            <strong>@Model.MonthOrderCount</strong>
+        </article>
+        <article class="customer-kpi-card">
+            <span class="customer-kpi-icon"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i></span>
+            <small>TICKET MÉDIO NO MÊS</small>
+            <strong>@Model.AverageTicket.ToString("C", ptBr)</strong>
+        </article>
+        <article class="customer-kpi-card">
+            <span class="customer-kpi-icon"><i class="fa-solid fa-credit-card" aria-hidden="true"></i></span>
+            <small>CRÉDITO DISPONÍVEL</small>
+            <strong>@((Model.Customer.CreditLimit - Model.Customer.CreditUsed).ToString("C", ptBr))</strong>
+        </article>
+    </section>
+
+    <section class="customer-dashboard-card customer-purchase-chart" aria-labelledby="purchaseChartTitle">
+        <header class="customer-dashboard-section-heading">
+            <div><span class="customer-section-kicker">SEU HISTÓRICO</span><h2 id="purchaseChartTitle">Minhas compras</h2><p>Valores dos últimos seis meses</p></div>
+            <a asp-action="Orders">Ver meus pedidos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </header>
+        <div class="purchase-chart" role="list" aria-label="Compras mensais dos últimos seis meses">
+            @foreach (var month in Model.MonthlyPurchases)
+            {
+                var height = maxMonthlyTotal <= 0 ? 0 : (int)Math.Round(month.Total / maxMonthlyTotal * 100m);
+                var monthLabel = month.Month.ToString("MMMM yyyy", ptBr);
+                var tooltip = $"{monthLabel}: {month.Total.ToString("C", ptBr)}; {month.OrderCount} pedidos";
+                <div class="purchase-chart-column" role="listitem" aria-label="@tooltip">
+                    <span class="purchase-chart-value">@(month.Total == 0 ? "—" : month.Total.ToString("C0", ptBr))</span>
+                    <div class="purchase-chart-track" title="@tooltip"><span style="height: @height%"></span></div>
+                    <span class="purchase-chart-month">@month.Month.ToString("MMM", ptBr)</span>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="customer-dashboard-card customer-last-order" aria-labelledby="lastOrderTitle">
+        <div class="customer-last-order-copy">
+            <span class="customer-section-kicker">COMPRA RECORRENTE</span>
+            <h2 id="lastOrderTitle">Seu último pedido, pronto para repetir.</h2>
+            <p>Revalidamos preço e disponibilidade antes de montar o carrinho.</p>
+            @if (Model.LastOrder is not null)
+            {
+                <a class="btn btn-gold" asp-action="Repeat" asp-route-id="@Model.LastOrder.Id"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Repetir pedido</a>
+            }
+            else
+            {
+                <a class="btn btn-gold" asp-action="Catalog"><i class="fa-solid fa-book-open" aria-hidden="true"></i> Ver catálogo</a>
+            }
         </div>
         @if (Model.LastOrder is not null)
         {
-            <section class="repeat-hero">
-                <div><div class="eyebrow light"><span></span> PEDIDO EM 30 SEGUNDOS</div><h2>Seu &uacute;ltimo pedido,<br/>pronto para repetir.</h2><p>Recalculamos pre&ccedil;os e disponibilidade antes da confirma&ccedil;&atilde;o.</p><a class="btn btn-gold btn-lg" asp-action="Repeat" asp-route-id="@Model.LastOrder.Id">Repetir &uacute;ltimo pedido</a></div>
-                <div class="last-order-card"><small>&Uacute;LTIMO PEDIDO</small><h3>@Model.LastOrder.Number</h3><ul>@foreach (var item in Model.LastOrder.Items.Take(3)) { <li><span>@item.Quantity x @item.ProductNameSnapshot</span><b>@item.Subtotal.ToString("C")</b></li> }</ul><div class="order-total"><span>Total</span><strong>@Model.LastOrder.Total.ToString("C")</strong></div></div>
-            </section>
+            <div class="customer-last-order-details">
+                <div class="customer-last-order-meta"><div><small>ÚLTIMO PEDIDO</small><strong>@Model.LastOrder.Number</strong></div><time datetime="@Model.LastOrder.CreatedAt.ToString("yyyy-MM-dd")">@Model.LastOrder.CreatedAt.ToString("dd/MM/yyyy")</time></div>
+                <ul>
+                    @foreach (var item in Model.LastOrder.Items.Take(3))
+                    {
+                        <li><span>@item.Quantity × @item.ProductNameSnapshot</span><strong>@item.Subtotal.ToString("C", ptBr)</strong></li>
+                    }
+                </ul>
+                <div class="customer-last-order-total"><span>Total do pedido</span><strong>@Model.LastOrder.Total.ToString("C", ptBr)</strong></div>
+            </div>
         }
         else
         {
-            <section class="repeat-hero">
-                <div><div class="eyebrow light"><span></span> PRIMEIRO PEDIDO</div><h2>Monte seu primeiro<br/>abastecimento.</h2><p>Explore o cat&aacute;logo com os pre&ccedil;os da sua empresa.</p><a class="btn btn-gold btn-lg" asp-action="Catalog">Come&ccedil;ar pedido</a></div>
-                <div class="last-order-card"><small>HIST&Oacute;RICO</small><h3>Nenhum pedido ainda</h3><p>Seus pedidos confirmados aparecer&atilde;o aqui para compra recorrente.</p></div>
-            </section>
+            <div class="customer-last-order-details customer-first-order"><i class="fa-solid fa-box-open" aria-hidden="true"></i><strong>Seu histórico começa no primeiro pedido.</strong></div>
         }
-        @if (Model.FrequentProducts.Any())
-        {
-            <section class="mt-5">
-                <div class="portal-top"><div><div class="eyebrow"><span></span> Reposi&ccedil;&atilde;o inteligente</div><h2>Produtos frequentes</h2></div><a class="btn btn-outline-dark" asp-action="Catalog"><i class="fa-solid fa-book-open"></i> Ver cat&aacute;logo</a></div>
-                <div class="metric-grid">
+    </section>
+
+    <div class="customer-dashboard-columns">
+        <section class="customer-dashboard-card customer-frequent-products" aria-labelledby="frequentProductsTitle">
+            <header class="customer-dashboard-section-heading">
+                <div><span class="customer-section-kicker">COMPRAS RECORRENTES</span><h2 id="frequentProductsTitle">Produtos mais comprados</h2></div>
+                <a asp-action="Catalog">Ver catálogo <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+            </header>
+            @if (Model.FrequentProducts.Count > 0)
+            {
+                <ol class="customer-product-ranking">
                     @foreach (var item in Model.FrequentProducts)
                     {
-                        <article><small>@item.Product.Sku</small><h3>@item.Product.Name</h3><p>@item.OrderedQuantity unidades compradas</p><strong>@item.CurrentPrice.ToString("C")</strong><br/><a asp-action="Product" asp-route-id="@item.Product.Id">Ver produto</a></article>
+                        var width = maxProductQuantity == 0 ? 0 : (int)Math.Round((decimal)item.OrderedQuantity / maxProductQuantity * 100m);
+                        <li>
+                            <div class="customer-product-ranking-label"><a asp-action="Product" asp-route-id="@item.Product.Id">@item.Product.Name</a><strong>@item.OrderedQuantity un.</strong></div>
+                            <div class="customer-product-ranking-track" aria-hidden="true"><span style="width: @width%"></span></div>
+                        </li>
                     }
-                </div>
-            </section>
+                </ol>
+            }
+            else
+            {
+                <div class="customer-dashboard-empty"><i class="fa-solid fa-chart-column" aria-hidden="true"></i><p>Seus produtos mais comprados aparecerão aqui após seus pedidos.</p></div>
+            }
+        </section>
+
+        <section class="customer-dashboard-card customer-commercial-summary" aria-labelledby="commercialSummaryTitle">
+            <header class="customer-dashboard-section-heading"><div><span class="customer-section-kicker">CONDIÇÕES DA SUA CONTA</span><h2 id="commercialSummaryTitle">Resumo comercial</h2></div></header>
+            <dl>
+                <div><dt>Sua tabela</dt><dd>@Model.Customer.PriceTableName</dd></div>
+                <div><dt>Pedido mínimo</dt><dd>@Model.Customer.MinimumOrder.ToString("C", ptBr)</dd></div>
+                <div><dt>Crédito disponível</dt><dd>@((Model.Customer.CreditLimit - Model.Customer.CreditUsed).ToString("C", ptBr))</dd></div>
+                <div><dt>Condição de pagamento</dt><dd>@Model.Customer.PaymentTerms</dd></div>
+            </dl>
+            <a class="customer-commercial-link" asp-action="Catalog">Iniciar novo pedido <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </section>
+    </div>
+
+    <section class="customer-dashboard-card customer-recent-orders" aria-labelledby="recentOrdersTitle">
+        <header class="customer-dashboard-section-heading">
+            <div><span class="customer-section-kicker">ACOMPANHAMENTO</span><h2 id="recentOrdersTitle">Pedidos recentes</h2></div>
+            <a asp-action="Orders">Ver todos os pedidos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </header>
+        @if (Model.RecentOrders.Count > 0)
+        {
+            <div class="customer-recent-orders-list">
+                @foreach (var order in Model.RecentOrders)
+                {
+                    var statusClass = order.Status switch
+                    {
+                        OrderStatus.Delivered or OrderStatus.Invoiced => " is-positive",
+                        OrderStatus.Cancelled => " is-cancelled",
+                        _ => ""
+                    };
+                    <article class="customer-recent-order-row">
+                        <div class="customer-recent-order-number"><small>PEDIDO</small><a asp-action="Order" asp-route-id="@order.Id">@order.Number</a></div>
+                        <time datetime="@order.CreatedAt.ToString("yyyy-MM-dd")">@order.CreatedAt.ToString("dd/MM/yyyy")</time>
+                        <span class="customer-order-status@statusClass">@order.Status.ToDisplayName()</span>
+                        <strong class="customer-recent-order-total">@order.Total.ToString("C", ptBr)</strong>
+                        <a class="customer-order-link" asp-action="Order" asp-route-id="@order.Id" aria-label="Ver pedido @order.Number"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                    </article>
+                }
+            </div>
         }
-        <div class="metric-grid"><article><small>PEDIDOS EM ABERTO</small><strong>@Model.OpenOrders</strong></article><article><small>COMPRAS NO M&Ecirc;S</small><strong>@Model.MonthTotal.ToString("C")</strong></article></div>
+        else
+        {
+            <div class="customer-dashboard-empty"><i class="fa-solid fa-receipt" aria-hidden="true"></i><p>Você ainda não possui pedidos.</p><a class="btn btn-gold" asp-action="Catalog">Fazer primeiro pedido</a></div>
+        }
+    </section>
+
+    <div class="customer-dashboard-footnote"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Pedidos em andamento: <strong>@Model.OpenOrders</strong><a asp-action="Orders">Acompanhar pedidos</a></div>
 </div>
