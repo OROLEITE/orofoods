@@ -38,6 +38,80 @@ public class OrderPlacementServiceTests
     }
 
     [Fact]
+    public async Task PlaceLinesAsync_returns_existing_order_for_the_same_customer_and_attempt_key()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "same-attempt");
+
+        var first = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id, command, [(fixture.Product.Id, 1)], clearCart: false);
+        var replay = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id, command, [(fixture.Product.Id, 1)], clearCart: false);
+
+        Assert.True(first.Succeeded, string.Join("; ", first.Errors));
+        Assert.True(replay.Succeeded, string.Join("; ", replay.Errors));
+        Assert.True(replay.WasIdempotentReplay);
+        Assert.Equal(first.Order!.Id, replay.Order!.Id);
+        Assert.Equal("same-attempt", replay.Order.CheckoutAttemptKey);
+        Assert.Equal(1, await fixture.Db.Orders.CountAsync(x => x.CustomerId == fixture.Customer.Id));
+        Assert.Equal(1, await fixture.Db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
+        Assert.Equal(1, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id).Select(x => x.QuantityReserved).SingleAsync());
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_allows_a_new_order_for_a_different_attempt_key()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+
+        var first = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "attempt-one"), [(fixture.Product.Id, 1)], clearCart: false);
+        var second = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "attempt-two"), [(fixture.Product.Id, 1)], clearCart: false);
+
+        Assert.True(first.Succeeded, string.Join("; ", first.Errors));
+        Assert.True(second.Succeeded, string.Join("; ", second.Errors));
+        Assert.NotEqual(first.Order!.Id, second.Order!.Id);
+        Assert.Equal(2, await fixture.Db.Orders.CountAsync(x => x.CustomerId == fixture.Customer.Id));
+        Assert.Equal(2, await fixture.Db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_allows_the_same_attempt_key_for_a_different_customer()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var first = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "shared-attempt"), [(fixture.Product.Id, 1)], clearCart: false);
+        var otherCustomer = new Customer
+        {
+            LegalName = "Outro cliente", TradeName = "Outro cliente", Cnpj = "22.222.222/0001-22",
+            Status = CustomerStatus.Approved, IsActive = true, MinimumOrder = 1m,
+            Addresses = [new CustomerAddress { Label = "Principal", Street = "Rua B", Number = "2", District = "Centro", City = "Campinas", State = "SP", ZipCode = "13000-000", IsActive = true }]
+        };
+        fixture.Db.Customers.Add(otherCustomer);
+        await fixture.Db.SaveChangesAsync();
+        var otherAddress = Assert.Single(otherCustomer.Addresses);
+
+        var second = await fixture.Service.PlaceLinesAsync(otherCustomer.Id, fixture.SellerUser.Id,
+            new(otherAddress.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "shared-attempt"), [(fixture.Product.Id, 1)], clearCart: false);
+
+        Assert.True(first.Succeeded, string.Join("; ", first.Errors));
+        Assert.True(second.Succeeded, string.Join("; ", second.Errors));
+        Assert.NotEqual(first.Order!.Id, second.Order!.Id);
+        Assert.Equal(1, await fixture.Db.Orders.CountAsync(x => x.CheckoutAttemptKey == "shared-attempt" && x.CustomerId == fixture.Customer.Id));
+        Assert.Equal(1, await fixture.Db.Orders.CountAsync(x => x.CheckoutAttemptKey == "shared-attempt" && x.CustomerId == otherCustomer.Id));
+        Assert.Equal(2, await fixture.Db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
+    }
+
+    [Fact]
+    public async Task Orders_reject_duplicate_customer_attempt_keys_at_the_database_level()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Db.Orders.AddRange(
+            new Order { Number = "ORDER-UNIQUE-1", CustomerId = fixture.Customer.Id, CreatedByUserId = fixture.SellerUser.Id, PaymentTermId = fixture.PaymentTerm.Id, CheckoutAttemptKey = "database-unique", Status = OrderStatus.Received },
+            new Order { Number = "ORDER-UNIQUE-2", CustomerId = fixture.Customer.Id, CreatedByUserId = fixture.SellerUser.Id, PaymentTermId = fixture.PaymentTerm.Id, CheckoutAttemptKey = "database-unique", Status = OrderStatus.Received });
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => fixture.Db.SaveChangesAsync());
+    }
+
+    [Fact]
     public async Task PlaceAsync_rejects_a_scope_for_a_different_customer_without_persisting()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);

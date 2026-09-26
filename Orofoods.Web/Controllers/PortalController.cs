@@ -372,8 +372,8 @@ public class PortalController(
             return View(checkout);
         }
 
-        var paymentTerm = checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId);
-        if (paymentTerm.Code == "CREDIT_CARD" && (string.IsNullOrWhiteSpace(input.CardToken) || string.IsNullOrWhiteSpace(input.CardPaymentMethodId)))
+        var selectedPaymentTerm = checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId);
+        if (selectedPaymentTerm.Code == "CREDIT_CARD" && (string.IsNullOrWhiteSpace(input.CardToken) || string.IsNullOrWhiteSpace(input.CardPaymentMethodId)))
         {
             ModelState.AddModelError(string.Empty, "Não foi possível validar os dados do cartão. Tente novamente.");
             return View(checkout);
@@ -382,7 +382,7 @@ public class PortalController(
         var result = await assistedOrderService.PlaceAsync(
             customer.Id,
             userId,
-            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes),
+            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, input.AttemptKey),
             HttpContext.Session,
             CartScope.CustomerSelfService,
             clearCart: false);
@@ -398,13 +398,14 @@ public class PortalController(
         HttpContext.Session.SetString(attemptMarker, result.Order!.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         var order = await db.Orders.Include(x => x.PaymentTerm).SingleAsync(x => x.Id == result.Order!.Id);
+        var orderPaymentTerm = order.PaymentTerm ?? throw new InvalidOperationException("Order payment term not found.");
 
         Payment? payment = null;
-        if (paymentTerm.Code is "PIX" or "CREDIT_CARD")
+        if (orderPaymentTerm.Code is "PIX" or "CREDIT_CARD")
         {
             try
             {
-                payment = paymentTerm.Code == "PIX"
+                payment = orderPaymentTerm.Code == "PIX"
                     ? await paymentOrchestrationService.CreatePixAsync(order.Id, customer.Id, input.AttemptKey)
                     : await paymentOrchestrationService.CreateCreditCardAsync(
                         order.Id, customer.Id, input.AttemptKey, input.CardToken!, input.CardPaymentMethodId!, input.CardInstallments);
@@ -432,8 +433,11 @@ public class PortalController(
             }
         }
 
-        cartService.Clear(HttpContext.Session);
-        if (paymentTerm.Code == "PIX" && payment is not null)
+        if (!result.WasIdempotentReplay)
+        {
+            cartService.Clear(HttpContext.Session);
+        }
+        if (orderPaymentTerm.Code == "PIX" && payment is not null)
         {
             return RedirectToAction(nameof(Pix), new { id = payment.Id });
         }

@@ -19,9 +19,10 @@
     const submitButton = checkoutForm?.querySelector("button[type=submit]");
     const cartTotal = Number.parseFloat(checkoutForm?.dataset.cartTotal ?? "0") || 0;
 
-    if (!paymentTermSelect || !cardForm || !checkoutForm) return;
+    if (!checkoutForm) return;
 
     const isCreditCardSelected = () => {
+        if (!paymentTermSelect || !cardForm) return false;
         const selected = paymentTermSelect.options[paymentTermSelect.selectedIndex];
         return selected?.dataset.code === "CREDIT_CARD";
     };
@@ -90,16 +91,43 @@
         if (expiryPreview) expiryPreview.textContent = cardExpiry?.value || "MM/AA";
     };
 
-    paymentTermSelect.addEventListener("change", updateVisibility);
-    cardNumber?.addEventListener("input", updateNumber);
-    cardHolder?.addEventListener("input", () => { if (holderPreview) holderPreview.textContent = cardHolder.value.trim().toUpperCase() || "SEU NOME"; });
-    cardExpiry?.addEventListener("input", updateExpiry);
-    updateVisibility();
-    updateNumber();
-    updateExpiry();
+    if (paymentTermSelect && cardForm) {
+        paymentTermSelect.addEventListener("change", updateVisibility);
+        cardNumber?.addEventListener("input", updateNumber);
+        cardHolder?.addEventListener("input", () => { if (holderPreview) holderPreview.textContent = cardHolder.value.trim().toUpperCase() || "SEU NOME"; });
+        cardExpiry?.addEventListener("input", updateExpiry);
+        updateVisibility();
+        updateNumber();
+        updateExpiry();
+    }
+
+    let submissionInProgress = false;
+    const originalButtonLabel = submitButton?.textContent ?? "";
+    const setSubmittingState = () => {
+        submissionInProgress = true;
+        if (!submitButton) return;
+        submitButton.disabled = true;
+        submitButton.textContent = submitButton.dataset.processingLabel || "Enviando pedido…";
+        submitButton.setAttribute("aria-busy", "true");
+    };
+    const clearSubmittingState = () => {
+        submissionInProgress = false;
+        if (!submitButton) return;
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonLabel;
+        submitButton.removeAttribute("aria-busy");
+    };
 
     checkoutForm.addEventListener("submit", async (event) => {
-        if (!isCreditCardSelected()) return;
+        if (submissionInProgress) {
+            event.preventDefault();
+            return;
+        }
+
+        if (!isCreditCardSelected()) {
+            setSubmittingState();
+            return;
+        }
 
         event.preventDefault();
         if (tokenError) tokenError.textContent = "";
@@ -116,15 +144,14 @@
             return;
         }
 
-        if (submitButton?.disabled) return; // guards against double-click/duplicate submission.
-        if (submitButton) submitButton.disabled = true;
+        setSubmittingState();
 
         try {
             const paymentMethods = await mercadoPago.getPaymentMethods({ bin: digits.slice(0, 6) });
             const paymentMethodId = paymentMethods?.results?.[0]?.id;
             if (!paymentMethodId) {
                 if (tokenError) tokenError.textContent = "Não foi possível identificar a bandeira do cartão.";
-                if (submitButton) submitButton.disabled = false;
+                clearSubmittingState();
                 return;
             }
 
@@ -138,7 +165,7 @@
 
             if (!token?.id) {
                 if (tokenError) tokenError.textContent = "Não foi possível validar o cartão. Verifique os dados.";
-                if (submitButton) submitButton.disabled = false;
+                clearSubmittingState();
                 return;
             }
 
@@ -148,7 +175,7 @@
             checkoutForm.submit();
         } catch {
             if (tokenError) tokenError.textContent = "Não foi possível validar o cartão. Verifique os dados.";
-            if (submitButton) submitButton.disabled = false;
+            clearSubmittingState();
         }
     });
 })();

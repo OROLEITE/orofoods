@@ -10,6 +10,7 @@ public class Order
     public int Id { get; set; }
     [MaxLength(30)] public string Number { get; set; } = "";
     public int CustomerId { get; set; }
+    [MaxLength(128)] public string? CheckoutAttemptKey { get; set; }
     public Customer? Customer { get; set; }
     [MaxLength(450)] public string CreatedByUserId { get; set; } = "";
     public ApplicationUser? CreatedByUser { get; set; }

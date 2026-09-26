@@ -159,6 +159,11 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<OrderStatusHistory>()
             .HasIndex(x => new { x.OrderId, x.ChangedAt });
 
+        builder.Entity<Order>()
+            .HasIndex(x => new { x.CustomerId, x.CheckoutAttemptKey })
+            .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey")
+            .IsUnique();
+
         builder.Entity<OrderStatusHistory>()
             .HasOne(x => x.ChangedByUser)
             .WithMany()

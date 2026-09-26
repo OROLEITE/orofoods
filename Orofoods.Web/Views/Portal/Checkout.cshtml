@@ -95,7 +95,7 @@
                 </div>
                 <div class="minimum"><small>@(Model.Cart.RemainingForMinimum > 0 ? $"Faltam {Model.Cart.RemainingForMinimum:C} para o pedido mínimo." : "Pedido mínimo atingido.")</small></div>
                 <div class="summary-total"><span>Total</span><strong>@Model.Cart.Total.ToString("C")</strong></div>
-                <button class="btn btn-gold w-100" type="submit" disabled="@(Model.Cart.RemainingForMinimum > 0 || !Model.Cart.Items.Any())">Confirmar pedido</button>
+                <button class="btn btn-gold w-100" type="submit" data-processing-label="Enviando pedido…" disabled="@(Model.Cart.RemainingForMinimum > 0 || !Model.Cart.Items.Any())">Confirmar pedido</button>
                 <a class="btn btn-outline-dark w-100 mt-2" asp-action="Catalog"><i class="fa-solid fa-cart-plus"></i> Adicionar produtos</a>
                 <p class="checkout-security">Seu pedido ser&aacute; enviado para valida&ccedil;&atilde;o comercial.</p>
             </aside>

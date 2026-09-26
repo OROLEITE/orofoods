@@ -14,9 +14,10 @@ public sealed record OrderPlacementCommand(
     int AddressId,
     int PaymentTermId,
     DateTime RequestedDeliveryDate,
-    string? Notes);
+    string? Notes,
+    string? CheckoutAttemptKey = null);
 
-public sealed record OrderPlacementResult(Order? Order, IReadOnlyList<string> Errors)
+public sealed record OrderPlacementResult(Order? Order, IReadOnlyList<string> Errors, bool WasIdempotentReplay = false)
 {
     public bool Succeeded => Order is not null && Errors.Count == 0;
 
@@ -30,6 +31,8 @@ public sealed class OrderPlacementService(
     IPaymentEligibilityService paymentEligibilityService,
     OrderReservationService orderReservationService)
 {
+    private const string CheckoutAttemptIndexName = "IX_Orders_CustomerId_CheckoutAttemptKey";
+
     public async Task<OrderPlacementResult> PlaceAsync(
         int customerId,
         string createdByUserId,
@@ -65,6 +68,15 @@ public sealed class OrderPlacementService(
         if (scope is { Kind: CartScopeKind.SellerAssisted, CustomerId: not null } && scope.CustomerId != customerId)
         {
             return OrderPlacementResult.Failure("O escopo do carrinho não pertence ao cliente informado.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(command.CheckoutAttemptKey))
+        {
+            var existingOrder = await FindCheckoutAttemptAsync(customerId, command.CheckoutAttemptKey, cancellationToken);
+            if (existingOrder is not null)
+            {
+                return new OrderPlacementResult(existingOrder, [], WasIdempotentReplay: true);
+            }
         }
 
         var customer = await db.Customers
@@ -115,6 +127,7 @@ public sealed class OrderPlacementService(
         var order = new Order
         {
             CustomerId = customerId,
+            CheckoutAttemptKey = string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) ? null : command.CheckoutAttemptKey,
             CreatedByUserId = createdByUserId,
             DeliveryAddressId = command.AddressId,
             PaymentTermId = paymentTerm.Id,
@@ -160,19 +173,37 @@ public sealed class OrderPlacementService(
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        db.Orders.Add(order);
-        await db.SaveChangesAsync(cancellationToken);
-
-        var reservation = await orderReservationService.ReserveWithinTransactionAsync(order, cancellationToken);
-        if (!reservation.IsValid)
+        try
         {
-            return OrderPlacementResult.Failure(reservation.ErrorMessage!);
-        }
+            db.Orders.Add(order);
+            await db.SaveChangesAsync(cancellationToken);
 
-        order.Number = $"ORO-{DateTime.UtcNow:yyyy}-{order.Id:000000}";
-        order.ConfirmedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            var reservation = await orderReservationService.ReserveWithinTransactionAsync(order, cancellationToken);
+            if (!reservation.IsValid)
+            {
+                return OrderPlacementResult.Failure(reservation.ErrorMessage!);
+            }
+
+            order.Number = $"ORO-{DateTime.UtcNow:yyyy}-{order.Id:000000}";
+            order.ConfirmedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            !string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) && IsCheckoutAttemptUniqueViolation(exception))
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            await transaction.DisposeAsync();
+            DetachOrderGraph(order);
+
+            var existingOrder = await FindCheckoutAttemptAsync(customerId, command.CheckoutAttemptKey, cancellationToken);
+            if (existingOrder is null)
+            {
+                throw;
+            }
+
+            return new OrderPlacementResult(existingOrder, [], WasIdempotentReplay: true);
+        }
 
         if (clearCart && session is not null)
         {
@@ -180,5 +211,53 @@ public sealed class OrderPlacementService(
         }
 
         return new(order, []);
+    }
+
+    private Task<Order?> FindCheckoutAttemptAsync(int customerId, string attemptKey, CancellationToken cancellationToken) =>
+        db.Orders
+            .Include(x => x.Items)
+            .Include(x => x.StatusHistory)
+            .SingleOrDefaultAsync(x => x.CustomerId == customerId && x.CheckoutAttemptKey == attemptKey, cancellationToken);
+
+    private void DetachOrderGraph(Order order)
+    {
+        foreach (var item in order.Items)
+        {
+            db.Entry(item).State = EntityState.Detached;
+        }
+
+        foreach (var history in order.StatusHistory)
+        {
+            db.Entry(history).State = EntityState.Detached;
+        }
+
+        db.Entry(order).State = EntityState.Detached;
+    }
+
+    private static bool IsCheckoutAttemptUniqueViolation(DbUpdateException exception)
+    {
+        for (var cause = exception.InnerException; cause is not null; cause = cause.InnerException)
+        {
+            var causeType = cause.GetType();
+            if (causeType.FullName == "Npgsql.PostgresException")
+            {
+                var sqlState = causeType.GetProperty("SqlState")?.GetValue(cause) as string;
+                var constraintName = causeType.GetProperty("ConstraintName")?.GetValue(cause) as string;
+                if (sqlState == "23505" && constraintName == CheckoutAttemptIndexName)
+                {
+                    return true;
+                }
+            }
+
+            if (causeType.FullName == "Microsoft.Data.Sqlite.SqliteException"
+                && causeType.GetProperty("SqliteErrorCode")?.GetValue(cause) is int errorCode
+                && errorCode == 19
+                && cause.Message.Contains("UNIQUE constraint failed: Orders.CustomerId, Orders.CheckoutAttemptKey", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

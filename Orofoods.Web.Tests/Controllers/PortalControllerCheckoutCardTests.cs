@@ -155,6 +155,9 @@ public class PortalControllerCheckoutCardTests
         };
 
         var firstResult = await controller.Checkout(input);
+        var retrySession = new TestSession();
+        retrySession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        controller = CreateController(db, retrySession, gateway);
         var secondResult = await controller.Checkout(input);
 
         var firstRedirect = Assert.IsType<RedirectToActionResult>(firstResult);
@@ -163,8 +166,11 @@ public class PortalControllerCheckoutCardTests
         Assert.Equal(firstRedirect.RouteValues!["id"], secondRedirect.RouteValues!["id"]);
         Assert.Equal(1, await db.Orders.CountAsync(x => x.CustomerId == customer.Id));
         Assert.Equal(1, await db.Payments.CountAsync());
+        Assert.Equal(1, gateway.CardCallCount);
+        Assert.Equal((await db.Orders.SingleAsync()).Id, (await db.Payments.SingleAsync()).OrderId);
         Assert.Equal(1, await db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
         Assert.Equal(1, await db.ProductInventories.Where(x => x.ProductId == product.Id).Select(x => x.QuantityReserved).SingleAsync());
+        Assert.True(retrySession.TryGetValue("orofoods-cart-product-ids", out _));
     }
 
     [Fact]
@@ -189,6 +195,9 @@ public class PortalControllerCheckoutCardTests
         };
 
         var firstResult = await controller.Checkout(input);
+        var retrySession = new TestSession();
+        retrySession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        controller = CreateController(db, retrySession, gateway);
         var secondResult = await controller.Checkout(input);
 
         var firstRedirect = Assert.IsType<RedirectToActionResult>(firstResult);
@@ -197,8 +206,46 @@ public class PortalControllerCheckoutCardTests
         Assert.Equal(firstRedirect.RouteValues!["id"], secondRedirect.RouteValues!["id"]);
         Assert.Equal(1, await db.Orders.CountAsync(x => x.CustomerId == customer.Id));
         Assert.Equal(1, await db.Payments.CountAsync());
+        Assert.Equal(1, gateway.PixCallCount);
+        Assert.Equal((await db.Orders.SingleAsync()).Id, (await db.Payments.SingleAsync()).OrderId);
         Assert.Equal(1, await db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
         Assert.Equal(1, await db.ProductInventories.Where(x => x.ProductId == product.Id).Select(x => x.QuantityReserved).SingleAsync());
+        Assert.True(retrySession.TryGetValue("orofoods-cart-product-ids", out _));
+    }
+
+    [Fact]
+    public async Task Duplicate_non_gateway_submit_with_the_same_attempt_key_reuses_the_order_without_clearing_the_retry_cart()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (customer, address, product, _) = await SeedCheckoutContextAsync(db);
+        var cashTerm = await db.PaymentTerms.SingleAsync(x => x.Code == "CASH");
+        var firstSession = new TestSession();
+        firstSession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        var gateway = new ConfigurableCardGateway();
+        var controller = CreateController(db, firstSession, gateway);
+        var input = new CheckoutViewModel
+        {
+            AddressId = address.Id,
+            PaymentTermId = cashTerm.Id,
+            RequestedDeliveryDate = DateTime.Today.AddDays(1),
+            AttemptKey = "attempt-duplicate-cash"
+        };
+
+        var firstResult = await controller.Checkout(input);
+        var retrySession = new TestSession();
+        retrySession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        controller = CreateController(db, retrySession, gateway);
+        var secondResult = await controller.Checkout(input);
+
+        var firstRedirect = Assert.IsType<RedirectToActionResult>(firstResult);
+        var secondRedirect = Assert.IsType<RedirectToActionResult>(secondResult);
+        Assert.Equal("Success", firstRedirect.ActionName);
+        Assert.Equal(firstRedirect.RouteValues!["id"], secondRedirect.RouteValues!["id"]);
+        Assert.Equal(1, await db.Orders.CountAsync(x => x.CustomerId == customer.Id));
+        Assert.Empty(await db.Payments.ToListAsync());
+        Assert.Equal(1, await db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
+        Assert.Equal(1, await db.ProductInventories.Where(x => x.ProductId == product.Id).Select(x => x.QuantityReserved).SingleAsync());
+        Assert.True(retrySession.TryGetValue("orofoods-cart-product-ids", out _));
     }
 
     private static async Task<(Customer Customer, CustomerAddress Address, Product Product, PaymentTerm CreditCardTerm)> SeedCheckoutContextAsync(
@@ -241,6 +288,7 @@ public class PortalControllerCheckoutCardTests
         };
         var creditCardTerm = new PaymentTerm { Code = "CREDIT_CARD", Name = "Cartão de crédito", DaysUntilDue = 0, IsActive = true };
         var pixTerm = new PaymentTerm { Code = "PIX", Name = "Pix", DaysUntilDue = 0, IsActive = true };
+        var cashTerm = new PaymentTerm { Code = "CASH", Name = "Pagamento à vista", DaysUntilDue = 0, IsActive = true };
         var user = new ApplicationUser
         {
             Id = "checkout-card-user",
@@ -251,7 +299,7 @@ public class PortalControllerCheckoutCardTests
             Customer = customer,
             IsActive = true
         };
-        db.AddRange(customer, category, product, creditCardTerm, pixTerm, user);
+        db.AddRange(customer, category, product, creditCardTerm, pixTerm, cashTerm, user);
         await db.SaveChangesAsync();
         db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 50 });
         await db.SaveChangesAsync();
@@ -298,12 +346,20 @@ public class PortalControllerCheckoutCardTests
     {
         public PaymentGatewayOrder Next { get; set; } = null!;
         public PaymentGatewayOrder PixNext { get; set; } = null!;
+        public int CardCallCount { get; private set; }
+        public int PixCallCount { get; private set; }
 
-        public Task<PaymentGatewayOrder> CreatePixAsync(CreatePixPaymentRequest request, CancellationToken cancellationToken = default) =>
-            Task.FromResult(PixNext with { ExternalReference = request.ExternalReference });
+        public Task<PaymentGatewayOrder> CreatePixAsync(CreatePixPaymentRequest request, CancellationToken cancellationToken = default)
+        {
+            PixCallCount++;
+            return Task.FromResult(PixNext with { ExternalReference = request.ExternalReference });
+        }
 
-        public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Next with { ExternalReference = request.ExternalReference });
+        public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default)
+        {
+            CardCallCount++;
+            return Task.FromResult(Next with { ExternalReference = request.ExternalReference });
+        }
 
         public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("Not exercised by this card-only checkout harness.");
