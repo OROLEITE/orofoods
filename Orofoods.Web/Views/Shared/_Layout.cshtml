@@ -44,10 +44,12 @@
         </div>
     }
     }
-    <div class="page-context-bar" hidden><div class="container"><a id="siteBackButton" class="site-back-button" href="/" data-fallback-url="/" hidden aria-label="Voltar para a p&#225;gina anterior"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Voltar</span></a><span class="page-context-label">Navega&#231;&#227;o segura</span></div></div>
+    @if (!isCustomerExperience)
+    {
+        <div class="page-context-bar"><div class="container"><a id="siteBackButton" class="site-back-button" href="/" data-fallback-url="/" aria-label="Voltar para a p&#225;gina anterior"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Voltar</span></a><span class="page-context-label">Navega&#231;&#227;o segura</span></div></div>
+    }
     @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Vendedor") || User.IsInRole("GerenteComercial") || User.IsInRole("Administrador")))
     {
-        <div class="global-notification-shell"><div class="container">@await Html.PartialAsync("_NotificationBell")</div></div>
     }
     @if (layoutBodyHasMain)
     {

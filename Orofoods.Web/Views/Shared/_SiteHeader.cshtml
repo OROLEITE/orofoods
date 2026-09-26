@@ -14,6 +14,7 @@
     var isAdministrator = User.IsInRole("Administrador");
     var isCommercialManager = User.IsInRole("GerenteComercial");
     var isSalesRepresentative = User.IsInRole("Vendedor");
+    var showNotifications = isAuthenticated && (isAdministrator || isCommercialManager || isSalesRepresentative);
     var accountContext = customerName ?? (isAdministrator ? "Administrador" : isCommercialManager ? "Gerente comercial" : isSalesRepresentative ? "Vendedor" : "Cliente");
     var panelUrl = isAdministrator
         ? Url.Action("Index", "Dashboard", new { area = "Admin" })
@@ -33,6 +34,10 @@
                     <li class="nav-item"><a class="nav-link @(isHomeActive ? "active" : null)" aria-current="@(isHomeActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Index">In&#237;cio</a></li><li class="nav-item"><a class="nav-link @(isProductsActive ? "active" : null)" aria-current="@(isProductsActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Products">Produtos</a></li><li class="nav-item"><a class="nav-link @(isAboutActive ? "active" : null)" aria-current="@(isAboutActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="About">Sobre n&#243;s</a></li><li class="nav-item"><a class="nav-link @(isHowItWorksActive ? "active" : null)" aria-current="@(isHowItWorksActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="HowItWorks">Como funciona</a></li><li class="nav-item"><a class="nav-link @(isContactActive ? "active" : null)" aria-current="@(isContactActive ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Contact">Contato</a></li>
                 </ul>
                 <div class="header-account ms-lg-4">
+                    @if (showNotifications)
+                    {
+                        <div class="header-notifications">@await Html.PartialAsync("_NotificationBell")</div>
+                    }
                     @if (isAuthenticated)
                     {
                         <div class="dropdown account-dropdown"><button class="btn account-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="menu" aria-label="Abrir menu da conta"><span class="account-avatar" aria-hidden="true">@accountInitial</span><span class="account-copy"><strong class="account-name">@accountName</strong><small class="account-context">@accountContext</small></span></button><ul class="dropdown-menu dropdown-menu-end account-menu"><li><a class="dropdown-item" href="@panelUrl"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Meu painel</a></li>@if (isSalesRepresentative) { <li><a class="dropdown-item" asp-area="Vendedor" asp-controller="Customers" asp-action="Index"><i class="fa-solid fa-building" aria-hidden="true"></i> Minha carteira</a></li> } @if (isAdministrator) { <li><a class="dropdown-item" asp-area="" asp-controller="Portal" asp-action="SelectCustomer"><i class="fa-solid fa-building-user" aria-hidden="true"></i> Acessar portal de cliente</a></li> }<li><hr class="dropdown-divider" /></li><li><form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/"><button class="dropdown-item account-logout" type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button></form></li></ul></div>
