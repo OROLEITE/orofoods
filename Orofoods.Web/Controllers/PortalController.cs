@@ -321,6 +321,32 @@ public class PortalController(
     public async Task<IActionResult> Checkout(CheckoutViewModel input)
     {
         var customer = await GetCurrentCustomerAsync();
+        var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
+        var attemptMarker = GetCheckoutAttemptMarker(userId, customer.Id, input.AttemptKey);
+        if (int.TryParse(HttpContext.Session.GetString(attemptMarker), out var existingOrderId))
+        {
+            var existingOrder = await db.Orders.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == existingOrderId && x.CustomerId == customer.Id);
+            if (existingOrder is not null)
+            {
+                if (existingOrder.PaymentMethod == "PIX")
+                {
+                    var existingPaymentId = await db.Payments.AsNoTracking()
+                        .Where(x => x.OrderId == existingOrder.Id)
+                        .Select(x => (int?)x.Id)
+                        .SingleOrDefaultAsync();
+                    if (existingPaymentId is int paymentId)
+                    {
+                        return RedirectToAction(nameof(Pix), new { id = paymentId });
+                    }
+                }
+
+                return RedirectToAction(nameof(Success), new { id = existingOrder.Id });
+            }
+
+            HttpContext.Session.Remove(attemptMarker);
+        }
+
         var checkout = await BuildCheckoutAsync(customer);
         if (!ModelState.IsValid || !checkout.Cart.Items.Any() || checkout.Cart.RemainingForMinimum > 0)
         {
@@ -353,7 +379,6 @@ public class PortalController(
             return View(checkout);
         }
 
-        var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
         var result = await assistedOrderService.PlaceAsync(
             customer.Id,
             userId,
@@ -369,6 +394,8 @@ public class PortalController(
             }
             return View(checkout);
         }
+
+        HttpContext.Session.SetString(attemptMarker, result.Order!.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         var order = await db.Orders.Include(x => x.PaymentTerm).SingleAsync(x => x.Id == result.Order!.Id);
 
@@ -388,6 +415,7 @@ public class PortalController(
                     order.Status = OrderStatus.Cancelled;
                     order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Cancelled, ChangedAt = DateTime.UtcNow, ChangedByUserId = userId });
                     await db.SaveChangesAsync();
+                    HttpContext.Session.Remove(attemptMarker);
                     ModelState.AddModelError(string.Empty, "O pagamento não foi aprovado. Tente novamente ou selecione outra condição de pagamento.");
                     return View(checkout);
                 }
@@ -398,6 +426,7 @@ public class PortalController(
                 order.Status = OrderStatus.Cancelled;
                 order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Cancelled, ChangedAt = DateTime.UtcNow, ChangedByUserId = userId });
                 await db.SaveChangesAsync();
+                HttpContext.Session.Remove(attemptMarker);
                 ModelState.AddModelError(string.Empty, ex.Message);
                 return View(checkout);
             }
@@ -411,6 +440,9 @@ public class PortalController(
 
         return RedirectToAction(nameof(Success), new { id = order.Id });
     }
+
+    private static string GetCheckoutAttemptMarker(string userId, int customerId, string attemptKey) =>
+        $"portal-checkout:{userId}:{customerId}:{attemptKey}";
 
     private async Task<CheckoutViewModel> BuildCheckoutAsync(Customer customer)
     {
