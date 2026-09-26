@@ -122,19 +122,24 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         WHEN 'Boleto bancário — 14 dias' THEN 'BOLETO_14D'
                         ELSE "Code"
                     END,
-                    "Name" = CASE "Name"
-                        WHEN '7 dias' THEN 'Boleto bancário — 7 dias'
-                        WHEN '14 dias' THEN 'Boleto bancário — 14 dias'
-                        ELSE "Name"
-                    END,
                     "DaysUntilDue" = CASE "Name"
                         WHEN '7 dias' THEN 7
                         WHEN 'Boleto bancário — 7 dias' THEN 7
                         WHEN '14 dias' THEN 14
                         WHEN 'Boleto bancário — 14 dias' THEN 14
-                        ELSE 0
-                    END,
-                    "IsActive" = "Name" IN ('PIX', 'À vista', 'A vista', 'Cartão de crédito', 'Cartao de credito', '7 dias', '14 dias', 'Boleto bancário — 7 dias', 'Boleto bancário — 14 dias');
+                        ELSE "DaysUntilDue"
+                    END
+                WHERE "Name" IN (
+                    'PIX',
+                    'À vista',
+                    'A vista',
+                    'Cartão de crédito',
+                    'Cartao de credito',
+                    '7 dias',
+                    'Boleto bancário — 7 dias',
+                    '14 dias',
+                    'Boleto bancário — 14 dias'
+                );
                 """);
 
             migrationBuilder.Sql("""
