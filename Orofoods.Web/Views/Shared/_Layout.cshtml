@@ -5,6 +5,9 @@
     var isPortalExperience = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         .Contains("portal-authenticated", StringComparer.Ordinal);
+    var isSellerExperience = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Contains("seller-area-page", StringComparer.Ordinal);
     var isCustomerExperience = isPortalExperience || currentArea == "Identity" ||
         (string.IsNullOrEmpty(currentArea) && (currentController == "Home" || currentController == "CustomerRegistration" || (currentController == "Portal" && currentAction != "SelectCustomer")));
     var bodyClass = string.Join(" ", new[] { ViewData["BodyClass"]?.ToString(), isCustomerExperience ? "customer-experience" : null }.Where(value => !string.IsNullOrWhiteSpace(value)));
@@ -17,33 +20,29 @@
     <meta name="description" content="Orofoods - distribui&#231;&#227;o B2B para food service." /><title>@ViewData["Title"] | Orofoods</title>
     <link rel="icon" type="image/x-icon" href="~/favicon.ico" /><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" /><link rel="stylesheet" href="~/lib/fontawesome/css/all.min.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/home-showcase.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/seller-area.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/commercial.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/portal-density.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/portal-actions.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/header.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/portal-shell.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-shell.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-navigation.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-orders.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-integrations.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-customers.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-customer-actions.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-products.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-products-mobile.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/admin-products-light.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/customer-experience.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" /><link rel="stylesheet" href="~/lib/fontawesome/css/all.min.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/commercial.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/header.css" asp-append-version="true" />
+    @if (currentController == "Home" && currentAction == "Index")
+    {
+        <link rel="stylesheet" href="~/css/home-showcase.css" asp-append-version="true" />
+    }
+    @if (isSellerExperience)
+    {
+        <link rel="stylesheet" href="~/css/seller-area.css" asp-append-version="true" />
+    }
+    @if (isPortalExperience)
+    {
+        <link rel="stylesheet" href="~/css/portal-density.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/portal-actions.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/portal-shell.css" asp-append-version="true" />
+    }
+    @if (isCustomerExperience)
+    {
+        <link rel="stylesheet" href="~/css/customer-experience.css" asp-append-version="true" />
+    }
     @await RenderSectionAsync("Head", required: false)
 </head>
 <body class="@bodyClass">
     @await Html.PartialAsync("_SiteHeader")
-    @if (User.Identity?.IsAuthenticated == true)
-    {
-        var identityName = User.Identity.Name;
-        var accountName = string.IsNullOrWhiteSpace(identityName) ? "Minha conta" : identityName.Split('@')[0].Replace('.', ' ').Replace('_', ' ');
-        var accountContext = ViewData["PortalCustomerName"] as string ?? (User.IsInRole("Administrador") ? "Administrador" : User.IsInRole("Vendedor") ? "Vendedor" : User.IsInRole("GerenteComercial") ? "Gerente comercial" : "Cliente");
-        var initial = char.ToUpperInvariant(accountName[0]);
-        @if (!isCustomerExperience)
-    {
-    <div class="dropdown auth-user-menu">
-            <button class="auth-user-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="menu" aria-label="Abrir menu da conta">
-                <span class="auth-user-avatar" aria-hidden="true">@initial</span>
-                <span class="auth-user-summary"><strong>@accountName</strong><small>@accountContext</small></span>
-                <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end auth-user-dropdown">
-                <li><a class="dropdown-item" asp-area="" asp-controller="Portal" asp-action="Dashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Meu painel</a></li>
-                <li><hr class="dropdown-divider" /></li>
-                <li><form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/"><button class="dropdown-item" type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button></form></li>
-            </ul>
-        </div>
-    }
-    }
     @if (!isCustomerExperience)
     {
         <div class="page-context-bar"><div class="container"><a id="siteBackButton" class="site-back-button" href="/" data-fallback-url="/" aria-label="Voltar para a p&#225;gina anterior"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Voltar</span></a><span class="page-context-label">Navega&#231;&#227;o segura</span></div></div>

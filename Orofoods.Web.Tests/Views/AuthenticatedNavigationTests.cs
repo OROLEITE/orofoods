@@ -31,11 +31,13 @@ public class AuthenticatedNavigationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
 
-        Assert.Contains("auth-user-menu", layout);
-        Assert.Contains("data-bs-toggle=\"dropdown\"", layout);
-        Assert.Contains("aria-haspopup=\"menu\"", layout);
-        Assert.Contains("PortalCustomerName", layout);
-        Assert.Contains("asp-page=\"/Account/Logout\"", layout);
+        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
+
+        Assert.DoesNotContain("auth-user-menu", layout);
+        Assert.Equal(1, header.Split("account-dropdown", StringSplitOptions.None).Length - 1);
+        Assert.Contains("data-bs-toggle=\"dropdown\"", header);
+        Assert.Contains("aria-haspopup=\"menu\"", header);
+        Assert.Contains("asp-page=\"/Account/Logout\"", header);
     }
 
     [Fact]
@@ -107,6 +109,22 @@ public class AuthenticatedNavigationTests
         Assert.Contains("var isPortalExperience =", layout);
         Assert.Contains("Contains(\"portal-authenticated\", StringComparer.Ordinal)", layout);
         Assert.Contains("isPortalExperience || currentArea == \"Identity\"", layout);
+    }
+
+    [Fact]
+    public void Area_styles_are_loaded_only_for_their_matching_layout_or_body_class()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var adminLayout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_AdminLayout.cshtml"));
+
+        Assert.Contains("if (isSellerExperience)", layout);
+        Assert.Contains("if (isPortalExperience)", layout);
+        Assert.Contains("if (isCustomerExperience)", layout);
+        Assert.DoesNotContain("admin-shell.css", layout);
+        Assert.DoesNotContain("seller-area.css", adminLayout);
+        Assert.Contains("admin-shell.css", adminLayout);
+        Assert.Contains("admin-products-light.css", adminLayout);
     }
 
     [Fact]
