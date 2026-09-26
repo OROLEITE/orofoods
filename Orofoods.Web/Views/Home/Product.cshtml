@@ -36,7 +36,7 @@
 
         <div class="product-detail-copy">
             <p class="product-detail-kicker">@Model.Brand <span aria-hidden="true">&middot;</span> @Model.UnitDescription</p>
-            <h2 id="product-description-title">Descri&ccedil;&atilde;o do produto</h2>
+            <h2 id="product-description-title">Descri&#231;&#227;o do produto</h2>
             <p class="product-detail-description">@Model.Description</p>
 
             <dl class="product-detail-facts">
@@ -60,7 +60,7 @@
                 }
             </dl>
 
-            <div class="product-detail-actions">
+            <div class="product-detail-actions d-flex flex-wrap gap-2">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     if (User.IsInRole("Administrador"))
