@@ -12,7 +12,7 @@ public class CustomerRegistrationService(ApplicationDbContext db, UserManager<Ap
     {
         if (await db.Customers.AnyAsync(x => x.Cnpj == request.Cnpj, cancellationToken))
         {
-            throw new InvalidOperationException("A company with this CNPJ is already registered.");
+            throw new InvalidOperationException("Este CNPJ já está cadastrado.");
         }
 
         var customer = new Customer
@@ -58,7 +58,7 @@ public class CustomerRegistrationService(ApplicationDbContext db, UserManager<Ap
         var createResult = await userManager.CreateAsync(user, request.Password);
         if (!createResult.Succeeded)
         {
-            throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(x => x.Description)));
+            throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(DescribeIdentityError).Distinct()));
         }
 
         if (!await userManager.IsInRoleAsync(user, "Cliente"))
@@ -68,6 +68,20 @@ public class CustomerRegistrationService(ApplicationDbContext db, UserManager<Ap
 
         return new CustomerRegistrationResult(customer.Id, user.Id);
     }
+
+    private string DescribeIdentityError(IdentityError error) => error.Code switch
+    {
+        "DuplicateUserName" or "DuplicateEmail" => "Este e-mail já está cadastrado.",
+        "InvalidEmail" => "Informe um endereço de e-mail válido.",
+        "InvalidUserName" => "O e-mail informado não pode ser usado como nome de acesso.",
+        "PasswordTooShort" => $"A senha deve ter pelo menos {userManager.Options.Password.RequiredLength} caracteres.",
+        "PasswordRequiresNonAlphanumeric" => "A senha deve conter pelo menos um caractere especial.",
+        "PasswordRequiresDigit" => "A senha deve conter pelo menos um número.",
+        "PasswordRequiresLower" => "A senha deve conter pelo menos uma letra minúscula.",
+        "PasswordRequiresUpper" => "A senha deve conter pelo menos uma letra maiúscula.",
+        "PasswordRequiresUniqueChars" => $"A senha deve conter pelo menos {userManager.Options.Password.RequiredUniqueChars} caracteres diferentes.",
+        _ => "Não foi possível criar o acesso. Confira os dados e tente novamente."
+    };
 }
 
 public sealed class CustomerRegistrationRequest

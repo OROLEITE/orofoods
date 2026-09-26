@@ -26,30 +26,30 @@ public class CustomerRegistrationViewModel
     [Required(ErrorMessage = "Informe o e-mail."), EmailAddress(ErrorMessage = "Informe um e-mail válido.")]
     public string Email { get; set; } = "";
 
-    [Required, Display(Name = "Telefone")]
+    [Required(ErrorMessage = "Informe o telefone."), Display(Name = "Telefone")]
     public string Phone { get; set; } = "";
 
-    [Required, Display(Name = "WhatsApp")]
+    [Required(ErrorMessage = "Informe o WhatsApp da empresa."), Display(Name = "WhatsApp")]
     public string WhatsApp { get; set; } = "";
 
-    [Required, Display(Name = "CEP")]
+    [Required(ErrorMessage = "Informe o CEP."), Display(Name = "CEP")]
     public string ZipCode { get; set; } = "";
 
-    [Required, Display(Name = "Endereço")]
+    [Required(ErrorMessage = "Informe o endereço."), Display(Name = "Endereço")]
     public string Street { get; set; } = "";
 
-    [Required]
+    [Required(ErrorMessage = "Informe o número.")]
     public string Number { get; set; } = "";
 
     public string? Complement { get; set; }
 
-    [Required, Display(Name = "Bairro")]
+    [Required(ErrorMessage = "Informe o bairro."), Display(Name = "Bairro")]
     public string District { get; set; } = "";
 
-    [Required, Display(Name = "Cidade")]
+    [Required(ErrorMessage = "Informe a cidade."), Display(Name = "Cidade")]
     public string City { get; set; } = "";
 
-    [Required, Display(Name = "Estado")]
+    [Required(ErrorMessage = "Informe o estado."), Display(Name = "Estado")]
     public string State { get; set; } = "SP";
 
     [Required(ErrorMessage = "Informe a senha."), Display(Name = "Senha"), DataType(DataType.Password)]

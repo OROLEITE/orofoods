@@ -53,10 +53,9 @@ public class CustomerRegistrationController(
             });
 
             var user = await userManager.FindByIdAsync(result.UserId)
-                ?? throw new InvalidOperationException("Registered user not found.");
+                ?? throw new InvalidOperationException("Não foi possível concluir o cadastro. Tente novamente.");
             await signInManager.SignInAsync(user, isPersistent: false);
-            TempData["RegistrationSuccess"] = "Cadastro enviado com sucesso. Sua empresa será analisada pela equipe comercial.";
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction(nameof(Pending));
         }
         catch (InvalidOperationException ex)
         {
