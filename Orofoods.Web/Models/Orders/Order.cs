@@ -5,9 +5,12 @@ namespace Orofoods.Web.Models.Orders;
 
 public class Order
 {
+    private string notes = string.Empty;
+
     public int Id { get; set; }
     [MaxLength(30)] public string Number { get; set; } = "";
     public int CustomerId { get; set; }
+    [MaxLength(128)] public string? CheckoutAttemptKey { get; set; }
     public Customer? Customer { get; set; }
     [MaxLength(450)] public string CreatedByUserId { get; set; } = "";
     public ApplicationUser? CreatedByUser { get; set; }
@@ -22,7 +25,11 @@ public class Order
     public decimal Freight { get; set; }
     public decimal Total { get; set; }
     [MaxLength(40)] public string PaymentMethod { get; set; } = "PIX";
-    [MaxLength(500)] public string Notes { get; set; } = "";
+    [MaxLength(500)] public string Notes
+    {
+        get => notes;
+        set => notes = value ?? string.Empty;
+    }
     public DateTime? ConfirmedAt { get; set; }
     [MaxLength(100)] public string? ExternalOrderId { get; set; }
     [MaxLength(100)] public string? ErpOrderNumber { get; set; }
@@ -31,5 +38,6 @@ public class Order
     [MaxLength(2000)] public string? IntegrationError { get; set; }
     public List<OrderItem> Items { get; set; } = [];
     public List<OrderStatusHistory> StatusHistory { get; set; } = [];
+    public List<Payment> Payments { get; set; } = [];
     public List<WmcExportAudit> WmcExportAudits { get; set; } = [];
 }

@@ -35,6 +35,8 @@ public class CommercialActivity
     public Customer Customer { get; set; } = null!;
     public int? SalesRepresentativeId { get; set; }
     public SalesRepresentative? SalesRepresentative { get; set; }
+    public string? AssignedUserId { get; set; }
+    public ApplicationUser? AssignedUser { get; set; }
     public CommercialActivityType Type { get; set; }
     public CommercialActivityStatus Status { get; set; } = CommercialActivityStatus.Scheduled;
     public DateTime ScheduledAt { get; set; }

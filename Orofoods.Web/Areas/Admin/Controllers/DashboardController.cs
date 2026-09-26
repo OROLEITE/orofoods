@@ -18,14 +18,18 @@ public class DashboardController(ApplicationDbContext db) : Controller
     {
         var today = DateTime.UtcNow.Date;
         var monthStart = UtcDateRange.MonthStart(today);
+        var previousMonthStart = monthStart.AddMonths(-1);
         var completedOrders = db.Orders.Where(x => x.Status != OrderStatus.Cancelled);
+        var monthRevenue = await completedOrders.Where(x => x.CreatedAt >= monthStart).SumAsync(x => (decimal?)x.Total) ?? 0;
+        var previousMonthRevenue = await completedOrders.Where(x => x.CreatedAt >= previousMonthStart && x.CreatedAt < monthStart).SumAsync(x => (decimal?)x.Total) ?? 0;
         return View(new AdminDashboardViewModel
         {
             OrdersToday = await db.Orders.CountAsync(x => x.CreatedAt >= today),
             PendingOrders = await db.Orders.CountAsync(x => x.Status == OrderStatus.Received || x.Status == OrderStatus.UnderReview),
             ActiveCustomers = await db.Customers.CountAsync(x => x.IsActive && x.Status == CustomerStatus.Approved),
             PendingCustomers = await db.Customers.CountAsync(x => x.Status == CustomerStatus.Pending),
-            MonthRevenue = await completedOrders.Where(x => x.CreatedAt >= monthStart).SumAsync(x => (decimal?)x.Total) ?? 0,
+            MonthRevenue = monthRevenue,
+            MonthRevenueChangePercent = previousMonthRevenue == 0 ? null : (monthRevenue - previousMonthRevenue) / previousMonthRevenue * 100,
             AverageTicket = await completedOrders.AnyAsync() ? await completedOrders.AverageAsync(x => x.Total) : 0,
             FailedIntegrations = await db.Orders.CountAsync(x => x.IntegrationStatus == IntegrationStatus.Failed),
             FailedWmcExports = await db.Orders.CountAsync(order =>

@@ -1,35 +1,33 @@
 @model Orofoods.Web.ViewModels.AdminPriceTableItemsViewModel
 @{ ViewData["Title"] = "Pre&ccedil;os - " + Model.PriceTable.Name; }
-<section class="section">
-    <div class="container">
-        <div class="portal-top">
-            <div><small>TABELA</small><h1>@Model.PriceTable.Name</h1></div>
-            <a asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
-        </div>
-        <div class="table-responsive mt-4">
-            <table class="table table-dark table-striped align-middle">
+<section class="admin-registration-page admin-price-items-page">
+        <header class="admin-page-header">
+            <div><p class="eyebrow"><span></span> Tabela de pre&#231;o</p><h1>@Model.PriceTable.Name</h1><p>Configure os valores comerciais por produto.</p></div>
+            <a asp-action="Index" class="btn admin-secondary-action"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+        </header>
+        <div class="admin-table-card"><div class="table-responsive">
+            <table class="table admin-table admin-price-items-table align-middle">
                 <thead><tr><th>SKU</th><th>Produto</th><th>Base</th><th>Pre&#231;o da tabela</th><th>Promocional</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var product in Model.Products)
                     {
                         var configured = Model.Prices.GetValueOrDefault(product.Id);
                         <tr>
-                            <td>
+                            <td class="admin-table-secondary" data-label="SKU">
                                 <form id="price-row-@product.Id" asp-action="SavePrice" method="post">
                                     <input type="hidden" name="priceTableId" value="@Model.PriceTable.Id" />
                                     <input type="hidden" name="productId" value="@product.Id" />
                                 </form>
                                 @product.Sku
                             </td>
-                            <td>@product.Name</td>
-                            <td>@product.BasePrice.ToString("C")</td>
-                            <td><input class="form-control" form="price-row-@product.Id" name="price" value="@(configured?.Price ?? product.BasePrice)" inputmode="decimal" /></td>
-                            <td><input class="form-control" form="price-row-@product.Id" name="promotionalPrice" value="@configured?.PromotionalPrice" inputmode="decimal" /></td>
-                            <td><button class="btn btn-sm btn-gold" type="submit" form="price-row-@product.Id">Salvar</button></td>
+                            <td class="admin-table-name" data-label="Produto"><strong>@product.Name</strong></td>
+                            <td data-label="Base">@product.BasePrice.ToString("C")</td>
+                            <td data-label="Pre&#231;o da tabela"><input class="form-control" form="price-row-@product.Id" name="price" value="@(configured?.Price ?? product.BasePrice)" inputmode="decimal" /></td>
+                            <td data-label="Promocional"><input class="form-control" form="price-row-@product.Id" name="promotionalPrice" value="@configured?.PromotionalPrice" inputmode="decimal" /></td>
+                            <td class="admin-table-actions" data-label="A&#231;&otilde;es"><button class="btn admin-edit-action" type="submit" form="price-row-@product.Id"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Salvar</button></td>
                         </tr>
                     }
                 </tbody>
             </table>
-        </div>
-    </div>
+        </div></div>
 </section>

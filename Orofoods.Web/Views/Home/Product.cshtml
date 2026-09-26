@@ -1,27 +1,71 @@
 @model Orofoods.Web.Models.Catalog.Product
-@{ ViewData["Title"] = Model.Name; var primaryImage = Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault(); }
-<section class="page-hero"><div class="container"><a class="back-link" asp-action="Products"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Produtos</a><div class="eyebrow light mt-4"><span></span> @Model.Category</div><h1>@Model.Name</h1><p>@Model.Sku &middot; @Model.Brand</p></div></section>
-<section class="section">
-    <div class="container product-detail">
+@{
+    ViewData["Title"] = Model.Name;
+    var primaryImage = Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
+}
+
+<section class="page-hero product-detail-hero">
+    <div class="container">
+        <div class="product-detail-topline">
+            <a class="product-detail-back" asp-action="Products">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <span>Voltar ao cat&aacute;logo</span>
+            </a>
+            <span class="product-detail-category">@Model.Category</span>
+        </div>
+        <h1>@Model.Name</h1>
+        <p class="product-detail-meta">@Model.Sku <span aria-hidden="true">&middot;</span> @Model.Brand</p>
+    </div>
+</section>
+
+<section class="section product-detail-section" aria-labelledby="product-description-title">
+    <div class="container product-detail product-detail-layout">
         <figure class="product-detail-media" style="--accent:@Model.Accent">
-            @if (primaryImage is not null) { <img src="@primaryImage.Url" alt="@primaryImage.AltText" /> }
+            @if (primaryImage is not null)
+            {
+                <img src="@Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id })" alt="@primaryImage.AltText" />
+            }
+            else
+            {
+                <div class="product-detail-placeholder" aria-hidden="true">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+            }
             <figcaption>Imagem ilustrativa do produto.</figcaption>
         </figure>
+
         <div class="product-detail-copy">
-            <p class="product-detail-kicker">@Model.Brand &middot; @Model.UnitDescription</p>
-            <h2>Descri&#231;&#227;o do produto</h2>
-            <p>@Model.Description</p>
-            <dl>
-                <dt>Disponibilidade</dt><dd>@(Model.IsAvailable ? "Disponível" : "Indisponível no momento")</dd>
-                @if (!string.IsNullOrWhiteSpace(Model.StorageInformation)) { <dt>Armazenamento</dt><dd>@Model.StorageInformation</dd> }
-                @if (!string.IsNullOrWhiteSpace(Model.Ingredients)) { <dt>Ingredientes</dt><dd>@Model.Ingredients</dd> }
+            <p class="product-detail-kicker">@Model.Brand <span aria-hidden="true">&middot;</span> @Model.UnitDescription</p>
+            <h2 id="product-description-title">Descri&#231;&#227;o do produto</h2>
+            <p class="product-detail-description">@Model.Description</p>
+
+            <dl class="product-detail-facts">
+                <div class="product-detail-fact product-detail-fact--availability">
+                    <dt>Disponibilidade</dt>
+                    <dd><span class="product-stock @(Model.IsAvailable ? "is-available" : "is-unavailable")">@(Model.IsAvailable ? "Disponível" : "Indisponível no momento")</span></dd>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.StorageInformation))
+                {
+                    <div class="product-detail-fact">
+                        <dt>Armazenamento</dt>
+                        <dd>@Model.StorageInformation</dd>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Ingredients))
+                {
+                    <div class="product-detail-fact product-detail-fact--wide">
+                        <dt>Ingredientes</dt>
+                        <dd>@Model.Ingredients</dd>
+                    </div>
+                }
             </dl>
+
             <div class="product-detail-actions d-flex flex-wrap gap-2">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     if (User.IsInRole("Administrador"))
                     {
-                        <a class="btn btn-gold" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="fa-solid fa-gauge-high"></i> Administra&#231;&#227;o</a>
+                        <a class="btn btn-gold" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Administra&ccedil;&atilde;o</a>
                     }
                     else
                     {

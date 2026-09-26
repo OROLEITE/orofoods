@@ -374,6 +374,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AssignedUserId")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -409,6 +412,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AssignedUserId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("SalesRepresentativeId");
@@ -416,6 +421,307 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("ScheduledAt", "Status");
 
                     b.ToTable("CommercialActivities");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.CrmOpportunity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssignedUserId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("EstimatedValue")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("ExpectedCloseAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("LostReason")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("RelatedOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("ExpectedCloseAt");
+
+                    b.HasIndex("RelatedOrderId");
+
+                    b.HasIndex("Stage");
+
+                    b.ToTable("CrmOpportunities");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.CrmOpportunityHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ChangedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FromStage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("OpportunityId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ToStage")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedByUserId");
+
+                    b.HasIndex("OpportunityId", "OccurredAt");
+
+                    b.ToTable("CrmOpportunityHistories");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.UserNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActionUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("ActivityId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DeduplicationKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("OpportunityId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("OpportunityId");
+
+                    b.HasIndex("UserId", "DeduplicationKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ReadAt");
+
+                    b.ToTable("UserNotifications");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppConversation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AssignedUserId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastInboundAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("LastMessageAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("LastOutboundAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UnreadCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedUserId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("LastMessageAt");
+
+                    b.HasIndex("PhoneNumber");
+
+                    b.ToTable("WhatsAppConversations");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ConversationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ExternalMessageId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TextBody")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalMessageId")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ConversationId", "CreatedAt");
+
+                    b.ToTable("WhatsAppMessages");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Contact.ContactMessage", b =>
@@ -491,9 +797,22 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<bool>("CreditBlocked")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("CreditLimit")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("CreditNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("CreditOverrideEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("CreditReleaseDate")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("CreditUsed")
                         .HasPrecision(12, 2)
@@ -504,6 +823,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<string>("InternalSalesUserId")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -511,6 +833,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .IsRequired()
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
+
+                    b.Property<int?>("MaximumPaymentTermDays")
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("MinimumOrder")
                         .HasPrecision(12, 2)
@@ -563,6 +888,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.HasIndex("Cnpj")
                         .IsUnique();
+
+                    b.HasIndex("InternalSalesUserId");
 
                     b.HasIndex("PriceTableId");
 
@@ -898,6 +1225,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CheckoutAttemptKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<DateTime?>("ConfirmedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -973,11 +1304,13 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.HasIndex("CreatedByUserId");
 
-                    b.HasIndex("CustomerId");
-
                     b.HasIndex("DeliveryAddressId");
 
                     b.HasIndex("PaymentTermId");
+
+                    b.HasIndex("CustomerId", "CheckoutAttemptKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey");
 
                     b.ToTable("Orders");
                 });
@@ -1112,6 +1445,127 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("SavedOrderItems");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Payments.Payment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("AuthorizationCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("BankSlipUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CardBrand")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DigitableLine")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExternalPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ExternalReference")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Gateway")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("GatewayOrderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GatewayPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("Installments")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastFourDigits")
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("PixCopyPaste")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("PixQrCodeBase64")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("GatewayOrderId");
+
+                    b.HasIndex("GatewayPaymentId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Payments");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.CustomerPaymentTerm", b =>
                 {
                     b.Property<int>("Id")
@@ -1146,6 +1600,14 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("DaysUntilDue")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -1317,6 +1779,11 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
             modelBuilder.Entity("Orofoods.Web.Models.Commercial.CommercialActivity", b =>
                 {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "AssignedUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -1328,13 +1795,129 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasForeignKey("SalesRepresentativeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("AssignedUser");
+
                     b.Navigation("Customer");
 
                     b.Navigation("SalesRepresentative");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.CrmOpportunity", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "AssignedUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "RelatedOrder")
+                        .WithMany()
+                        .HasForeignKey("RelatedOrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AssignedUser");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("RelatedOrder");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.CrmOpportunityHistory", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "ChangedByUser")
+                        .WithMany()
+                        .HasForeignKey("ChangedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Commercial.CrmOpportunity", "Opportunity")
+                        .WithMany("History")
+                        .HasForeignKey("OpportunityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ChangedByUser");
+
+                    b.Navigation("Opportunity");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.UserNotification", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Commercial.CommercialActivity", "Activity")
+                        .WithMany()
+                        .HasForeignKey("ActivityId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Commercial.CrmOpportunity", "Opportunity")
+                        .WithMany()
+                        .HasForeignKey("OpportunityId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Activity");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Opportunity");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppConversation", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "AssignedUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AssignedUser");
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppMessage", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Commercial.WhatsAppConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Customers.Customer", b =>
                 {
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "InternalSalesUser")
+                        .WithMany()
+                        .HasForeignKey("InternalSalesUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Orofoods.Web.Models.Pricing.PriceTable", "PriceTable")
                         .WithMany("Customers")
                         .HasForeignKey("PriceTableId")
@@ -1344,6 +1927,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .WithMany("Customers")
                         .HasForeignKey("SalesRepresentativeId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("InternalSalesUser");
 
                     b.Navigation("PriceTable");
 
@@ -1528,6 +2113,25 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("SavedOrder");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Payments.Payment", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithMany("Payments")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.CustomerPaymentTerm", b =>
                 {
                     b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
@@ -1576,6 +2180,16 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("Products");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.CrmOpportunity", b =>
+                {
+                    b.Navigation("History");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppConversation", b =>
+                {
+                    b.Navigation("Messages");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Customers.Customer", b =>
                 {
                     b.Navigation("Addresses");
@@ -1600,6 +2214,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
             modelBuilder.Entity("Orofoods.Web.Models.Orders.Order", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("Payments");
 
                     b.Navigation("StatusHistory");
 

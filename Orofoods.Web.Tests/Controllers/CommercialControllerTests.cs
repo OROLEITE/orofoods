@@ -1,11 +1,14 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Tests.Infrastructure;
 using Orofoods.Web.ViewModels;
 
@@ -46,7 +49,7 @@ public class CommercialControllerTests
             });
         await db.SaveChangesAsync();
 
-        var controller = new CommercialController(db, new SalesRepresentativeAccessService(db))
+        var controller = new CommercialController(db, new SalesRepresentativeAccessService(db), new CommercialAttentionService(db, new SalesRepresentativeAccessService(db), Options.Create(new CrmOptions()), Options.Create(new PaymentEligibilityOptions())))
         {
             ControllerContext = new ControllerContext
             {
@@ -118,7 +121,7 @@ public class CommercialControllerTests
             });
         await db.SaveChangesAsync();
 
-        var controller = new CommercialController(db, new SalesRepresentativeAccessService(db))
+        var controller = new CommercialController(db, new SalesRepresentativeAccessService(db), new CommercialAttentionService(db, new SalesRepresentativeAccessService(db), Options.Create(new CrmOptions()), Options.Create(new PaymentEligibilityOptions())))
         {
             ControllerContext = new ControllerContext
             {

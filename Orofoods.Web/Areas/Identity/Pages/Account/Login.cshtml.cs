@@ -28,6 +28,34 @@ public class LoginModel(
     [TempData]
     public string? ErrorMessage { get; set; }
 
+    private static bool IsAdministratorReturnUrl(string returnUrl)
+    {
+        var path = GetReturnPath(returnUrl);
+        var isCustomerPortalPath = IsPathOrSubpath(path, "/Portal");
+        var isExplicitCustomerSelection = string.Equals(path, "/Portal/SelectCustomer", StringComparison.OrdinalIgnoreCase);
+
+        return (!isCustomerPortalPath || isExplicitCustomerSelection)
+            && !IsPathOrSubpath(path, "/Vendedor");
+    }
+
+    private static bool IsCustomerReturnUrl(string returnUrl)
+    {
+        var path = GetReturnPath(returnUrl);
+        return !IsPathOrSubpath(path, "/Admin")
+            && !IsPathOrSubpath(path, "/Vendedor")
+            && !string.Equals(path, "/Portal/SelectCustomer", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetReturnPath(string returnUrl)
+    {
+        var queryOrFragment = returnUrl.IndexOfAny(['?', '#']);
+        return queryOrFragment < 0 ? returnUrl : returnUrl[..queryOrFragment];
+    }
+
+    private static bool IsPathOrSubpath(string path, string basePath) =>
+        string.Equals(path, basePath, StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith(basePath + "/", StringComparison.OrdinalIgnoreCase);
+
     public class InputModel
     {
         [Required(ErrorMessage = "O e-mail corporativo \u00e9 obrigat\u00f3rio.")]
@@ -71,11 +99,36 @@ public class LoginModel(
         {
             _logger.LogInformation("User logged in.");
             var user = await _userManager.FindByEmailAsync(Input.Email);
-            if (ReturnUrl == Url.Content("~/") && user is not null && await _userManager.IsInRoleAsync(user, "Administrador"))
+            var isAdministrator = user is not null && await _userManager.IsInRoleAsync(user, "Administrador");
+            var isCustomer = user is not null && await _userManager.IsInRoleAsync(user, "Cliente");
+            var homeUrl = Url.Content("~/");
+            var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
+            var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
+            var hasLocalReturnUrl = !string.IsNullOrWhiteSpace(returnUrl)
+                && Url.IsLocalUrl(returnUrl)
+                && !string.Equals(returnUrl, homeUrl, StringComparison.Ordinal);
+
+            if (isAdministrator)
             {
-                return Redirect("~/Admin/Dashboard");
+                if (hasLocalReturnUrl && IsAdministratorReturnUrl(returnUrl!))
+                {
+                    return LocalRedirect(returnUrl!);
+                }
+
+                return LocalRedirect(adminDashboardUrl);
             }
-            return LocalRedirect(ReturnUrl);
+
+            if (isCustomer)
+            {
+                if (hasLocalReturnUrl && IsCustomerReturnUrl(returnUrl!))
+                {
+                    return LocalRedirect(returnUrl!);
+                }
+
+                return LocalRedirect(customerDashboardUrl);
+            }
+
+            return LocalRedirect(hasLocalReturnUrl ? returnUrl! : homeUrl);
         }
 
         if (result.IsLockedOut)

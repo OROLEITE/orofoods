@@ -36,16 +36,16 @@ public class CustomerRegistrationController(
                 LegalName = input.LegalName,
                 TradeName = input.TradeName,
                 Cnpj = input.Cnpj,
-                StateRegistration = input.StateRegistration,
+                StateRegistration = input.StateRegistration ?? "",
                 ResponsibleName = input.ResponsibleName,
-                ResponsibleDocument = input.ResponsibleDocument,
+                ResponsibleDocument = input.ResponsibleDocument ?? "",
                 Email = input.Email,
                 Phone = input.Phone,
                 WhatsApp = input.WhatsApp,
                 ZipCode = input.ZipCode,
                 Street = input.Street,
                 Number = input.Number,
-                Complement = input.Complement,
+                Complement = input.Complement ?? "",
                 District = input.District,
                 City = input.City,
                 State = input.State,
@@ -53,10 +53,9 @@ public class CustomerRegistrationController(
             });
 
             var user = await userManager.FindByIdAsync(result.UserId)
-                ?? throw new InvalidOperationException("Registered user not found.");
+                ?? throw new InvalidOperationException("Não foi possível concluir o cadastro. Tente novamente.");
             await signInManager.SignInAsync(user, isPersistent: false);
-            TempData["RegistrationSuccess"] = "Cadastro enviado com sucesso. Sua empresa será analisada pela equipe comercial.";
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction(nameof(Pending));
         }
         catch (InvalidOperationException ex)
         {

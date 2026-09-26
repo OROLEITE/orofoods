@@ -32,6 +32,13 @@ public class ReportServiceTests
         Assert.Equal(1, report.OrderCount);
         Assert.Equal(200m, report.Revenue);
         Assert.Equal(200m, report.AverageTicket);
+        Assert.Equal(1, report.BuyerCount);
+        Assert.Equal(2, report.SoldItemCount);
+        Assert.Equal(200m, report.ProductRankingTotal);
+        Assert.Equal(200m, report.CategoryRankingTotal);
+        Assert.Equal(1, report.CategoryCount);
+        Assert.Equal(200m, report.CustomerRankingTotal);
+        Assert.Equal(200m, report.SalesRepresentativeRankingTotal);
         Assert.Equal("Brioche", Assert.Single(report.TopProducts).Name);
     }
 

@@ -16,14 +16,14 @@ public class GlobalNavigationTests
     }
 
     [Fact]
-    public void Shared_layout_uses_correct_portuguese_accentuation()
+    public void Shared_layout_and_header_use_correct_portuguese_accentuation()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
 
-        Assert.Contains("In&#237;cio", layout);
-        Assert.Contains("Sobre n&#243;s", layout);
-        Assert.Contains("Administra&#231;&#227;o", layout);
+        Assert.Contains("In&#237;cio", header);
+        Assert.Contains("Sobre n&#243;s", header);
         Assert.Contains("Navega&#231;&#227;o segura", layout);
     }
 
@@ -50,11 +50,11 @@ public class GlobalNavigationTests
     }
 
     [Fact]
-    public void Shared_layout_targets_public_home_routes_from_every_area()
+    public void Shared_header_targets_public_home_routes()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
 
-        Assert.Equal(9, layout.Split("asp-area=\"\" asp-controller=\"Home\"").Length - 1);
+        Assert.Equal(6, header.Split("asp-area=\"\" asp-controller=\"Home\"").Length - 1);
     }
 }

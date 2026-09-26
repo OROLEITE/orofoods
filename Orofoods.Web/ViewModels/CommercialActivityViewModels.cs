@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Orofoods.Web.Models.Commercial;
+using Orofoods.Web.Services.Commercial;
 
 namespace Orofoods.Web.ViewModels;
 
@@ -12,6 +13,7 @@ public sealed class CommercialDashboardViewModel
     public decimal TodayRevenue { get; init; }
     public IReadOnlyList<CommercialActivity> Activities { get; init; } = [];
     public IReadOnlyList<CommercialActivity> UpcomingActivities { get; init; } = [];
+    public CommercialAttentionViewModel Attention { get; init; } = CommercialAttentionViewModel.Empty;
 }
 
 public sealed class CommercialActivityFormViewModel
@@ -19,6 +21,7 @@ public sealed class CommercialActivityFormViewModel
     public int? Id { get; set; }
     public int CustomerId { get; set; }
     public int? SalesRepresentativeId { get; set; }
+    public string? AssignedUserId { get; set; }
     public CommercialActivityType Type { get; set; } = CommercialActivityType.Call;
     public CommercialActivityStatus Status { get; set; } = CommercialActivityStatus.Scheduled;
     public DateTime ScheduledAt { get; set; } = DateTime.Now.AddHours(1);
@@ -27,6 +30,7 @@ public sealed class CommercialActivityFormViewModel
     public bool IsPriority { get; set; }
     public IReadOnlyList<SelectListItem> Customers { get; set; } = [];
     public IReadOnlyList<SelectListItem> SalesRepresentatives { get; set; } = [];
+    public IReadOnlyList<SelectListItem> InternalSalesUsers { get; set; } = [];
 }
 
 public sealed class CommercialCalendarViewModel

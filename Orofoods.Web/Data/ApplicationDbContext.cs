@@ -20,6 +20,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<CustomerPaymentTerm> CustomerPaymentTerms => Set<CustomerPaymentTerm>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<ProductInventory> ProductInventories => Set<ProductInventory>();
@@ -29,6 +30,11 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
     public DbSet<CommercialActivity> CommercialActivities => Set<CommercialActivity>();
+    public DbSet<CrmOpportunity> CrmOpportunities => Set<CrmOpportunity>();
+    public DbSet<CrmOpportunityHistory> CrmOpportunityHistories => Set<CrmOpportunityHistory>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<WhatsAppConversation> WhatsAppConversations => Set<WhatsAppConversation>();
+    public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -61,6 +67,15 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .WithMany(x => x.Customers)
             .HasForeignKey(x => x.SalesRepresentativeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Customer>()
+            .HasOne(x => x.InternalSalesUser)
+            .WithMany()
+            .HasForeignKey(x => x.InternalSalesUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Customer>()
+            .HasIndex(x => x.InternalSalesUserId);
 
         builder.Entity<ProductCategory>()
             .HasIndex(x => x.Slug)
@@ -103,13 +118,81 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasForeignKey(x => x.SalesRepresentativeId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Entity<CommercialActivity>()
+            .HasOne(x => x.AssignedUser)
+            .WithMany()
+            .HasForeignKey(x => x.AssignedUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<CommercialActivity>()
+            .HasIndex(x => x.AssignedUserId);
+
+        builder.Entity<CrmOpportunity>().HasIndex(x => x.CustomerId);
+        builder.Entity<CrmOpportunity>().HasIndex(x => x.AssignedUserId);
+        builder.Entity<CrmOpportunity>().HasIndex(x => x.Stage);
+        builder.Entity<CrmOpportunity>().HasIndex(x => x.ExpectedCloseAt);
+        builder.Entity<CrmOpportunity>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CrmOpportunity>().HasOne(x => x.AssignedUser).WithMany().HasForeignKey(x => x.AssignedUserId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<CrmOpportunity>().HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<CrmOpportunity>().HasOne(x => x.RelatedOrder).WithMany().HasForeignKey(x => x.RelatedOrderId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<CrmOpportunityHistory>().HasIndex(x => new { x.OpportunityId, x.OccurredAt });
+        builder.Entity<CrmOpportunityHistory>().HasOne(x => x.Opportunity).WithMany(x => x.History).HasForeignKey(x => x.OpportunityId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<CrmOpportunityHistory>().HasOne(x => x.ChangedByUser).WithMany().HasForeignKey(x => x.ChangedByUserId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<UserNotification>().HasIndex(x => new { x.UserId, x.ReadAt });
+        builder.Entity<UserNotification>().HasIndex(x => x.CreatedAt);
+        builder.Entity<UserNotification>().HasIndex(x => new { x.UserId, x.DeduplicationKey }).IsUnique();
+        builder.Entity<UserNotification>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<UserNotification>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<UserNotification>().HasOne(x => x.Opportunity).WithMany().HasForeignKey(x => x.OpportunityId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<UserNotification>().HasOne(x => x.Activity).WithMany().HasForeignKey(x => x.ActivityId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<WhatsAppConversation>().HasIndex(x => x.PhoneNumber);
+        builder.Entity<WhatsAppConversation>().HasIndex(x => x.CustomerId);
+        builder.Entity<WhatsAppConversation>().HasIndex(x => x.AssignedUserId);
+        builder.Entity<WhatsAppConversation>().HasIndex(x => x.LastMessageAt);
+        builder.Entity<WhatsAppConversation>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<WhatsAppConversation>().HasOne(x => x.AssignedUser).WithMany().HasForeignKey(x => x.AssignedUserId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<WhatsAppMessage>().HasIndex(x => x.ExternalMessageId).IsUnique();
+        builder.Entity<WhatsAppMessage>().HasIndex(x => new { x.ConversationId, x.CreatedAt });
+        builder.Entity<WhatsAppMessage>().HasIndex(x => x.Status);
+        builder.Entity<WhatsAppMessage>().HasOne(x => x.Conversation).WithMany(x => x.Messages).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Restrict);
+
         builder.Entity<OrderStatusHistory>()
             .HasIndex(x => new { x.OrderId, x.ChangedAt });
+
+        builder.Entity<Order>()
+            .HasIndex(x => new { x.CustomerId, x.CheckoutAttemptKey })
+            .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey")
+            .IsUnique();
 
         builder.Entity<OrderStatusHistory>()
             .HasOne(x => x.ChangedByUser)
             .WithMany()
             .HasForeignKey(x => x.ChangedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.OrderId);
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.IdempotencyKey)
+            .IsUnique();
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.GatewayOrderId);
+
+        builder.Entity<Payment>()
+            .HasIndex(x => x.GatewayPaymentId);
+
+        builder.Entity<Payment>()
+            .HasOne(x => x.Order)
+            .WithMany(x => x.Payments)
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Payment>()
+            .HasOne(x => x.Customer)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<ProductInventory>()
@@ -163,5 +246,6 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<Order>().Property(x => x.Total).HasPrecision(12, 2);
         builder.Entity<OrderItem>().Property(x => x.UnitPrice).HasPrecision(12, 2);
         builder.Entity<OrderItem>().Property(x => x.Subtotal).HasPrecision(12, 2);
+        builder.Entity<Payment>().Property(x => x.Amount).HasPrecision(12, 2);
     }
 }

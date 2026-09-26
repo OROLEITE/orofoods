@@ -42,11 +42,26 @@
                 </section>
 
                 <section class="registration-card">
-                    <header class="registration-card-heading"><span><i class="fa-solid fa-tags" aria-hidden="true"></i></span><div><small>02. Condi&ccedil;&otilde;es comerciais</small><h2>Pre&ccedil;o, vendedor e pagamento</h2></div></header>
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-credit-card" aria-hidden="true"></i></span><div><small>02. Elegibilidade de pagamento</small><h2>Cr&eacute;dito e prazo</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-3"><small>Compras v&aacute;lidas</small><strong class="d-block">@Model.ValidPurchaseCount</strong></div>
+                        <div class="col-md-3"><small>Condi&ccedil;&atilde;o atual</small><strong class="d-block">@(Model.InvoiceCreditEnabled ? "Até 14 dias" : "À vista")</strong></div>
+                        <div class="col-md-3"><small>Prazo m&aacute;ximo</small><strong class="d-block">@Model.EffectiveMaximumPaymentTermDays dias</strong></div>
+                        <div class="col-md-3"><small>Libera&ccedil;&atilde;o</small><strong class="d-block">@(Model.EffectiveCreditReleaseDate?.ToString("dd/MM/yyyy") ?? "Não liberado")</strong></div>
+                        <div class="col-md-4 form-check ms-2"><input asp-for="CreditBlocked" class="form-check-input" /><label asp-for="CreditBlocked" class="form-check-label">Bloquear boleto a prazo</label></div>
+                        <div class="col-md-4 form-check ms-2"><input asp-for="CreditOverrideEnabled" class="form-check-input" /><label asp-for="CreditOverrideEnabled" class="form-check-label">Definir prazo manualmente</label></div>
+                        <div class="col-md-3"><label asp-for="MaximumPaymentTermDays" class="form-label">Prazo manual (dias)</label><input asp-for="MaximumPaymentTermDays" class="form-control" inputmode="numeric" max="14" /></div>
+                        <div class="col-12"><label asp-for="CreditNotes" class="form-label">Observa&ccedil;&otilde;es de cr&eacute;dito</label><textarea asp-for="CreditNotes" class="form-control" rows="3"></textarea></div>
+                    </div>
+                </section>
+
+                <section class="registration-card">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-tags" aria-hidden="true"></i></span><div><small>03. Condi&ccedil;&otilde;es comerciais</small><h2>Pre&ccedil;o, vendedor e pagamento</h2></div></header>
                     <div class="row g-3">
                         <div class="col-md-4"><label asp-for="WmcCode" class="form-label">C&oacute;digo do cliente no WMC <em>Opcional</em></label><input asp-for="WmcCode" class="form-control" inputmode="numeric" placeholder="Ex.: 755066" /></div>
                         <div class="col-md-4"><label asp-for="PriceTableId" class="form-label">Tabela de pre&ccedil;os</label><select asp-for="PriceTableId" class="form-select" asp-items="Model.PriceTables"><option value="">Selecione uma tabela</option></select></div>
                         <div class="col-md-4"><label asp-for="SalesRepresentativeId" class="form-label">Vendedor respons&aacute;vel</label><select asp-for="SalesRepresentativeId" class="form-select" asp-items="Model.SalesRepresentatives"><option value="">Selecione um vendedor</option></select></div>
+                        <div class="col-md-4"><label asp-for="InternalSalesUserId" class="form-label">Atendimento interno</label><select asp-for="InternalSalesUserId" class="form-select" asp-items="Model.InternalSalesUsers"><option value="">N&atilde;o atribu&iacute;do</option></select></div>
                         <div class="col-12"><label asp-for="PaymentTermIds" class="form-label">Condi&ccedil;&otilde;es de pagamento</label><select asp-for="PaymentTermIds" class="form-select customer-payment-terms" asp-items="Model.PaymentTerms" multiple size="3"></select><small class="customer-field-help">Use Ctrl (Windows) ou Command (Mac) para selecionar mais de uma condi&ccedil;&atilde;o.</small></div>
                     </div>
                 </section>

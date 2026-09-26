@@ -1,0 +1,456 @@
+.admin-registration-page {
+    min-height: calc(100vh - 144px);
+    padding: 4px 0 48px;
+    background: #f7f4ed;
+}
+
+.admin-registration-page .admin-page-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 24px;
+    margin: 0 0 26px;
+}
+
+.admin-registration-page .admin-page-header .eyebrow {
+    margin: 0 0 6px;
+    color: #8a6410;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+}
+
+.admin-registration-page .admin-page-header h1 {
+    margin: 0;
+    color: #25211c;
+    font: 800 32px/1.1 Manrope, sans-serif;
+    letter-spacing: 0;
+}
+
+.admin-registration-page .admin-page-header > div > p:last-child {
+    margin: 7px 0 0;
+    color: #756b60;
+    font-size: 13px;
+}
+
+.admin-primary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 9px 15px;
+    border: 1px solid #c69a3b;
+    border-radius: 9px;
+    background: #d2aa52;
+    color: #25211c;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.admin-primary-action:hover,
+.admin-primary-action:focus-visible {
+    border-color: #aa7613;
+    background: #c99a35;
+    color: #1f1b17;
+}
+
+.admin-table-card {
+    overflow: hidden;
+    border: 1px solid #e5ded2;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(53, 46, 37, .05);
+}
+
+.admin-table-card .table-responsive {
+    margin: 0;
+}
+
+.admin-authenticated .admin-orders-table thead th,
+.admin-authenticated .customer-list-table thead th,
+.admin-authenticated .orders-table thead th,
+.admin-authenticated .erp-table thead th {
+    border-color: #e5ded2;
+    background: #f4ead2;
+    color: #5b5043;
+}
+
+.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn:first-child {
+    border-color: #eadfca;
+    background: #f4ead2;
+    color: #805b10;
+}
+
+.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn:first-child:hover,
+.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn:first-child:focus-visible {
+    border-color: #dbc28c;
+    background: #eddfbf;
+    color: #65470b;
+}
+
+.admin-table {
+    min-width: 760px;
+    margin: 0;
+    color: #25211c;
+    --bs-table-bg: #fff;
+    --bs-table-color: #25211c;
+    --bs-table-border-color: #ece6dc;
+    --bs-table-hover-bg: #f7f1e5;
+    --bs-table-hover-color: #25211c;
+}
+
+.admin-table > thead > tr > th {
+    height: 44px;
+    padding: 11px 16px;
+    border: 0;
+    background: #f4ead2;
+    color: #5b5043;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .55px;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.admin-table > tbody > tr {
+    height: 50px;
+}
+
+.admin-table > tbody > tr:nth-child(even) {
+    --bs-table-accent-bg: #fbf9f5;
+}
+
+.admin-table > tbody > tr:hover {
+    --bs-table-accent-bg: #f7f1e5;
+}
+
+.admin-table > tbody > tr > td {
+    padding: 7px 14px;
+    border-color: #ece6dc;
+    color: #5b5043;
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+.admin-table > tbody > tr:last-child > td {
+    border-bottom: 0;
+}
+
+.admin-table .admin-table-name strong {
+    color: #25211c;
+    font-size: 13px;
+}
+
+.admin-table .admin-table-secondary {
+    color: #8a8176;
+}
+
+.admin-table .admin-table-slug {
+    font-size: 11px;
+}
+
+.admin-count-badge {
+    display: inline-grid;
+    min-width: 28px;
+    height: 26px;
+    place-items: center;
+    padding: 0 7px;
+    border: 1px solid #e5ded2;
+    border-radius: 6px;
+    background: #fbf9f5;
+    color: #5b5043;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 26px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.status-badge > i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.status-badge--active {
+    background: #e5f1e8;
+    color: #2e6d43;
+}
+
+.status-badge--inactive {
+    background: #eeeae3;
+    color: #756b60;
+}
+
+.admin-table-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.admin-table-actions form {
+    margin: 0;
+}
+
+.admin-inventory-table {
+    min-width: 980px;
+}
+
+.admin-inventory-adjustment {
+    display: grid;
+    grid-template-columns: 88px minmax(150px, 1fr) auto;
+    gap: 6px;
+    min-width: 340px;
+}
+
+.admin-inventory-adjustment .form-control {
+    min-height: 32px;
+    border-color: #ddd5c9;
+    font-size: 11px;
+}
+
+.admin-inventory-adjustment .form-control:focus {
+    border-color: #c99528;
+    box-shadow: 0 0 0 3px rgba(201, 149, 40, .12);
+}
+
+.admin-edit-action,
+.admin-secondary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 5px 8px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.admin-edit-action {
+    border: 1px solid #eadfca;
+    background: #f4ead2;
+    color: #805b10;
+}
+
+.admin-edit-action:hover,
+.admin-edit-action:focus-visible {
+    border-color: #dbc28c;
+    background: #eddfbf;
+    color: #65470b;
+}
+
+.admin-secondary-action {
+    border: 1px solid #e2dbd1;
+    background: transparent;
+    color: #756b60;
+}
+
+.admin-secondary-action:hover,
+.admin-secondary-action:focus-visible {
+    border-color: #cfbea4;
+    background: #f8f3e9;
+    color: #5b5043;
+}
+
+.admin-deactivate-action:hover,
+.admin-deactivate-action:focus-visible {
+    border-color: #d7aaa4;
+    background: #fbefed;
+    color: #8e3f35;
+}
+
+.admin-registration-form-page {
+    background: #f7f4ed;
+}
+
+.admin-registration-form-page .admin-form-hero,
+.admin-registration-form-page .admin-form-card {
+    border-color: #e5ded2;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(53, 46, 37, .05);
+}
+
+.admin-registration-form-page .admin-form-hero {
+    border-radius: 12px;
+}
+
+.admin-registration-form-page .admin-form-card {
+    border-radius: 12px;
+}
+
+.admin-registration-form-page .form-control,
+.admin-registration-form-page .form-select {
+    border-color: #ddd5c9;
+    background-color: #fff;
+}
+
+.admin-registration-form-page .form-control:focus,
+.admin-registration-form-page .form-select:focus {
+    border-color: #c99528;
+    box-shadow: 0 0 0 4px rgba(201, 149, 40, .12);
+}
+
+.admin-price-items-table .form-control {
+    min-width: 120px;
+    min-height: 36px;
+    border-color: #ddd5c9;
+    font-size: 12px;
+}
+
+@media (max-width: 767px) {
+    .admin-registration-page {
+        padding-bottom: 32px;
+    }
+
+    .admin-registration-page .admin-page-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 18px;
+        margin-bottom: 20px;
+    }
+
+    .admin-registration-page .admin-page-header h1 {
+        font-size: 29px;
+    }
+
+    .admin-registration-page .admin-primary-action {
+        align-self: flex-start;
+    }
+
+    .admin-registration-page .table-responsive {
+        overflow: visible;
+    }
+
+    .admin-registration-page .admin-table {
+        display: block;
+        min-width: 0;
+    }
+
+    .admin-registration-page .admin-table thead {
+        display: none;
+    }
+
+    .admin-registration-page .admin-table tbody {
+        display: grid;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .admin-registration-page .admin-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px 14px;
+        height: auto;
+        padding: 14px;
+        border: 1px solid #ece6dc;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .admin-registration-page .admin-table tbody td {
+        display: block;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    .admin-registration-page .admin-table tbody td:not(.admin-table-name):not(.admin-table-secondary):not(.admin-table-products):not(.admin-table-status):not(.admin-table-actions)::before {
+        display: block;
+        margin-bottom: 4px;
+        color: #8a8176;
+        content: attr(data-label);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .admin-registration-page .admin-table-secondary {
+        display: none;
+    }
+
+    .admin-registration-page .admin-table-name {
+        align-self: center;
+        grid-column: 1 / -1;
+    }
+
+    .admin-registration-page .admin-table-name::before,
+    .admin-registration-page .admin-table-status::before,
+    .admin-registration-page .admin-table-actions::before {
+        display: none;
+    }
+
+    .admin-registration-page .admin-table-products {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .admin-registration-page .admin-table-products::before {
+        display: inline;
+        color: #8a8176;
+        content: attr(data-label);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .admin-registration-page .admin-table-status {
+        align-self: center;
+    }
+
+    .admin-registration-page .admin-table-actions {
+        display: flex;
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+
+    .admin-registration-page .admin-inventory-adjustment {
+        grid-template-columns: 90px minmax(0, 1fr) auto;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .admin-registration-page .admin-price-items-table tbody td:not(.admin-table-name):not(.admin-table-secondary):not(.admin-table-actions)::before {
+        display: block;
+        margin-bottom: 5px;
+        color: #8a8176;
+        content: attr(data-label);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+}
+
+@media (max-width: 420px) {
+    .admin-registration-page .admin-table tbody tr {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-registration-page .admin-table-actions {
+        justify-content: flex-start;
+        padding-top: 10px;
+        border-top: 1px solid #ece6dc;
+    }
+
+    .admin-registration-page .admin-inventory-adjustment {
+        grid-template-columns: 84px minmax(0, 1fr);
+    }
+
+    .admin-registration-page .admin-inventory-adjustment .admin-edit-action {
+        grid-column: 1 / -1;
+    }
+}

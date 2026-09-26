@@ -1,4 +1,130 @@
 @model Orofoods.Web.ViewModels.AdminReportViewModel
-@{ ViewData["Title"] = "Relatorios"; }
-<section class="page-hero"><div class="container"><div class="eyebrow light"><span></span> Inteligencia comercial</div><h1>Relatorios de vendas</h1><p>Indicadores consolidados da operacao Orofoods.</p></div></section>
-<section class="section"><div class="container"><form method="get" class="row g-3 summary-card"><div class="col-md-2"><label>Data inicial</label><input type="date" name="dateFrom" value="@Model.Filter.DateFrom?.ToString("yyyy-MM-dd")" class="form-control"/></div><div class="col-md-2"><label>Data final</label><input type="date" name="dateTo" value="@Model.Filter.DateTo?.ToString("yyyy-MM-dd")" class="form-control"/></div><div class="col-md-2"><label>Cliente</label><select name="customerId" asp-items="ViewBag.Customers" class="form-select"><option value="">Todos</option></select></div><div class="col-md-2"><label>Produto</label><select name="productId" asp-items="ViewBag.Products" class="form-select"><option value="">Todos</option></select></div><div class="col-md-2"><label>Categoria</label><select name="categoryId" asp-items="ViewBag.Categories" class="form-select"><option value="">Todas</option></select></div><div class="col-md-2"><label>Vendedor</label><select name="salesRepresentativeId" asp-items="ViewBag.SalesRepresentatives" class="form-select"><option value="">Todos</option></select></div><div class="col-12"><button class="btn btn-gold">Aplicar filtros</button> <a class="btn btn-outline-dark" asp-action="Index">Limpar</a></div></form><div class="metric-grid mt-4"><article><small>PEDIDOS</small><strong>@Model.Report.OrderCount</strong></article><article><small>FATURAMENTO</small><strong>@Model.Report.Revenue.ToString("C")</strong></article><article><small>TICKET MEDIO</small><strong>@Model.Report.AverageTicket.ToString("C")</strong></article></div><div class="row g-4 mt-4"><div class="col-lg-6">@await Html.PartialAsync("_Ranking", ("Produtos mais vendidos", Model.Report.TopProducts))</div><div class="col-lg-6">@await Html.PartialAsync("_Ranking", ("Clientes que mais compram", Model.Report.TopCustomers))</div><div class="col-lg-6">@await Html.PartialAsync("_Ranking", ("Vendas por categoria", Model.Report.ByCategory))</div><div class="col-lg-6">@await Html.PartialAsync("_Ranking", ("Vendas por vendedor", Model.Report.BySalesRepresentative))</div><div class="col-lg-6">@await Html.PartialAsync("_Ranking", ("Vendas por cidade", Model.Report.ByCity))</div><div class="col-lg-6"><div class="summary-card"><h2>Pedidos por status</h2><table class="table"><thead><tr><th>Status</th><th>Pedidos</th><th>Total</th></tr></thead><tbody>@foreach(var row in Model.Report.ByStatus){<tr><td>@row.Status</td><td>@row.Orders</td><td>@row.Total.ToString("C")</td></tr>}</tbody></table></div></div></div></div></section>
+@using Orofoods.Web.Services.Reports
+@{
+	ViewData["Title"] = "Relat&oacute;rios";
+	var today = DateTime.Today;
+	var sevenDaysAgo = today.AddDays(-6);
+	var thirtyDaysAgo = today.AddDays(-29);
+	var monthStart = new DateTime(today.Year, today.Month, 1);
+	var hasDimensionFilter = Model.Filter.CustomerId is not null || Model.Filter.ProductId is not null || Model.Filter.CategoryId is not null || Model.Filter.SalesRepresentativeId is not null;
+	var isToday = Model.Filter.DateFrom == today && Model.Filter.DateTo == today;
+	var isSevenDays = Model.Filter.DateFrom == sevenDaysAgo && Model.Filter.DateTo == today;
+	var isThirtyDays = Model.Filter.DateFrom == thirtyDaysAgo && Model.Filter.DateTo == today;
+	var isCurrentMonth = Model.Filter.DateFrom == monthStart && Model.Filter.DateTo == today;
+	var isCustomPeriod = !isToday && !isSevenDays && !isThirtyDays && !isCurrentMonth;
+	var showAdvancedFilters = isCustomPeriod || hasDimensionFilter;
+	var categoryRows = Model.Report.ByCategory.Take(6).ToList();
+	var categoryTotal = Model.Report.CategoryRankingTotal;
+	var categoryColors = new[] { "#c99528", "#7a5b35", "#e5c77d", "#4f493d", "#b58b45", "#d8d0c4" };
+	var categoryStops = new List<string>();
+	decimal categoryOffset = 0;
+	for (var index = 0; index < categoryRows.Count; index++)
+	{
+		var share = categoryTotal == 0 ? 0 : categoryRows[index].Total / categoryTotal * 100;
+		categoryStops.Add($"{categoryColors[index]} {categoryOffset.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}% {(categoryOffset + share).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}%");
+		categoryOffset += share;
+	}
+	if (categoryOffset < 100)
+	{
+		categoryStops.Add($"#eee9df {categoryOffset.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}% 100%");
+	}
+	var categoryChart = categoryStops.Count == 0 ? "#eee9df 0 100%" : string.Join(",", categoryStops);
+}
+
+@section Head {
+	<link rel="stylesheet" href="~/css/admin-reports.css" asp-append-version="true" />
+	<link rel="stylesheet" href="~/css/admin-reports-bi.css" asp-append-version="true" />
+}
+
+<section class="admin-reports-page reports-dashboard">
+	<header class="reports-header">
+		<div>
+			<p class="eyebrow"><span></span> Gest&atilde;o</p>
+			<h1>Relat&oacute;rios</h1>
+			<p>Indicadores de vendas e desempenho no per&iacute;odo selecionado.</p>
+		</div>
+		<nav class="reports-period-selector" aria-label="Filtrar relat&oacute;rio por per&iacute;odo">
+			<a class="@(isToday ? "active" : null)" asp-action="Index" asp-route-dateFrom="@today.ToString("yyyy-MM-dd")" asp-route-dateTo="@today.ToString("yyyy-MM-dd")" asp-route-customerId="@Model.Filter.CustomerId" asp-route-productId="@Model.Filter.ProductId" asp-route-categoryId="@Model.Filter.CategoryId" asp-route-salesRepresentativeId="@Model.Filter.SalesRepresentativeId">Hoje</a>
+			<a class="@(isSevenDays ? "active" : null)" asp-action="Index" asp-route-dateFrom="@sevenDaysAgo.ToString("yyyy-MM-dd")" asp-route-dateTo="@today.ToString("yyyy-MM-dd")" asp-route-customerId="@Model.Filter.CustomerId" asp-route-productId="@Model.Filter.ProductId" asp-route-categoryId="@Model.Filter.CategoryId" asp-route-salesRepresentativeId="@Model.Filter.SalesRepresentativeId">7 dias</a>
+			<a class="@(isThirtyDays ? "active" : null)" asp-action="Index" asp-route-dateFrom="@thirtyDaysAgo.ToString("yyyy-MM-dd")" asp-route-dateTo="@today.ToString("yyyy-MM-dd")" asp-route-customerId="@Model.Filter.CustomerId" asp-route-productId="@Model.Filter.ProductId" asp-route-categoryId="@Model.Filter.CategoryId" asp-route-salesRepresentativeId="@Model.Filter.SalesRepresentativeId">30 dias</a>
+			<a class="@(isCurrentMonth ? "active" : null)" asp-action="Index" asp-route-dateFrom="@monthStart.ToString("yyyy-MM-dd")" asp-route-dateTo="@today.ToString("yyyy-MM-dd")" asp-route-customerId="@Model.Filter.CustomerId" asp-route-productId="@Model.Filter.ProductId" asp-route-categoryId="@Model.Filter.CategoryId" asp-route-salesRepresentativeId="@Model.Filter.SalesRepresentativeId">M&ecirc;s atual</a>
+			<button class="@(isCustomPeriod ? "active" : null)" type="button" data-bs-toggle="collapse" data-bs-target="#reportsAdvancedFilters" aria-expanded="@showAdvancedFilters.ToString().ToLowerInvariant()" aria-controls="reportsAdvancedFilters"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Personalizado</button>
+		</nav>
+	</header>
+
+	<form method="get" id="reportsAdvancedFilters" class="reports-filter-panel collapse @(showAdvancedFilters ? "show" : null)">
+		<div><label for="reportDateFrom">Data inicial</label><input id="reportDateFrom" type="date" name="dateFrom" value="@Model.Filter.DateFrom?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+		<div><label for="reportDateTo">Data final</label><input id="reportDateTo" type="date" name="dateTo" value="@Model.Filter.DateTo?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+		<div><label for="reportCustomer">Cliente</label><select id="reportCustomer" name="customerId" asp-items="ViewBag.Customers" class="form-select"><option value="">Todos</option></select></div>
+		<div><label for="reportProduct">Produto</label><select id="reportProduct" name="productId" asp-items="ViewBag.Products" class="form-select"><option value="">Todos</option></select></div>
+		<div><label for="reportCategory">Categoria</label><select id="reportCategory" name="categoryId" asp-items="ViewBag.Categories" class="form-select"><option value="">Todas</option></select></div>
+		<div><label for="reportSeller">Vendedor</label><select id="reportSeller" name="salesRepresentativeId" asp-items="ViewBag.SalesRepresentatives" class="form-select"><option value="">Todos</option></select></div>
+		<div class="reports-filter-actions"><button class="btn btn-gold" type="submit">Aplicar</button><a class="btn btn-outline-dark" asp-action="Index">Limpar</a></div>
+	</form>
+
+	<div class="reports-kpi-grid" aria-label="Indicadores do per&iacute;odo">
+		<article><small>PEDIDOS</small><strong>@Model.Report.OrderCount</strong><span>Pedidos n&atilde;o cancelados</span></article>
+		<article><small>FATURAMENTO</small><strong>@Model.Report.Revenue.ToString("C")</strong><span>Receita no per&iacute;odo</span></article>
+		<article><small>TICKET M&Eacute;DIO</small><strong>@Model.Report.AverageTicket.ToString("C")</strong><span>Valor m&eacute;dio por pedido</span></article>
+		<article><small>CLIENTES COMPRADORES</small><strong>@Model.Report.BuyerCount</strong><span>Clientes &uacute;nicos no per&iacute;odo</span></article>
+		<article><small>ITENS VENDIDOS</small><strong>@Model.Report.SoldItemCount</strong><span>Unidades em pedidos n&atilde;o cancelados</span></article>
+	</div>
+
+	<div class="reports-chart-grid">
+		<article class="reports-panel reports-revenue-chart">
+			<header><div><small>EVOLU&Ccedil;&Atilde;O</small><h2>Faturamento por per&iacute;odo</h2></div><span>@Model.Report.Revenue.ToString("C")</span></header>
+			<div class="reports-chart-unavailable"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><strong>S&eacute;rie temporal indispon&iacute;vel</strong><span>O relat&oacute;rio atual fornece apenas o total consolidado do per&iacute;odo.</span></div>
+		</article>
+		<article class="reports-panel reports-category-chart">
+			<header><div><small>COMPOSI&Ccedil;&Atilde;O</small><h2>Vendas por categoria</h2></div><span>@categoryRows.Sum(row => row.Quantity) itens</span></header>
+			@if (categoryRows.Count == 0)
+			{
+				<div class="reports-empty">Nenhum dado no per&iacute;odo.</div>
+			}
+			else
+			{
+				<div class="reports-category-content">
+					<div class="reports-donut" style="--reports-chart: conic-gradient(@categoryChart)" role="img" aria-label="Participa&ccedil;&atilde;o do faturamento por categoria"><span><strong>@Model.Report.CategoryCount</strong> categorias</span></div>
+					<ol class="reports-category-legend">
+						@for (var index = 0; index < categoryRows.Count; index++)
+						{
+							var row = categoryRows[index];
+							var share = categoryTotal == 0 ? 0 : row.Total / categoryTotal * 100;
+							<li title="@row.Name: @row.Quantity itens, @row.Total.ToString("C")">
+								<i style="--category-color: @categoryColors[index]" aria-hidden="true"></i>
+								<span><strong>@row.Name</strong><small>@row.Quantity itens &middot; @row.Total.ToString("C")</small></span>
+								<b>@share.ToString("N1")%</b>
+							</li>
+						}
+					</ol>
+				</div>
+			}
+		</article>
+	</div>
+
+	<div class="reports-ranking-grid">
+		@await Html.PartialAsync("_Ranking", ("Produtos mais vendidos", Model.Report.TopProducts, Model.Report.ProductRankingTotal))
+		@await Html.PartialAsync("_Ranking", ("Vendas por vendedor", Model.Report.BySalesRepresentative, Model.Report.SalesRepresentativeRankingTotal))
+	</div>
+	<div class="reports-customer-ranking">
+		@await Html.PartialAsync("_Ranking", ("Clientes que mais compram", Model.Report.TopCustomers, Model.Report.CustomerRankingTotal))
+	</div>
+
+	<details class="reports-details">
+		<summary>Distribui&ccedil;&otilde;es complementares <i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary>
+		<div class="reports-details-grid">
+			@await Html.PartialAsync("_Ranking", ("Vendas por cidade", Model.Report.ByCity, Model.Report.CityRankingTotal))
+			<article class="reports-panel reports-status-list">
+				<header><div><small>OPERA&Ccedil;&Atilde;O</small><h2>Pedidos por status</h2></div></header>
+				@if (!Model.Report.ByStatus.Any())
+				{
+					<div class="reports-empty">Nenhum dado no per&iacute;odo.</div>
+				}
+				else
+				{
+					<ul>@foreach (var row in Model.Report.ByStatus) { <li><span>@row.Status</span><strong>@row.Orders</strong><b>@row.Total.ToString("C")</b></li> }</ul>
+				}
+			</article>
+		</div>
+	</details>
+</section>

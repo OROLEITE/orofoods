@@ -1,6 +1,7 @@
 @model Orofoods.Web.ViewModels.CustomerRegistrationViewModel
 @{
     ViewData["Title"] = "Cadastro B2B";
+    ViewData["BodyClass"] = "customer-registration-layout";
 }
 
 <section class="registration-page">
@@ -14,11 +15,18 @@
             <div class="registration-hero-photo" role="img" aria-label="P&atilde;es para food service em uma cozinha profissional"></div>
         </header>
 
-        <form method="post" class="registration-layout">
+        <form method="post" class="registration-layout" data-registration-wizard>
             <main class="registration-form">
                 <div asp-validation-summary="ModelOnly" class="registration-validation"></div>
+                <ol class="registration-stepper" data-registration-stepper aria-label="Etapas do cadastro">
+                    <li><span data-registration-indicator aria-current="step"><small>01</small>Empresa</span></li>
+                    <li><span data-registration-indicator><small>02</small>Contato</span></li>
+                    <li><span data-registration-indicator><small>03</small>Endere&ccedil;o</span></li>
+                    <li><span data-registration-indicator><small>04</small>Acesso</span></li>
+                </ol>
+                <p class="registration-step-status" aria-live="polite" data-registration-status>Etapa 1 de 4: Empresa</p>
 
-                <section class="registration-card">
+                <section class="registration-card" data-registration-step="1">
                     <header class="registration-card-heading"><span><i class="fa-solid fa-building" aria-hidden="true"></i></span><div><small>01. Empresa</small><h2>Dados da empresa</h2></div></header>
                     <div class="row g-3">
                         <div class="col-md-6"><label asp-for="LegalName" class="form-label">Raz&atilde;o social</label><input asp-for="LegalName" class="form-control" autocomplete="organization" /><span asp-validation-for="LegalName" class="text-danger"></span></div>
@@ -26,9 +34,9 @@
                         <div class="col-md-6"><label asp-for="Cnpj" class="form-label">CNPJ</label><input asp-for="Cnpj" class="form-control" inputmode="numeric" /><span asp-validation-for="Cnpj" class="text-danger"></span></div>
                         <div class="col-md-6"><label asp-for="StateRegistration" class="form-label">Inscri&ccedil;&atilde;o estadual <em>Opcional</em></label><input asp-for="StateRegistration" class="form-control" /></div>
                     </div>
-                </section>
+                <div class="registration-step-actions registration-step-actions--end"><button type="button" class="btn btn-gold" data-registration-next>Continuar <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></div></section>
 
-                <section class="registration-card">
+                <section class="registration-card" data-registration-step="2">
                     <header class="registration-card-heading"><span><i class="fa-solid fa-user-tie" aria-hidden="true"></i></span><div><small>02. Contato</small><h2>Respons&aacute;vel pela conta</h2></div></header>
                     <div class="row g-3">
                         <div class="col-md-8"><label asp-for="ResponsibleName" class="form-label">Respons&aacute;vel</label><input asp-for="ResponsibleName" class="form-control" autocomplete="name" /><span asp-validation-for="ResponsibleName" class="text-danger"></span></div>
@@ -37,22 +45,22 @@
                         <div class="col-md-4"><label asp-for="Phone" class="form-label">Telefone</label><input asp-for="Phone" class="form-control" autocomplete="tel" inputmode="tel" /><span asp-validation-for="Phone" class="text-danger"></span></div>
                         <div class="col-md-4"><label asp-for="WhatsApp" class="form-label">WhatsApp</label><input asp-for="WhatsApp" class="form-control" autocomplete="tel" inputmode="tel" /><span asp-validation-for="WhatsApp" class="text-danger"></span></div>
                     </div>
-                </section>
+                <div class="registration-step-actions"><button type="button" class="btn btn-outline-dark" data-registration-previous><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</button><button type="button" class="btn btn-gold" data-registration-next>Continuar <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></div></section>
 
-                <section class="registration-card">
+                <section class="registration-card" data-registration-step="3">
                     <header class="registration-card-heading"><span><i class="fa-solid fa-location-dot" aria-hidden="true"></i></span><div><small>03. Endere&ccedil;o</small><h2>Local de entrega</h2></div></header>
                     <div class="row g-3">
-                        <div class="col-md-4"><label asp-for="ZipCode" class="form-label">CEP</label><input asp-for="ZipCode" class="form-control" autocomplete="postal-code" inputmode="numeric" /><span asp-validation-for="ZipCode" class="text-danger"></span></div>
-                        <div class="col-md-8"><label asp-for="Street" class="form-label">Endere&ccedil;o</label><input asp-for="Street" class="form-control" autocomplete="street-address" /><span asp-validation-for="Street" class="text-danger"></span></div>
+                        <div class="col-md-3"><label asp-for="ZipCode" class="form-label">CEP</label><input asp-for="ZipCode" class="form-control" autocomplete="postal-code" inputmode="numeric" /><span asp-validation-for="ZipCode" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="Street" class="form-label">Endere&ccedil;o</label><input asp-for="Street" class="form-control" autocomplete="street-address" /><span asp-validation-for="Street" class="text-danger"></span></div>
                         <div class="col-md-3"><label asp-for="Number" class="form-label">N&uacute;mero</label><input asp-for="Number" class="form-control" /><span asp-validation-for="Number" class="text-danger"></span></div>
-                        <div class="col-md-5"><label asp-for="Complement" class="form-label">Complemento <em>Opcional</em></label><input asp-for="Complement" class="form-control" /></div>
-                        <div class="col-md-4"><label asp-for="District" class="form-label">Bairro</label><input asp-for="District" class="form-control" /><span asp-validation-for="District" class="text-danger"></span></div>
-                        <div class="col-md-8"><label asp-for="City" class="form-label">Cidade</label><input asp-for="City" class="form-control" autocomplete="address-level2" /><span asp-validation-for="City" class="text-danger"></span></div>
-                        <div class="col-md-4"><label asp-for="State" class="form-label">Estado</label><input asp-for="State" class="form-control text-uppercase" maxlength="2" autocomplete="address-level1" /><span asp-validation-for="State" class="text-danger"></span></div>
+                        <div class="col-md-3"><label asp-for="Complement" class="form-label">Complemento <em>Opcional</em></label><input asp-for="Complement" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="District" class="form-label">Bairro</label><input asp-for="District" class="form-control" /><span asp-validation-for="District" class="text-danger"></span></div>
+                        <div class="col-md-4"><label asp-for="City" class="form-label">Cidade</label><input asp-for="City" class="form-control" autocomplete="address-level2" /><span asp-validation-for="City" class="text-danger"></span></div>
+                        <div class="col-md-2"><label asp-for="State" class="form-label">Estado</label><input asp-for="State" class="form-control text-uppercase" maxlength="2" autocomplete="address-level1" /><span asp-validation-for="State" class="text-danger"></span></div>
                     </div>
-                </section>
+                <div class="registration-step-actions"><button type="button" class="btn btn-outline-dark" data-registration-previous><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</button><button type="button" class="btn btn-gold" data-registration-next>Continuar <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></div></section>
 
-                <section class="registration-card registration-card--access">
+                <section class="registration-card registration-card--access" data-registration-step="4">
                     <header class="registration-card-heading"><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span><div><small>04. Acesso</small><h2>Crie sua senha</h2></div></header>
                     <div class="row g-3">
                         <div class="col-md-6"><label asp-for="Password" class="form-label">Senha</label><div class="input-group"><input asp-for="Password" class="form-control" autocomplete="new-password" /><button class="btn btn-outline-dark password-toggle" type="button" data-password-toggle="Password" aria-label="Mostrar senha"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></div><span asp-validation-for="Password" class="text-danger"></span></div>
@@ -60,9 +68,12 @@
                     </div>
                     <label class="registration-consent"><input type="checkbox" id="AcceptPrivacyPolicy" name="AcceptPrivacyPolicy" value="true" /><span>Li e aceito a pol&iacute;tica de privacidade.</span></label>
                     <span asp-validation-for="AcceptPrivacyPolicy" class="text-danger d-block"></span>
+                    <div class="registration-step-actions">
+                        <button type="button" class="btn btn-outline-dark" data-registration-previous><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</button>
+                        <button type="submit" class="btn btn-gold">Enviar para an&aacute;lise <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+                    </div>
                 </section>
 
-                <footer class="registration-actions"><a asp-controller="Home" asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</a><button type="submit" class="btn btn-gold">Enviar para an&aacute;lise <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></footer>
             </main>
 
             <aside class="registration-aside">

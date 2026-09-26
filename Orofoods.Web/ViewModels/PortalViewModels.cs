@@ -16,9 +16,15 @@ public class DashboardVm
     public required CustomerModel Customer { get; init; }
     public OrderModel? LastOrder { get; init; }
     public required List<FrequentProduct> FrequentProducts { get; init; }
+    public required List<OrderModel> RecentOrders { get; init; }
+    public required List<MonthlyPurchaseVm> MonthlyPurchases { get; init; }
     public decimal MonthTotal { get; init; }
+    public int MonthOrderCount { get; init; }
+    public decimal AverageTicket { get; init; }
     public int OpenOrders { get; init; }
 }
+
+public sealed record MonthlyPurchaseVm(DateTime Month, decimal Total, int OrderCount);
 
 public class RepeatOrderVm
 {

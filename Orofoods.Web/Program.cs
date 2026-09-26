@@ -1,5 +1,7 @@
+using Azure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -9,16 +11,23 @@ using System.Globalization;
 using System.Threading.RateLimiting;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
+using Orofoods.Web.Configuration;
 using Orofoods.Web.Data;
+using AppDataProtectionOptions = Orofoods.Web.Models.Configuration.DataProtectionOptions;
 using Orofoods.Web.Models.Identity;
+using Orofoods.Web.Models.Configuration;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Services.Orders;
+using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
+using Orofoods.Web.Services.Sellers;
+using Orofoods.Web.Services.Storage;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -30,6 +39,16 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 2;
+    options.KnownProxies.Clear();
+    options.KnownIPNetworks.Clear();
+    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("10.0.0.0/8"));
+    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("192.168.0.0/16"));
+});
 var fileLoggingEnabled = builder.Configuration.GetValue<bool>("FileLogging:Enabled");
 if (fileLoggingEnabled)
 {
@@ -40,36 +59,66 @@ if (fileLoggingEnabled)
     var fileLogLevel = builder.Configuration.GetValue("FileLogging:MinimumLevel", LogLevel.Information);
     builder.Logging.AddDailyFile(resolvedFileLogDirectory, fileLogLevel);
 }
-var dataProtection = builder.Services.AddDataProtection();
+var dataProtectionSettings = builder.Configuration.GetSection("DataProtection").Get<AppDataProtectionOptions>() ?? new AppDataProtectionOptions();
+var applicationName = dataProtectionSettings.ApplicationName;
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(applicationName))
+{
+    throw new InvalidOperationException("DataProtection:ApplicationName deve estar configurado fora de Development.");
+}
+
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName(string.IsNullOrWhiteSpace(applicationName) ? "Orofoods.Web" : applicationName);
 if (builder.Environment.IsDevelopment())
 {
     dataProtection.PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")));
 }
 else
 {
+    var azureSettings = dataProtectionSettings.Azure;
+    var azureEnabled = azureSettings is not null && azureSettings.Enabled;
+    if (azureEnabled)
+    {
+        var blobUri = azureSettings!.BlobUri;
+        var keyVaultKeyIdentifier = azureSettings.KeyVaultKeyIdentifier;
+        if (string.IsNullOrWhiteSpace(blobUri) || string.IsNullOrWhiteSpace(keyVaultKeyIdentifier) || string.IsNullOrWhiteSpace(applicationName))
+        {
+            throw new InvalidOperationException("DataProtection:Azure habilitado exige ApplicationName, BlobUri e KeyVaultKeyIdentifier configurados para produção.");
+        }
+
+        var azureCredential = new DefaultAzureCredential();
+        dataProtection
+            .PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)
+            .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
+    }
+
     var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
-    if (string.IsNullOrWhiteSpace(keyDirectory) || !Path.IsPathFullyQualified(keyDirectory))
+    if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
     {
-        throw new InvalidOperationException("Defina DataProtection:KeyDirectory como um diretório absoluto fora da aplicação.");
-    }
+        if (!OperatingSystem.IsWindows())
+        {
+            throw new PlatformNotSupportedException("Configure um provedor de proteção de chaves compatível com o ambiente de produção.");
+        }
 
-    if (!OperatingSystem.IsWindows())
-    {
-        throw new PlatformNotSupportedException("Configure um provedor de proteção de chaves compatível com o ambiente de produção.");
+        dataProtection
+            .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
+            .ProtectKeysWithDpapi();
     }
-
-    dataProtection
-        .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
-        .ProtectKeysWithDpapi();
 }
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
 
 builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<ApplicationDbContext>(provider => provider.GetRequiredService<PostgreSqlApplicationDbContext>());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+builder.Services.AddSingleton<IProductImageStorage>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
+    return options.Provider.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase)
+        ? new AzureBlobProductImageStorage(options)
+        : new LocalProductImageStorage(serviceProvider.GetRequiredService<IWebHostEnvironment>(), options);
+});
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
@@ -115,14 +164,22 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddScoped<CustomerAccessService>();
 builder.Services.AddScoped<SalesRepresentativeAccessService>();
+builder.Services.AddScoped<SellerWorkspaceService>();
+builder.Services.AddScoped<SellerCatalogService>();
+builder.Services.AddScoped<SellerCheckoutService>();
+builder.Services.AddScoped<SellerOrderHistoryService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
+builder.Services.Configure<PaymentEligibilityOptions>(builder.Configuration.GetSection(PaymentEligibilityOptions.SectionName));
+builder.Services.AddScoped<IPaymentEligibilityService, PaymentEligibilityService>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<FrequentProductService>();
 builder.Services.AddScoped<CustomerDashboardService>();
 builder.Services.AddScoped<SavedOrderService>();
+builder.Services.AddScoped<OrderPlacementService>();
+builder.Services.AddScoped<AssistedOrderService>();
 builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
 builder.Services.AddScoped<AdminCommercialService>();
@@ -131,17 +188,54 @@ builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ApiTokenService>();
 builder.Services.AddScoped<OrderIntegrationService>();
 builder.Services.AddScoped<OrderReservationService>();
+builder.Services.Configure<CrmOptions>(builder.Configuration.GetSection(CrmOptions.SectionName));
+builder.Services.AddScoped<CommercialAttentionService>();
+builder.Services.AddScoped<CrmOpportunityService>();
+builder.Services.AddScoped<UserNotificationService>();
+builder.Services.AddScoped<WhatsAppConversationService>();
+builder.Services.Configure<WhatsAppBusinessOptions>(builder.Configuration.GetSection(WhatsAppBusinessOptions.SectionName));
+builder.Services.AddHttpClient<IWhatsAppBusinessGateway, MetaWhatsAppBusinessGateway>((sp, client) =>
+{
+    client.BaseAddress = new Uri("https://graph.facebook.com/");
+    client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
+});
 builder.Services.AddScoped<WmcExportAuditService>();
+builder.Services.AddScoped<PaymentService>();
+builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();
+builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
+builder.Services.AddHttpClient<IPaymentGateway, MercadoPagoPaymentGateway>((sp, client) =>
+{
+    client.BaseAddress = sp.GetRequiredService<IOptions<MercadoPagoOptions>>().Value.BaseAddress;
+});
+builder.Services.AddScoped<IMercadoPagoWebhookSignatureValidator, MercadoPagoWebhookSignatureValidator>();
+builder.Services.AddScoped<IPaymentApprovalHandler, NoOpPaymentApprovalHandler>();
+builder.Services.AddScoped<PaymentOrchestrationService>();
 builder.Services.AddSingleton<WmcOrderFileGenerator>();
 builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
 builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();
 builder.Services.AddHostedService<ErpRetryBackgroundService>();
+builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
+builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
+builder.Services.AddScoped<IWmcConnectionFactory, WmcFirebirdConnectionFactory>();
+builder.Services.AddScoped<IWmcFirebirdReader, WmcFirebirdReader>();
+builder.Services.AddScoped<IWmcSchemaInspector, WmcSchemaInspector>();
+builder.Services.AddScoped<IWmcCustomerReader, WmcCustomerReader>();
+builder.Services.AddScoped<IWmcProductReader, WmcProductReader>();
+builder.Services.AddScoped<IWmcSellerReader, UndiscoveredWmcSellerReader>();
+builder.Services.AddScoped<WmcSyncService>();
+builder.Services.AddSingleton<WmcSyncCoordinator>();
+builder.Services.AddHostedService<WmcSyncWorker>();
+builder.Services.AddHealthChecks().AddCheck<WmcFirebirdHealthCheck>("wmc-firebird");
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedCustomerHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, LinkedSalesRepresentativeHandler>();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
         OrofoodsPolicies.ApprovedCustomer,
         policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
+    options.AddPolicy(
+        OrofoodsPolicies.LinkedSalesRepresentative,
+        policy => policy.RequireAuthenticatedUser().RequireRole("Vendedor").AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -173,6 +267,7 @@ else
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseForwardedHeaders();
     app.UseHttpsRedirection();
 }
 app.UseRouting();
@@ -222,6 +317,8 @@ app.MapGet("/health", async (
         return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
     }
 });
+
+app.MapHealthChecks("/health/wmc").RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
 using (var scope = app.Services.CreateScope())
 {

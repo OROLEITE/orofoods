@@ -2,42 +2,39 @@
 @model IReadOnlyList<Orofoods.Web.Models.Orders.Order>
 @{ ViewData["Title"] = "Integra&ccedil;&otilde;es ERP"; }
 
-<section class="section">
+<section class="section admin-integrations-page">
     <div class="container">
-        <div class="portal-top">
+        <header class="admin-page-header">
             <div>
                 <div class="eyebrow"><span></span> Opera&ccedil;&atilde;o</div>
                 <h1>Integra&ccedil;&otilde;es ERP</h1>
                 <p>Acompanhe as tentativas de envio, erros e refer&ecirc;ncias do ERP.</p>
             </div>
-            <a class="btn btn-outline-dark" asp-controller="Dashboard">Voltar ao painel</a>
-        </div>
+            <a class="btn btn-outline-dark btn-sm" asp-action="Wmc">Sincroniza&ccedil;&atilde;o WMC <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+        </header>
 
         @if (TempData["WmcError"] is string wmcError)
         {
-            <div class="alert alert-warning mt-4" role="alert">@wmcError</div>
+            <div class="alert alert-warning mt-4" role="alert">N&atilde;o foi poss&iacute;vel exportar o pedido. Consulte os detalhes da integra&ccedil;&atilde;o.</div>
         }
 
-        <form class="catalog-tools mt-4">
-            <input name="q" value="@ViewBag.Query" placeholder="N&uacute;mero ou cliente" />
-            <select name="status" class="form-select">
-                <option value="">Todos os status</option>
-                @foreach (var item in Enum.GetValues<IntegrationStatus>())
-                {
-                    <option value="@item" selected="@(ViewBag.Status?.ToString() == item.ToString())">@item.ToDisplayName()</option>
-                }
-            </select>
-            <select name="wmcStatus" class="form-select">
-                <option value="">Todas as exporta&ccedil;&otilde;es WMC</option>
-                <option value="failed" selected="@(ViewBag.WmcStatus == "failed")">&Uacute;ltima exporta&ccedil;&atilde;o com falha</option>
-                <option value="succeeded" selected="@(ViewBag.WmcStatus == "succeeded")">&Uacute;ltima exporta&ccedil;&atilde;o gerada</option>
-                <option value="none" selected="@(ViewBag.WmcStatus == "none")">Sem exporta&ccedil;&atilde;o</option>
-            </select>
-            <button class="btn btn-dark" type="submit">Filtrar</button>
+        <form class="erp-filter-card">
+            <div class="erp-filter-grid">
+                <div><label for="erpQuery">N&uacute;mero ou cliente</label><div class="erp-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="erpQuery" name="q" value="@ViewBag.Query" class="form-control" placeholder="N&uacute;mero ou cliente" /></div></div>
+                <div><label for="integrationStatus">Integra&ccedil;&atilde;o</label><select id="integrationStatus" name="status" class="form-select"><option value="">Todos os status</option>@foreach (var item in Enum.GetValues<IntegrationStatus>()) { <option value="@item" selected="@(ViewBag.Status?.ToString() == item.ToString())">@item.ToDisplayName()</option> }</select></div>
+                <div><label for="wmcStatus">Exporta&ccedil;&atilde;o WMC</label><select id="wmcStatus" name="wmcStatus" class="form-select"><option value="">Todas as exporta&ccedil;&otilde;es WMC</option><option value="failed" selected="@(ViewBag.WmcStatus == "failed")">&Uacute;ltima exporta&ccedil;&atilde;o com falha</option><option value="succeeded" selected="@(ViewBag.WmcStatus == "succeeded")">&Uacute;ltima exporta&ccedil;&atilde;o gerada</option><option value="none" selected="@(ViewBag.WmcStatus == "none")">Sem exporta&ccedil;&atilde;o</option></select></div>
+                <button class="btn admin-primary-action erp-filter-submit" type="submit">Filtrar</button>
+            </div>
         </form>
 
-        <div class="table-responsive mt-4">
-            <table class="table table-dark table-striped align-middle">
+        @if (!Model.Any())
+        {
+            <div class="erp-empty-state"><h2>Nenhuma integra&ccedil;&atilde;o encontrada.</h2><p>Altere os filtros e tente novamente.</p></div>
+        }
+        else
+        {
+        <div class="erp-table-card"><div class="table-responsive">
+            <table class="table erp-table align-middle">
                 <thead>
                     <tr>
                         <th>Pedido</th>
@@ -53,17 +50,19 @@
                     @foreach (var order in Model)
                     {
                         var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).FirstOrDefault();
+                        var integrationStatusClass = order.IntegrationStatus.ToString().ToLowerInvariant();
+                        var hasIntegrationError = !string.IsNullOrWhiteSpace(order.IntegrationError);
                         <tr>
-                            <td><a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.Number</a></td>
-                            <td>@order.Customer?.TradeName</td>
+                            <td><a class="erp-order-number" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.Number</a></td>
+                            <td><span class="erp-customer" title="@order.Customer?.TradeName">@order.Customer?.TradeName</span></td>
                             <td>
-                                <strong>@order.IntegrationStatus.ToDisplayName()</strong>
-                                @if (!string.IsNullOrWhiteSpace(order.IntegrationError))
+                                <span class="erp-status-badge erp-status-badge--@integrationStatusClass">@order.IntegrationStatus.ToDisplayName()</span>
+                                @if (hasIntegrationError)
                                 {
-                                    <small class="d-block text-danger mt-1">@order.IntegrationError</small>
+                                    <button class="btn erp-error-toggle" type="button" data-bs-toggle="modal" data-bs-target="#erpErrorModal" data-order-number="@order.Number" data-customer="@order.Customer?.TradeName" data-attempt="@(order.LastIntegrationAttempt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")" data-reference="@(order.ErpOrderNumber ?? order.ExternalOrderId ?? "Pendente")" data-error="@order.IntegrationError">Ver detalhes</button>
                                 }
                             </td>
-                            <td>@(order.LastIntegrationAttempt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</td>
+                            <td class="erp-nowrap">@(order.LastIntegrationAttempt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</td>
                             <td>@(order.ErpOrderNumber ?? order.ExternalOrderId ?? "Pendente")</td>
                             <td>
                                 @if (lastWmcExport is null)
@@ -72,7 +71,7 @@
                                 }
                                 else
                                 {
-                                    <strong>@(lastWmcExport.Succeeded ? "Gerado" : "Falhou")</strong>
+                                    <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@(lastWmcExport.Succeeded ? "Gerado" : "Falhou")</span>
                                     <small class="d-block">@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
                                     @if (!string.IsNullOrWhiteSpace(lastWmcExport.FileName))
                                     {
@@ -85,14 +84,14 @@
                                 }
                             </td>
                             <td class="text-end">
-                                <div class="d-flex flex-column gap-2 align-items-end">
+                                <div class="erp-row-actions">
                                     <form asp-action="ExportWmc" method="post">
                                         <input type="hidden" name="id" value="@order.Id" />
-                                        <button class="btn btn-sm btn-outline-light" type="submit">Exportar WMC</button>
+                                        <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>
                                     </form>
                                     <form asp-action="Reprocess" method="post">
                                         <input type="hidden" name="id" value="@order.Id" />
-                                        <button class="btn btn-sm btn-gold" type="submit">Reprocessar</button>
+                                        <button class="btn btn-sm btn-erp-reprocess" type="submit">Reprocessar</button>
                                     </form>
                                 </div>
                             </td>
@@ -100,11 +99,35 @@
                     }
                 </tbody>
             </table>
-        </div>
-
-        @if (!Model.Any())
-        {
-            <div class="empty-state mt-4"><h3>Nenhuma integra&ccedil;&atilde;o encontrada.</h3></div>
+        </div></div>
         }
     </div>
 </section>
+
+<div class="modal fade" id="erpErrorModal" tabindex="-1" aria-labelledby="erpErrorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content erp-error-modal">
+            <div class="modal-header"><div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 class="modal-title" id="erpErrorModalLabel">Falha na integra&ccedil;&atilde;o</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+            <div class="modal-body"><dl class="erp-error-meta"><div><dt>Pedido</dt><dd id="erpErrorOrder"></dd></div><div><dt>Cliente</dt><dd id="erpErrorCustomer"></dd></div><div><dt>&Uacute;ltima tentativa</dt><dd id="erpErrorAttempt"></dd></div><div><dt>Refer&ecirc;ncia ERP</dt><dd id="erpErrorReference"></dd></div></dl><section class="erp-error-box" role="alert"><h3>Detalhes do erro</h3><p id="erpErrorMessage"></p></section></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Fechar</button></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let erpErrorTrigger;
+        document.querySelectorAll('.erp-error-toggle').forEach(function (button) {
+            button.addEventListener('click', function () { erpErrorTrigger = button; });
+        });
+        document.getElementById('erpErrorModal')?.addEventListener('show.bs.modal', function (event) {
+            const trigger = event.relatedTarget || erpErrorTrigger;
+            if (!trigger) return;
+            document.getElementById('erpErrorOrder').textContent = trigger.dataset.orderNumber;
+            document.getElementById('erpErrorCustomer').textContent = trigger.dataset.customer;
+            document.getElementById('erpErrorAttempt').textContent = trigger.dataset.attempt;
+            document.getElementById('erpErrorReference').textContent = trigger.dataset.reference;
+            document.getElementById('erpErrorMessage').textContent = trigger.dataset.error;
+        });
+    </script>
+}

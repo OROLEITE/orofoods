@@ -1,0 +1,49 @@
+@using Orofoods.Web.Services.Commercial
+@inject UserNotificationService NotificationService
+@{
+    var notificationUserId = NotificationService.CurrentUserId(User);
+    var unreadCount = 0;
+    var notifications = new List<Orofoods.Web.Models.Commercial.UserNotification>();
+    if (!string.IsNullOrWhiteSpace(notificationUserId))
+    {
+        try
+        {
+            unreadCount = await NotificationService.UnreadCountAsync(notificationUserId);
+            notifications = (await NotificationService.RecentAsync(notificationUserId)).Take(10).ToList();
+        }
+        catch
+        {
+            unreadCount = 0;
+            notifications = [];
+        }
+    }
+}
+@if (notificationUserId is not null)
+{
+    <details class="global-notification-menu">
+        <summary class="global-notification-trigger" aria-label="Notificações" aria-controls="globalNotificationPanel">
+            <i class="fa-solid fa-bell" aria-hidden="true"></i>
+            @if (unreadCount > 0) { <span class="global-notification-badge">@(unreadCount > 99 ? "99+" : unreadCount)</span> }
+        </summary>
+        <div id="globalNotificationPanel" class="global-notification-panel">
+            <header><strong>Notificações</strong><a asp-area="Admin" asp-controller="Notifications" asp-action="Index">Ver todas</a></header>
+            @if (!notifications.Any())
+            {
+                <p class="global-notification-empty">Nenhuma notificação nova.</p>
+            }
+            else
+            {
+                <div class="global-notification-items">
+                    @foreach (var notification in notifications)
+                    {
+                        var target = !string.IsNullOrWhiteSpace(notification.ActionUrl) && Url.IsLocalUrl(notification.ActionUrl) ? notification.ActionUrl : Url.Action("Index", "Notifications", new { area = "Admin" });
+                        <a class="global-notification-item @(notification.ReadAt is null ? "is-unread" : "")" href="@target">
+                            <i class="fa-solid fa-circle-info" aria-hidden="true"></i><span><strong>@notification.Title</strong><small>@notification.Message</small><time>@notification.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</time></span>
+                        </a>
+                    }
+                </div>
+            }
+            <footer><a asp-area="Admin" asp-controller="Notifications" asp-action="Index">Ver todas as notificações</a></footer>
+        </div>
+    </details>
+}
