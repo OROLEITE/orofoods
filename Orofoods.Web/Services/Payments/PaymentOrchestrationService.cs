@@ -87,7 +87,7 @@ public sealed class PaymentOrchestrationService(
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
         var payment = await db.Payments.FirstOrDefaultAsync(payment => payment.GatewayOrderId == gatewayOrderId, cancellationToken)
-            ?? throw new InvalidOperationException($"No local payment attempt found for gateway order '{gatewayOrderId}'.");
+            ?? throw new UnknownMercadoPagoOrderException(gatewayOrderId);
 
         var result = await gateway.GetOrderAsync(gatewayOrderId, cancellationToken);
 
@@ -229,3 +229,6 @@ public sealed class PaymentOrchestrationService(
         if (result.AuthorizationCode is not null) payment.AuthorizationCode = result.AuthorizationCode;
     }
 }
+
+public sealed class UnknownMercadoPagoOrderException(string gatewayOrderId)
+    : InvalidOperationException($"No local payment attempt found for gateway order '{gatewayOrderId}'.");

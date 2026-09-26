@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -49,14 +50,29 @@ public class MercadoPagoWebhooksControllerTests
     }
 
     [Fact]
-    public async Task Gateway_timeout_during_reconciliation_propagates_so_mercado_pago_retries()
+    public async Task Gateway_timeout_during_reconciliation_returns_service_unavailable_for_retry()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         await SeedApprovablePaymentAsync(db);
         var controller = CreateController(db, new TimingOutGateway(), signatureIsValid: true);
         SetRequest(controller, dataId: "MP-ORDER-1");
 
-        await Assert.ThrowsAsync<TaskCanceledException>(() => controller.Receive(CancellationToken.None));
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsType<StatusCodeResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task Gateway_temporary_error_returns_service_unavailable_for_retry()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        await SeedApprovablePaymentAsync(db);
+        var controller = CreateController(db, new TemporarilyUnavailableGateway(), signatureIsValid: true);
+        SetRequest(controller, dataId: "MP-ORDER-1");
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsType<StatusCodeResult>(result).StatusCode);
     }
 
     [Fact]
@@ -130,7 +146,7 @@ public class MercadoPagoWebhooksControllerTests
     }
 
     [Fact]
-    public async Task Unknown_gateway_order_id_is_logged_and_does_not_fail_the_request()
+    public async Task Unknown_gateway_order_id_returns_service_unavailable_for_retry()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         await SeedApprovablePaymentAsync(db);
@@ -139,7 +155,7 @@ public class MercadoPagoWebhooksControllerTests
 
         var result = await controller.Receive(CancellationToken.None);
 
-        Assert.IsType<OkResult>(result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsType<StatusCodeResult>(result).StatusCode);
     }
 
     private static MercadoPagoWebhooksController CreateController(Orofoods.Web.Data.ApplicationDbContext db, IPaymentGateway gateway, bool signatureIsValid)
@@ -250,6 +266,21 @@ public class MercadoPagoWebhooksControllerTests
 
         public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default) =>
             throw new TaskCanceledException("The request timed out.");
+
+        public Task<PaymentGatewayOrder> RefundAsync(RefundPaymentRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class TemporarilyUnavailableGateway : IPaymentGateway
+    {
+        public Task<PaymentGatewayOrder> CreatePixAsync(CreatePixPaymentRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default) =>
+            throw new PaymentGatewayException(HttpStatusCode.BadGateway);
 
         public Task<PaymentGatewayOrder> RefundAsync(RefundPaymentRequest request, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

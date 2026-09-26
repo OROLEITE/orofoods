@@ -70,9 +70,20 @@ public class MercadoPagoWebhooksController(
                 "Processed Mercado Pago webhook. GatewayOrderId={GatewayOrderId} RequestId={RequestId} Applied={Applied}",
                 dataId, requestId, applied);
         }
+        catch (UnknownMercadoPagoOrderException)
+        {
+            logger.LogWarning("Mercado Pago webhook references an order not yet persisted locally. GatewayOrderId={GatewayOrderId} RequestId={RequestId}", dataId, requestId);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning("Mercado Pago webhook reconciliation rejected. GatewayOrderId={GatewayOrderId} RequestId={RequestId} Reason={Reason}", dataId, requestId, ex.Message);
+            logger.LogWarning("Mercado Pago webhook reconciliation failed validation. GatewayOrderId={GatewayOrderId} RequestId={RequestId} Reason={Reason}", dataId, requestId, ex.Message);
+            return UnprocessableEntity();
+        }
+        catch (Exception ex) when (ex is PaymentGatewayException or HttpRequestException or TimeoutException or OperationCanceledException)
+        {
+            logger.LogWarning("Mercado Pago webhook reconciliation could not reach the authoritative gateway state. GatewayOrderId={GatewayOrderId} RequestId={RequestId} ErrorType={ErrorType}", dataId, requestId, ex.GetType().Name);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
         return Ok();

@@ -52,7 +52,7 @@ public sealed class MercadoPagoWebhookSignatureValidator(
             return false;
         }
 
-        var manifest = $"id:{dataId.Trim()};request-id:{requestId.Trim()};ts:{timestampText};";
+        var manifest = $"id:{dataId.Trim().ToLowerInvariant()};request-id:{requestId.Trim()};ts:{timestampText};";
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(options.Value.WebhookSecret));
         var expectedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(manifest));
         return CryptographicOperations.FixedTimeEquals(expectedHash, receivedHash);

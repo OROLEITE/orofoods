@@ -146,6 +146,23 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // This migration is not reversible while multiple attempts exist for one order.
+            // Abort before any schema change; never delete or consolidate payment records implicitly.
+            migrationBuilder.Sql("""
+                DO $migration$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM "Payments"
+                        GROUP BY "OrderId"
+                        HAVING COUNT(*) > 1
+                    ) THEN
+                        RAISE EXCEPTION 'Cannot roll back Mercado Pago payment infrastructure: multiple payment attempts exist for an order. Preserve payment records and keep this migration applied.';
+                    END IF;
+                END;
+                $migration$;
+                """);
+
             migrationBuilder.DropIndex(
                 name: "IX_Payments_GatewayOrderId",
                 table: "Payments");

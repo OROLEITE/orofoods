@@ -92,9 +92,59 @@ public class MercadoPagoWebhookHttpHarnessTests
         Assert.Null(stillPending.PaidAt);
     }
 
+    [Fact]
+    public async Task Unknown_gateway_order_returns_non_success_over_real_http()
+    {
+        await using var harness = await Harness.CreateAsync(HarnessWebhookSecret);
+        await harness.SeedPendingPaymentAsync("KNOWN-ORDER-1");
+
+        var status = await harness.SendNotificationAsync("TRANSIENT-ORDER-1", "harness-request-unknown", HarnessWebhookSecret);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, status);
+    }
+
+    [Fact]
+    public async Task Temporary_gateway_timeout_returns_non_success_over_real_http()
+    {
+        await using var harness = await Harness.CreateAsync(HarnessWebhookSecret);
+        var payment = await harness.SeedPendingPaymentAsync("HARNESS-TIMEOUT-1");
+        harness.Gateway.GetOrderError = new TaskCanceledException("Temporary gateway timeout.");
+
+        var status = await harness.SendNotificationAsync("HARNESS-TIMEOUT-1", "harness-request-timeout", HarnessWebhookSecret);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, status);
+        Assert.Equal(PaymentStatus.Pending, (await harness.ReloadPaymentAsync(payment.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Payload_without_data_id_returns_bad_request_over_real_http()
+    {
+        await using var harness = await Harness.CreateAsync(HarnessWebhookSecret);
+
+        var status = await harness.SendPayloadWithoutDataIdAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal(0, harness.Gateway.GetOrderCalls);
+    }
+
+    [Fact]
+    public async Task Uppercase_order_id_validates_signature_from_lowercase_manifest_over_real_http()
+    {
+        const string orderId = "HARNESS-AbC-77";
+        await using var harness = await Harness.CreateAsync(HarnessWebhookSecret);
+        var payment = await harness.SeedPendingPaymentAsync(orderId);
+        harness.Gateway.Next = Harness.ApprovedOrder(orderId, payment.Amount, payment.ExternalReference);
+
+        var status = await harness.SendNotificationAsync(orderId, "harness-request-uppercase", HarnessWebhookSecret);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Equal(PaymentStatus.Approved, (await harness.ReloadPaymentAsync(payment.Id)).Status);
+    }
+
     private sealed class RecordingFakeGateway : IPaymentGateway
     {
         public PaymentGatewayOrder? Next { get; set; }
+        public Exception? GetOrderError { get; set; }
         public int GetOrderCalls { get; private set; }
 
         public Task<PaymentGatewayOrder> CreatePixAsync(CreatePixPaymentRequest request, CancellationToken cancellationToken = default) =>
@@ -106,6 +156,7 @@ public class MercadoPagoWebhookHttpHarnessTests
         public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default)
         {
             GetOrderCalls++;
+            if (GetOrderError is { } error) throw error;
             return Task.FromResult(Next ?? throw new InvalidOperationException("Harness gateway response was not configured."));
         }
 
@@ -218,7 +269,7 @@ public class MercadoPagoWebhookHttpHarnessTests
         public async Task<HttpStatusCode> SendNotificationAsync(string gatewayOrderId, string requestId, string signingSecret)
         {
             var timestampMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var manifest = $"id:{gatewayOrderId};request-id:{requestId};ts:{timestampMilliseconds};";
+            var manifest = $"id:{gatewayOrderId.Trim().ToLowerInvariant()};request-id:{requestId.Trim()};ts:{timestampMilliseconds};";
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(signingSecret));
             var hash = Convert.ToHexStringLower(hmac.ComputeHash(Encoding.UTF8.GetBytes(manifest)));
 
@@ -229,6 +280,16 @@ public class MercadoPagoWebhookHttpHarnessTests
             request.Headers.Add("x-signature", $"ts={timestampMilliseconds},v1={hash}");
             request.Headers.Add("x-request-id", requestId);
 
+            using var response = await _client.SendAsync(request);
+            return response.StatusCode;
+        }
+
+        public async Task<HttpStatusCode> SendPayloadWithoutDataIdAsync()
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/webhooks/mercadopago")
+            {
+                Content = new StringContent("{\"type\":\"order\",\"data\":{}}", Encoding.UTF8, "application/json")
+            };
             using var response = await _client.SendAsync(request);
             return response.StatusCode;
         }
