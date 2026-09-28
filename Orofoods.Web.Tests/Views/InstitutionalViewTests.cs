@@ -19,8 +19,10 @@ public class InstitutionalViewTests
         var markup = File.ReadAllText(path);
 
         Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", markup);
-        Assert.Contains("asp-area=\"Identity\" asp-page=\"/Account/Login\"", markup);
-        Assert.Contains("asp-route-returnUrl=\"/Portal/Dashboard\"", markup);
+        Assert.Contains("Url.Page(\"/Account/Login\", values: new { area = \"Identity\", returnUrl = customerCatalogUrl })", markup);
+        Assert.Contains("Url.Action(\"Catalog\", \"Portal\", new { area = \"\" })", markup);
+        Assert.Contains("returnUrl = customerDashboardUrl", markup);
+        Assert.Contains("User.Identity?.IsAuthenticated == true", markup);
     }
 
     [Fact]
@@ -61,6 +63,21 @@ public class InstitutionalViewTests
         var markup = File.ReadAllText(path);
 
         Assert.Contains("padding-left:max(32px,calc((100vw - 1180px)/2))", markup);
+    }
+
+    [Fact]
+    public void Home_showcase_uses_the_compact_desktop_geometry()
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/wwwroot/css/home-showcase.css"));
+        var styles = File.ReadAllText(path);
+
+        Assert.Contains("height: 350px", styles);
+        Assert.Contains("font-size: 46px", styles);
+        Assert.Contains("min-height: 54px", styles);
+        Assert.Contains("grid-template-columns: 57% 43%", styles);
+        Assert.Contains("padding-top: 0", styles);
+        Assert.Contains("height: 150px", styles);
+        Assert.Contains("font-size: 34px", styles);
     }
 
     [Fact]

@@ -19,5 +19,7 @@ public sealed class SecurityHeadersMiddlewareTests
         Assert.Equal("geolocation=(), camera=(), microphone=()", context.Response.Headers["Permissions-Policy"].ToString());
         Assert.Contains("default-src 'self'", context.Response.Headers["Content-Security-Policy"].ToString());
         Assert.Contains("object-src 'none'", context.Response.Headers["Content-Security-Policy"].ToString());
+        Assert.Contains("script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com", context.Response.Headers["Content-Security-Policy"].ToString());
+        Assert.Contains("connect-src 'self' https://api.mercadopago.com", context.Response.Headers["Content-Security-Policy"].ToString());
     }
 }

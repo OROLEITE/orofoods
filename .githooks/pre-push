@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+protected_branch="refs/heads/main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    if [[ "$remote_ref" == "$protected_branch" && "$local_sha" != "0000000000000000000000000000000000000000" ]]; then
+        echo "Direct pushes to main are blocked. Open a pull request from a work branch instead." >&2
+        exit 1
+    fi
+done

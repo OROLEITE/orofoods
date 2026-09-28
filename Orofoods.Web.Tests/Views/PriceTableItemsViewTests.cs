@@ -8,7 +8,7 @@ public class PriceTableItemsViewTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "PriceTables", "Items.cshtml"));
 
-        Assert.Contains("class=\"btn btn-outline-dark\"", view);
+        Assert.Contains("asp-action=\"Index\" class=\"btn admin-secondary-action\"", view);
         Assert.Contains("fa-arrow-left", view);
     }
 }

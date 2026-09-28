@@ -20,4 +20,18 @@ public class IntegrationDashboardViewTests
         Assert.Contains("Exportar WMC", view);
         Assert.Contains("&Uacute;ltima exporta&ccedil;&atilde;o WMC", view);
     }
+
+    [Fact]
+    public void Integration_dashboard_keeps_error_details_in_a_reusable_modal()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Integrations", "Index.cshtml"));
+
+        Assert.Contains("hasIntegrationError", view);
+        Assert.Contains("data-bs-toggle=\"modal\"", view);
+        Assert.Contains("Ver detalhes", view);
+        Assert.Contains("erpErrorModal", view);
+        Assert.Contains("textContent = trigger.dataset.error", view);
+        Assert.DoesNotContain("erp-error-detail-row", view);
+    }
 }

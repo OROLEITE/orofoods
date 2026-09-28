@@ -1,0 +1,41 @@
+@model SellerCustomerListViewModel
+@{
+    ViewData["Title"] = "Minha carteira";
+    ViewData["BodyClass"] = "seller-area-page";
+}
+
+<section class="section">
+    <div class="container">
+        <header class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <span class="eyebrow"><span></span> Operação comercial</span>
+                <h1>Minha carteira</h1>
+                <p class="text-muted mb-0">Clientes ativos e aprovados vinculados a você.</p>
+            </div>
+            <a class="btn btn-outline-dark" asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+        </header>
+
+        <form method="get" class="row g-2 mb-4" role="search">
+            <div class="col-md-9"><label class="visually-hidden" for="customer-search">Buscar cliente</label><input id="customer-search" class="form-control" name="q" value="@Model.Query" placeholder="Buscar por nome ou código" /></div>
+            <div class="col-md-3"><button class="btn btn-gold w-100" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button></div>
+        </form>
+
+        <div class="row g-3">
+            @foreach (var customer in Model.Customers)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <article class="summary-card h-100">
+                        <small>@customer.Code</small>
+                        <h2 class="h5 mt-2">@customer.Name</h2>
+                        <p class="text-muted mb-3">@customer.City · @customer.Status</p>
+                        <a class="btn btn-outline-dark btn-sm" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id">Abrir workspace</a>
+                    </article>
+                </div>
+            }
+        </div>
+        @if (Model.Customers.Count == 0)
+        {
+            <p class="text-muted mt-4">Nenhum cliente encontrado na sua carteira.</p>
+        }
+    </div>
+</section>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Pricing;
 
 namespace Orofoods.Web.Services.Orders;
@@ -12,7 +13,11 @@ public class FrequentProductService(ApplicationDbContext db, PriceService priceS
     public async Task<List<FrequentProduct>> GetAsync(int customerId, int take = 4, CancellationToken cancellationToken = default)
     {
         var quantities = await db.OrderItems
-            .Where(x => x.Order!.CustomerId == customerId && x.Product!.IsActive)
+            .Where(x =>
+                x.Order!.CustomerId == customerId &&
+                x.Order.Status != OrderStatus.Cancelled &&
+                x.Order.Status != OrderStatus.Draft &&
+                x.Product!.IsActive)
             .GroupBy(x => x.ProductId)
             .Select(x => new { ProductId = x.Key, Quantity = x.Sum(item => item.Quantity) })
             .OrderByDescending(x => x.Quantity)

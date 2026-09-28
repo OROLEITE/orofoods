@@ -15,6 +15,7 @@ public class CustomerApprovalServiceTests
         var paymentTerm = new PaymentTerm { Name = "14 dias", SortOrder = 1, IsActive = true };
         var priceTable = new PriceTable { Name = "Tabela Hamburgueria", IsActive = true };
         var salesRepresentative = new SalesRepresentative { Name = "Consultor", Email = "consultor@orofoods.local", Phone = "(19) 99999-0000", IsActive = true };
+        var internalUser = new Orofoods.Web.Models.Identity.ApplicationUser { Id = "internal-user", UserName = "jefferson", Email = "jefferson@orofoods.local", IsActive = true };
         var customer = new Customer
         {
             LegalName = "Burger House Ltda",
@@ -24,7 +25,7 @@ public class CustomerApprovalServiceTests
             IsActive = true
         };
 
-        db.AddRange(paymentTerm, priceTable, salesRepresentative, customer);
+        db.AddRange(paymentTerm, priceTable, salesRepresentative, internalUser, customer);
         await db.SaveChangesAsync();
 
         var sut = new CustomerApprovalService(db);
@@ -36,6 +37,7 @@ public class CustomerApprovalServiceTests
             CreditLimit = 5000m,
             PriceTableId = priceTable.Id,
             SalesRepresentativeId = salesRepresentative.Id,
+            InternalSalesUserId = internalUser.Id,
             WmcCode = "107072",
             PaymentTermIds = [paymentTerm.Id]
         });
@@ -50,6 +52,7 @@ public class CustomerApprovalServiceTests
         Assert.Equal(5000m, updatedCustomer.CreditLimit);
         Assert.Equal(priceTable.Id, updatedCustomer.PriceTableId);
         Assert.Equal(salesRepresentative.Id, updatedCustomer.SalesRepresentativeId);
+        Assert.Equal(internalUser.Id, updatedCustomer.InternalSalesUserId);
         Assert.Equal("107072", updatedCustomer.WmcCode);
         Assert.Single(updatedCustomer.CustomerPaymentTerms);
     }

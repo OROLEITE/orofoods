@@ -1,0 +1,61 @@
+@model SellerCatalogViewModel
+@{
+    ViewData["Title"] = $"Catálogo · {Model.CustomerName}";
+    ViewData["BodyClass"] = "seller-area-page";
+}
+
+<section class="section">
+    <div class="container seller-catalog-container">
+        <nav class="mb-3" aria-label="Navegação do vendedor"><a asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId">Workspace</a><span class="text-muted"> / Catálogo</span></nav>
+        <header class="seller-catalog-header">
+            <div class="seller-catalog-heading">
+                <span class="eyebrow"><span></span> Venda assistida</span>
+                <h1>Catálogo</h1>
+                <div class="seller-catalog-customer">@Model.CustomerName</div>
+            </div>
+            <a class="btn btn-gold seller-cart-button" asp-area="Vendedor" asp-controller="Cart" asp-action="Index" asp-route-customerId="@Model.CustomerId"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Carrinho (@Model.CartItemCount)</a>
+        </header>
+
+        <form method="get" class="seller-catalog-search" role="search">
+            <div><label class="visually-hidden" for="catalog-search">Buscar produto</label><input id="catalog-search" class="form-control" name="q" value="@Model.Query" placeholder="Buscar por nome, descrição ou código" /></div>
+            <button class="btn btn-outline-dark" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
+        </form>
+
+        @if (TempData["SellerCartError"] is string error)
+        {
+            <div class="alert alert-warning" role="alert">@error</div>
+        }
+
+        <div class="row g-4 seller-product-grid">
+            @foreach (var product in Model.Products)
+            {
+                <div class="col-sm-6 col-xl-4">
+                    <article class="summary-card seller-product-card h-100 d-flex flex-column">
+                        @if (product.ImageId is int imageId)
+                        {
+                            <div class="seller-product-image-wrapper"><img class="seller-product-image" src="/media/products/@imageId" alt="@product.Name" loading="lazy" /></div>
+                        }
+                        else { <div class="seller-product-image-wrapper seller-product-image-wrapper--empty" aria-hidden="true"></div> }
+                        <small>@product.Sku</small>
+                        <h2 class="h5 seller-product-name">@product.Name</h2>
+                        <p class="text-muted small seller-product-description">@product.Description</p>
+                        <p class="seller-product-price mb-0">@product.UnitPrice.ToString("C")</p>
+                        <p class="seller-product-unit">@product.UnitDescription</p>
+                        <form asp-area="Vendedor" asp-controller="Cart" asp-action="Add" asp-route-customerId="@Model.CustomerId" method="post" class="seller-add-form seller-product-actions">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="productId" value="@product.Id" />
+                            <label class="form-label small mb-1" for="quantity-@product.Id">Quantidade</label>
+                            <div class="seller-stepper"><button type="button" class="btn btn-outline-dark" data-stepper="decrease" aria-label="Diminuir quantidade">−</button><input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumCases" value="@product.MinimumCases" /><button type="button" class="btn btn-outline-dark" data-stepper="increase" aria-label="Aumentar quantidade">+</button></div>
+                            <button class="btn btn-gold seller-add-button" type="submit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Adicionar</button>
+                        </form>
+                    </article>
+                </div>
+            }
+        </div>
+        @if (Model.Products.Count == 0)
+        {
+            <p class="text-muted mt-4">Nenhum produto disponível para este cliente.</p>
+        }
+    </div>
+</section>
+@section Scripts { <script src="~/js/seller-cart.js" asp-append-version="true"></script> }

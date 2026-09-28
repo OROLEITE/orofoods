@@ -14,8 +14,28 @@ public class OrderReservationService(ApplicationDbContext db)
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var result = await ReserveWithinTransactionAsync(order, cancellationToken);
+        if (result.IsValid)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return result;
+    }
+
+    public Task<CommercialValidationResult> ReserveWithinTransactionAsync(Order order, CancellationToken cancellationToken = default) =>
+        ReserveCoreAsync(order, cancellationToken);
+
+    private async Task<CommercialValidationResult> ReserveCoreAsync(Order order, CancellationToken cancellationToken)
+    {
+        if (order.Id == 0)
+        {
+            return CommercialValidationResult.Failure("O pedido precisa ser gravado antes da reserva comercial.");
+        }
+
         var currentOrder = await db.Orders
             .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
             .SingleAsync(x => x.Id == order.Id, cancellationToken);
@@ -24,7 +44,6 @@ public class OrderReservationService(ApplicationDbContext db)
             .AnyAsync(x => x.OrderId == order.Id && x.Status == InventoryReservationStatus.Active, cancellationToken);
         if (activeReservations)
         {
-            await transaction.CommitAsync(cancellationToken);
             return CommercialValidationResult.Success();
         }
 
@@ -66,14 +85,16 @@ public class OrderReservationService(ApplicationDbContext db)
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
         return CommercialValidationResult.Success();
     }
 
     public async Task ReleaseAsync(Order order, CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        var currentOrder = await db.Orders.Include(x => x.Customer).SingleAsync(x => x.Id == order.Id, cancellationToken);
+        var currentOrder = await db.Orders
+            .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
+            .SingleAsync(x => x.Id == order.Id, cancellationToken);
         var reservations = await db.InventoryReservations
             .Where(x => x.OrderId == order.Id && x.Status == InventoryReservationStatus.Active)
             .ToListAsync(cancellationToken);
@@ -104,5 +125,7 @@ public class OrderReservationService(ApplicationDbContext db)
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private static bool UsesCredit(Order order) => !string.Equals(order.PaymentMethod, "PIX", StringComparison.OrdinalIgnoreCase);
+    private static bool UsesCredit(Order order) => order.PaymentTerm is not null
+        ? order.PaymentTerm.DaysUntilDue > 0
+        : !string.Equals(order.PaymentMethod, "PIX", StringComparison.OrdinalIgnoreCase);
 }

@@ -55,10 +55,10 @@ public class SeedDataTests
         var portalDetail = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Product.cshtml"));
 
         Assert.Contains("var primaryImage", publicDetail);
-        Assert.Contains("@primaryImage.Url", publicDetail);
+        Assert.Contains("Url.RouteUrl(\"ProductMedia\", new { imageId = primaryImage.Id })", publicDetail);
         Assert.Contains("Descri&#231;&#227;o do produto", publicDetail);
         Assert.Contains("var primaryImage", portalDetail);
-        Assert.Contains("@primaryImage.Url", portalDetail);
+        Assert.Contains("Url.RouteUrl(\"ProductMedia\", new { imageId = primaryImage.Id })", portalDetail);
         Assert.Contains("Descrição do produto", portalDetail);
     }
 

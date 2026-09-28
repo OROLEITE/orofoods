@@ -1,16 +1,28 @@
 @{
     ViewData["Title"] = "Cadastro em an&aacute;lise";
+    ViewData["BodyClass"] = "customer-registration-layout";
+    var customerIsSignedIn = User.Identity?.IsAuthenticated == true && User.IsInRole("Cliente");
 }
 <section class="section">
     <div class="container" style="max-width: 720px;">
         <div class="success-card">
             <div class="eyebrow"><span></span> Cadastro recebido</div>
             <h1>Seu cadastro est&aacute; em an&aacute;lise.</h1>
-            <p>Voc&ecirc; j&aacute; pode entrar com seu login, mas o portal comercial, os pre&ccedil;os e os pedidos ser&atilde;o liberados apenas ap&oacute;s aprova&ccedil;&atilde;o administrativa.</p>
-            <div class="d-flex gap-3 justify-content-center mt-4">
-                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-dark">Entrar</a>
-                <a asp-controller="Home" asp-action="Index" class="btn btn-gold">Voltar ao in&iacute;cio</a>
-            </div>
+            @if (customerIsSignedIn)
+            {
+                <p>Sua conta est&aacute; conectada. A equipe comercial analisar&aacute; os dados; o portal, os pre&ccedil;os e os pedidos ser&atilde;o liberados ap&oacute;s a aprova&ccedil;&atilde;o.</p>
+                <div class="d-flex justify-content-center mt-4">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-gold">Voltar ao in&iacute;cio</a>
+                </div>
+            }
+            else
+            {
+                <p>Voc&ecirc; pode entrar com os dados informados. O portal comercial, os pre&ccedil;os e os pedidos ser&atilde;o liberados ap&oacute;s a aprova&ccedil;&atilde;o administrativa.</p>
+                <div class="d-flex gap-3 justify-content-center mt-4">
+                    <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-dark">Entrar</a>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-gold">Voltar ao in&iacute;cio</a>
+                </div>
+            }
         </div>
     </div>
 </section>

@@ -1,0 +1,15 @@
+@model SellerOrderDetailViewModel
+@using Orofoods.Web.Models
+@{
+    ViewData["Title"] = "Pedido #" + Model.Order.Number;
+    ViewData["BodyClass"] = "seller-area-page seller-order-detail-page";
+}
+<section class="section">
+    <div class="container">
+        <nav class="mb-3" aria-label="Navegação do vendedor"><a asp-area="Vendedor" asp-controller="Orders" asp-action="Index" asp-route-customerId="@Model.CustomerId">Pedidos</a><span class="text-muted"> / Detalhes</span></nav>
+        <header class="seller-order-detail-header"><div><span class="eyebrow"><span></span> Pedido</span><h1>#@Model.Order.Number</h1><p>@Model.CustomerName · @Model.Order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</p></div><span class="badge text-bg-light">@Model.Order.Status.ToDisplayName()</span></header>
+        <section class="seller-order-payment-strip" aria-label="Resumo comercial"><div><small>CLIENTE</small><strong>@Model.CustomerName</strong><span>@Model.CustomerCode</span></div><div><small>PAGAMENTO</small><strong>@Model.Order.PaymentMethod</strong></div><div><small>STATUS PAGAMENTO</small><strong>@(Model.Order.PaymentStatus?.ToDisplayName() ?? "Não informado")</strong></div></section>
+        <article class="summary-card seller-order-items"><small>ITENS</small>@foreach (var item in Model.Items) { <div class="seller-checkout-item"><div><strong>@item.ProductName</strong><small>@item.Quantity × @item.UnitPrice.ToString("C")</small></div><strong>@item.Subtotal.ToString("C")</strong></div> }<div class="seller-checkout-total"><span>Total</span><strong>@Model.Order.Total.ToString("C")</strong></div></article>
+        <div class="d-flex flex-wrap gap-2 mt-3"><a class="btn btn-gold" asp-area="Vendedor" asp-controller="Catalog" asp-action="Index" asp-route-customerId="@Model.CustomerId">Nova venda</a><a class="btn btn-outline-dark" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId">Voltar ao cliente</a><a class="btn btn-outline-dark" asp-area="Vendedor" asp-controller="Orders" asp-action="Index" asp-route-customerId="@Model.CustomerId">Pedidos</a></div>
+    </div>
+</section>

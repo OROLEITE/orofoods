@@ -3,20 +3,108 @@
     ViewData["Title"] = "Cat&aacute;logo B2B";
     var prices = (Dictionary<int, decimal>)ViewBag.Prices;
     var brands = (IEnumerable<string>)ViewBag.Brands;
+    var cartQuantity = (int)ViewBag.CartQuantity;
+    var cartProductQuantities = (Dictionary<int, int>)ViewBag.CartProductQuantities;
 }
-<section class="page-hero">
-    <div class="container"><div class="portal-catalog-heading"><div><div class="eyebrow light"><span></span> Portal do Cliente</div><h1>Cat&aacute;logo de produtos</h1><p>Adicione v&aacute;rios produtos ao carrinho antes de seguir para o checkout.</p></div><a class="btn btn-gold" asp-action="Cart"><i class="fa-solid fa-cart-shopping"></i> Ver carrinho</a></div></div>
-</section>
-<section class="section"><div class="container">
-    <form class="catalog-tools"><input name="q" value="@Context.Request.Query["q"]" placeholder="Pesquisar por nome, SKU ou marca" />
-        <select name="category"><option value="">Todas as categorias</option>@foreach (var category in Model.Select(x => x.ProductCategory).OfType<ProductCategory>().DistinctBy(x => x.Id).OrderBy(x => x.SortOrder)) { <option value="@category.Name" selected="@(Context.Request.Query["category"] == category.Name)">@category.Name</option> }</select>
-        <select name="brand"><option value="">Todas as marcas</option>@foreach (var brand in brands) { <option value="@brand" selected="@(Context.Request.Query["brand"] == brand)">@brand</option> }</select><button class="btn btn-dark">Buscar</button>
-    </form>
-    <div class="product-grid">@foreach (var product in Model) { var price = prices.GetValueOrDefault(product.Id, product.BasePrice); var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
-        <article class="product-card @(product.IsCommerciallyAvailable ? "" : "unavailable")"><div class="product-visual" style="--accent:@product.Accent">@if (image is not null) { <img src="@image.Url" alt="@image.AltText" /> } else { <span>&bull;</span> }<small>@product.Category</small>@if (!product.IsCommerciallyAvailable) { <b>INDISPON&Iacute;VEL</b> }</div>
-            <div class="p-4"><small>@product.Sku | m&iacute;nimo @product.MinimumCases cx.</small><h3>@product.Name</h3><p>@product.UnitDescription</p><div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ caixa</span></div><a class="text-link d-inline-block mb-3" asp-action="Product" asp-route-id="@product.Id">Ver detalhes</a>
-                <form asp-action="AddToCart" method="post" class="catalog-add-form"><input type="hidden" name="productId" value="@product.Id" /><label for="quantity-@product.Id">Quantidade</label><div class="catalog-add-controls"><input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumCases" value="@product.MinimumCases" inputmode="numeric" aria-label="Quantidade de @product.Name" /><button class="btn btn-gold" type="submit" disabled="@(!product.IsCommerciallyAvailable)">Adicionar ao carrinho</button></div></form>
+<section class="page-hero portal-catalog-hero">
+    <div class="container">
+        <div class="portal-catalog-heading">
+            <div>
+                <div class="eyebrow light"><span></span> Cat&aacute;logo</div>
+                <h1>Cat&aacute;logo de produtos</h1>
+                <p>Encontre os produtos dispon&iacute;veis e adicione o que precisa ao carrinho.</p>
             </div>
-        </article> }
+            <a class="btn btn-gold catalog-cart-link" asp-action="Cart" aria-label="Ver carrinho com @cartQuantity caixas">
+                <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Ver carrinho
+                @if (cartQuantity > 0)
+                {
+                    <span class="catalog-cart-count" aria-hidden="true">@cartQuantity</span>
+                }
+            </a>
+        </div>
     </div>
-</div></section>
+</section>
+<section class="section portal-catalog-page">
+    <div class="container">
+        <form class="catalog-tools">
+            <input name="q" value="@Context.Request.Query["q"]" placeholder="Pesquisar por nome, SKU ou marca" aria-label="Pesquisar por nome, SKU ou marca" />
+            <select name="category" aria-label="Categoria">
+                <option value="">Todas as categorias</option>
+                @foreach (var category in Model.Select(x => x.ProductCategory).OfType<ProductCategory>().DistinctBy(x => x.Id).OrderBy(x => x.SortOrder))
+                {
+                    <option value="@category.Name" selected="@(Context.Request.Query["category"] == category.Name)">@category.Name</option>
+                }
+            </select>
+            <select name="brand" aria-label="Marca">
+                <option value="">Todas as marcas</option>
+                @foreach (var brand in brands)
+                {
+                    <option value="@brand" selected="@(Context.Request.Query["brand"] == brand)">@brand</option>
+                }
+            </select>
+            <button class="btn btn-dark" type="submit">Buscar</button>
+        </form>
+        <div class="product-grid">
+            @foreach (var product in Model)
+            {
+                var price = prices.GetValueOrDefault(product.Id, product.BasePrice);
+                var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
+                var isInCart = cartProductQuantities.TryGetValue(product.Id, out var cartProductQuantity);
+                <article class="product-card @(product.IsCommerciallyAvailable ? "" : "unavailable")">
+                    <div class="product-visual" style="--accent:@product.Accent">
+                        @if (image is not null)
+                        {
+                            <img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@image.AltText" />
+                        }
+                        else
+                        {
+                            <span>&bull;</span>
+                        }
+                        <small>@product.Category</small>
+                        @if (!product.IsCommerciallyAvailable)
+                        {
+                            <b>INDISPON&Iacute;VEL</b>
+                        }
+                    </div>
+                    <div class="p-4 catalog-card-body">
+                        <small>@product.Sku | m&iacute;nimo @product.MinimumCases cx.</small>
+                        <h3>@product.Name</h3>
+                        <p>@product.UnitDescription</p>
+                        <div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ caixa</span></div>
+                        <form asp-action="AddToCart" method="post" class="catalog-add-form" data-catalog-add-form>
+                            <input type="hidden" name="productId" value="@product.Id" />
+                            <label for="quantity-@product.Id">Quantidade</label>
+                            <div class="catalog-add-controls">
+                                <div class="catalog-quantity-stepper" data-catalog-quantity-stepper>
+                                    <button class="catalog-quantity-button" type="button" data-catalog-quantity-decrease aria-label="Diminuir quantidade de @product.Name" disabled="@isInCart">&minus;</button>
+                                    <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumCases" step="1" value="@(isInCart ? cartProductQuantity : product.MinimumCases)" inputmode="numeric" aria-label="Quantidade de @product.Name" disabled="@isInCart" />
+                                    <button class="catalog-quantity-button" type="button" data-catalog-quantity-increase aria-label="Aumentar quantidade de @product.Name" disabled="@isInCart">+</button>
+                                </div>
+                                <button class="btn btn-gold @(isInCart ? "is-in-cart" : null)" type="submit" disabled="@(isInCart || !product.IsCommerciallyAvailable)">
+                                    @if (isInCart)
+                                    {
+                                        <i class="fa-solid fa-check" aria-hidden="true"></i><span>No carrinho</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Adicionar ao carrinho</span>
+                                    }
+                                </button>
+                            </div>
+                            <p class="catalog-add-status" aria-live="polite"></p>
+                        </form>
+                        <a class="text-link catalog-details-link" asp-action="Product" asp-route-id="@product.Id">Ver detalhes <span aria-hidden="true">&rarr;</span></a>
+                    </div>
+                </article>
+            }
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/catalog.js" asp-append-version="true"></script>
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/catalog.css" asp-append-version="true" />
+}

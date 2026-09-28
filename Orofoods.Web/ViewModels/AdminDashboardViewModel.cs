@@ -9,6 +9,7 @@ public sealed class AdminDashboardViewModel
     public int ActiveCustomers { get; init; }
     public int PendingCustomers { get; init; }
     public decimal MonthRevenue { get; init; }
+    public decimal? MonthRevenueChangePercent { get; init; }
     public decimal AverageTicket { get; init; }
     public int FailedIntegrations { get; init; }
     public int FailedWmcExports { get; init; }

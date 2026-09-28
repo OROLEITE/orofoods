@@ -3,6 +3,27 @@
     ViewData["Title"] = "Orofoods | Pães congelados para food service";
     var highlights = Model.Take(3).ToList();
     var featuredProducts = Model.Take(4).ToList();
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isAdministrator = User.IsInRole("Administrador");
+    var isSalesRepresentative = User.IsInRole("Vendedor");
+    var isCommercialManager = User.IsInRole("GerenteComercial");
+    var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog";
+    var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
+    var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog";
+    var loginDashboardUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FDashboard";
+    var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
+    var sellerDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Vendedor" }) ?? "/Vendedor";
+    var commercialDashboardUrl = Url.Action("Index", "Commercial", new { area = "Admin" }) ?? "/Admin/Commercial";
+    var portalUrl = !isAuthenticated ? loginDashboardUrl
+        : isAdministrator ? adminDashboardUrl
+        : isSalesRepresentative ? sellerDashboardUrl
+        : isCommercialManager ? commercialDashboardUrl
+        : customerDashboardUrl;
+    var orderUrl = !isAuthenticated ? loginCatalogUrl
+        : isAdministrator ? adminDashboardUrl
+        : isSalesRepresentative ? sellerDashboardUrl
+        : isCommercialManager ? commercialDashboardUrl
+        : customerCatalogUrl;
 }
 
 @if (TempData["RegistrationSuccess"] is string registrationSuccess)
@@ -34,10 +55,10 @@
                             <p class="showcase-overline">P&Atilde;ES CONGELADOS PARA FOOD SERVICE</p>
                             <h1>@product.Name</h1>
                             <p class="showcase-description">@product.Description</p>
-                            <div class="showcase-actions"><a class="btn btn-gold btn-lg" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="/Portal/Dashboard">Fazer pedido <i class="fa-solid fa-arrow-right ms-2" aria-hidden="true"></i></a><a class="showcase-link" asp-controller="Home" asp-action="Products">Ver linha completa <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
+                            <div class="showcase-actions"><a class="btn btn-gold btn-lg" href="@orderUrl">Fazer pedido <i class="fa-solid fa-arrow-right ms-2" aria-hidden="true"></i></a><a class="showcase-link" asp-controller="Home" asp-action="Products">Ver linha completa <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
                             <p class="showcase-note"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Acesso comercial para empresas cadastradas.</p>
                         </div></div>
-                        <div class="showcase-media">@if (image is not null) { <img src="@image.Url" alt="@image.AltText" /> } else { <span>@product.Brand</span> }</div>
+                        <div class="showcase-media">@if (image is not null) { <img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@image.AltText" /> } else { <span>@product.Brand</span> }</div>
                     </article>
                 </div>
             }
@@ -50,14 +71,14 @@
     </div>
 </section>
 
-<section class="home-command-bar" aria-label="Diferenciais Orofoods"><div class="container"><div><i class="fa-solid fa-snowflake" aria-hidden="true"></i><span>Produtos congelados</span></div><div><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span>Pedido por caixa</span></div><div><i class="fa-solid fa-truck-fast" aria-hidden="true"></i><span>Entrega programada</span></div><a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="/Portal/Dashboard">Acessar portal <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div></section>
+<section class="home-command-bar" aria-label="Diferenciais Orofoods"><div class="container"><div><i class="fa-solid fa-snowflake" aria-hidden="true"></i><span>Produtos congelados</span></div><div><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span>Pedido por caixa</span></div><div><i class="fa-solid fa-truck-fast" aria-hidden="true"></i><span>Entrega programada</span></div><a href="@portalUrl">Acessar portal <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div></section>
 
 <section class="section home-catalog" id="produtos"><div class="container"><div class="section-heading home-catalog-heading"><div><div class="eyebrow"><span></span> Cat&aacute;logo Orofoods</div><h2>O p&atilde;o certo,<br />no ritmo da sua cozinha.</h2></div><div><p>Uma sele&ccedil;&atilde;o pr&aacute;tica para opera&ccedil;&otilde;es que precisam de padr&atilde;o a cada pedido.</p><a class="text-link" asp-controller="Home" asp-action="Products">Explorar todos os produtos <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i></a></div></div><div class="home-feature-grid">
 @foreach (var product in featuredProducts)
 {
     var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
-    <a class="home-product-card" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Ver produto @product.Name"><div class="home-product-image" style="--product-accent:@product.Accent">@if (image is not null) { <img src="@image.Url" alt="@image.AltText" /> } else { <span>@product.Brand</span> }<small>@product.Category</small></div><div class="home-product-body"><p>@product.Brand</p><h3>@product.Name</h3><span>@product.UnitDescription</span><strong>Ver produto <b>+</b></strong></div></a>
+    <a class="home-product-card" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Ver produto @product.Name"><div class="home-product-image" style="--product-accent:@product.Accent">@if (image is not null) { <img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@image.AltText" /> } else { <span>@product.Brand</span> }<small>@product.Category</small></div><div class="home-product-body"><p>@product.Brand</p><h3>@product.Name</h3><span>@product.UnitDescription</span><strong>Ver produto <b>+</b></strong></div></a>
 }
-</div><div class="home-catalog-cta"><div><div class="eyebrow"><span></span> Compra B2B simplificada</div><h2>J&aacute; compra com a Orofoods?</h2><p>Entre para repetir pedidos, consultar sua tabela comercial e acompanhar as entregas.</p></div><div class="home-catalog-cta-actions"><a class="btn btn-dark" asp-area="Identity" asp-page="/Account/Login">Entrar</a><a class="btn btn-outline-dark" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar empresa</a></div></div></div></section>
+</div><div class="home-catalog-cta"><div><div class="eyebrow"><span></span> Compra B2B simplificada</div><h2>J&aacute; compra com a Orofoods?</h2><p>Entre para repetir pedidos, consultar sua tabela comercial e acompanhar as entregas.</p></div><div class="home-catalog-cta-actions"><a class="btn btn-dark" href="@portalUrl">@(isAuthenticated ? "Meu painel" : "Entrar")</a><a class="btn btn-outline-dark" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar empresa</a></div></div></div></section>
 
 <section class="home-operation"><div class="container home-operation-grid"><div class="home-operation-copy"><div class="eyebrow light"><span></span> Parceiro de opera&ccedil;&atilde;o</div><h2>Mais previsibilidade para quem n&atilde;o pode parar.</h2><p>Da escolha do produto &agrave; reposi&ccedil;&atilde;o programada, a Orofoods organiza uma compra recorrente, simples e transparente.</p><a class="btn btn-gold" asp-controller="Home" asp-action="HowItWorks">Como funciona <i class="fa-solid fa-arrow-right ms-2" aria-hidden="true"></i></a></div><div class="home-operation-points"><div><i class="fa-solid fa-layer-group" aria-hidden="true"></i><strong>Cat&aacute;logo objetivo</strong><span>Itens selecionados para alto giro.</span></div><div><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i><strong>Condi&ccedil;&otilde;es por empresa</strong><span>Pre&ccedil;os e pagamentos conforme cadastro.</span></div><div><i class="fa-solid fa-people-group" aria-hidden="true"></i><strong>Atendimento pr&oacute;ximo</strong><span>Suporte para acompanhar sua opera&ccedil;&atilde;o.</span></div></div></div></section>

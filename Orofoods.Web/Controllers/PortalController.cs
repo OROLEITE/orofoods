@@ -3,10 +3,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Payments;
+using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.ViewModels;
@@ -23,8 +27,14 @@ public class PortalController(
     CartService cartService,
     CustomerDashboardService customerDashboardService,
     SavedOrderService savedOrderService,
-    OrderReservationService orderReservationService) : Controller
+    OrderReservationService orderReservationService,
+    IPaymentEligibilityService paymentEligibilityService,
+    PaymentOrchestrationService paymentOrchestrationService,
+    IOptions<MercadoPagoOptions> mercadoPagoOptions,
+    AssistedOrderService assistedOrderService) : Controller
 {
+    private static readonly TimeZoneInfo BrazilTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
     public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         context.ActionDescriptor.RouteValues.TryGetValue("action", out var action);
@@ -118,6 +128,9 @@ public class PortalController(
             .Select(x => x.ProductId)
             .ToListAsync();
         ViewBag.Brands = products.Select(x => x.Brand).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x).ToList();
+        var cart = await cartService.GetAsync(customer.Id, HttpContext.Session);
+        ViewBag.CartQuantity = cart.Items.Sum(item => item.Quantity);
+        ViewBag.CartProductQuantities = cart.Items.ToDictionary(item => item.ProductId, item => item.Quantity);
         return View(products);
     }
 
@@ -150,10 +163,10 @@ public class PortalController(
     public async Task<IActionResult> Favorites()
     {
         var customer = await GetCurrentCustomerAsync();
-        var products = await db.FavoriteProducts
-            .Where(x => x.CustomerId == customer.Id && x.Product!.IsActive)
-            .Select(x => x.Product!)
+        var products = await db.Products
             .Include(x => x.ProductCategory)
+            .Where(x => x.IsActive && db.FavoriteProducts.Any(favorite =>
+                favorite.CustomerId == customer.Id && favorite.ProductId == x.Id))
             .OrderBy(x => x.Name)
             .ToListAsync();
 
@@ -254,7 +267,25 @@ public class PortalController(
     public async Task<IActionResult> AddToCart(int productId, int quantity = 1)
     {
         var customer = await GetCurrentCustomerAsync();
-        await cartService.AddAsync(customer.Id, productId, quantity, HttpContext.Session);
+        try
+        {
+            await cartService.AddAsync(customer.Id, productId, quantity, HttpContext.Session);
+        }
+        catch (InvalidOperationException exception) when (IsCatalogRequest())
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+
+        if (IsCatalogRequest())
+        {
+            var cart = await cartService.GetAsync(customer.Id, HttpContext.Session);
+            return Json(new
+            {
+                cartQuantity = cart.Items.Sum(item => item.Quantity),
+                quantity = cart.Items.Single(item => item.ProductId == productId).Quantity
+            });
+        }
+
         return RedirectToAction(nameof(Catalog));
     }
 
@@ -274,6 +305,11 @@ public class PortalController(
         return RedirectToAction(nameof(Cart));
     }
 
+    private bool IsCatalogRequest() => string.Equals(
+        Request.Headers["X-Requested-With"],
+        "XMLHttpRequest",
+        StringComparison.OrdinalIgnoreCase);
+
     public async Task<IActionResult> Checkout()
     {
         var customer = await GetCurrentCustomerAsync();
@@ -285,6 +321,32 @@ public class PortalController(
     public async Task<IActionResult> Checkout(CheckoutViewModel input)
     {
         var customer = await GetCurrentCustomerAsync();
+        var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
+        var attemptMarker = GetCheckoutAttemptMarker(userId, customer.Id, input.AttemptKey);
+        if (int.TryParse(HttpContext.Session.GetString(attemptMarker), out var existingOrderId))
+        {
+            var existingOrder = await db.Orders.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == existingOrderId && x.CustomerId == customer.Id);
+            if (existingOrder is not null)
+            {
+                if (existingOrder.PaymentMethod == "PIX")
+                {
+                    var existingPaymentId = await db.Payments.AsNoTracking()
+                        .Where(x => x.OrderId == existingOrder.Id)
+                        .Select(x => (int?)x.Id)
+                        .SingleOrDefaultAsync();
+                    if (existingPaymentId is int paymentId)
+                    {
+                        return RedirectToAction(nameof(Pix), new { id = paymentId });
+                    }
+                }
+
+                return RedirectToAction(nameof(Success), new { id = existingOrder.Id });
+            }
+
+            HttpContext.Session.Remove(attemptMarker);
+        }
+
         var checkout = await BuildCheckoutAsync(customer);
         if (!ModelState.IsValid || !checkout.Cart.Items.Any() || checkout.Cart.RemainingForMinimum > 0)
         {
@@ -297,47 +359,107 @@ public class PortalController(
             return View(checkout);
         }
 
-        if (!string.Equals(checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId).Name, "PIX", StringComparison.OrdinalIgnoreCase) && checkout.Cart.Total > customer.CreditLimit - customer.CreditUsed)
+        var eligibility = await paymentEligibilityService.ValidateAsync(customer.Id, input.PaymentTermId);
+        if (!eligibility.IsAllowed)
+        {
+            ModelState.AddModelError(string.Empty, eligibility.ErrorMessage!);
+            return View(checkout);
+        }
+
+        if (checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId).DaysUntilDue > 0 && checkout.Cart.Total > customer.CreditLimit - customer.CreditUsed)
         {
             ModelState.AddModelError(string.Empty, "O total ultrapassa o crédito disponível.");
             return View(checkout);
         }
 
-        var paymentTerm = checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId);
-        var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
-        var createdAt = DateTime.UtcNow;
-        var order = new Order { CustomerId = customer.Id, CreatedByUserId = userId, DeliveryAddressId = input.AddressId, PaymentTermId = input.PaymentTermId, PaymentMethod = paymentTerm.Name, RequestedDeliveryDate = input.RequestedDeliveryDate, Notes = input.Notes, Status = OrderStatus.Received, CreatedAt = createdAt };
-        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Received, ChangedAt = createdAt, ChangedByUserId = userId });
-        foreach (var item in checkout.Cart.Items.Where(x => x.IsAvailable))
+        var selectedPaymentTerm = checkout.PaymentTerms.Single(x => x.Id == input.PaymentTermId);
+        if (selectedPaymentTerm.Code == "CREDIT_CARD" && (string.IsNullOrWhiteSpace(input.CardToken) || string.IsNullOrWhiteSpace(input.CardPaymentMethodId)))
         {
-            order.Items.Add(new OrderItem { ProductId = item.ProductId, ProductNameSnapshot = item.Name, SkuSnapshot = item.Sku, Quantity = item.Quantity, UnitPrice = item.UnitPrice, Subtotal = item.Subtotal });
-        }
-        order.Subtotal = order.Items.Sum(x => x.Subtotal);
-        order.Total = order.Subtotal;
-        db.Orders.Add(order);
-        await db.SaveChangesAsync();
-        var reservation = await orderReservationService.ReserveAsync(order);
-        if (!reservation.IsValid)
-        {
-            db.Orders.Remove(order);
-            await db.SaveChangesAsync();
-            ModelState.AddModelError(string.Empty, reservation.ErrorMessage!);
+            ModelState.AddModelError(string.Empty, "Não foi possível validar os dados do cartão. Tente novamente.");
             return View(checkout);
         }
 
-        order.Number = $"ORO-{DateTime.UtcNow:yyyy}-{order.Id:000000}";
-        order.ConfirmedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
-        cartService.Clear(HttpContext.Session);
+        var result = await assistedOrderService.PlaceAsync(
+            customer.Id,
+            userId,
+            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, input.AttemptKey),
+            HttpContext.Session,
+            CartScope.CustomerSelfService,
+            clearCart: false);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error);
+            }
+            return View(checkout);
+        }
+
+        HttpContext.Session.SetString(attemptMarker, result.Order!.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        var order = await db.Orders.Include(x => x.PaymentTerm).SingleAsync(x => x.Id == result.Order!.Id);
+        var orderPaymentTerm = order.PaymentTerm ?? throw new InvalidOperationException("Order payment term not found.");
+
+        Payment? payment = null;
+        if (orderPaymentTerm.Code is "PIX" or "CREDIT_CARD")
+        {
+            try
+            {
+                payment = orderPaymentTerm.Code == "PIX"
+                    ? await paymentOrchestrationService.CreatePixAsync(order.Id, customer.Id, input.AttemptKey)
+                    : await paymentOrchestrationService.CreateCreditCardAsync(
+                        order.Id, customer.Id, input.AttemptKey, input.CardToken!, input.CardPaymentMethodId!, input.CardInstallments);
+
+                if (payment.Status is PaymentStatus.Rejected or PaymentStatus.Failed)
+                {
+                    await orderReservationService.ReleaseAsync(order);
+                    order.Status = OrderStatus.Cancelled;
+                    order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Cancelled, ChangedAt = DateTime.UtcNow, ChangedByUserId = userId });
+                    await db.SaveChangesAsync();
+                    HttpContext.Session.Remove(attemptMarker);
+                    ModelState.AddModelError(string.Empty, "O pagamento não foi aprovado. Tente novamente ou selecione outra condição de pagamento.");
+                    return View(checkout);
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                await orderReservationService.ReleaseAsync(order);
+                order.Status = OrderStatus.Cancelled;
+                order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Cancelled, ChangedAt = DateTime.UtcNow, ChangedByUserId = userId });
+                await db.SaveChangesAsync();
+                HttpContext.Session.Remove(attemptMarker);
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return View(checkout);
+            }
+        }
+
+        if (!result.WasIdempotentReplay)
+        {
+            cartService.Clear(HttpContext.Session);
+        }
+        if (orderPaymentTerm.Code == "PIX" && payment is not null)
+        {
+            return RedirectToAction(nameof(Pix), new { id = payment.Id });
+        }
+
         return RedirectToAction(nameof(Success), new { id = order.Id });
     }
 
-    private async Task<CheckoutViewModel> BuildCheckoutAsync(Customer customer) => new()
+    private static string GetCheckoutAttemptMarker(string userId, int customerId, string attemptKey) =>
+        $"portal-checkout:{userId}:{customerId}:{attemptKey}";
+
+    private async Task<CheckoutViewModel> BuildCheckoutAsync(Customer customer)
     {
-        Cart = await cartService.GetAsync(customer.Id, HttpContext.Session),
-        Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-        PaymentTerms = await db.CustomerPaymentTerms.Where(x => x.CustomerId == customer.Id && x.IsActive).Include(x => x.PaymentTerm).Select(x => x.PaymentTerm!).OrderBy(x => x.SortOrder).ToListAsync()
-    };
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id);
+        return new CheckoutViewModel
+        {
+            Cart = await cartService.GetAsync(customer.Id, HttpContext.Session),
+            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
+            PaymentTerms = eligibility.PaymentMethods,
+            PaymentEligibility = eligibility,
+            MercadoPagoPublicKey = mercadoPagoOptions.Value.PublicKey
+        };
+    }
 
     public async Task<IActionResult> Repeat(int id)
     {
@@ -374,12 +496,7 @@ public class PortalController(
             SourceOrder = order,
             Items = items,
             Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-            PaymentTerms = await db.CustomerPaymentTerms
-                .Where(x => x.CustomerId == customer.Id && x.IsActive && x.PaymentTerm!.IsActive)
-                .Include(x => x.PaymentTerm)
-                .Select(x => x.PaymentTerm!)
-                .OrderBy(x => x.SortOrder)
-                .ToListAsync()
+            PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList()
         });
     }
 
@@ -402,15 +519,14 @@ public class PortalController(
             return Forbid();
         }
 
-        var paymentTerm = await db.CustomerPaymentTerms
-            .Include(x => x.PaymentTerm)
-            .Where(x => x.CustomerId == customer.Id && x.IsActive && x.PaymentTerm!.IsActive)
-            .Select(x => x.PaymentTerm)
-            .SingleOrDefaultAsync(term => term!.Id == input.PaymentTermId);
-        if (paymentTerm is null)
+        var eligibility = await paymentEligibilityService.ValidateAsync(customer.Id, input.PaymentTermId);
+        if (!eligibility.IsAllowed)
         {
-            return Forbid();
+            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = eligibility.ErrorMessage });
         }
+
+        var paymentTerm = await db.PaymentTerms.SingleOrDefaultAsync(term => term.Id == input.PaymentTermId && term.IsActive);
+        if (paymentTerm is null) return Forbid();
 
         var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
         var products = await db.Products
@@ -458,7 +574,7 @@ public class PortalController(
             ? "Nenhum item deste pedido está disponível no momento. Escolha produtos disponíveis no catálogo."
             : order.Total < customer.MinimumOrder
             ? $"O pedido mínimo é {customer.MinimumOrder:C}."
-            : !string.Equals(paymentTerm.Name, "PIX", StringComparison.OrdinalIgnoreCase) && order.Total > customer.CreditLimit - customer.CreditUsed
+            : paymentTerm.DaysUntilDue > 0 && order.Total > customer.CreditLimit - customer.CreditUsed
                 ? "O total ultrapassa o credito disponivel."
             : null;
 
@@ -490,8 +606,17 @@ public class PortalController(
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
             .Include(x => x.DeliveryAddress)
+            .Include(x => x.Payments)
             .SingleAsync(x => x.Id == id && x.CustomerId == customer.Id);
         return View(order);
+    }
+
+    public async Task<IActionResult> Pix(int id)
+    {
+        var customer = await GetCurrentCustomerAsync();
+        var payment = await db.Payments.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.CustomerId == customer.Id);
+        return payment is null ? NotFound() : View(PixPaymentViewModel.FromPayment(payment, BrazilTimeZone));
     }
 
     public async Task<IActionResult> Orders(string? q, string? status)
@@ -514,6 +639,7 @@ public class PortalController(
 
     private async Task<Customer> GetCurrentCustomerAsync()
     {
+        Customer? customer = null;
         if (User.IsInRole("Administrador"))
         {
             var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session);
@@ -522,14 +648,20 @@ public class PortalController(
                 var selectedCustomer = await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value);
                 if (selectedCustomer is not null)
                 {
-                    return selectedCustomer;
+                    customer = selectedCustomer;
                 }
             }
         }
 
-        var userId = userManager.GetUserId(User);
-        return await customerAccessService.GetApprovedCustomerAsync(userId)
-            ?? throw new InvalidOperationException("No approved customer is linked to the current user.");
+        if (customer is null)
+        {
+            var userId = userManager.GetUserId(User);
+            customer = await customerAccessService.GetApprovedCustomerAsync(userId)
+                ?? throw new InvalidOperationException("No approved customer is linked to the current user.");
+        }
+
+        ViewData["PortalCustomerName"] = customer.TradeName;
+        return customer;
     }
 
     private async Task ApplyCommercialAvailabilityAsync(IEnumerable<Product> products)

@@ -1,0 +1,51 @@
+@model SellerDashboardViewModel
+@{
+    ViewData["Title"] = "Área do vendedor";
+    ViewData["BodyClass"] = "seller-area-page";
+}
+
+<section class="section">
+    <div class="container">
+        <header class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <span class="eyebrow"><span></span> Operação comercial</span>
+                <h1>Olá, @Model.SellerName</h1>
+                <p class="text-muted mb-0">Acompanhe sua carteira de clientes.</p>
+            </div>
+            <a class="btn btn-gold" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">
+                <i class="fa-solid fa-building" aria-hidden="true"></i> Minha carteira
+            </a>
+        </header>
+
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-4">
+                <article class="summary-card h-100">
+                    <small>CLIENTES ATIVOS</small>
+                    <strong>@Model.ActiveCustomerCount</strong>
+                    <span>na sua carteira</span>
+                </article>
+            </div>
+        </div>
+
+        <section aria-labelledby="portfolio-heading">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 id="portfolio-heading" class="h4 mb-0">Minha carteira</h2>
+                <a asp-area="Vendedor" asp-controller="Customers" asp-action="Index">Ver todos</a>
+            </div>
+            <div class="row g-3">
+                @foreach (var customer in Model.Customers.Take(6))
+                {
+                    <div class="col-md-6 col-xl-4">
+                        <a class="text-decoration-none" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id">
+                            <article class="summary-card h-100">
+                                <small>@customer.Code</small>
+                                <h3 class="h5 text-dark mt-2">@customer.Name</h3>
+                                <span>@customer.City</span>
+                            </article>
+                        </a>
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+</section>

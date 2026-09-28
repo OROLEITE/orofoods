@@ -1,0 +1,142 @@
+/* Compact Home showcase without changing carousel content or imagery. */
+.home-catalog {
+    padding-top: 0;
+}
+
+@media (min-width: 901px) {
+    .showcase-slide--renewed {
+        height: 350px;
+        min-height: 350px;
+        grid-template-columns: 57% 43%;
+    }
+
+    .showcase-slide--renewed .showcase-copy {
+        min-height: 0;
+        padding-top: 26px;
+        padding-bottom: 28px;
+    }
+
+    .showcase-slide--renewed .eyebrow {
+        margin-bottom: 7px;
+        font-size: 10px;
+    }
+
+    .showcase-slide--renewed .showcase-overline {
+        margin: 7px 0 6px;
+        font-size: 9px;
+    }
+
+    #productShowcase .showcase-slide--renewed .showcase-copy h1 {
+        font-size: 46px;
+        line-height: 1;
+        letter-spacing: 0;
+    }
+
+    .showcase-slide--renewed .showcase-description {
+        margin: 12px 0;
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .showcase-slide--renewed .showcase-actions {
+        gap: 16px;
+    }
+
+    .showcase-slide--renewed .showcase-actions .btn {
+        min-height: 48px;
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .showcase-slide--renewed .showcase-note {
+        margin-top: 8px;
+        font-size: 10px;
+    }
+
+    .showcase-slide--renewed .showcase-media {
+        min-height: 0;
+    }
+
+    #productShowcase .showcase-slide--renewed .showcase-media img {
+        width: 100%;
+        max-height: 350px;
+    }
+
+    #productShowcase .carousel-indicators {
+        margin-bottom: 12px;
+    }
+
+    .home-command-bar .container {
+        min-height: 54px;
+    }
+}
+
+@media (max-width: 900px) {
+    .showcase-slide--renewed {
+        height: auto;
+        min-height: 0;
+    }
+
+    .showcase-slide--renewed .showcase-copy {
+        min-height: 0;
+        padding-top: 34px;
+        padding-bottom: 46px;
+    }
+
+    .showcase-slide--renewed .showcase-media {
+        min-height: 210px;
+    }
+
+    #productShowcase .showcase-slide--renewed .showcase-media img {
+        width: 100%;
+        max-height: 250px;
+    }
+}
+
+@media (max-width: 600px) {
+    .home-catalog {
+        padding-top: 0;
+    }
+
+    .showcase-slide--renewed .showcase-copy {
+        padding: 20px 20px 24px;
+    }
+
+    #productShowcase .showcase-slide--renewed .showcase-copy h1 {
+        font-size: 34px;
+        line-height: 1.02;
+        letter-spacing: 0;
+    }
+
+    .showcase-slide--renewed .showcase-overline {
+        margin: 10px 0 7px;
+    }
+
+    .showcase-slide--renewed .showcase-description {
+        margin: 10px 0;
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    .showcase-slide--renewed .showcase-actions {
+        gap: 8px;
+    }
+
+    .showcase-slide--renewed .showcase-actions .btn {
+        min-height: 44px;
+        padding: 8px 14px;
+    }
+
+    .showcase-slide--renewed .showcase-note {
+        margin-top: 8px;
+    }
+
+    .showcase-slide--renewed .showcase-media {
+        height: 150px;
+        min-height: 150px;
+    }
+
+    #productShowcase .showcase-slide--renewed .showcase-media img {
+        max-height: 150px;
+    }
+}

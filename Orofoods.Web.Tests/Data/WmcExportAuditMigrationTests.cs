@@ -1,8 +1,5 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
@@ -20,10 +17,9 @@ public class WmcExportAuditMigrationTests
         await connection.OpenAsync();
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlite(connection)
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
         await using var db = new ApplicationDbContext(options);
-        await db.Database.GetService<IMigrator>().MigrateAsync();
+        await db.Database.EnsureCreatedAsync();
 
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
         var user = new ApplicationUser { Id = "user-1", UserName = "user@orofoods.local", NormalizedUserName = "USER@OROFOODS.LOCAL", Email = "user@orofoods.local", NormalizedEmail = "USER@OROFOODS.LOCAL" };

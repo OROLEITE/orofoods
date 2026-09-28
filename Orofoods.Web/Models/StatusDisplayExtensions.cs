@@ -1,5 +1,6 @@
 using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Payments;
 
 namespace Orofoods.Web.Models;
 
@@ -25,6 +26,22 @@ public static class StatusDisplayExtensions
         IntegrationStatus.Processing => "Processando",
         IntegrationStatus.Succeeded => "Integrado",
         IntegrationStatus.Failed => "Falhou",
+        _ => status.ToString()
+    };
+
+    public static string ToDisplayName(this PaymentStatus status) => status switch
+    {
+        PaymentStatus.Pending => "Pendente",
+        PaymentStatus.Issued => "Emitido",
+        PaymentStatus.Paid => "Pago",
+        PaymentStatus.Overdue => "Em atraso",
+        PaymentStatus.Cancelled => "Cancelado",
+        PaymentStatus.Failed => "Falhou",
+        PaymentStatus.Processing => "Processando",
+        PaymentStatus.Approved => "Aprovado",
+        PaymentStatus.Rejected => "Recusado",
+        PaymentStatus.Refunded => "Estornado",
+        PaymentStatus.Expired => "Expirado",
         _ => status.ToString()
     };
 }

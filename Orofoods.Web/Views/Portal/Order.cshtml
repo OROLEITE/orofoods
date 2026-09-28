@@ -1,14 +1,14 @@
 @model Orofoods.Web.Models.Orders.Order
 @{ ViewData["Title"] = Model.Number; var steps = new[] { OrderStatus.Received, OrderStatus.Approved, OrderStatus.Picking, OrderStatus.Invoiced, OrderStatus.OutForDelivery, OrderStatus.Delivered }; var current = Array.IndexOf(steps, Model.Status); }
-<section class="page-hero">
+<section class="page-hero portal-page-hero">
     <div class="container">
         <a class="back-link" asp-action="Orders">&larr; Meus pedidos</a>
-        <div class="eyebrow light mt-4"><span></span> @Model.Status.ToDisplayName()</div>
-        <h1>@Model.Number</h1>
-        <p>@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") | @Model.Total.ToString("C")</p>
+        <div class="eyebrow light mt-4"><span></span> Pedido</div>
+        <h1>Pedido @Model.Number</h1>
+        <p>Consulte os itens, valores e informa&ccedil;&otilde;es deste pedido. &middot; @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") &middot; @Model.Total.ToString("C")</p>
     </div>
 </section>
-<section class="section">
+<section class="section portal-page portal-order-page">
     <div class="container">
         <div class="status-track">@for (var i = 0; i < steps.Length; i++) { <i class="@(i <= current ? "done" : "")"></i> }</div>
         <div class="status-labels">@foreach (var step in steps) { <span>@step.ToDisplayName()</span> }</div>

@@ -12,6 +12,14 @@ public sealed class SalesReport
     public int OrderCount { get; init; }
     public decimal Revenue { get; init; }
     public decimal AverageTicket { get; init; }
+    public int BuyerCount { get; init; }
+    public int SoldItemCount { get; init; }
+    public decimal ProductRankingTotal { get; init; }
+    public decimal CategoryRankingTotal { get; init; }
+    public int CategoryCount { get; init; }
+    public decimal CustomerRankingTotal { get; init; }
+    public decimal SalesRepresentativeRankingTotal { get; init; }
+    public decimal CityRankingTotal { get; init; }
     public List<ReportStatusRow> ByStatus { get; init; } = [];
     public List<ReportRankingRow> TopProducts { get; init; } = [];
     public List<ReportRankingRow> TopCustomers { get; init; } = [];
@@ -38,18 +46,32 @@ public class ReportService(ApplicationDbContext db)
 
         var allOrders = await query.ToListAsync(cancellationToken);
         var orders = allOrders.Where(x => x.Status != OrderStatus.Cancelled).ToList();
+        var items = orders.SelectMany(x => x.Items).ToList();
+        var productRows = items.GroupBy(x => x.ProductNameSnapshot).Select(x => new ReportRankingRow(x.Key, x.Sum(i => i.Quantity), x.Sum(i => i.Subtotal))).ToList();
+        var customerRows = orders.GroupBy(x => x.Customer?.TradeName ?? "Sem cliente").Select(x => new ReportRankingRow(x.Key, x.Count(), x.Sum(o => o.Total))).ToList();
+        var categoryRows = items.GroupBy(x => x.Product?.ProductCategory?.Name ?? "Sem categoria").Select(x => new ReportRankingRow(x.Key, x.Sum(i => i.Quantity), x.Sum(i => i.Subtotal))).ToList();
+        var salesRepresentativeRows = orders.GroupBy(x => x.Customer?.SalesRepresentative?.Name ?? "Sem vendedor").Select(x => new ReportRankingRow(x.Key, x.Count(), x.Sum(o => o.Total))).ToList();
+        var cityRows = orders.GroupBy(x => x.DeliveryAddress?.City ?? "Sem cidade").Select(x => new ReportRankingRow(x.Key, x.Count(), x.Sum(o => o.Total))).ToList();
         var revenue = orders.Sum(x => x.Total);
         return new SalesReport
         {
             OrderCount = orders.Count,
             Revenue = revenue,
             AverageTicket = orders.Count == 0 ? 0 : revenue / orders.Count,
+            BuyerCount = orders.Select(x => x.CustomerId).Distinct().Count(),
+            SoldItemCount = items.Sum(x => x.Quantity),
+            ProductRankingTotal = productRows.Sum(x => x.Total),
+            CategoryRankingTotal = categoryRows.Sum(x => x.Total),
+            CategoryCount = categoryRows.Count,
+            CustomerRankingTotal = customerRows.Sum(x => x.Total),
+            SalesRepresentativeRankingTotal = salesRepresentativeRows.Sum(x => x.Total),
+            CityRankingTotal = cityRows.Sum(x => x.Total),
             ByStatus = allOrders.GroupBy(x => x.Status).Select(x => new ReportStatusRow(x.Key, x.Count(), x.Sum(o => o.Total))).OrderBy(x => x.Status).ToList(),
-            TopProducts = Rank(orders.SelectMany(x => x.Items).GroupBy(x => x.ProductNameSnapshot).Select(x => new ReportRankingRow(x.Key, x.Sum(i => i.Quantity), x.Sum(i => i.Subtotal)))),
-            TopCustomers = Rank(orders.GroupBy(x => x.Customer?.TradeName ?? "Sem cliente").Select(x => new ReportRankingRow(x.Key, x.Count(), x.Sum(o => o.Total)))),
-            ByCategory = Rank(orders.SelectMany(x => x.Items).GroupBy(x => x.Product?.ProductCategory?.Name ?? "Sem categoria").Select(x => new ReportRankingRow(x.Key, x.Sum(i => i.Quantity), x.Sum(i => i.Subtotal)))),
-            BySalesRepresentative = Rank(orders.GroupBy(x => x.Customer?.SalesRepresentative?.Name ?? "Sem vendedor").Select(x => new ReportRankingRow(x.Key, x.Count(), x.Sum(o => o.Total)))),
-            ByCity = Rank(orders.GroupBy(x => x.DeliveryAddress?.City ?? "Sem cidade").Select(x => new ReportRankingRow(x.Key, x.Count(), x.Sum(o => o.Total))))
+            TopProducts = Rank(productRows),
+            TopCustomers = Rank(customerRows),
+            ByCategory = Rank(categoryRows),
+            BySalesRepresentative = Rank(salesRepresentativeRows),
+            ByCity = Rank(cityRows)
         };
     }
 

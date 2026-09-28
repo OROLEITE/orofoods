@@ -3,6 +3,7 @@ using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Tests.Infrastructure;
 
@@ -63,6 +64,31 @@ public class OrderReservationServiceTests
 
         Assert.True(result.IsValid);
         Assert.Equal(0m, customer.CreditUsed);
+    }
+
+    [Fact]
+    public async Task ReserveAsync_DoesNotUseCredit_ForCreditCard()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", CreditLimit = 0m };
+        var product = CreateProduct();
+        var order = new Order
+        {
+            Customer = customer,
+            CreatedByUser = CreateUser(),
+            Total = 100m,
+            PaymentMethod = "Cartão de crédito",
+            PaymentTerm = new PaymentTerm { Code = "CREDIT_CARD", Name = "Cartão de crédito", DaysUntilDue = 0 }
+        };
+        order.Items.Add(new OrderItem { Product = product, Quantity = 1, UnitPrice = 100m, Subtotal = 100m });
+        db.AddRange(order, new ProductInventory { Product = product, QuantityOnHand = 1 });
+        await db.SaveChangesAsync();
+
+        var result = await new OrderReservationService(db).ReserveAsync(order);
+
+        Assert.True(result.IsValid);
+        Assert.Equal(0m, customer.CreditUsed);
+        Assert.Single(db.InventoryReservations);
     }
 
     private static ApplicationUser CreateUser() => new()

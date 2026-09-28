@@ -1,11 +1,15 @@
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Data;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Tests.Infrastructure;
+using Microsoft.Extensions.Options;
 
 namespace Orofoods.Web.Tests.Services;
 
@@ -21,7 +25,7 @@ public class AdminOrderServiceTests
         db.Add(order);
         await db.SaveChangesAsync();
         var changedAt = new DateTimeOffset(2026, 8, 30, 3, 0, 0, TimeSpan.Zero);
-        var sut = new AdminOrderService(db, new FixedTimeProvider(changedAt), new OrderReservationService(db));
+        var sut = CreateService(db, new FixedTimeProvider(changedAt), new OrderReservationService(db));
 
         await sut.UpdateStatusAsync(order.Id, OrderStatus.Approved, user.Id);
 
@@ -41,7 +45,7 @@ public class AdminOrderServiceTests
         var order = new Order { Customer = customer, CreatedByUser = user, Number = "ORO-2026-000001", Status = OrderStatus.Received };
         db.Add(order);
         await db.SaveChangesAsync();
-        var sut = new AdminOrderService(db, TimeProvider.System, new OrderReservationService(db));
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
 
         await sut.UpdateStatusAsync(order.Id, OrderStatus.Received, user.Id);
 
@@ -68,7 +72,7 @@ public class AdminOrderServiceTests
         await db.SaveChangesAsync();
         var reservationService = new OrderReservationService(db);
         Assert.True((await reservationService.ReserveAsync(order)).IsValid);
-        var sut = new AdminOrderService(db, TimeProvider.System, reservationService);
+        var sut = CreateService(db, TimeProvider.System, reservationService);
 
         await sut.UpdateStatusAsync(order.Id, OrderStatus.Cancelled, user.Id);
 
@@ -76,6 +80,17 @@ public class AdminOrderServiceTests
         Assert.Equal(0, inventory.QuantityReserved);
         Assert.Equal(0m, customer.CreditUsed);
         Assert.Equal(InventoryReservationStatus.Released, Assert.Single(db.InventoryReservations).Status);
+    }
+
+    private static AdminOrderService CreateService(ApplicationDbContext db, TimeProvider timeProvider, OrderReservationService reservationService)
+    {
+        var eligibilityOptions = Options.Create(new PaymentEligibilityOptions());
+        return new AdminOrderService(
+            db,
+            timeProvider,
+            reservationService,
+            new PaymentEligibilityService(db, eligibilityOptions),
+            new PaymentService(db, eligibilityOptions, new PendingBoletoProvider()));
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
