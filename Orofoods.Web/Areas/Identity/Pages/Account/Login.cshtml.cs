@@ -94,13 +94,16 @@ public class LoginModel(
             return Page();
         }
 
-        var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-        if (result.Succeeded)
+        var email = Input.Email.Trim();
+        var user = await _userManager.FindByEmailAsync(email);
+        var result = user is null
+            ? Microsoft.AspNetCore.Identity.SignInResult.Failed
+            : await _signInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        if (user is not null && result.Succeeded)
         {
             _logger.LogInformation("User logged in.");
-            var user = await _userManager.FindByEmailAsync(Input.Email);
-            var isAdministrator = user is not null && await _userManager.IsInRoleAsync(user, "Administrador");
-            var isCustomer = user is not null && await _userManager.IsInRoleAsync(user, "Cliente");
+            var isAdministrator = await _userManager.IsInRoleAsync(user, "Administrador");
+            var isCustomer = await _userManager.IsInRoleAsync(user, "Cliente");
             var homeUrl = Url.Content("~/");
             var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
             var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -12,6 +13,7 @@ using Orofoods.Web.Areas.Identity.Pages.Account;
 using Orofoods.Web.Controllers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Tests.Infrastructure;
+using IdentitySignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 
 namespace Orofoods.Web.Tests.Identity;
 
@@ -84,29 +86,138 @@ public class LoginRedirectTests
         Assert.Contains(typeof(AuthorizeAttribute), typeof(PortalController).GetCustomAttributes(inherit: true).Select(attribute => attribute.GetType()));
     }
 
+    [Theory]
+    [InlineData("staging-admin-test", "staging-admin-test@orofoods.test", "Administrador", "/Admin/Dashboard")]
+    [InlineData("staging-customer-test", "staging-customer-test@orofoods.test", "Cliente", "/Portal/Dashboard")]
+    public async Task Login_by_email_authenticates_accounts_whose_user_name_is_different(
+        string userName,
+        string email,
+        string role,
+        string expectedRedirect)
+    {
+        var attempt = await AttemptLoginAsync(userName, email, role);
+
+        Assert.Equal(expectedRedirect, RedirectUrl(attempt.Result));
+        attempt.SignInManager.Verify(manager => manager.PasswordSignInAsync(
+            It.Is<ApplicationUser>(user => user.UserName == userName && user.Email == email),
+            "SenhaSegura123!",
+            false,
+            false), Times.Once);
+    }
+
+    [Fact]
+    public async Task Nonexistent_email_shows_a_generic_login_error()
+    {
+        var attempt = await AttemptLoginAsync("missing-user", "missing@orofoods.test", "Cliente", createUser: false);
+
+        AssertGenericLoginError(attempt);
+        attempt.SignInManager.Verify(manager => manager.PasswordSignInAsync(
+            It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Unknown_email_and_wrong_password_return_the_same_public_error()
+    {
+        var unknownEmail = await AttemptLoginAsync("missing-user", "missing@orofoods.test", "Cliente", createUser: false);
+        var wrongPassword = await AttemptLoginAsync("customer-login", "customer@orofoods.test", "Cliente", signInResult: IdentitySignInResult.Failed);
+
+        Assert.Equal(PublicLoginError(unknownEmail), PublicLoginError(wrongPassword));
+    }
+
+    [Fact]
+    public async Task Incorrect_password_shows_a_generic_login_error()
+    {
+        var attempt = await AttemptLoginAsync("customer-login", "customer@orofoods.test", "Cliente", signInResult: IdentitySignInResult.Failed);
+
+        AssertGenericLoginError(attempt);
+    }
+
+    [Fact]
+    public async Task Locked_out_user_keeps_the_existing_lockout_redirect()
+    {
+        var attempt = await AttemptLoginAsync("customer-login", "customer@orofoods.test", "Cliente", signInResult: IdentitySignInResult.LockedOut);
+
+        Assert.Equal("./Lockout", Assert.IsType<RedirectToPageResult>(attempt.Result).PageName);
+    }
+
+    [Fact]
+    public async Task Sign_in_not_allowed_shows_a_generic_login_error()
+    {
+        var attempt = await AttemptLoginAsync("customer-login", "customer@orofoods.test", "Cliente", signInResult: IdentitySignInResult.NotAllowed);
+
+        AssertGenericLoginError(attempt);
+    }
+
+    [Fact]
+    public async Task Remember_me_is_passed_to_the_identity_user_sign_in_overload()
+    {
+        var attempt = await AttemptLoginAsync("customer-login", "customer@orofoods.test", "Cliente", rememberMe: true);
+
+        Assert.Equal("/Portal/Dashboard", RedirectUrl(attempt.Result));
+        attempt.SignInManager.Verify(manager => manager.PasswordSignInAsync(
+            It.Is<ApplicationUser>(user => user.UserName == "customer-login"),
+            "SenhaSegura123!",
+            true,
+            false), Times.Once);
+    }
+
+    [Fact]
+    public async Task Email_whitespace_is_trimmed_before_user_lookup()
+    {
+        var attempt = await AttemptLoginAsync("customer-login", "customer@orofoods.test", "Cliente", inputEmail: " customer@orofoods.test ");
+
+        Assert.Equal("/Portal/Dashboard", RedirectUrl(attempt.Result));
+    }
+
+    [Fact]
+    public async Task External_return_url_does_not_redirect_outside_the_portal()
+    {
+        var attempt = await AttemptLoginAsync("admin-login", "admin@orofoods.test", "Administrador", returnUrl: "https://evil.example/");
+
+        Assert.Equal("/Admin/Dashboard", RedirectUrl(attempt.Result));
+    }
+
     private static async Task<IActionResult> LoginAsAsync(string role, string? returnUrl)
+    {
+        var email = $"{role.ToLowerInvariant()}@orofoods.test";
+        return (await AttemptLoginAsync($"login-{role.ToLowerInvariant()}", email, role, returnUrl)).Result;
+    }
+
+    private static async Task<LoginAttempt> AttemptLoginAsync(
+        string userName,
+        string email,
+        string role,
+        string? returnUrl = null,
+        bool createUser = true,
+        IdentitySignInResult? signInResult = null,
+        bool rememberMe = false,
+        string? inputEmail = null)
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var userManager = TestIdentityFactory.CreateUserManager(db);
         var roleManager = TestIdentityFactory.CreateRoleManager(db);
         await roleManager.CreateAsync(new IdentityRole(role));
 
-        var email = $"{role.ToLowerInvariant()}@orofoods.test";
-        var user = new ApplicationUser { UserName = email, Email = email, IsActive = true };
-        await userManager.CreateAsync(user, "SenhaSegura123!");
-        await userManager.AddToRoleAsync(user, role);
+        if (createUser)
+        {
+            var user = new ApplicationUser { UserName = userName, Email = email, IsActive = true, EmailConfirmed = true };
+            await userManager.CreateAsync(user, "SenhaSegura123!");
+            await userManager.AddToRoleAsync(user, role);
+        }
 
-        var signInManager = CreateSignInManager(userManager);
+        var signInManager = CreateSignInManager(userManager, signInResult ?? IdentitySignInResult.Success);
         var model = new LoginModel(signInManager.Object, userManager, NullLogger<LoginModel>.Instance)
         {
             Url = CreateUrlHelper(),
-            Input = new LoginModel.InputModel { Email = email, Password = "SenhaSegura123!" }
+            Input = new LoginModel.InputModel { Email = inputEmail ?? email, Password = "SenhaSegura123!", RememberMe = rememberMe }
         };
 
-        return await model.OnPostAsync(returnUrl);
+        return new LoginAttempt(await model.OnPostAsync(returnUrl), model, signInManager);
     }
 
-    private static Mock<SignInManager<ApplicationUser>> CreateSignInManager(UserManager<ApplicationUser> userManager)
+    private static Mock<SignInManager<ApplicationUser>> CreateSignInManager(
+        UserManager<ApplicationUser> userManager,
+        IdentitySignInResult signInResult)
     {
         var contextAccessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
         var claimsFactory = Mock.Of<IUserClaimsPrincipalFactory<ApplicationUser>>();
@@ -124,8 +235,11 @@ public class LoginRedirectTests
         signInManager.Setup(manager => manager.GetExternalAuthenticationSchemesAsync())
             .ReturnsAsync(Array.Empty<AuthenticationScheme>());
         signInManager.Setup(manager => manager.PasswordSignInAsync(
+                It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .ReturnsAsync(signInResult);
+        signInManager.Setup(manager => manager.PasswordSignInAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>()))
-            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+            .ReturnsAsync(IdentitySignInResult.Failed);
 
         return signInManager;
     }
@@ -152,4 +266,20 @@ public class LoginRedirectTests
         RedirectResult redirect => redirect.Url,
         _ => null
     };
+
+    private static void AssertGenericLoginError(LoginAttempt attempt)
+    {
+        Assert.IsType<PageResult>(attempt.Result);
+        var error = PublicLoginError(attempt);
+        Assert.Equal("Não foi possível acessar com estas credenciais.", error);
+        Assert.DoesNotContain("SenhaSegura123!", error, StringComparison.Ordinal);
+    }
+
+    private static string PublicLoginError(LoginAttempt attempt) =>
+        Assert.Single(attempt.Model.ModelState[string.Empty]!.Errors).ErrorMessage;
+
+    private sealed record LoginAttempt(
+        IActionResult Result,
+        LoginModel Model,
+        Mock<SignInManager<ApplicationUser>> SignInManager);
 }
