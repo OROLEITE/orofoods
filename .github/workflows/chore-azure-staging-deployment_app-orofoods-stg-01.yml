@@ -24,10 +24,10 @@ jobs:
           dotnet-version: '10.x'
 
       - name: Build with dotnet
-        run: dotnet build --configuration Release
+        run: dotnet build Orofoods.slnx --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish Orofoods.Web/Orofoods.Web.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -47,7 +47,30 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-      
+          path: ./publish
+
+      - name: Validate web publish artifact
+        run: |
+          set -euo pipefail
+
+          publish_dir="./publish"
+          test -f "$publish_dir/Orofoods.Web.dll"
+          test -f "$publish_dir/Orofoods.Web.deps.json"
+          test -f "$publish_dir/Orofoods.Web.runtimeconfig.json"
+          test -d "$publish_dir/wwwroot"
+
+          if find "$publish_dir" -type f \( -name 'Orofoods.Web.Tests.dll' -o -name 'Orofoods.Web.Tests.runtimeconfig.json' \) -print -quit | grep -q .; then
+            echo "::error::Test project artifacts found in the web publish package."
+            exit 1
+          fi
+
+          runtimeconfig_count="$(find "$publish_dir" -type f -name '*.runtimeconfig.json' | wc -l)"
+          if [ "$runtimeconfig_count" -ne 1 ]; then
+            echo "::error::Expected exactly one runtimeconfig.json, found $runtimeconfig_count."
+            find "$publish_dir" -type f -name '*.runtimeconfig.json' -print
+            exit 1
+          fi
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -61,5 +84,4 @@ jobs:
         with:
           app-name: 'app-orofoods-stg-01'
           slot-name: 'Production'
-          package: .
-          
+          package: ./publish
