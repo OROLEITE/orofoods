@@ -24,7 +24,7 @@ jobs:
           dotnet-version: '10.x'
 
       - name: Clean build outputs
-        run: dotnet clean Orofoods.slnx --configuration Release --no-restore
+        run: dotnet clean Orofoods.slnx --configuration Release
 
       - name: Build with dotnet
         run: dotnet build Orofoods.slnx --configuration Release
