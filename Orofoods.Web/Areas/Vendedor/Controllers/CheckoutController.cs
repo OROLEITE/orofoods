@@ -127,9 +127,13 @@ public sealed class CheckoutController(
     public async Task<IActionResult> Success(int customerId, int id, int? paymentId, CancellationToken cancellationToken)
     {
         if (await accessService.GetSellerCartScopeAsync(User, customerId, cancellationToken) is null) return Forbid();
-        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.PaymentTerm)
+        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.PaymentTerm).Include(x => x.Payments)
             .SingleOrDefaultAsync(x => x.Id == id && x.CustomerId == customerId, cancellationToken);
-        return order is null ? NotFound() : View(new SellerOrderSuccessViewModel(order.Id, order.Number, order.Customer!.TradeName, order.Total, order.PaymentMethod, order.Status.ToString()));
+        if (order is null) return NotFound();
+        var financialStatus = order.Payments.OrderByDescending(payment => payment.CreatedAt).FirstOrDefault()?.Status == PaymentStatus.Pending
+            ? "Aguardando pagamento"
+            : null;
+        return View(new SellerOrderSuccessViewModel(order.Id, order.Number, order.Customer!.TradeName, order.Total, order.PaymentMethod, order.Status.ToString(), financialStatus));
     }
 
     private async Task CancelOrderAsync(Order order, string userId, CancellationToken cancellationToken)

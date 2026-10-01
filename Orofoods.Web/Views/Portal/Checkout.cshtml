@@ -54,6 +54,10 @@
                                     <option value="@term.Id" data-code="@term.Code">@term.Name</option>
                                 }
                             </select>
+                            @if (Model.PaymentTerms.Any(term => term.Code == "CARD_ON_DELIVERY"))
+                            {
+                                <p class="checkout-security" data-payment-description="CARD_ON_DELIVERY" hidden>Pague no momento da entrega diretamente na maquininha.</p>
+                            }
                         </div>
                         <fieldset id="creditCardForm" class="checkout-card-form checkout-field-wide" hidden>
                             <legend>Dados do cartão</legend>

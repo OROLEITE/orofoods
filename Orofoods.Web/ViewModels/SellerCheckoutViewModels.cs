@@ -16,4 +16,5 @@ public sealed record SellerOrderSuccessViewModel(
     string CustomerName,
     decimal Total,
     string PaymentMethod,
-    string Status);
+    string Status,
+    string? FinancialStatus = null);

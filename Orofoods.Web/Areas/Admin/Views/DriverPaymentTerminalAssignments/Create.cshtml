@@ -1,0 +1,15 @@
+@model Orofoods.Web.ViewModels.DriverPaymentTerminalAssignmentCreateViewModel
+@{
+    ViewData["Title"] = "Associar terminal";
+    var drivers = ViewBag.Drivers as IReadOnlyList<Orofoods.Web.Models.Delivery.Driver> ?? [];
+    var terminals = ViewBag.PaymentTerminals as IReadOnlyList<Orofoods.Web.Models.Payments.PaymentTerminal> ?? [];
+}
+
+<h1>Associar terminal a motorista</h1>
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<form asp-action="Create" method="post">
+    <div class="mb-3"><label asp-for="DriverId" class="form-label">Motorista</label><select asp-for="DriverId" class="form-select"><option value="">Selecione</option>@foreach (var driver in drivers) { <option value="@driver.Id">@driver.Name</option> }</select></div>
+    <div class="mb-3"><label asp-for="PaymentTerminalId" class="form-label">Terminal</label><select asp-for="PaymentTerminalId" class="form-select"><option value="">Selecione</option>@foreach (var terminal in terminals) { <option value="@terminal.Id">@terminal.Provider — @(terminal.DeviceId ?? "Device ID não configurado")</option> }</select></div>
+    <button class="btn btn-primary" type="submit">Associar</button>
+    <a class="btn btn-outline-secondary" asp-action="Index">Voltar</a>
+</form>

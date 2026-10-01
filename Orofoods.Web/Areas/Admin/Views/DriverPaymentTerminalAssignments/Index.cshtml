@@ -1,0 +1,29 @@
+@model IReadOnlyList<Orofoods.Web.Models.Payments.DriverPaymentTerminalAssignment>
+@{
+    ViewData["Title"] = "Associações de terminais";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div><h1>Associações motorista ↔ terminal</h1><p>O histórico é preservado ao encerrar uma associação.</p></div>
+    <a class="btn btn-primary" asp-action="Create">Nova associação</a>
+</div>
+<div class="table-responsive"><table class="table align-middle">
+    <thead><tr><th>Motorista</th><th>Provedor</th><th>Device ID</th><th>Início</th><th>Fim</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var assignment in Model)
+    {
+        <tr>
+            <td>@assignment.Driver?.Name</td><td>@assignment.PaymentTerminal?.Provider</td><td>@(assignment.PaymentTerminal?.DeviceId ?? "Não configurado")</td><td>@assignment.StartedAt.ToLocalTime().ToString("g")</td><td>@(assignment.EndedAt?.ToLocalTime().ToString("g") ?? "—")</td><td>@(assignment.EndedAt is null ? "Ativa" : "Encerrada")</td>
+            <td class="text-end">
+                @if (assignment.EndedAt is null)
+                {
+                    <form asp-action="End" method="post">
+                        <input type="hidden" name="id" value="@assignment.Id" />
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Encerrar</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table></div>

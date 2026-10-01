@@ -12,5 +12,6 @@ public enum PaymentStatus
     Approved = 7,
     Rejected = 8,
     Refunded = 9,
-    Expired = 10
+    Expired = 10,
+    ActionRequired = 11
 }

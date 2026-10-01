@@ -4,6 +4,8 @@ using Orofoods.Web.Data;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Payments;
+using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Commercial;
@@ -80,6 +82,126 @@ public class AdminOrderServiceTests
         Assert.Equal(0, inventory.QuantityReserved);
         Assert.Equal(0m, customer.CreditUsed);
         Assert.Equal(InventoryReservationStatus.Released, Assert.Single(db.InventoryReservations).Status);
+    }
+
+    [Fact]
+    public async Task CardOnDelivery_PendingPayment_CannotBeDelivered()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (customer, user, order) = await CreateOrderAsync(db, "CARD_ON_DELIVERY", PaymentStatus.Pending);
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
+
+        var result = await sut.UpdateStatusAsync(order.Id, OrderStatus.Delivered, user.Id);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("O pedido utiliza Cartão na Entrega e o pagamento ainda não foi aprovado.", result.ErrorMessage);
+        Assert.Equal(OrderStatus.Received, order.Status);
+        Assert.Empty(db.OrderStatusHistories);
+        Assert.Equal(customer.Id, order.CustomerId);
+    }
+
+    [Fact]
+    public async Task CardOnDelivery_WithoutPayment_CannotBeDelivered()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (_, user, order) = await CreateOrderAsync(db, "CARD_ON_DELIVERY", paymentStatus: null);
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
+
+        var result = await sut.UpdateStatusAsync(order.Id, OrderStatus.Delivered, user.Id);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(OrderStatus.Received, order.Status);
+        Assert.Empty(db.OrderStatusHistories);
+    }
+
+    [Fact]
+    public async Task CardOnDelivery_ApprovedPayment_CanBeDelivered()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (_, user, order) = await CreateOrderAsync(db, "CARD_ON_DELIVERY", PaymentStatus.Approved);
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
+
+        var result = await sut.UpdateStatusAsync(order.Id, OrderStatus.Delivered, user.Id);
+
+        Assert.True(result.Succeeded);
+        Assert.Null(result.ErrorMessage);
+        Assert.Equal(OrderStatus.Delivered, order.Status);
+        Assert.Equal(OrderStatus.Delivered, Assert.Single(db.OrderStatusHistories).Status);
+    }
+
+    [Fact]
+    public async Task CardOnDelivery_PaidPayment_CanBeDelivered()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (_, user, order) = await CreateOrderAsync(db, "CARD_ON_DELIVERY", PaymentStatus.Paid);
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
+
+        var result = await sut.UpdateStatusAsync(order.Id, OrderStatus.Delivered, user.Id);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(OrderStatus.Delivered, order.Status);
+    }
+
+    [Theory]
+    [InlineData("CASH")]
+    [InlineData("PIX")]
+    public async Task OtherPaymentTerms_CanBeDeliveredWithoutCardApproval(string termCode)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (_, user, order) = await CreateOrderAsync(db, termCode, paymentStatus: null);
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
+
+        var result = await sut.UpdateStatusAsync(order.Id, OrderStatus.Delivered, user.Id);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(OrderStatus.Delivered, order.Status);
+    }
+
+    [Fact]
+    public async Task PendingCardOnDelivery_CanStillBeCancelled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (_, user, order) = await CreateOrderAsync(db, "CARD_ON_DELIVERY", PaymentStatus.Pending);
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
+
+        var result = await sut.UpdateStatusAsync(order.Id, OrderStatus.Cancelled, user.Id);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+    }
+
+    private static async Task<(Customer Customer, ApplicationUser User, Order Order)> CreateOrderAsync(
+        ApplicationDbContext db,
+        string termCode,
+        PaymentStatus? paymentStatus)
+    {
+        var customer = new Customer { LegalName = "Teste Ltda", TradeName = "Teste", Cnpj = "12.345.678/0001-99", Status = CustomerStatus.Approved, IsActive = true };
+        var user = new ApplicationUser { Id = "buyer-1", UserName = "buyer@test", Email = "buyer@test" };
+        var term = new PaymentTerm { Code = termCode, Name = termCode, DaysUntilDue = 0, IsActive = true };
+        var order = new Order
+        {
+            Customer = customer,
+            CreatedByUser = user,
+            PaymentTerm = term,
+            PaymentMethod = termCode,
+            Number = "ORO-2026-000001",
+            Status = OrderStatus.Received,
+            Total = 100m
+        };
+        if (paymentStatus is not null)
+        {
+            order.Payments.Add(new Payment
+            {
+                Customer = customer,
+                PaymentMethod = termCode,
+                Method = PaymentMethodType.CardOnDelivery,
+                Amount = order.Total,
+                Status = paymentStatus.Value
+            });
+        }
+        db.Add(order);
+        await db.SaveChangesAsync();
+        return (customer, user, order);
     }
 
     private static AdminOrderService CreateService(ApplicationDbContext db, TimeProvider timeProvider, OrderReservationService reservationService)

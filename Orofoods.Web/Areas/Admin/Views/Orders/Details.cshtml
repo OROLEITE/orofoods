@@ -1,5 +1,34 @@
 @model Orofoods.Web.Models.Orders.Order
-@{ ViewData["Title"] = Model.Number; }
+@{
+    ViewData["Title"] = Model.Number;
+    var cardOnDelivery = Model.PaymentTerm?.Code == "CARD_ON_DELIVERY";
+    var cardOnDeliveryPayment = Model.Payments
+        .Where(payment => payment.Method == Orofoods.Web.Models.Payments.PaymentMethodType.CardOnDelivery)
+        .OrderByDescending(payment => payment.CreatedAt)
+        .ThenByDescending(payment => payment.Id)
+        .FirstOrDefault();
+    var paymentApproved = cardOnDeliveryPayment?.Status is Orofoods.Web.Models.Payments.PaymentStatus.Approved
+        or Orofoods.Web.Models.Payments.PaymentStatus.Paid;
+    var pointPaymentEnabled = ViewBag.PointPaymentEnabled is bool pointEnabled && pointEnabled;
+    var pointAssignments = ViewBag.PointEligibleAssignments as IReadOnlyList<Orofoods.Web.Models.Payments.DriverPaymentTerminalAssignment> ?? [];
+    var pointChargeBlockReason = ViewBag.PointChargeBlockReason as string;
+    var pointAttemptActive = cardOnDeliveryPayment?.Gateway == "MercadoPagoPoint" && cardOnDeliveryPayment.Status is Orofoods.Web.Models.Payments.PaymentStatus.Pending
+        or Orofoods.Web.Models.Payments.PaymentStatus.Processing
+        or Orofoods.Web.Models.Payments.PaymentStatus.ActionRequired;
+    var pointAuditEvents = ViewBag.PointAuditEvents as IReadOnlyList<Orofoods.Web.Models.Payments.PointPaymentAuditEvent> ?? [];
+    var paymentStatusLabel = cardOnDeliveryPayment?.Status switch
+    {
+        Orofoods.Web.Models.Payments.PaymentStatus.Approved or Orofoods.Web.Models.Payments.PaymentStatus.Paid => "Pagamento aprovado",
+        Orofoods.Web.Models.Payments.PaymentStatus.Processing => "Aguardando terminal",
+        Orofoods.Web.Models.Payments.PaymentStatus.ActionRequired => "Ação necessária no terminal",
+        Orofoods.Web.Models.Payments.PaymentStatus.Rejected => "Pagamento recusado",
+        Orofoods.Web.Models.Payments.PaymentStatus.Cancelled => "Pagamento cancelado",
+        Orofoods.Web.Models.Payments.PaymentStatus.Refunded => "Pagamento estornado",
+        Orofoods.Web.Models.Payments.PaymentStatus.Expired => "Cobrança expirada",
+        Orofoods.Web.Models.Payments.PaymentStatus.Failed => "Erro de comunicação",
+        _ => "Aguardando pagamento"
+    };
+}
 
 <section class="section">
     <div class="container">
@@ -14,17 +43,152 @@
             <div><small>ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
             <div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div>
         </div>
+        @if (TempData["OrderStatusError"] is string statusError)
+        {
+            <div class="alert alert-warning mt-3" role="alert">@statusError</div>
+        }
+        @if (TempData["PointPaymentError"] is string pointError)
+        {
+            <div class="alert alert-warning mt-3" role="alert">@pointError</div>
+        }
+        @if (TempData["PointPaymentMessage"] is string pointMessage)
+        {
+            <div class="alert alert-success mt-3" role="status">@pointMessage</div>
+        }
+        @if (cardOnDelivery)
+        {
+            <div class="alert alert-info mt-3" data-payment-status="@(paymentApproved ? "approved" : "pending")">
+                <strong>Forma de pagamento:</strong> Cartão na entrega<br />
+                <strong>Status do pagamento:</strong> @paymentStatusLabel
+            </div>
+            @if (cardOnDeliveryPayment is not null)
+            {
+                var assignment = cardOnDeliveryPayment.DriverPaymentTerminalAssignment;
+                <dl class="row mt-3 mb-0" data-card-on-delivery-details>
+                    <dt class="col-sm-3">Motorista da cobrança</dt><dd class="col-sm-9">@(assignment?.Driver?.Name ?? "Não associado")</dd>
+                    <dt class="col-sm-3">Terminal</dt><dd class="col-sm-9">@(assignment?.PaymentTerminal?.DeviceId ?? "Não associado")</dd>
+                    <dt class="col-sm-3">Última tentativa Point</dt><dd class="col-sm-9">@(cardOnDeliveryPayment.Gateway == "MercadoPagoPoint" ? paymentStatusLabel : "Ainda não iniciada")</dd>
+                    @if (!string.IsNullOrWhiteSpace(cardOnDeliveryPayment.GatewayOrderId))
+                    {
+                        <dt class="col-sm-3">External Order ID</dt><dd class="col-sm-9"><code>@cardOnDeliveryPayment.GatewayOrderId</code></dd>
+                    }
+                    <dt class="col-sm-3">Última atualização</dt><dd class="col-sm-9"><time>@cardOnDeliveryPayment.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</time></dd>
+                </dl>
+            }
+        }
+
+        @if (pointPaymentEnabled)
+        {
+            <section class="card mt-3 mb-4" aria-labelledby="point-charge-title">
+                <div class="card-body">
+                    <h2 id="point-charge-title" class="h5">Cobrança no terminal de teste</h2>
+                    @if (cardOnDeliveryPayment?.Gateway == "MercadoPagoPoint")
+                    {
+                        <p data-point-payment-status="@cardOnDeliveryPayment.Status.ToString().ToLowerInvariant()" data-point-payment-label="@paymentStatusLabel">
+                            <strong>Status Point:</strong> <span data-point-status-label>@paymentStatusLabel</span>
+                        </p>
+                        @if (pointAttemptActive && !string.IsNullOrWhiteSpace(cardOnDeliveryPayment.GatewayOrderId))
+                        {
+                            <form asp-action="PollPointCharge" method="post" class="d-inline" data-point-payment-poll data-order-id="@Model.Id" data-payment-id="@cardOnDeliveryPayment.Id">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <input type="hidden" name="paymentId" value="@cardOnDeliveryPayment.Id" />
+                                <span class="visually-hidden" data-point-poll-message aria-live="polite"></span>
+                            </form>
+                            <form asp-action="RefreshPointCharge" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <input type="hidden" name="paymentId" value="@cardOnDeliveryPayment.Id" />
+                                <button class="btn btn-outline-dark">Consultar status</button>
+                            </form>
+                            <form asp-action="CancelPointCharge" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <input type="hidden" name="paymentId" value="@cardOnDeliveryPayment.Id" />
+                                <button class="btn btn-outline-danger">Cancelar cobrança</button>
+                            </form>
+                        }
+                        else if (pointAttemptActive)
+                        {
+                            var retryAssignment = pointAssignments.FirstOrDefault(x => x.Id == cardOnDeliveryPayment.DriverPaymentTerminalAssignmentId);
+                            <p class="text-muted">A comunicação expirou antes da confirmação da order. Reenviar reutiliza a tentativa persistida e sua chave de idempotência.</p>
+                            @if (retryAssignment is not null)
+                            {
+                                <form asp-action="StartPointCharge" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@Model.Id" />
+                                    <input type="hidden" name="assignmentId" value="@retryAssignment.Id" />
+                                    <input type="hidden" name="requestKey" value="@ViewBag.PointRequestKey" />
+                                    <button class="btn btn-outline-dark">Reenviar tentativa segura</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="btn btn-outline-dark" type="button" disabled>Reenviar tentativa segura</button>
+                                <p class="text-muted">O motorista/terminal original não está mais ativo. Reative o vínculo antes de reenviar.</p>
+                            }
+                        }
+                    }
+                    @if (!paymentApproved && !pointAttemptActive && pointChargeBlockReason is null && pointAssignments.Count > 0)
+                    {
+                        <form asp-action="StartPointCharge" method="post" class="d-flex flex-wrap gap-2">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="requestKey" value="@ViewBag.PointRequestKey" />
+                            <label for="point-assignment" class="visually-hidden">Motorista e terminal</label>
+                            <select id="point-assignment" name="assignmentId" class="form-select" required>
+                                <option value="">Selecione motorista e terminal de teste</option>
+                                @foreach (var assignment in pointAssignments)
+                                {
+                                    <option value="@assignment.Id">@assignment.Driver?.Name — @assignment.PaymentTerminal?.DeviceId</option>
+                                }
+                            </select>
+                            <button class="btn btn-gold">COBRAR NA MAQUININHA</button>
+                        </form>
+                    }
+                    else if (!paymentApproved && !pointAttemptActive && pointChargeBlockReason is not null)
+                    {
+                        <button class="btn btn-gold" type="button" disabled>COBRAR NA MAQUININHA</button>
+                        <p class="text-muted mb-0 mt-2">@pointChargeBlockReason</p>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (pointAuditEvents.Count > 0)
+        {
+            <section class="mt-4" aria-labelledby="point-audit-title">
+                <h2 id="point-audit-title" class="h5">Auditoria da cobrança Point</h2>
+                <ol class="list-group list-group-flush">
+                    @foreach (var audit in pointAuditEvents)
+                    {
+                        <li class="list-group-item px-0">
+                            <strong>@audit.ResultSummary</strong>
+                            <span class="d-block">@audit.PreviousStatus?.ToDisplayName() → @audit.NewStatus.ToDisplayName() · tentativa @audit.AttemptNumber · @(audit.AdminUser?.Email ?? "Sistema")</span>
+                            @if (!string.IsNullOrWhiteSpace(audit.ExternalOrderId)) { <small class="d-block">Order: @audit.ExternalOrderId</small> }
+                            <time>@audit.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</time>
+                        </li>
+                    }
+                </ol>
+            </section>
+        }
 
         <form asp-action="UpdateStatus" method="post" class="d-flex gap-2 mb-4">
             <input type="hidden" name="id" value="@Model.Id" />
             <select name="status" class="form-select">
                 @foreach (var status in Enum.GetValues<OrderStatus>())
                 {
-                    <option value="@status" selected="@(status == Model.Status)">@status.ToDisplayName()</option>
+                    if (status == OrderStatus.Delivered && cardOnDelivery && !paymentApproved)
+                    {
+                        <option value="@status" selected="@(status == Model.Status)" disabled>@status.ToDisplayName()</option>
+                    }
+                    else
+                    {
+                        <option value="@status" selected="@(status == Model.Status)">@status.ToDisplayName()</option>
+                    }
                 }
             </select>
             <button class="btn btn-gold">Atualizar status</button>
         </form>
+        @if (cardOnDelivery && !paymentApproved)
+        {
+            <p class="alert alert-warning mb-4" data-delivered-payment-guard>Pagamento na entrega ainda não foi aprovado.</p>
+        }
 
         <form asp-action="ReprocessIntegration" method="post" class="mb-4">
             <input type="hidden" name="id" value="@Model.Id" />
@@ -86,3 +250,4 @@
         </div>
     </div>
 </section>
+<script src="~/js/admin-point-payment.js" asp-append-version="true" defer></script>

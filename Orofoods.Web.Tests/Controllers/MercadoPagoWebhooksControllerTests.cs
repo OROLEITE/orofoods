@@ -158,7 +158,91 @@ public class MercadoPagoWebhooksControllerTests
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsType<StatusCodeResult>(result).StatusCode);
     }
 
+    [Fact]
+    public async Task Point_gateway_order_uses_point_status_reconciliation()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var payment = await SeedApprovablePaymentAsync(db);
+        payment.Gateway = "MercadoPagoPoint";
+        payment.Method = PaymentMethodType.CardOnDelivery;
+        await db.SaveChangesAsync();
+        var point = new TrackingPointOrchestrationService(payment);
+        var onlineGateway = new TrackingGateway();
+        var controller = CreateController(db, onlineGateway, point, signatureIsValid: true);
+        SetRequest(controller, dataId: payment.GatewayOrderId, type: "order");
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.IsType<OkResult>(result);
+        Assert.Equal(payment.Id, point.RefreshedPaymentId);
+        Assert.Equal(0, onlineGateway.GetOrderCalls);
+    }
+
+    [Fact]
+    public async Task Point_webhook_arriving_before_create_response_is_persisted_returns_retryable_503()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var payment = await SeedApprovablePaymentAsync(db);
+        payment.Gateway = "MercadoPagoPoint";
+        payment.Method = PaymentMethodType.CardOnDelivery;
+        payment.GatewayOrderId = null;
+        await db.SaveChangesAsync();
+        var point = new FakePointOrchestrationService();
+        var onlineGateway = new TrackingGateway();
+        var controller = CreateController(db, onlineGateway, point, signatureIsValid: true);
+        SetRequest(controller, dataId: "MP-POINT-ORDER-EARLY", type: "order");
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsType<StatusCodeResult>(result).StatusCode);
+        Assert.Equal(0, onlineGateway.GetOrderCalls);
+        Assert.Null((await db.Payments.FindAsync(payment.Id))!.GatewayOrderId);
+    }
+
+    [Fact]
+    public async Task Point_reconciliation_database_conflict_returns_retryable_503_instead_of_500()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var payment = await SeedApprovablePaymentAsync(db);
+        payment.Gateway = "MercadoPagoPoint";
+        payment.Method = PaymentMethodType.CardOnDelivery;
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, new TrackingGateway(), new ConflictPointOrchestrationService(), signatureIsValid: true);
+        SetRequest(controller, dataId: payment.GatewayOrderId, type: "order");
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsType<StatusCodeResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task Point_financial_validation_failure_returns_422_instead_of_500()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var payment = await SeedApprovablePaymentAsync(db);
+        payment.Gateway = "MercadoPagoPoint";
+        payment.Method = PaymentMethodType.CardOnDelivery;
+        await db.SaveChangesAsync();
+        var controller = CreateController(
+            db,
+            new TrackingGateway(),
+            new ValidationFailurePointOrchestrationService(),
+            signatureIsValid: true);
+        SetRequest(controller, dataId: payment.GatewayOrderId, type: "order");
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status422UnprocessableEntity, Assert.IsType<UnprocessableEntityResult>(result).StatusCode);
+    }
+
     private static MercadoPagoWebhooksController CreateController(Orofoods.Web.Data.ApplicationDbContext db, IPaymentGateway gateway, bool signatureIsValid)
+        => CreateController(db, gateway, new FakePointOrchestrationService(), signatureIsValid);
+
+    private static MercadoPagoWebhooksController CreateController(
+        Orofoods.Web.Data.ApplicationDbContext db,
+        IPaymentGateway gateway,
+        IPointPaymentOrchestrationService point,
+        bool signatureIsValid)
     {
         var orchestration = new PaymentOrchestrationService(
             db,
@@ -171,6 +255,8 @@ public class MercadoPagoWebhooksControllerTests
         var controller = new MercadoPagoWebhooksController(
             new FakeSignatureValidator(signatureIsValid),
             orchestration,
+            point,
+            db,
             NullLogger<MercadoPagoWebhooksController>.Instance);
         return controller;
     }
@@ -187,8 +273,9 @@ public class MercadoPagoWebhooksControllerTests
             NullLogger<PaymentOrchestrationService>.Instance);
         var validator = new MercadoPagoWebhookSignatureValidator(
             Options.Create(new MercadoPagoOptions { WebhookSecret = "webhook-secret-not-real" }),
+            Options.Create(new MercadoPagoPointOptions()),
             TimeProvider.System);
-        return new MercadoPagoWebhooksController(validator, orchestration, NullLogger<MercadoPagoWebhooksController>.Instance);
+        return new MercadoPagoWebhooksController(validator, orchestration, new FakePointOrchestrationService(), db, NullLogger<MercadoPagoWebhooksController>.Instance);
     }
 
     private static void SetRequest(
@@ -239,6 +326,57 @@ public class MercadoPagoWebhooksControllerTests
     private sealed class FakeSignatureValidator(bool isValid) : IMercadoPagoWebhookSignatureValidator
     {
         public bool IsValid(string? signature, string? requestId, string? dataId) => isValid;
+    }
+
+    private sealed class FakePointOrchestrationService : IPointPaymentOrchestrationService
+    {
+        public Task<PointPaymentOperationResult> StartChargeAsync(int orderId, int assignmentId, string requestKey, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<PointPaymentOperationResult> RefreshAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<PointPaymentOperationResult> CancelAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<IReadOnlyList<DriverPaymentTerminalAssignment>> GetEligibleAssignmentsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class TrackingPointOrchestrationService(Payment payment) : IPointPaymentOrchestrationService
+    {
+        public int? RefreshedPaymentId { get; private set; }
+        public Task<PointPaymentOperationResult> StartChargeAsync(int orderId, int assignmentId, string requestKey, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<PointPaymentOperationResult> RefreshAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null)
+        {
+            RefreshedPaymentId = paymentId;
+            return Task.FromResult(PointPaymentOperationResult.Success(payment));
+        }
+        public Task<PointPaymentOperationResult> CancelAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<IReadOnlyList<DriverPaymentTerminalAssignment>> GetEligibleAssignmentsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class ConflictPointOrchestrationService : IPointPaymentOrchestrationService
+    {
+        public Task<PointPaymentOperationResult> StartChargeAsync(int orderId, int assignmentId, string requestKey, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<PointPaymentOperationResult> RefreshAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => Task.FromResult(PointPaymentOperationResult.Failure("POINT_RECONCILIATION_CONFLICT", "retry"));
+        public Task<PointPaymentOperationResult> CancelAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<IReadOnlyList<DriverPaymentTerminalAssignment>> GetEligibleAssignmentsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class ValidationFailurePointOrchestrationService : IPointPaymentOrchestrationService
+    {
+        public Task<PointPaymentOperationResult> StartChargeAsync(int orderId, int assignmentId, string requestKey, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<PointPaymentOperationResult> RefreshAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) =>
+            Task.FromResult(PointPaymentOperationResult.Failure("POINT_PAID_AMOUNT_MISMATCH", "Valor de teste inválido."));
+        public Task<PointPaymentOperationResult> CancelAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<IReadOnlyList<DriverPaymentTerminalAssignment>> GetEligibleAssignmentsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class TrackingGateway : IPaymentGateway
+    {
+        public int GetOrderCalls { get; private set; }
+        public Task<PaymentGatewayOrder> CreatePixAsync(CreatePixPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default)
+        {
+            GetOrderCalls++;
+            throw new InvalidOperationException("online gateway must not be used for Point order");
+        }
+        public Task<PaymentGatewayOrder> RefundAsync(RefundPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeGateway(PaymentStatus status) : IPaymentGateway

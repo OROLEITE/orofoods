@@ -27,6 +27,67 @@ namespace Orofoods.Web.Tests.Controllers;
 public class PortalControllerCheckoutCardTests
 {
     [Fact]
+    public async Task Card_on_delivery_creates_pending_local_payment_without_calling_gateway_or_redirecting()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (customer, address, product, _) = await SeedCheckoutContextAsync(db);
+        var term = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", DaysUntilDue = 0, IsActive = true };
+        db.PaymentTerms.Add(term);
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        var gateway = new ConfigurableCardGateway();
+        var controller = CreateController(db, session, gateway, cardOnDeliveryEnabled: true);
+
+        var result = await controller.Checkout(new CheckoutViewModel
+        {
+            AddressId = address.Id,
+            PaymentTermId = term.Id,
+            RequestedDeliveryDate = DateTime.Today.AddDays(1),
+            AttemptKey = "attempt-card-on-delivery"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Success", redirect.ActionName);
+        Assert.Equal(0, gateway.CardCallCount);
+        Assert.Equal(0, gateway.PixCallCount);
+        var order = await db.Orders.SingleAsync(x => x.CustomerId == customer.Id);
+        var payment = await db.Payments.SingleAsync(x => x.OrderId == order.Id);
+        Assert.Equal("Cartão na entrega", order.PaymentMethod);
+        Assert.Equal(PaymentMethodType.CardOnDelivery, payment.Method);
+        Assert.Equal(PaymentStatus.Pending, payment.Status);
+        Assert.Null(payment.GatewayOrderId);
+        Assert.Null(payment.ExternalPaymentId);
+    }
+
+    [Fact]
+    public async Task Card_on_delivery_is_rejected_by_customer_checkout_when_feature_is_disabled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (customer, address, product, _) = await SeedCheckoutContextAsync(db);
+        var term = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", DaysUntilDue = 0, IsActive = true };
+        db.PaymentTerms.Add(term);
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        var gateway = new ConfigurableCardGateway();
+        var controller = CreateController(db, session, gateway);
+
+        var result = await controller.Checkout(new CheckoutViewModel
+        {
+            AddressId = address.Id,
+            PaymentTermId = term.Id,
+            RequestedDeliveryDate = DateTime.Today.AddDays(1),
+            AttemptKey = "attempt-card-on-delivery-disabled"
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Empty(await db.Orders.Where(x => x.CustomerId == customer.Id).ToListAsync());
+        Assert.Equal(0, gateway.CardCallCount);
+        Assert.Equal(0, gateway.PixCallCount);
+    }
+
+    [Fact]
     public async Task Rejected_card_persists_a_single_payment_without_deleting_the_order_or_marking_it_paid()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -306,10 +367,10 @@ public class PortalControllerCheckoutCardTests
         return (customer, address, product, creditCardTerm);
     }
 
-    private static PortalController CreateController(Orofoods.Web.Data.ApplicationDbContext db, ISession session, IPaymentGateway gateway)
+    private static PortalController CreateController(Orofoods.Web.Data.ApplicationDbContext db, ISession session, IPaymentGateway gateway, bool cardOnDeliveryEnabled = false)
     {
         var priceService = new PriceService(db);
-        var eligibility = new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions()));
+        var eligibility = new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled }));
         var controller = new PortalController(
             db,
             TestIdentityFactory.CreateUserManager(db),
@@ -330,7 +391,7 @@ public class PortalControllerCheckoutCardTests
                 TimeProvider.System,
                 NullLogger<PaymentOrchestrationService>.Instance),
             Options.Create(new MercadoPagoOptions()),
-            new AssistedOrderService(db, priceService, new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())), new OrderReservationService(db)));
+            new AssistedOrderService(db, priceService, new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled })), new OrderReservationService(db)));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

@@ -68,8 +68,42 @@ public class PaymentEligibilityServiceTests
         Assert.DoesNotContain(result.PaymentMethods, term => term.DaysUntilDue > 0);
     }
 
-    private static PaymentEligibilityService CreateService(ApplicationDbContext db) =>
-        new(db, Options.Create(new PaymentEligibilityOptions()));
+    [Fact]
+    public async Task Card_on_delivery_is_hidden_and_rejected_when_feature_is_disabled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = await CreateCustomerAsync(db);
+        await AddPaymentTermsAsync(db);
+        var term = await db.PaymentTerms.SingleAsync(x => x.Code == "CARD_ON_DELIVERY");
+
+        var service = CreateService(db);
+        var result = await service.GetAvailablePaymentOptionsAsync(customer.Id);
+        var validation = await service.ValidateAsync(customer.Id, term.Id);
+
+        Assert.DoesNotContain(result.PaymentMethods, x => x.Code == "CARD_ON_DELIVERY");
+        Assert.False(validation.IsAllowed);
+    }
+
+    [Fact]
+    public async Task Card_on_delivery_is_available_when_feature_is_enabled_and_cash_is_preserved()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = await CreateCustomerAsync(db);
+        await AddPaymentTermsAsync(db);
+        var term = await db.PaymentTerms.SingleAsync(x => x.Code == "CARD_ON_DELIVERY");
+
+        var service = CreateService(db, cardOnDeliveryEnabled: true);
+        var result = await service.GetAvailablePaymentOptionsAsync(customer.Id);
+        var validation = await service.ValidateAsync(customer.Id, term.Id);
+
+        Assert.Contains(result.PaymentMethods, x => x.Code == "CARD_ON_DELIVERY");
+        Assert.Contains(result.PaymentMethods, x => x.Code == "CASH");
+        Assert.Contains(result.PaymentMethods, x => x.Code == "CREDIT_CARD");
+        Assert.True(validation.IsAllowed);
+    }
+
+    private static PaymentEligibilityService CreateService(ApplicationDbContext db, bool cardOnDeliveryEnabled = false) =>
+        new(db, Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled }));
 
     private static async Task<Customer> CreateCustomerAsync(ApplicationDbContext db, bool creditBlocked = false)
     {
@@ -85,9 +119,10 @@ public class PaymentEligibilityServiceTests
             new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, SortOrder = 1 },
             new PaymentTerm { Code = "CASH", Name = "À vista", DaysUntilDue = 0, SortOrder = 2 },
             new PaymentTerm { Code = "CREDIT_CARD", Name = "Cartão de crédito", DaysUntilDue = 0, SortOrder = 3 },
-            new PaymentTerm { Code = "BOLETO_7D", Name = "Boleto bancário — 7 dias", DaysUntilDue = 7, SortOrder = 4 },
-            new PaymentTerm { Code = "BOLETO_14D", Name = "Boleto bancário — 14 dias", DaysUntilDue = 14, SortOrder = 5 },
-            new PaymentTerm { Code = "BOLETO_21D", Name = "Boleto bancário — 21 dias", DaysUntilDue = 21, SortOrder = 6 });
+            new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", DaysUntilDue = 0, SortOrder = 4 },
+            new PaymentTerm { Code = "BOLETO_7D", Name = "Boleto bancário — 7 dias", DaysUntilDue = 7, SortOrder = 5 },
+            new PaymentTerm { Code = "BOLETO_14D", Name = "Boleto bancário — 14 dias", DaysUntilDue = 14, SortOrder = 6 },
+            new PaymentTerm { Code = "BOLETO_21D", Name = "Boleto bancário — 21 dias", DaysUntilDue = 21, SortOrder = 7 });
         await db.SaveChangesAsync();
     }
 }

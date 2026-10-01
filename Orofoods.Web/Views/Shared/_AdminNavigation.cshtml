@@ -5,7 +5,7 @@
     var isAdministrator = User.IsInRole("Administrador");
     var isCommercialUser = isAdministrator || User.IsInRole("Vendedor") || User.IsInRole("GerenteComercial");
     var crmActive = controller is "Commercial" or "Customers" or "Opportunities" or "Notifications" or "WhatsApp";
-    var operationActive = controller is "Orders" or "Products" or "Inventory";
+    var operationActive = controller is "Orders" or "Products" or "Inventory" or "Drivers" or "PaymentTerminals" or "DriverPaymentTerminalAssignments";
     var registrationsActive = controller is "Categories" or "PriceTables" or "PaymentTerms";
     var teamActive = controller is "SalesRepresentatives" or "Users";
     var managementActive = controller == "Reports";
@@ -43,6 +43,9 @@
                 <a class="admin-nav-link admin-nav-link--nested @Active("Orders")" asp-area="Admin" asp-controller="Orders" asp-action="Index"><i class="fa-solid fa-receipt" aria-hidden="true"></i><span>Pedidos</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Products")" asp-area="Admin" asp-controller="Products" asp-action="Index"><i class="fa-solid fa-box" aria-hidden="true"></i><span>Produtos</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Inventory")" asp-area="Admin" asp-controller="Inventory" asp-action="Index"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span>Estoque</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @Active("Drivers")" asp-area="Admin" asp-controller="Drivers" asp-action="Index"><i class="fa-solid fa-truck" aria-hidden="true"></i><span>Motoristas</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @Active("PaymentTerminals")" asp-area="Admin" asp-controller="PaymentTerminals" asp-action="Index"><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Terminais Point</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @Active("DriverPaymentTerminalAssignments")" asp-area="Admin" asp-controller="DriverPaymentTerminalAssignments" asp-action="Index"><i class="fa-solid fa-link" aria-hidden="true"></i><span>Vínculos de terminais</span></a>
             </div>
         </div>
 

@@ -2,6 +2,7 @@ using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Pricing;
 
 namespace Orofoods.Web.Tests.Integrations;
 
@@ -54,5 +55,23 @@ public class WmcOrderFileGeneratorTests
         Assert.Null(result.Content);
         Assert.Contains(result.Errors, error => error.Contains("cliente", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(result.Errors, error => error.Contains("produto", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Rejects_card_on_delivery_until_its_wmc_mapping_is_defined()
+    {
+        var order = new Order
+        {
+            Number = "ORO-2026-000778",
+            Customer = new Customer { WmcCode = "107072" },
+            PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega" },
+            Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1 }]
+        };
+
+        var result = new WmcOrderFileGenerator().Build(order);
+
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Content);
+        Assert.Contains("WMC_CARD_ON_DELIVERY_MAPPING_PENDING", result.Errors);
     }
 }

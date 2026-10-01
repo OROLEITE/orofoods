@@ -23,15 +23,15 @@ public sealed class WmcFileDropErpOrderIntegration(
 
         var fileName = $"WMC_{SafeFileName(order.Number)}.txt";
         var finalPath = Path.Combine(settings.OutputDirectory, fileName);
-        if (File.Exists(finalPath))
-        {
-            return new ErpOrderResult(true, ExternalOrderId: fileName);
-        }
-
         var export = fileGenerator.Build(order);
         if (!export.Succeeded)
         {
             return new ErpOrderResult(false, Error: string.Join(" ", export.Errors));
+        }
+
+        if (File.Exists(finalPath))
+        {
+            return new ErpOrderResult(true, ExternalOrderId: fileName);
         }
 
         Directory.CreateDirectory(settings.OutputDirectory);

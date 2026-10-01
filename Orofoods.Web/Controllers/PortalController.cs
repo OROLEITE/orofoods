@@ -632,7 +632,7 @@ public class PortalController(
     public async Task<IActionResult> Order(int id)
     {
         var customer = await GetCurrentCustomerAsync();
-        var order = await db.Orders.Include(x => x.Items).Include(x => x.DeliveryAddress).Include(x => x.PaymentTerm).Include(x => x.StatusHistory)
+        var order = await db.Orders.Include(x => x.Items).Include(x => x.DeliveryAddress).Include(x => x.PaymentTerm).Include(x => x.StatusHistory).Include(x => x.Payments)
             .SingleOrDefaultAsync(x => x.Id == id && x.CustomerId == customer.Id);
         return order is null ? NotFound() : View(order);
     }

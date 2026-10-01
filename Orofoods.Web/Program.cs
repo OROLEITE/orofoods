@@ -172,6 +172,10 @@ builder.Services.AddScoped<AdminCustomerContextService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
 builder.Services.Configure<PaymentEligibilityOptions>(builder.Configuration.GetSection(PaymentEligibilityOptions.SectionName));
+var cardOnDeliveryEnabled = builder.Environment.IsEnvironment("Test")
+    && builder.Configuration.GetValue<bool>("Payments:CardOnDeliveryEnabled");
+builder.Services.PostConfigure<PaymentEligibilityOptions>(options =>
+    options.CardOnDeliveryEnabled = cardOnDeliveryEnabled);
 builder.Services.AddScoped<IPaymentEligibilityService, PaymentEligibilityService>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<CartService>();
@@ -210,6 +214,32 @@ builder.Services.AddHttpClient<IPaymentGateway, MercadoPagoPaymentGateway>((sp, 
 builder.Services.AddScoped<IMercadoPagoWebhookSignatureValidator, MercadoPagoWebhookSignatureValidator>();
 builder.Services.AddScoped<IPaymentApprovalHandler, NoOpPaymentApprovalHandler>();
 builder.Services.AddScoped<PaymentOrchestrationService>();
+builder.Services.AddScoped<IDriverPaymentTerminalService, DriverPaymentTerminalService>();
+builder.Services.AddScoped<IPaymentTerminalEligibilityService, PaymentTerminalEligibilityService>();
+var mercadoPagoPointEnabled = builder.Configuration.GetValue<bool>(MercadoPagoPointOptions.ConfigurationKey);
+if (mercadoPagoPointEnabled && !builder.Environment.IsEnvironment("Test"))
+{
+    throw new InvalidOperationException("Mercado Pago Point só pode ser habilitado no ambiente Test.");
+}
+builder.Services.AddOptions<MercadoPagoPointOptions>()
+    .Bind(builder.Configuration.GetSection(MercadoPagoPointOptions.SectionName))
+    .Configure(options => options.Enabled = mercadoPagoPointEnabled);
+if (mercadoPagoPointEnabled)
+{
+    builder.Services.AddHttpClient<IPointPaymentProvider, MercadoPagoPointPaymentProvider>((sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<MercadoPagoPointOptions>>().Value;
+        client.BaseAddress = options.BaseAddress;
+        client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.RequestTimeoutSeconds, 1, 60));
+    });
+}
+else
+{
+    builder.Services.AddScoped<IPointPaymentProvider, DisabledPointPaymentProvider>();
+}
+builder.Services.AddSingleton<PointPaymentAttemptGate>();
+builder.Services.AddScoped<IPointPaymentOrderConcurrencyLock, PointPaymentOrderConcurrencyLock>();
+builder.Services.AddScoped<IPointPaymentOrchestrationService, PointPaymentOrchestrationService>();
 builder.Services.AddSingleton<WmcOrderFileGenerator>();
 builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
 builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();

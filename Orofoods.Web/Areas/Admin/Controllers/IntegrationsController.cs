@@ -70,6 +70,7 @@ public class IntegrationsController(
         var order = await db.Orders
             .AsNoTracking()
             .Include(item => item.Customer)
+            .Include(item => item.PaymentTerm)
             .Include(item => item.Items)
             .ThenInclude(item => item.Product)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);

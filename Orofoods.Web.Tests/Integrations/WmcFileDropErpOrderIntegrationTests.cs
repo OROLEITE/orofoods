@@ -3,6 +3,7 @@ using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Pricing;
 
 namespace Orofoods.Web.Tests.Integrations;
 
@@ -78,5 +79,25 @@ public class WmcFileDropErpOrderIntegrationTests
         Assert.True(second.Succeeded);
         Assert.Equal(first.ExternalOrderId, second.ExternalOrderId);
         Assert.Equal("arquivo-original", await File.ReadAllTextAsync(path));
+    }
+
+    [Fact]
+    public async Task Card_on_delivery_is_blocked_before_file_write_with_explicit_mapping_marker()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}");
+        var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = directory });
+        var order = new Order
+        {
+            Number = "ORO-2026-000779",
+            Customer = new Customer { WmcCode = "107072" },
+            PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega" },
+            Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
+        };
+
+        var result = await new WmcFileDropErpOrderIntegration(options, new WmcOrderFileGenerator()).SendOrderAsync(order);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("WMC_CARD_ON_DELIVERY_MAPPING_PENDING", result.Error);
+        Assert.False(Directory.Exists(directory));
     }
 }

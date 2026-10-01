@@ -34,6 +34,12 @@ public sealed class WmcOrderFileGenerator
     private static List<string> Validate(Order order)
     {
         var errors = new List<string>();
+        if (order.PaymentTerm?.Code == "CARD_ON_DELIVERY")
+        {
+            errors.Add("WMC_CARD_ON_DELIVERY_MAPPING_PENDING");
+            return errors;
+        }
+
         if (string.IsNullOrWhiteSpace(order.Customer?.WmcCode))
         {
             errors.Add("O codigo WMC do cliente e obrigatorio para exportar o pedido.");

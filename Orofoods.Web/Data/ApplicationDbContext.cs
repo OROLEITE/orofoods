@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Commercial;
+using Orofoods.Web.Models.Delivery;
+using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Payments;
 
 namespace Orofoods.Web.Data;
 
@@ -11,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<SalesRepresentative> SalesRepresentatives => Set<SalesRepresentative>();
+    public DbSet<Driver> Drivers => Set<Driver>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
@@ -21,6 +26,9 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<CustomerPaymentTerm> CustomerPaymentTerms => Set<CustomerPaymentTerm>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PointPaymentAuditEvent> PointPaymentAuditEvents => Set<PointPaymentAuditEvent>();
+    public DbSet<PaymentTerminal> PaymentTerminals => Set<PaymentTerminal>();
+    public DbSet<DriverPaymentTerminalAssignment> DriverPaymentTerminalAssignments => Set<DriverPaymentTerminalAssignment>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<ProductInventory> ProductInventories => Set<ProductInventory>();
@@ -39,6 +47,12 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        // Preserve the established PostgreSQL Identity schema widths across EF provider upgrades.
+        builder.Entity<IdentityUserLogin<string>>().Property(x => x.LoginProvider).HasMaxLength(128);
+        builder.Entity<IdentityUserLogin<string>>().Property(x => x.ProviderKey).HasMaxLength(128);
+        builder.Entity<IdentityUserToken<string>>().Property(x => x.LoginProvider).HasMaxLength(128);
+        builder.Entity<IdentityUserToken<string>>().Property(x => x.Name).HasMaxLength(128);
 
         builder.Entity<ApplicationUser>()
             .HasOne(x => x.Customer)
@@ -156,6 +170,34 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.Status);
         builder.Entity<WhatsAppMessage>().HasOne(x => x.Conversation).WithMany(x => x.Messages).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Restrict);
 
+        builder.Entity<Driver>().HasIndex(x => x.Name);
+        builder.Entity<PaymentTerminal>().HasIndex(x => new { x.Provider, x.DeviceId }).IsUnique().HasFilter("\"DeviceId\" IS NOT NULL");
+        builder.Entity<DriverPaymentTerminalAssignment>().HasIndex(x => x.PaymentTerminalId).IsUnique().HasFilter("\"EndedAt\" IS NULL");
+        builder.Entity<DriverPaymentTerminalAssignment>()
+            .HasOne(x => x.Driver)
+            .WithMany(x => x.PaymentTerminalAssignments)
+            .HasForeignKey(x => x.DriverId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DriverPaymentTerminalAssignment>()
+            .HasOne(x => x.PaymentTerminal)
+            .WithMany(x => x.DriverAssignments)
+            .HasForeignKey(x => x.PaymentTerminalId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Payment>()
+            .HasOne(x => x.DriverPaymentTerminalAssignment)
+            .WithMany()
+            .HasForeignKey(x => x.DriverPaymentTerminalAssignmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Payment>().HasIndex(x => x.DriverPaymentTerminalAssignmentId);
+
+        builder.Entity<PointPaymentAuditEvent>().HasIndex(x => new { x.OrderId, x.OccurredAt });
+        builder.Entity<PointPaymentAuditEvent>().HasOne<Payment>().WithMany().HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<PointPaymentAuditEvent>().HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<PointPaymentAuditEvent>().HasOne<Driver>().WithMany().HasForeignKey(x => x.DriverId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<PointPaymentAuditEvent>().HasOne<PaymentTerminal>().WithMany().HasForeignKey(x => x.PaymentTerminalId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<PointPaymentAuditEvent>().HasOne<DriverPaymentTerminalAssignment>().WithMany().HasForeignKey(x => x.AssignmentId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<PointPaymentAuditEvent>().HasOne(x => x.AdminUser).WithMany().HasForeignKey(x => x.AdminUserId).OnDelete(DeleteBehavior.SetNull);
+
         builder.Entity<OrderStatusHistory>()
             .HasIndex(x => new { x.OrderId, x.ChangedAt });
 
@@ -232,6 +274,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
 
         builder.Entity<WmcExportAudit>()
             .HasIndex(x => new { x.OrderId, x.ExportedAt });
+
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);
         builder.Entity<Customer>().Property(x => x.CreditLimit).HasPrecision(12, 2);

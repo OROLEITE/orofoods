@@ -7,6 +7,7 @@ using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Customers;
@@ -35,6 +36,32 @@ public class OrderPlacementServiceTests
         Assert.Equal(fixture.CurrentPrice, Assert.Single(result.Order.Items).UnitPrice);
         Assert.Equal(OrderStatus.Received, Assert.Single(result.Order.StatusHistory).Status);
         Assert.False(fixture.Session.TryGetValue("orofoods-cart-product-ids:seller:7:customer:1", out _));
+    }
+
+    [Fact]
+    public async Task Card_on_delivery_creates_a_local_pending_payment_without_gateway_metadata()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10, paymentTermCode: "CARD_ON_DELIVERY");
+
+        var result = await fixture.Service.PlaceAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Pagamento na entrega"),
+            fixture.Session,
+            fixture.Scope);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var createdOrder = result.Order!;
+        var payment = await fixture.Db.Payments.SingleAsync(x => x.OrderId == createdOrder.Id);
+        Assert.Equal(PaymentMethodType.CardOnDelivery, payment.Method);
+        Assert.Equal(PaymentStatus.Pending, payment.Status);
+        Assert.Equal(createdOrder.Total, payment.Amount);
+        Assert.Equal("CARD_ON_DELIVERY", payment.PaymentMethod);
+        Assert.Null(payment.Gateway);
+        Assert.Null(payment.GatewayOrderId);
+        Assert.Null(payment.GatewayPaymentId);
+        Assert.Null(payment.ExternalPaymentId);
+        Assert.Null(payment.IdempotencyKey);
     }
 
     [Fact]
@@ -176,13 +203,13 @@ public class OrderPlacementServiceTests
         public required TestSession Session { get; init; }
         public required CartScope Scope { get; init; }
 
-        public static async Task<PlacementFixture> CreateAsync(int availableQuantity)
+        public static async Task<PlacementFixture> CreateAsync(int availableQuantity, string paymentTermCode = "PIX")
         {
             var db = await TestDbContextFactory.CreateAsync();
             var representative = new SalesRepresentative { Id = 7, Name = "Vendedor", IsActive = true };
             var customer = new Customer { Id = 1, LegalName = "Cliente", TradeName = "Cliente", Cnpj = "11.111.111/0001-11", Status = CustomerStatus.Approved, IsActive = true, MinimumOrder = 1m, CreditLimit = 1000m, SalesRepresentative = representative };
             var address = new CustomerAddress { Label = "Principal", Street = "Rua A", Number = "1", District = "Centro", City = "Campinas", State = "SP", ZipCode = "13000-000", IsActive = true, IsPrimary = true, Customer = customer };
-            var term = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, IsActive = true };
+            var term = new PaymentTerm { Code = paymentTermCode, Name = paymentTermCode == "CARD_ON_DELIVERY" ? "Cartão na entrega" : "PIX", DaysUntilDue = 0, IsActive = true };
             var product = new Product { Sku = "PLACE-001", Name = "Produto", Brand = "Orofoods", Unit = "caixa", BasePrice = 99m, MinimumCases = 1, IsActive = true, IsAvailable = true, ProductCategory = new ProductCategory { Name = "Categoria", Slug = "categoria" } };
             var seller = new ApplicationUser { Id = "seller", UserName = "seller", Email = "seller@test.local", IsActive = true, SalesRepresentative = representative };
             db.AddRange(representative, customer, address, term, product, seller, new ProductInventory { Product = product, QuantityOnHand = availableQuantity });
@@ -194,7 +221,7 @@ public class OrderPlacementServiceTests
             return new PlacementFixture
             {
                 Db = db,
-                Service = new OrderPlacementService(db, new CartService(db, new Orofoods.Web.Services.Pricing.PriceService(db)), new Orofoods.Web.Services.Pricing.PriceService(db), new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())), new OrderReservationService(db)),
+                Service = new OrderPlacementService(db, new CartService(db, new Orofoods.Web.Services.Pricing.PriceService(db)), new Orofoods.Web.Services.Pricing.PriceService(db), new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = paymentTermCode == "CARD_ON_DELIVERY" })), new OrderReservationService(db)),
                 Customer = customer,
                 SellerUser = seller,
                 Address = address,
