@@ -4,8 +4,51 @@
     const messageList = document.querySelector('.whatsapp-messages');
     const conversationList = document.querySelector('.whatsapp-conversation-list');
     const newMessageButton = document.querySelector('.whatsapp-new-message');
+    const soundToggle = document.querySelector('.whatsapp-sound-toggle');
     const minHeight = 46;
     const maxHeight = 160;
+    const soundPreferenceKey = 'orofoods.whatsapp.sound';
+    let soundEnabled = localStorage.getItem(soundPreferenceKey) !== 'off';
+    let audioContext;
+    let initialState = true;
+    const knownInboundIds = new Set();
+
+    const updateSoundToggle = () => {
+        if (!soundToggle) return;
+        soundToggle.setAttribute('aria-pressed', String(soundEnabled));
+        soundToggle.title = soundEnabled ? 'Som ligado' : 'Som desligado';
+        soundToggle.setAttribute('aria-label', soundToggle.title);
+        const label = soundToggle.querySelector('span');
+        if (label) label.textContent = soundEnabled ? 'Som ligado' : 'Som desligado';
+        const icon = soundToggle.querySelector('i');
+        if (icon) icon.className = `fa-solid ${soundEnabled ? 'fa-bell' : 'fa-bell-slash'}`;
+    };
+    const unlockAudio = () => {
+        if (!soundEnabled || !window.AudioContext) return;
+        try {
+            audioContext ??= new AudioContext();
+            if (audioContext.state === 'suspended') void audioContext.resume();
+        } catch { /* browser policy; polling remains active */ }
+    };
+    const playInboundBeep = () => {
+        if (!soundEnabled || !window.AudioContext) return;
+        try {
+            unlockAudio();
+            if (!audioContext || audioContext.state !== 'running') return;
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            oscillator.frequency.value = 660;
+            gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.045, audioContext.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.12);
+            oscillator.connect(gain).connect(audioContext.destination);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.13);
+        } catch { /* autoplay failures are intentionally silent */ }
+    };
+    updateSoundToggle();
+    soundToggle?.addEventListener('click', () => { soundEnabled = !soundEnabled; localStorage.setItem(soundPreferenceKey, soundEnabled ? 'on' : 'off'); updateSoundToggle(); if (soundEnabled) unlockAudio(); });
+    document.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
 
     const resizeComposer = () => {
         if (!textarea) return;
@@ -159,6 +202,10 @@
         let appended = false;
         messageList.querySelector('.whatsapp-messages-empty')?.remove();
         for (const message of messages) {
+            if (message.direction === 'inbound' && message.id != null && !knownInboundIds.has(String(message.id))) {
+                if (!initialState) appended = true;
+                knownInboundIds.add(String(message.id));
+            }
             let article = messageList.querySelector(`[data-message-id="${message.id}"]`);
             if (!article) {
                 article = document.createElement('article');
@@ -191,6 +238,8 @@
 
     const updateConversation = (element, conversation) => {
         element.classList.toggle('is-active', conversation.id === selectedConversationId);
+        element.classList.remove('whatsapp-conversation--open', 'whatsapp-conversation--pending', 'whatsapp-conversation--closed');
+        element.classList.add(`whatsapp-conversation--${conversation.status}`);
         if (conversation.id === selectedConversationId) element.setAttribute('aria-current', 'page');
         element.querySelector('.whatsapp-conversation-title strong').textContent = conversation.name;
         const time = element.querySelector('.whatsapp-conversation-title time');
@@ -212,6 +261,8 @@
     const updateConversations = conversations => {
         conversationList.querySelector('.whatsapp-list-empty')?.remove();
         for (const conversation of conversations) {
+            if (conversation.lastMessageDirection === 'inbound' && conversation.lastMessageId != null)
+                knownInboundIds.add(String(conversation.lastMessageId));
             let element = conversationList.querySelector(`[data-conversation-id="${conversation.id}"]`);
             if (!element) element = conversationElement(conversation);
             updateConversation(element, conversation);
@@ -228,8 +279,12 @@
             const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
             if (!response.ok) return;
             const payload = await response.json();
+            const before = knownInboundIds.size;
             updateConversations(payload.conversations || []);
             updateMessages(payload.messages || []);
+            const newInbound = knownInboundIds.size > before && !initialState;
+            initialState = false;
+            if (newInbound) playInboundBeep();
         } catch (error) {
             if (error?.name !== 'AbortError') console.debug('WhatsApp sync unavailable.');
         } finally {

@@ -41,7 +41,11 @@ public class WhatsAppController(
 
         var messages = selected is null ? [] : await db.WhatsAppMessages.AsNoTracking().Where(x => x.ConversationId == selected.Id).OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id).Take(100).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync(cancellationToken);
         var latestMessages = await LoadLatestMessagesAsync(conversations.Select(x => x.Id), cancellationToken);
-        return View(new WhatsAppInboxViewModel(conversations, selected, messages, latestMessages));
+        var customerChoices = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+            .OrderBy(x => x.TradeName).ThenBy(x => x.LegalName).Take(200)
+            .Select(x => new WhatsAppCustomerChoice(x.Id, x.TradeName ?? x.LegalName ?? $"Cliente {x.Id}"))
+            .ToListAsync(cancellationToken);
+        return View(new WhatsAppInboxViewModel(conversations, selected, messages, latestMessages, customerChoices));
     }
 
     [HttpGet]
@@ -79,6 +83,8 @@ public class WhatsAppController(
                     identified = item.CustomerId.HasValue,
                     preview = Preview(lastMessage),
                     messageType = lastMessage?.Type.ToString().ToLowerInvariant(),
+                    lastMessageId = lastMessage?.Id,
+                    lastMessageDirection = lastMessage?.Direction.ToString().ToLowerInvariant(),
                     lastMessageAt = item.LastMessageAt,
                     item.UnreadCount,
                     status = item.Status.ToString().ToLowerInvariant()
@@ -135,6 +141,58 @@ public class WhatsAppController(
         db.WhatsAppMessages.Add(new WhatsAppMessage { ConversationId = conversationId, ExternalMessageId = result.ExternalMessageId, Direction = WhatsAppMessageDirection.Outbound, Type = WhatsAppMessageType.Text, TextBody = cleanedText, Status = WhatsAppMessageStatus.Sent, SentAt = DateTime.UtcNow });
         conversation.LastOutboundAt = DateTime.UtcNow; conversation.LastMessageAt = DateTime.UtcNow; conversation.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
+        return RedirectToAction(nameof(Index), new { id = conversationId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Claim(long conversationId, CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null || !await accessService.CanAccessConversationAsync(User, conversationId, cancellationToken)) return Forbid();
+        var updated = await db.WhatsAppConversations
+            .Where(x => x.Id == conversationId && x.AssignedUserId == null && x.Status == WhatsAppConversationStatus.Pending)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.AssignedUserId, userId)
+                .SetProperty(x => x.Status, WhatsAppConversationStatus.Open)
+                .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), cancellationToken);
+        if (updated == 0) TempData["WhatsAppError"] = "Esta conversa já foi assumida por outro atendente.";
+        return RedirectToAction(nameof(Index), new { id = conversationId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Close(long conversationId, CancellationToken cancellationToken)
+    {
+        if (!await accessService.CanAccessConversationAsync(User, conversationId, cancellationToken)) return Forbid();
+        await db.WhatsAppConversations.Where(x => x.Id == conversationId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, WhatsAppConversationStatus.Closed)
+                .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), cancellationToken);
+        return RedirectToAction(nameof(Index), new { id = conversationId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkCustomer(long conversationId, int customerId, CancellationToken cancellationToken)
+    {
+        if (!await accessService.CanAccessConversationAsync(User, conversationId, cancellationToken)) return Forbid();
+        var scope = await accessService.GetScopeAsync(User, cancellationToken);
+        var customer = await accessService.ApplyCustomerScope(db.Customers, scope)
+            .Where(x => x.Id == customerId).Select(x => new { x.Id, x.InternalSalesUserId }).SingleOrDefaultAsync(cancellationToken);
+        if (customer is null) return NotFound();
+        await db.WhatsAppConversations.Where(x => x.Id == conversationId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.CustomerId, customer.Id)
+                .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), cancellationToken);
+        return RedirectToAction(nameof(Index), new { id = conversationId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnlinkCustomer(long conversationId, CancellationToken cancellationToken)
+    {
+        if (!await accessService.CanAccessConversationAsync(User, conversationId, cancellationToken)) return Forbid();
+        await db.WhatsAppConversations.Where(x => x.Id == conversationId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.CustomerId, (int?)null)
+                .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), cancellationToken);
         return RedirectToAction(nameof(Index), new { id = conversationId });
     }
 
@@ -198,4 +256,7 @@ public sealed record WhatsAppInboxViewModel(
     IReadOnlyList<WhatsAppConversation> Conversations,
     WhatsAppConversation? Selected,
     IReadOnlyList<WhatsAppMessage> Messages,
-    IReadOnlyDictionary<long, WhatsAppMessage> LatestMessages);
+    IReadOnlyDictionary<long, WhatsAppMessage> LatestMessages,
+    IReadOnlyList<WhatsAppCustomerChoice> CustomerChoices);
+
+public sealed record WhatsAppCustomerChoice(int Id, string Name);
