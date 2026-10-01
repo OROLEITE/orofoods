@@ -246,6 +246,7 @@ public sealed class WhatsAppConversationService(
                     PhoneNumber = conversationPhone,
                     CustomerId = customer?.Id,
                     AssignedUserId = customer?.InternalSalesUserId,
+                    Status = WhatsAppConversationStatus.Pending,
                     LastMessageAt = DateTime.UtcNow,
                     LastInboundAt = DateTime.UtcNow,
                     UnreadCount = 1
@@ -254,7 +255,8 @@ public sealed class WhatsAppConversationService(
             }
             else
             {
-                conversation.Status = WhatsAppConversationStatus.Open;
+                if (conversation.Status == WhatsAppConversationStatus.Closed)
+                    conversation.Status = WhatsAppConversationStatus.Pending;
                 conversation.CustomerId ??= customer?.Id;
                 conversation.AssignedUserId ??= customer?.InternalSalesUserId;
                 conversation.LastMessageAt = DateTime.UtcNow;

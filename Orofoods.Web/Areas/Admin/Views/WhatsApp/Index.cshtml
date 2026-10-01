@@ -35,7 +35,10 @@
                 <h1>WhatsApp</h1>
                 <p>Atendimento das conversas recebidas.</p>
             </div>
-            <span class="whatsapp-channel-badge"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Atendimento</span>
+            <div class="whatsapp-header-actions">
+                <button type="button" class="whatsapp-sound-toggle" aria-pressed="true" aria-label="Som ligado" title="Som ligado"><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Som ligado</span></button>
+                <span class="whatsapp-channel-badge"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Atendimento</span>
+            </div>
         </header>
 
         <div class="whatsapp-inbox">
@@ -57,7 +60,7 @@
                         var conversationStatus = conversation.Status switch
                         {
                             Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open => "Em atendimento",
-                            Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending => "Pendente",
+                            Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending => "Novo",
                             _ => "Encerrada"
                         };
 
@@ -143,8 +146,18 @@
                         </div>
                         <span class="whatsapp-status-pill whatsapp-status-pill--@selected.Status.ToString().ToLowerInvariant()">
                             <span></span>
-                            @(selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open ? "Em atendimento" : selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending ? "Pendente" : "Encerrada")
+                            @(selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open ? "Em atendimento" : selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending ? "Novo" : "Finalizado")
                         </span>
+                        <div class="whatsapp-thread-actions">
+                            @if (selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending)
+                            {
+                                <form asp-action="Claim" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark" type="submit">Assumir atendimento</button></form>
+                            }
+                            else if (selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open)
+                            {
+                                <form asp-action="Close" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark" type="submit">Finalizar atendimento</button></form>
+                            }
+                        </div>
                     </header>
 
                     <div class="whatsapp-messages" aria-label="Histórico de mensagens" aria-live="polite">
@@ -270,6 +283,18 @@
                         @if (selected is not null)
                         {
                             <a href="tel:@selected.PhoneNumber" class="whatsapp-phone-link"><i class="fa-solid fa-phone" aria-hidden="true"></i> @selected.PhoneNumber</a>
+                            <form asp-action="LinkCustomer" method="post" class="whatsapp-link-customer-form">
+                                <input type="hidden" name="conversationId" value="@selected.Id" />
+                                <label for="customerId">Vincular cliente existente</label>
+                                <select id="customerId" name="customerId" required>
+                                    <option value="">Selecione um cliente</option>
+                                    @foreach (var customer in Model.CustomerChoices)
+                                    {
+                                        <option value="@customer.Id">@customer.Name</option>
+                                    }
+                                </select>
+                                <button class="btn btn-sm btn-outline-dark" type="submit">Vincular cliente</button>
+                            </form>
                         }
                     </div>
                 }
@@ -289,6 +314,7 @@
                         <a class="whatsapp-customer-link" asp-controller="Customers" asp-action="Details" asp-route-id="@selected.CustomerId">
                             Ver Cliente 360° <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
                         </a>
+                        <form asp-action="UnlinkCustomer" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark" type="submit">Desvincular cliente</button></form>
                     </div>
                 }
             </aside>

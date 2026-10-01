@@ -938,3 +938,7 @@ body:has(.whatsapp-inbox-page) .admin-shell {
         transition: none;
     }
 }
+.whatsapp-header-actions { display: flex; align-items: center; gap: .65rem; }
+.whatsapp-sound-toggle { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid rgba(35,39,45,.16); border-radius: 999px; padding: .4rem .65rem; background: #fff; color: #252a30; cursor: pointer; font: inherit; font-size: .78rem; }
+.whatsapp-sound-toggle:hover, .whatsapp-sound-toggle:focus-visible { background: #f4f1eb; }
+@media (max-width: 600px) { .whatsapp-sound-toggle span { display: none; } }

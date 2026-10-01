@@ -17,7 +17,7 @@ public class WhatsAppConversation
     [MaxLength(30)] public string PhoneNumber { get; set; } = "";
     public string? AssignedUserId { get; set; }
     public ApplicationUser? AssignedUser { get; set; }
-    public WhatsAppConversationStatus Status { get; set; } = WhatsAppConversationStatus.Open;
+    public WhatsAppConversationStatus Status { get; set; } = WhatsAppConversationStatus.Pending;
     public DateTime? LastMessageAt { get; set; }
     public DateTime? LastInboundAt { get; set; }
     public DateTime? LastOutboundAt { get; set; }

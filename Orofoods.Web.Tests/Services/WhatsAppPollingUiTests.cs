@@ -16,6 +16,20 @@ public class WhatsAppPollingUiTests
         Assert.DoesNotContain("location.reload", script);
     }
 
+    [Fact]
+    public void Inbound_sound_is_opt_in_to_new_ids_and_batch_coalesced()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+
+        Assert.Contains("localStorage", script);
+        Assert.Contains("knownInboundIds", script);
+        Assert.Contains("message.direction === 'inbound'", script);
+        Assert.Contains("!initialState", script);
+        Assert.Contains("playInboundBeep()", script);
+        Assert.Contains("soundToggle", script);
+        Assert.Contains("AudioContext", script);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
