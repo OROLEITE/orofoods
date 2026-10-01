@@ -15,6 +15,7 @@ public sealed class OrderIntegrationService(
     {
         var order = await db.Orders
             .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
             .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken)
