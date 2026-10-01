@@ -213,6 +213,19 @@ public sealed class MercadoPagoPointPaymentProviderTests
     }
 
     [Fact]
+    public async Task Provider_without_access_token_fails_closed_before_http()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, accessToken: "");
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => provider.CreateTerminalPaymentAsync(TestRequest()));
+
+        Assert.Contains("Credenciais de teste", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task Test_provider_refuses_non_virtual_device_before_http()
     {
         var handler = new RecordingHandler(CreatedOrderResponse);
@@ -281,13 +294,16 @@ public sealed class MercadoPagoPointPaymentProviderTests
         Assert.True(handler.CancellationObserved);
     }
 
-    private static IPointPaymentProvider CreateProvider(HttpMessageHandler handler, string environmentName = "Test")
+    private static IPointPaymentProvider CreateProvider(
+        HttpMessageHandler handler,
+        string environmentName = "Test",
+        string accessToken = "test-access-token")
     {
         var providerType = typeof(IPointPaymentProvider).Assembly.GetType("Orofoods.Web.Services.Payments.MercadoPagoPointPaymentProvider");
         Assert.NotNull(providerType);
         var options = new MercadoPagoPointOptions { Enabled = true };
         SetOption(options, "Environment", "Test");
-        SetOption(options, "AccessToken", "test-access-token");
+        SetOption(options, "AccessToken", accessToken);
         SetOption(options, "PoiType", "NEWLAND_N950");
         SetOption(options, "BaseAddress", new Uri("https://api.mercadopago.com/"));
         var hostEnvironment = new TestHostEnvironment(environmentName);

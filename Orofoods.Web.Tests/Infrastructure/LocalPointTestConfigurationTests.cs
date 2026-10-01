@@ -1,11 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Tests.Infrastructure;
-using Xunit.Abstractions;
 
 namespace Orofoods.Web.Tests.Infrastructure;
 
-public sealed class LocalPointTestConfigurationTests(ITestOutputHelper output)
+public sealed class LocalPointTestConfigurationTests
 {
     [Fact]
     public void Test_environment_can_explicitly_add_user_secrets()
@@ -48,18 +47,25 @@ public sealed class LocalPointTestConfigurationTests(ITestOutputHelper output)
         Assert.Null(configuration[$"{MercadoPagoPointOptions.SectionName}:AccessToken"]);
     }
 
-    [Fact]
-    public void Local_test_configuration_reports_only_whether_point_test_token_is_configured()
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("synthetic-test-token", true)]
+    public void Test_configuration_reports_whether_a_token_is_configured_without_external_secrets(
+        string? token,
+        bool expectedConfigured)
     {
-        var configuration = new ConfigurationBuilder()
-            .AddUserSecretsOnlyForTest(
-                "Test",
-                typeof(MercadoPagoPointPaymentProvider).Assembly)
-            .Build();
+        var builder = new ConfigurationBuilder();
+        builder.AddUserSecretsOnlyForTest(
+            "Test",
+            typeof(MercadoPagoPointPaymentProvider).Assembly,
+            config => config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{MercadoPagoPointOptions.SectionName}:AccessToken"] = token
+            }));
+        var configuration = builder.Build();
         var tokenConfigured = !string.IsNullOrWhiteSpace(
             configuration[$"{MercadoPagoPointOptions.SectionName}:AccessToken"]);
 
-        output.WriteLine($"MercadoPagoPoint test token configured: {(tokenConfigured ? "YES" : "NO")}");
-        Assert.True(tokenConfigured, "MercadoPagoPoint test token configured: NO");
+        Assert.Equal(expectedConfigured, tokenConfigured);
     }
 }

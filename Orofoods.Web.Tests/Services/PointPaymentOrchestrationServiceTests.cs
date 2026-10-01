@@ -353,6 +353,21 @@ public sealed class PointPaymentOrchestrationServiceTests
     }
 
     [Fact]
+    public async Task StartChargeAsync_without_test_token_returns_controlled_failure_before_provider_call()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider, tokenConfigured: false);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("POINT_TEST_CREDENTIALS_REQUIRED", result.ErrorCode);
+        Assert.Equal(0, provider.CreateCalls);
+    }
+
+    [Fact]
     public async Task StartChargeAsync_rejects_non_card_on_delivery_order_before_provider_call()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -648,13 +663,14 @@ public sealed class PointPaymentOrchestrationServiceTests
         IPointPaymentProvider provider,
         bool pointEnabled = true,
         string environmentName = "Test",
+        bool tokenConfigured = true,
         RecordingApprovalHandler? approval = null,
         IPointPaymentOrderConcurrencyLock? orderLock = null,
         PointPaymentAttemptGate? attemptGate = null) => new(
         db,
         provider,
         new PaymentTerminalEligibilityService(),
-        Options.Create(new MercadoPagoPointOptions { Enabled = pointEnabled, Environment = environmentName, AccessToken = "fake-test-token" }),
+        Options.Create(new MercadoPagoPointOptions { Enabled = pointEnabled, Environment = environmentName, AccessToken = tokenConfigured ? "fake-test-token" : "" }),
         Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = true }),
         new TestHostEnvironment(environmentName),
         approval ?? new RecordingApprovalHandler(),
