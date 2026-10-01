@@ -168,6 +168,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.ExternalMessageId).IsUnique();
         builder.Entity<WhatsAppMessage>().HasIndex(x => new { x.ConversationId, x.CreatedAt });
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.Status);
+        builder.Entity<WhatsAppMessage>().HasIndex(x => x.MediaId);
         builder.Entity<WhatsAppMessage>().HasOne(x => x.Conversation).WithMany(x => x.Messages).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Driver>().HasIndex(x => x.Name);

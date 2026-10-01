@@ -4,23 +4,352 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
 using Moq;
 using Orofoods.Web.Areas.Admin.Controllers;
+using Orofoods.Web.Controllers.Api.V1;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Storage;
 using Orofoods.Web.Tests.Infrastructure;
 
 namespace Orofoods.Web.Tests.Services;
 
 public class WhatsAppBusinessTests
 {
+    [Fact]
+    public async Task Webhook_get_verification_returns_challenge_for_matching_token()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var controller = CreateWebhookController(db, Options.Create(new WhatsAppBusinessOptions { Enabled = true, VerifyToken = "test-verify-token" }));
+
+        var result = controller.Verify("subscribe", "test-verify-token", "challenge-value");
+
+        var content = Assert.IsType<ContentResult>(result);
+        Assert.Equal("challenge-value", content.Content);
+    }
+
+    [Fact]
+    public async Task Webhook_get_verification_rejects_invalid_token_and_missing_challenge()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var controller = CreateWebhookController(db, Options.Create(new WhatsAppBusinessOptions { Enabled = true, VerifyToken = "test-verify-token" }));
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(controller.Verify("subscribe", "wrong-token", "challenge-value")).StatusCode);
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(controller.Verify("subscribe", "test-verify-token", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Webhook_get_verification_is_disabled_without_revealing_configuration()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var controller = CreateWebhookController(db, Options.Create(new WhatsAppBusinessOptions { Enabled = false, VerifyToken = "test-verify-token" }));
+
+        Assert.IsType<NotFoundResult>(controller.Verify("subscribe", "wrong-token", "challenge-value"));
+    }
+
+    [Fact]
+    public async Task Webhook_post_accepts_valid_signature_and_configured_phone_and_waba()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = BuildWebhookMessageJson("message-valid");
+        var controller = CreateWebhookController(db, Options.Create(TestWebhookOptions()), body);
+        SignWebhookRequest(controller, body);
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.IsType<OkResult>(result);
+        Assert.Single(db.WhatsAppConversations);
+        Assert.Single(db.WhatsAppMessages);
+    }
+
+    [Fact]
+    public async Task Webhook_post_acknowledges_sequential_duplicate_as_successful_replay()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = BuildWebhookMessageJson("sequential-replay");
+        var first = CreateWebhookController(db, Options.Create(TestWebhookOptions()), body);
+        SignWebhookRequest(first, body);
+        var second = CreateWebhookController(db, Options.Create(TestWebhookOptions()), body);
+        SignWebhookRequest(second, body);
+
+        Assert.IsType<OkResult>(await first.Receive(CancellationToken.None));
+        Assert.IsType<OkResult>(await second.Receive(CancellationToken.None));
+        Assert.Single(await db.WhatsAppMessages.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Webhook_post_rejects_invalid_signature_without_processing_body()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var payload = BuildWebhookMessageJson("message-invalid-signature");
+        var controller = CreateWebhookController(db, Options.Create(TestWebhookOptions()), payload);
+        controller.HttpContext.Request.Headers["X-Hub-Signature-256"] = "sha256=invalid";
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        Assert.IsType<UnauthorizedResult>(result);
+        Assert.Empty(db.WhatsAppConversations);
+        Assert.Empty(db.WhatsAppMessages);
+    }
+
+    [Fact]
+    public async Task Webhook_post_rejects_invalid_json_and_unexpected_structure_without_partial_writes()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        foreach (var body in new[]
+        {
+            "{",
+            "{\"object\":\"whatsapp_business_account\",\"entry\":[{\"id\":\"waba-test\",\"changes\":[{\"value\":{\"metadata\":{\"phone_number_id\":\"phone-test\"},\"messages\":[{\"id\":\"missing-fields\"}]}}]}]}"
+        })
+        {
+            var controller = CreateWebhookController(db, Options.Create(TestWebhookOptions()), body);
+            SignWebhookRequest(controller, body);
+
+            Assert.IsType<BadRequestResult>(await controller.Receive(CancellationToken.None));
+        }
+
+        Assert.Empty(db.WhatsAppConversations);
+        Assert.Empty(db.WhatsAppMessages);
+    }
+
+    [Fact]
+    public async Task Webhook_post_rejects_mismatched_phone_number_id_and_waba_without_persisting()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        foreach (var body in new[]
+        {
+            BuildWebhookMessageJson("wrong-phone", phoneNumberId: "other-phone"),
+            BuildWebhookMessageJson("wrong-waba", wabaId: "other-waba")
+        })
+        {
+            var controller = CreateWebhookController(db, Options.Create(TestWebhookOptions()), body);
+            SignWebhookRequest(controller, body);
+
+            Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await controller.Receive(CancellationToken.None)).StatusCode);
+        }
+
+        Assert.Empty(db.WhatsAppConversations);
+        Assert.Empty(db.WhatsAppMessages);
+    }
+
+    [Fact]
+    public async Task Webhook_post_rejects_oversized_body_before_signature_or_processing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var controller = CreateWebhookController(db, Options.Create(TestWebhookOptions()));
+        controller.HttpContext.Request.Body = new MemoryStream(new byte[WhatsAppWebhookController.MaxPayloadBytes + 1]);
+        controller.HttpContext.Request.ContentLength = null;
+
+        var result = await controller.Receive(CancellationToken.None);
+
+        var status = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, status.StatusCode);
+        Assert.Empty(db.WhatsAppMessages);
+    }
+
+    [Fact]
+    public async Task Webhook_post_is_disabled_without_processing_payload()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var payload = BuildWebhookMessageJson("disabled-message");
+        var controller = CreateWebhookController(db, Options.Create(new WhatsAppBusinessOptions { Enabled = false }), payload);
+
+        Assert.IsType<NotFoundResult>(await controller.Receive(CancellationToken.None));
+        Assert.Empty(db.WhatsAppMessages);
+    }
+
+    [Fact]
+    public async Task Webhook_post_acknowledges_unsupported_event_without_writing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = "{\"object\":\"whatsapp_business_account\",\"entry\":[{\"id\":\"waba-test\",\"changes\":[{\"field\":\"account_update\",\"value\":{}}]}]}";
+        var controller = CreateWebhookController(db, Options.Create(TestWebhookOptions()), body);
+        SignWebhookRequest(controller, body);
+
+        Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
+        Assert.Empty(db.WhatsAppConversations);
+        Assert.Empty(db.WhatsAppMessages);
+    }
+
+    [Theory]
+    [InlineData("+55 48 99999-9999", "5548999999999")]
+    [InlineData("5548999999999", "5548999999999")]
+    [InlineData("(48) 99999-9999", "5548999999999")]
+    [InlineData("48 3333-9999", "554833339999")]
+    [InlineData("+1 (202) 555-0100", "12025550100")]
+    [InlineData("0 48 99999-9999", "5548999999999")]
+    public void Phone_normalization_handles_supported_explicit_and_brazilian_national_forms(string input, string expected)
+    {
+        Assert.Equal(expected, WhatsAppConversationService.TryNormalizePhone(input));
+    }
+
+    [Theory]
+    [InlineData("99999-9999")]
+    [InlineData("not-a-phone")]
+    [InlineData("+000 1234 5678")]
+    [InlineData("48+3333-9999")]
+    public void Phone_normalization_does_not_invent_missing_ddd_or_country(string input)
+    {
+        Assert.Null(WhatsAppConversationService.TryNormalizePhone(input));
+    }
+
+    [Fact]
+    public async Task Formatted_customer_phone_is_normalized_for_unique_association()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.Customers.Add(new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "11.111.111/0001-11", WhatsApp = "+55 48 99999-9999", IsActive = true });
+        await db.SaveChangesAsync();
+        var service = CreateConversationService(db);
+        using var document = JsonDocument.Parse(BuildWebhookMessageJson("formatted-customer", from: "5548999999999"));
+
+        await service.ProcessAsync(document);
+
+        Assert.Equal(db.Customers.Single().Id, Assert.Single(db.WhatsAppConversations).CustomerId);
+    }
+
+    [Fact]
+    public async Task Formatted_customer_phone_field_is_normalized_for_unique_association()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.Customers.Add(new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "11.111.111/0001-11", Phone = "(48) 99999-9999", IsActive = true });
+        await db.SaveChangesAsync();
+        var service = CreateConversationService(db);
+        using var document = JsonDocument.Parse(BuildWebhookMessageJson("formatted-customer-phone", from: "+55 48 99999-9999"));
+
+        await service.ProcessAsync(document);
+
+        Assert.Equal(db.Customers.Single().Id, Assert.Single(db.WhatsAppConversations).CustomerId);
+    }
+
+    [Fact]
+    public async Task Concurrent_replay_creates_one_message_and_returns_without_duplicate_exception()
+    {
+        var connection = new SqliteConnection("Data Source=whatsapp-concurrency;Mode=Memory;Cache=Shared");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+        await using var firstDb = new ApplicationDbContext(options);
+        await firstDb.Database.EnsureCreatedAsync();
+        await using var secondDb = new ApplicationDbContext(options);
+        var payload = BuildWebhookMessageJson("same-concurrent-id");
+        var firstController = CreateWebhookController(firstDb, Options.Create(TestWebhookOptions()), payload);
+        var secondController = CreateWebhookController(secondDb, Options.Create(TestWebhookOptions()), payload);
+        SignWebhookRequest(firstController, payload);
+        SignWebhookRequest(secondController, payload);
+
+        var responses = await Task.WhenAll(firstController.Receive(CancellationToken.None), secondController.Receive(CancellationToken.None));
+
+        Assert.All(responses, result => Assert.IsType<OkResult>(result));
+        Assert.Single(await firstDb.WhatsAppMessages.AsNoTracking().ToListAsync());
+        Assert.Single(await firstDb.WhatsAppConversations.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Status_updates_are_monotonic_and_duplicate_statuses_are_idempotent()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var message = new WhatsAppMessage
+        {
+            Conversation = new WhatsAppConversation { PhoneNumber = "5548999999999" },
+            ExternalMessageId = "status-message",
+            Direction = WhatsAppMessageDirection.Outbound,
+            Type = WhatsAppMessageType.Text,
+            Status = WhatsAppMessageStatus.Sent
+        };
+        db.WhatsAppMessages.Add(message);
+        await db.SaveChangesAsync();
+        var service = CreateConversationService(db);
+
+        await ProcessStatusAsync(service, "status-message", "delivered", "1750000000");
+        var deliveredAt = await db.WhatsAppMessages.AsNoTracking().Select(x => x.DeliveredAt).SingleAsync();
+        await ProcessStatusAsync(service, "status-message", "delivered", "1750001000");
+        await ProcessStatusAsync(service, "status-message", "sent", "1749999000");
+        Assert.Equal(WhatsAppMessageStatus.Delivered, await db.WhatsAppMessages.AsNoTracking().Select(x => x.Status).SingleAsync());
+        Assert.Equal(deliveredAt, await db.WhatsAppMessages.AsNoTracking().Select(x => x.DeliveredAt).SingleAsync());
+
+        await ProcessStatusAsync(service, "status-message", "read", "1750002000");
+        await ProcessStatusAsync(service, "status-message", "delivered", "1750001000");
+        Assert.Equal(WhatsAppMessageStatus.Read, await db.WhatsAppMessages.AsNoTracking().Select(x => x.Status).SingleAsync());
+    }
+
+    [Fact]
+    public async Task Sent_status_is_applied_only_from_the_meta_status_event()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.WhatsAppMessages.Add(new WhatsAppMessage
+        {
+            Conversation = new WhatsAppConversation { PhoneNumber = "5548999999999" },
+            ExternalMessageId = "pending-status-message",
+            Direction = WhatsAppMessageDirection.Outbound,
+            Type = WhatsAppMessageType.Text,
+            Status = WhatsAppMessageStatus.Pending
+        });
+        await db.SaveChangesAsync();
+        var service = CreateConversationService(db);
+
+        await ProcessStatusAsync(service, "pending-status-message", "sent", "1750000000");
+
+        var message = await db.WhatsAppMessages.AsNoTracking().SingleAsync();
+        Assert.Equal(WhatsAppMessageStatus.Sent, message.Status);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1750000000).UtcDateTime, message.SentAt);
+        Assert.Null(message.DeliveredAt);
+        Assert.Null(message.ReadAt);
+    }
+
+    [Fact]
+    public async Task Failed_status_is_terminal_and_duplicate_failed_event_does_not_change_timestamp()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.WhatsAppMessages.Add(new WhatsAppMessage
+        {
+            Conversation = new WhatsAppConversation { PhoneNumber = "5548999999999" },
+            ExternalMessageId = "failed-status-message",
+            Direction = WhatsAppMessageDirection.Outbound,
+            Type = WhatsAppMessageType.Text,
+            Status = WhatsAppMessageStatus.Sent
+        });
+        await db.SaveChangesAsync();
+        var service = CreateConversationService(db);
+
+        await ProcessStatusAsync(service, "failed-status-message", "failed", "1750003000");
+        var failedAt = await db.WhatsAppMessages.AsNoTracking().Select(x => x.FailedAt).SingleAsync();
+        await ProcessStatusAsync(service, "failed-status-message", "failed", "1750004000");
+        await ProcessStatusAsync(service, "failed-status-message", "read", "1750005000");
+
+        Assert.Equal(WhatsAppMessageStatus.Failed, await db.WhatsAppMessages.AsNoTracking().Select(x => x.Status).SingleAsync());
+        Assert.Equal(failedAt, await db.WhatsAppMessages.AsNoTracking().Select(x => x.FailedAt).SingleAsync());
+    }
+
+    [Fact]
+    public async Task Conversation_and_message_roll_back_together_when_message_save_fails()
+    {
+        var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .AddInterceptors(new FailMessageInsertInterceptor())
+            .Options;
+        await using var db = new ApplicationDbContext(dbOptions);
+        await db.Database.EnsureCreatedAsync();
+        var service = CreateConversationService(db);
+        using var document = JsonDocument.Parse(BuildWebhookMessageJson("atomic-message"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ProcessAsync(document));
+
+        Assert.Empty(await db.WhatsAppConversations.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.WhatsAppMessages.AsNoTracking().ToListAsync());
+    }
+
     [Fact]
     public async Task Signed_text_webhook_creates_known_conversation_message_and_notification_once()
     {
@@ -133,6 +462,25 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Updates_returns_each_recent_message_once_without_rendering_a_full_page()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (user, conversation) = await CreateAssignedConversationAsync(db, unreadCount: 0);
+        db.WhatsAppMessages.AddRange(
+            new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-1", Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Um", CreatedAt = DateTime.UtcNow.AddSeconds(-1) },
+            new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-2", Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Dois", CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, user.Id, new TrackingWhatsAppGateway());
+
+        var result = Assert.IsType<JsonResult>(await controller.Updates(conversation.Id, CancellationToken.None));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var messages = json.RootElement.GetProperty("messages").EnumerateArray().ToList();
+
+        Assert.Equal(2, messages.Count);
+        Assert.Equal(2, messages.Select(item => item.GetProperty("id").GetInt64()).Distinct().Count());
+    }
+
+    [Fact]
     public async Task Send_rejects_manipulated_conversation_id_without_calling_gateway_or_persisting_message()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -147,6 +495,31 @@ public class WhatsAppBusinessTests
         Assert.Equal(0, gateway.Calls);
         Assert.Empty(db.WhatsAppMessages);
         Assert.Equal(2, db.WhatsAppConversations.Single(x => x.Id == conversationB.Id).UnreadCount);
+    }
+
+    [Fact]
+    public async Task Media_endpoint_does_not_open_storage_for_an_unauthorized_conversation()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (userA, _) = await CreateAssignedConversationAsync(db, userId: "user-a");
+        var (_, conversationB) = await CreateAssignedConversationAsync(db, userId: "user-b", phoneNumber: "5511000000099");
+        var message = new WhatsAppMessage
+        {
+            ConversationId = conversationB.Id,
+            ExternalMessageId = "private-media",
+            Direction = WhatsAppMessageDirection.Inbound,
+            Type = WhatsAppMessageType.Image,
+            MimeType = "image/jpeg",
+            MediaState = WhatsAppMediaState.Available,
+            MediaStorageReference = "private-reference"
+        };
+        db.Add(message);
+        await db.SaveChangesAsync();
+        var storage = new TrackingMediaStorage();
+        var controller = CreateController(db, userA.Id, new TrackingWhatsAppGateway(), storage);
+
+        Assert.IsType<NotFoundResult>(await controller.Media(message.Id, CancellationToken.None));
+        Assert.Equal(0, storage.OpenCalls);
     }
 
     [Fact]
@@ -196,7 +569,7 @@ public class WhatsAppBusinessTests
         return (user, conversation);
     }
 
-    private static WhatsAppController CreateController(ApplicationDbContext db, string userId, IWhatsAppBusinessGateway gateway)
+    private static WhatsAppController CreateController(ApplicationDbContext db, string userId, IWhatsAppBusinessGateway gateway, IWhatsAppMediaStorage? mediaStorage = null)
     {
         var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
         {
@@ -204,7 +577,7 @@ public class WhatsAppBusinessTests
             [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, "Vendedor")], "TestAuth"))
         };
 
-        return new WhatsAppController(db, new SalesRepresentativeAccessService(db), gateway)
+        return new WhatsAppController(db, new SalesRepresentativeAccessService(db), gateway, mediaStorage)
         {
             ControllerContext = new ControllerContext
             {
@@ -212,6 +585,108 @@ public class WhatsAppBusinessTests
             },
             TempData = new TempDataDictionary(httpContext, new Mock<ITempDataProvider>().Object)
         };
+    }
+
+    private static WhatsAppWebhookController CreateWebhookController(
+        ApplicationDbContext db,
+        IOptions<WhatsAppBusinessOptions> options,
+        string? body = null)
+    {
+        var httpContext = new DefaultHttpContext();
+        if (body is not null)
+        {
+            var bytes = Encoding.UTF8.GetBytes(body);
+            httpContext.Request.Body = new MemoryStream(bytes);
+            httpContext.Request.ContentLength = bytes.Length;
+        }
+
+        var service = new WhatsAppConversationService(db, options, new UserNotificationService(db));
+        return new WhatsAppWebhookController(service, options)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+    }
+
+    private static WhatsAppBusinessOptions TestWebhookOptions() => new()
+    {
+        Enabled = true,
+        PhoneNumberId = "phone-test",
+        BusinessAccountId = "waba-test",
+        AppSecret = "test-only-app-secret",
+        VerifyToken = "test-only-verify-token"
+    };
+
+    private static string BuildWebhookMessageJson(
+        string externalId,
+        string from = "5548999999999",
+        string phoneNumberId = "phone-test",
+        string wabaId = "waba-test") => JsonSerializer.Serialize(new
+    {
+        @object = "whatsapp_business_account",
+        entry = new[]
+        {
+            new
+            {
+                id = wabaId,
+                changes = new[]
+                {
+                    new
+                    {
+                        field = "messages",
+                        value = new
+                        {
+                            metadata = new { phone_number_id = phoneNumberId },
+                            messages = new[]
+                            {
+                                new { id = externalId, from, type = "text", text = new { body = "Mensagem de teste" } }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    private static string BuildWebhookStatusJson(string externalId, string status, string timestamp) => JsonSerializer.Serialize(new
+    {
+        @object = "whatsapp_business_account",
+        entry = new[]
+        {
+            new
+            {
+                id = "waba-test",
+                changes = new[]
+                {
+                    new
+                    {
+                        field = "messages",
+                        value = new
+                        {
+                            metadata = new { phone_number_id = "phone-test" },
+                            statuses = new[] { new { id = externalId, status, timestamp } }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    private static void SignWebhookRequest(WhatsAppWebhookController controller, string body)
+    {
+        var bytes = Encoding.UTF8.GetBytes(body);
+        var signature = "sha256=" + Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(TestWebhookOptions().AppSecret), bytes)).ToLowerInvariant();
+        controller.HttpContext.Request.Body = new MemoryStream(bytes);
+        controller.HttpContext.Request.ContentLength = bytes.Length;
+        controller.HttpContext.Request.Headers["X-Hub-Signature-256"] = signature;
+    }
+
+    private static WhatsAppConversationService CreateConversationService(ApplicationDbContext db) =>
+        new(db, Options.Create(TestWebhookOptions()), new UserNotificationService(db));
+
+    private static async Task ProcessStatusAsync(WhatsAppConversationService service, string externalId, string status, string timestamp)
+    {
+        using var document = JsonDocument.Parse(BuildWebhookStatusJson(externalId, status, timestamp));
+        await service.ProcessAsync(document);
     }
 
     [Fact]
@@ -257,6 +732,19 @@ public class WhatsAppBusinessTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromCanceled<HttpResponseMessage>(cancellationToken);
     }
 
+    private sealed class FailMessageInsertInterceptor : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context?.ChangeTracker.Entries<WhatsAppMessage>().Any(x => x.State == EntityState.Added) == true)
+                throw new InvalidOperationException("Injected persistence failure.");
+            return ValueTask.FromResult(result);
+        }
+    }
+
     private sealed class TrackingWhatsAppGateway : IWhatsAppBusinessGateway
     {
         public int Calls { get; private set; }
@@ -265,6 +753,18 @@ public class WhatsAppBusinessTests
         {
             Calls++;
             return Task.FromResult(new WhatsAppSendResult(true, "wamid.test", null, null));
+        }
+    }
+
+    private sealed class TrackingMediaStorage : IWhatsAppMediaStorage
+    {
+        public int OpenCalls { get; private set; }
+        public Task<string> SaveAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken = default) =>
+            Task.FromResult("private-reference");
+        public Task<WhatsAppMediaReadResult?> OpenReadAsync(string reference, CancellationToken cancellationToken = default)
+        {
+            OpenCalls++;
+            return Task.FromResult<WhatsAppMediaReadResult?>(new(new MemoryStream([1]), "image/jpeg", "image.jpg", 1));
         }
     }
 }

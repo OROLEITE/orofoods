@@ -12,6 +12,7 @@ public sealed class WhatsAppBusinessOptions
     public string VerifyToken { get; set; } = "";
     public string WebhookPath { get; set; } = "/api/webhooks/whatsapp";
     public int RequestTimeoutSeconds { get; set; } = 15;
+    public long MaxInboundMediaBytes { get; set; } = 25 * 1024 * 1024;
 }
 
 public interface IWhatsAppBusinessGateway
@@ -20,3 +21,18 @@ public interface IWhatsAppBusinessGateway
 }
 
 public sealed record WhatsAppSendResult(bool Succeeded, string? ExternalMessageId, string? ErrorCode, string? ErrorMessage);
+
+public interface IWhatsAppMediaClient
+{
+    Task<WhatsAppMediaDownloadResult> DownloadAsync(string mediaId, string expectedMimeType, long maximumBytes, CancellationToken cancellationToken = default);
+}
+
+public sealed record WhatsAppMediaDownloadResult(
+    bool Succeeded,
+    Stream? Content,
+    string? MimeType,
+    long? SizeBytes,
+    string? ErrorCode) : IDisposable
+{
+    public void Dispose() => Content?.Dispose();
+}
