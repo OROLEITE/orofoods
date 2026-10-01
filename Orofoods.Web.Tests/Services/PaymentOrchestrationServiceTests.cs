@@ -93,6 +93,22 @@ public class PaymentOrchestrationServiceTests
     }
 
     [Fact]
+    public async Task Card_on_delivery_order_cannot_start_online_card_or_pix_payment()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddOrderAsync(db, "CARD_ON_DELIVERY", 75m);
+        var gateway = new FakeGateway { Next = GatewayOrder(PaymentStatus.Pending, amount: 75m) };
+        var service = CreateService(db, gateway, cardOnDeliveryEnabled: true);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateCreditCardAsync(order.Id, order.CustomerId, "cod-card", "one-use-token", "visa", 1));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreatePixAsync(order.Id, order.CustomerId, "cod-pix"));
+
+        Assert.Equal(0, gateway.CardCalls);
+        Assert.Equal(0, gateway.PixCalls);
+        Assert.Empty(await db.Payments.Where(x => x.OrderId == order.Id).ToListAsync());
+    }
+
+    [Fact]
     public async Task Card_creation_approved_persists_gateway_ids_brand_last_four_installments_and_paid_at()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -240,6 +256,36 @@ public class PaymentOrchestrationServiceTests
     }
 
     [Fact]
+    public async Task Online_webhook_fallback_does_not_claim_a_point_payment_persisted_after_initial_lookup()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddOrderAsync(db, "CARD_ON_DELIVERY", 40m);
+        var pointPayment = new Payment
+        {
+            OrderId = order.Id,
+            CustomerId = order.CustomerId,
+            PaymentMethod = "CARD_ON_DELIVERY",
+            Method = PaymentMethodType.CardOnDelivery,
+            Amount = order.Total,
+            Status = PaymentStatus.Pending,
+            Gateway = "MercadoPagoPoint",
+            GatewayOrderId = "MP-POINT-ORDER-1",
+            ExternalReference = "oro-order-1-attempt-1",
+            IdempotencyKey = "point-attempt-1"
+        };
+        db.Payments.Add(pointPayment);
+        await db.SaveChangesAsync();
+        var gateway = new FakeGateway { Next = GatewayOrder(PaymentStatus.Approved, amount: 40m) };
+        var service = CreateService(db, gateway, cardOnDeliveryEnabled: true);
+
+        await Assert.ThrowsAsync<UnknownMercadoPagoOrderException>(() => service.ReconcileMercadoPagoOrderAsync("MP-POINT-ORDER-1"));
+
+        Assert.Equal(0, gateway.GetCalls);
+        Assert.Equal(PaymentStatus.Pending, pointPayment.Status);
+        Assert.Null(pointPayment.PaidAt);
+    }
+
+    [Fact]
     public async Task Duplicate_approved_webhook_sets_paid_at_and_calls_future_hook_once()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -377,9 +423,10 @@ public class PaymentOrchestrationServiceTests
     private static PaymentOrchestrationService CreateService(
         ApplicationDbContext db,
         IPaymentGateway gateway,
-        IPaymentApprovalHandler? approvalHandler = null)
+        IPaymentApprovalHandler? approvalHandler = null,
+        bool cardOnDeliveryEnabled = false)
     {
-        var eligibility = new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions()));
+        var eligibility = new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled }));
         return new PaymentOrchestrationService(
             db,
             eligibility,
@@ -491,6 +538,7 @@ public class PaymentOrchestrationServiceTests
         public PaymentGatewayOrder Next { get; set; } = GatewayOrder(PaymentStatus.Pending, 0m);
         public bool FailFirstPixCall { get; set; }
         public int PixCalls { get; private set; }
+        public int CardCalls { get; private set; }
         public int GetCalls { get; private set; }
         public List<string> PixKeys { get; } = [];
         public CreatePixPaymentRequest? LastPixRequest { get; private set; }
@@ -507,6 +555,7 @@ public class PaymentOrchestrationServiceTests
 
         public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default)
         {
+            CardCalls++;
             LastCardRequest = request;
             return Task.FromResult(Next with { ExternalReference = request.ExternalReference });
         }

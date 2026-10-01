@@ -17,6 +17,7 @@ using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Payments;
+using Orofoods.Web.Tests.Infrastructure;
 
 namespace Orofoods.Web.Tests.Integration;
 
@@ -29,6 +30,14 @@ namespace Orofoods.Web.Tests.Integration;
 public class MercadoPagoWebhookHttpHarnessTests
 {
     private const string HarnessWebhookSecret = "harness-only-secret-not-committed-anywhere";
+
+    private sealed class HarnessPointOrchestrationService : IPointPaymentOrchestrationService
+    {
+        public Task<PointPaymentOperationResult> StartChargeAsync(int orderId, int assignmentId, string requestKey, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<PointPaymentOperationResult> RefreshAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<PointPaymentOperationResult> CancelAsync(int paymentId, CancellationToken cancellationToken = default, string? adminUserId = null) => throw new NotSupportedException();
+        public Task<IReadOnlyList<DriverPaymentTerminalAssignment>> GetEligibleAssignmentsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 
     [Fact]
     public async Task First_delivery_reconciles_pending_to_approved_and_duplicate_delivery_is_idempotent()
@@ -195,6 +204,11 @@ public class MercadoPagoWebhookHttpHarnessTests
             var gateway = new RecordingFakeGateway();
 
             var host = await new HostBuilder()
+                .UseEnvironment("Test")
+                .ConfigureAppConfiguration((context, configuration) =>
+                    configuration.AddUserSecretsOnlyForTest(
+                        context.HostingEnvironment.EnvironmentName,
+                        typeof(MercadoPagoPointPaymentProvider).Assembly))
                 .ConfigureWebHost(webHostBuilder => webHostBuilder
                     .UseTestServer()
                     .ConfigureServices(services =>
@@ -205,12 +219,14 @@ public class MercadoPagoWebhookHttpHarnessTests
                         services.AddSingleton(TimeProvider.System);
                         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connection));
                         services.Configure<MercadoPagoOptions>(options => options.WebhookSecret = webhookSecret);
+                        services.Configure<MercadoPagoPointOptions>(_ => { });
                         services.Configure<PaymentEligibilityOptions>(_ => { });
                         services.AddScoped<IPaymentEligibilityService, PaymentEligibilityService>();
                         services.AddSingleton<IPaymentGateway>(gateway);
                         services.AddScoped<IPaymentApprovalHandler, NoOpPaymentApprovalHandler>();
                         services.AddScoped<IMercadoPagoWebhookSignatureValidator, MercadoPagoWebhookSignatureValidator>();
                         services.AddScoped<PaymentOrchestrationService>();
+                        services.AddScoped<IPointPaymentOrchestrationService, HarnessPointOrchestrationService>();
                     })
                     .Configure(app =>
                     {
