@@ -119,6 +119,13 @@ builder.Services.AddSingleton<IProductImageStorage>(serviceProvider =>
         ? new AzureBlobProductImageStorage(options)
         : new LocalProductImageStorage(serviceProvider.GetRequiredService<IWebHostEnvironment>(), options);
 });
+builder.Services.AddSingleton<IWhatsAppMediaStorage>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
+    return options.Provider.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase)
+        ? new AzureBlobWhatsAppMediaStorage(options)
+        : new LocalWhatsAppMediaStorage(serviceProvider.GetRequiredService<IWebHostEnvironment>(), options);
+});
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
@@ -199,6 +206,11 @@ builder.Services.AddScoped<UserNotificationService>();
 builder.Services.AddScoped<WhatsAppConversationService>();
 builder.Services.Configure<WhatsAppBusinessOptions>(builder.Configuration.GetSection(WhatsAppBusinessOptions.SectionName));
 builder.Services.AddHttpClient<IWhatsAppBusinessGateway, MetaWhatsAppBusinessGateway>((sp, client) =>
+{
+    client.BaseAddress = new Uri("https://graph.facebook.com/");
+    client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
+});
+builder.Services.AddHttpClient<IWhatsAppMediaClient, MetaWhatsAppMediaClient>((sp, client) =>
 {
     client.BaseAddress = new Uri("https://graph.facebook.com/");
     client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);

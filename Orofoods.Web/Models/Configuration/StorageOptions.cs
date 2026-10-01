@@ -12,6 +12,7 @@ public sealed class StorageOptions
 public sealed class LocalStorageOptions
 {
     public string ProductImagesPath { get; set; } = "uploads/products";
+    public string WhatsAppMediaPath { get; set; } = "App_Data/whatsapp-media";
 }
 
 public sealed class AzureBlobStorageOptions

@@ -1,3 +1,301 @@
 @model Orofoods.Web.Areas.Admin.Controllers.WhatsAppInboxViewModel
-@{ ViewData["Title"] = "WhatsApp"; }
-<section class="section whatsapp-inbox-page"><div class="container"><div class="portal-top"><div><div class="eyebrow"><span></span> CRM comercial</div><h1>WhatsApp</h1><p>Conversas oficiais da Cloud API, com atendimento humano.</p></div></div><div class="whatsapp-inbox"><aside class="whatsapp-conversations"><h2>Conversas</h2>@foreach (var conversation in Model.Conversations) { <a class="whatsapp-conversation @(Model.Selected?.Id == conversation.Id ? "is-active" : "")" asp-route-id="@conversation.Id"><strong>@(conversation.Customer?.TradeName ?? conversation.PhoneNumber)</strong><small>@(conversation.UnreadCount > 0 ? $"{conversation.UnreadCount} não lidas" : "Sem novas mensagens")</small></a> } @if (!Model.Conversations.Any()) { <p class="text-muted">Nenhuma conversa recebida.</p> }</aside><section class="whatsapp-thread"><header><strong>@(Model.Selected?.Customer?.TradeName ?? Model.Selected?.PhoneNumber ?? "Selecione uma conversa")</strong></header>@if (Model.Selected is null) { <p class="whatsapp-empty">Selecione uma conversa para começar.</p> } else { <div class="whatsapp-messages">@foreach (var message in Model.Messages) { <article class="whatsapp-message whatsapp-message--@message.Direction.ToString().ToLowerInvariant()"><p>@message.TextBody</p><small>@message.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm") · @message.Status</small></article> }</div><form asp-action="Send" method="post" class="whatsapp-compose"><input type="hidden" name="conversationId" value="@Model.Selected.Id" /><label for="whatsappText">Mensagem</label><textarea id="whatsappText" name="text" rows="2" required maxlength="4096"></textarea><button class="btn btn-gold">Enviar</button></form> }</section><aside class="whatsapp-customer-panel"><h2>Cliente</h2><p>@(Model.Selected?.Customer?.TradeName ?? "Não identificado")</p>@if (Model.Selected?.CustomerId is not null) { <a class="btn btn-outline-dark" asp-controller="Customers" asp-action="Details" asp-route-id="@Model.Selected.CustomerId">Ver Cliente 360°</a> }</aside></div></div></section>
+@{
+    ViewData["Title"] = "WhatsApp";
+    var selected = Model.Selected;
+    var selectedName = selected?.Customer?.TradeName ?? selected?.PhoneNumber;
+}
+
+@functions {
+    private static string GetInitials(string? name)
+    {
+        var parts = (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0
+            ? string.Empty
+            : new string(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])).ToArray());
+    }
+
+    private static string FormatFileSize(long? bytes) => bytes switch
+    {
+        null => string.Empty,
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024d:0.#} KB",
+        _ => $"{bytes / 1024d / 1024d:0.#} MB"
+    };
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/whatsapp-composer.css" asp-append-version="true" />
+}
+
+<section class="section whatsapp-inbox-page" aria-label="Atendimento WhatsApp">
+    <div class="container">
+        <header class="whatsapp-page-heading">
+            <div>
+                <div class="eyebrow"><span></span> CRM COMERCIAL</div>
+                <h1>WhatsApp</h1>
+                <p>Atendimento das conversas recebidas.</p>
+            </div>
+            <span class="whatsapp-channel-badge"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Atendimento</span>
+        </header>
+
+        <div class="whatsapp-inbox">
+            <aside class="whatsapp-conversations" aria-label="Lista de conversas">
+                <header class="whatsapp-panel-heading">
+                    <div>
+                        <span class="whatsapp-heading-icon"><i class="fa-regular fa-comments" aria-hidden="true"></i></span>
+                        <div><h2>Conversas</h2><small>@Model.Conversations.Count atendimento@(Model.Conversations.Count == 1 ? string.Empty : "s")</small></div>
+                    </div>
+                </header>
+
+                <nav class="whatsapp-conversation-list" aria-label="Conversas recentes">
+                    @foreach (var conversation in Model.Conversations)
+                    {
+                        var contactName = conversation.Customer?.TradeName;
+                        var contactLabel = contactName ?? conversation.PhoneNumber;
+                        var hasUnread = conversation.UnreadCount > 0;
+                        Model.LatestMessages.TryGetValue(conversation.Id, out var latestMessage);
+                        var conversationStatus = conversation.Status switch
+                        {
+                            Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open => "Em atendimento",
+                            Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending => "Pendente",
+                            _ => "Encerrada"
+                        };
+
+                        <a class="whatsapp-conversation @(Model.Selected?.Id == conversation.Id ? "is-active" : "")"
+                           asp-route-id="@conversation.Id"
+                           data-conversation-id="@conversation.Id"
+                           aria-current="@(Model.Selected?.Id == conversation.Id ? "page" : null)">
+                            <span class="whatsapp-avatar @(string.IsNullOrWhiteSpace(contactName) ? "whatsapp-avatar--unknown" : "")" aria-hidden="true">
+                                @if (string.IsNullOrWhiteSpace(contactName))
+                                {
+                                    <i class="fa-regular fa-user"></i>
+                                }
+                                else
+                                {
+                                    @GetInitials(contactName)
+                                }
+                            </span>
+                            <span class="whatsapp-conversation-copy">
+                                <span class="whatsapp-conversation-title">
+                                    <strong>@contactLabel</strong>
+                                    @if (conversation.LastMessageAt.HasValue)
+                                    {
+                                        <time datetime="@(conversation.LastMessageAt.Value.ToString("O"))">@conversation.LastMessageAt.Value.ToLocalTime().ToString("HH:mm")</time>
+                                    }
+                                </span>
+                                <span class="whatsapp-conversation-preview">
+                                    <span>
+                                        @if (latestMessage?.Type is Orofoods.Web.Models.Commercial.WhatsAppMessageType.Image or Orofoods.Web.Models.Commercial.WhatsAppMessageType.Audio or Orofoods.Web.Models.Commercial.WhatsAppMessageType.Video or Orofoods.Web.Models.Commercial.WhatsAppMessageType.Document or Orofoods.Web.Models.Commercial.WhatsAppMessageType.Sticker)
+                                        {
+                                            <i class="fa-solid @(latestMessage.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Image ? "fa-image" : latestMessage.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Audio ? "fa-microphone" : latestMessage.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Video ? "fa-video" : latestMessage.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Document ? "fa-file" : "fa-note-sticky")" aria-hidden="true"></i>
+                                        }
+                                        @(latestMessage?.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Text ? latestMessage.TextBody : latestMessage?.Type.ToString() ?? conversationStatus)
+                                    </span>
+                                    @if (hasUnread)
+                                    {
+                                        <span class="whatsapp-unread-badge" aria-label="@conversation.UnreadCount mensagens não lidas">@conversation.UnreadCount</span>
+                                    }
+                                </span>
+                                <span class="whatsapp-conversation-meta">
+                                    <i class="fa-solid @(conversation.LastInboundAt.HasValue ? "fa-arrow-down" : "fa-comment")" aria-hidden="true"></i>
+                                    @conversationStatus
+                                </span>
+                            </span>
+                        </a>
+                    }
+
+                    @if (!Model.Conversations.Any())
+                    {
+                        <div class="whatsapp-list-empty">
+                            <span class="whatsapp-empty-icon"><i class="fa-regular fa-comments" aria-hidden="true"></i></span>
+                            <strong>Nenhuma conversa ainda</strong>
+                            <span>As novas mensagens aparecerão aqui.</span>
+                        </div>
+                    }
+                </nav>
+            </aside>
+
+            <section class="whatsapp-thread" aria-label="Conversa selecionada">
+                @if (selected is null)
+                {
+                    <div class="whatsapp-thread-empty">
+                        <span class="whatsapp-empty-icon"><i class="fa-regular fa-message" aria-hidden="true"></i></span>
+                        <h2>Selecione uma conversa</h2>
+                        <p>Escolha um atendimento na lista para visualizar as mensagens.</p>
+                    </div>
+                }
+                else
+                {
+                    <header class="whatsapp-thread-header">
+                        <span class="whatsapp-avatar @(selected.Customer is null ? "whatsapp-avatar--unknown" : "")" aria-hidden="true">
+                            @if (selected.Customer is null)
+                            {
+                                <i class="fa-regular fa-user"></i>
+                            }
+                            else
+                            {
+                                @GetInitials(selectedName)
+                            }
+                        </span>
+                        <div class="whatsapp-thread-contact">
+                            <strong>@selectedName</strong>
+                            <span><i class="fa-solid fa-phone" aria-hidden="true"></i> @selected.PhoneNumber</span>
+                        </div>
+                        <span class="whatsapp-status-pill whatsapp-status-pill--@selected.Status.ToString().ToLowerInvariant()">
+                            <span></span>
+                            @(selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open ? "Em atendimento" : selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending ? "Pendente" : "Encerrada")
+                        </span>
+                    </header>
+
+                    <div class="whatsapp-messages" aria-label="Histórico de mensagens" aria-live="polite">
+                        @if (!Model.Messages.Any())
+                        {
+                            <div class="whatsapp-messages-empty">
+                                <span class="whatsapp-empty-icon"><i class="fa-regular fa-message" aria-hidden="true"></i></span>
+                                <span>Nenhuma mensagem nesta conversa.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var message in Model.Messages)
+                            {
+                                var isOutbound = message.Direction == Orofoods.Web.Models.Commercial.WhatsAppMessageDirection.Outbound;
+                                var statusLabel = message.Status switch
+                                {
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Pending => "Pendente",
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Sent => "Enviada",
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Delivered => "Entregue",
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Read => "Lida",
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Failed => "Falha no envio",
+                                    _ => "Recebida"
+                                };
+                                var statusIcon = message.Status switch
+                                {
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Pending => "fa-clock",
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Sent => "fa-check",
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Delivered or Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Read => "fa-check-double",
+                                    Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Failed => "fa-circle-exclamation",
+                                    _ => "fa-arrow-down"
+                                };
+                                <article class="whatsapp-message whatsapp-message--@(isOutbound ? "outbound" : "inbound") whatsapp-message--@message.Type.ToString().ToLowerInvariant()" data-message-id="@message.Id" data-message-status="@message.Status.ToString().ToLowerInvariant()">
+                                    @if (message.MediaState == Orofoods.Web.Models.Commercial.WhatsAppMediaState.Available)
+                                    {
+                                        var mediaUrl = Url.Action("Media", "WhatsApp", new { area = "Admin", messageId = message.Id });
+                                        @if (message.Type is Orofoods.Web.Models.Commercial.WhatsAppMessageType.Image or Orofoods.Web.Models.Commercial.WhatsAppMessageType.Sticker)
+                                        {
+                                            <a class="whatsapp-media-image-link" href="@mediaUrl" target="_blank" rel="noopener">
+                                                <img class="whatsapp-media-image @(message.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Sticker ? "whatsapp-media-sticker" : "")" src="@mediaUrl" alt="@(message.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Sticker ? "Figurinha recebida" : "Imagem recebida")" loading="lazy" />
+                                            </a>
+                                        }
+                                        else if (message.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Audio)
+                                        {
+                                            <div class="whatsapp-media-heading"><i class="fa-solid @(message.IsVoiceMessage ? "fa-microphone" : "fa-volume-high")" aria-hidden="true"></i><span>@(message.IsVoiceMessage ? "Mensagem de voz" : "Áudio")</span></div>
+                                            <audio controls preload="metadata" src="@mediaUrl">Seu navegador não suporta áudio.</audio>
+                                        }
+                                        else if (message.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Video)
+                                        {
+                                            <video controls preload="metadata" playsinline src="@mediaUrl">Seu navegador não suporta vídeo.</video>
+                                        }
+                                        else if (message.Type == Orofoods.Web.Models.Commercial.WhatsAppMessageType.Document)
+                                        {
+                                            <a class="whatsapp-document-card" href="@mediaUrl" download>
+                                                <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                                                <span><strong>@(message.FileName ?? "Documento")</strong><small>@message.MimeType @FormatFileSize(message.MediaSizeBytes)</small></span>
+                                                <i class="fa-solid fa-download" aria-hidden="true"></i>
+                                            </a>
+                                        }
+                                    }
+                                    else if (message.MediaState == Orofoods.Web.Models.Commercial.WhatsAppMediaState.Pending)
+                                    {
+                                        <p class="whatsapp-media-state"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Processando mídia…</p>
+                                    }
+                                    else if (message.MediaState is Orofoods.Web.Models.Commercial.WhatsAppMediaState.Failed or Orofoods.Web.Models.Commercial.WhatsAppMediaState.Rejected)
+                                    {
+                                        <p class="whatsapp-media-state"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Mídia indisponível</p>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(message.TextBody))
+                                    {
+                                        <p>@message.TextBody</p>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(message.Caption))
+                                    {
+                                        <p class="whatsapp-media-caption">@message.Caption</p>
+                                    }
+                                    <footer>
+                                        <time datetime="@message.CreatedAt.ToString("O")">@message.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</time>
+                                        @if (isOutbound)
+                                        {
+                                            <span class="whatsapp-message-status whatsapp-message-status--@message.Status.ToString().ToLowerInvariant()" title="@statusLabel" aria-label="@statusLabel">
+                                                <i class="fa-solid @statusIcon" aria-hidden="true"></i>
+                                                <span>@statusLabel</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="whatsapp-message-status" aria-label="Mensagem recebida"><i class="fa-solid @statusIcon" aria-hidden="true"></i></span>
+                                        }
+                                    </footer>
+                                </article>
+                            }
+                        }
+                    </div>
+
+                    <button class="whatsapp-new-message" type="button" hidden><i class="fa-solid fa-arrow-down" aria-hidden="true"></i> Nova mensagem</button>
+
+                    <form asp-action="Send" method="post" class="whatsapp-compose" data-conversation-id="@selected.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })">
+                        <input type="hidden" name="conversationId" value="@selected.Id" />
+                        <label for="whatsappText">Mensagem</label>
+                        <textarea id="whatsappText" name="text" rows="1" required maxlength="4096" placeholder="Escreva sua mensagem..." aria-label="Escreva uma mensagem"></textarea>
+                        <button class="btn btn-gold" type="submit" aria-label="Enviar mensagem">
+                            <span>Enviar</span><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                }
+            </section>
+
+            <aside class="whatsapp-customer-panel" aria-label="Contexto do cliente">
+                <header class="whatsapp-panel-heading">
+                    <div>
+                        <span class="whatsapp-heading-icon"><i class="fa-regular fa-id-card" aria-hidden="true"></i></span>
+                        <div><h2>Cliente</h2><small>Contexto do atendimento</small></div>
+                    </div>
+                </header>
+
+                @if (selected?.Customer is null)
+                {
+                    <div class="whatsapp-customer-empty">
+                        <span class="whatsapp-avatar whatsapp-avatar--large whatsapp-avatar--unknown" aria-hidden="true"><i class="fa-regular fa-user"></i></span>
+                        <strong>Cliente não identificado</strong>
+                        <span>Esta conversa ainda não está vinculada a um cadastro.</span>
+                        @if (selected is not null)
+                        {
+                            <a href="tel:@selected.PhoneNumber" class="whatsapp-phone-link"><i class="fa-solid fa-phone" aria-hidden="true"></i> @selected.PhoneNumber</a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="whatsapp-customer-card">
+                        <span class="whatsapp-avatar whatsapp-avatar--large">@GetInitials(selected.Customer.TradeName)</span>
+                        <strong>@selected.Customer.TradeName</strong>
+                        <span class="whatsapp-customer-identification"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Identificado</span>
+                        <a href="tel:@selected.PhoneNumber" class="whatsapp-phone-link"><i class="fa-solid fa-phone" aria-hidden="true"></i> @selected.PhoneNumber</a>
+
+                        <dl class="whatsapp-customer-details">
+                            <div><dt>Vendedor responsável</dt><dd>@(selected.Customer.SalesRepresentative?.Name ?? "Não informado")</dd></div>
+                            <div><dt>Atendimento interno</dt><dd>@(selected.AssignedUser?.Email ?? "Não atribuído")</dd></div>
+                        </dl>
+
+                        <a class="whatsapp-customer-link" asp-controller="Customers" asp-action="Details" asp-route-id="@selected.CustomerId">
+                            Ver Cliente 360° <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                }
+            </aside>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/whatsapp-composer.js" asp-append-version="true"></script>
+}

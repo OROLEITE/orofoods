@@ -7,6 +7,7 @@ public enum WhatsAppConversationStatus { Open, Pending, Closed }
 public enum WhatsAppMessageDirection { Inbound, Outbound }
 public enum WhatsAppMessageType { Text, Image, Audio, Document, Video, Location, Contact, Sticker, Unsupported }
 public enum WhatsAppMessageStatus { Pending, Sent, Delivered, Read, Failed }
+public enum WhatsAppMediaState { None, Pending, Available, Failed, Rejected }
 
 public class WhatsAppConversation
 {
@@ -35,6 +36,14 @@ public class WhatsAppMessage
     public WhatsAppMessageDirection Direction { get; set; }
     public WhatsAppMessageType Type { get; set; }
     [MaxLength(4096)] public string? TextBody { get; set; }
+    [MaxLength(255)] public string? MediaId { get; set; }
+    [MaxLength(127)] public string? MimeType { get; set; }
+    [MaxLength(255)] public string? FileName { get; set; }
+    [MaxLength(4096)] public string? Caption { get; set; }
+    [MaxLength(2048)] public string? MediaStorageReference { get; set; }
+    public long? MediaSizeBytes { get; set; }
+    public bool IsVoiceMessage { get; set; }
+    public WhatsAppMediaState MediaState { get; set; }
     public WhatsAppMessageStatus Status { get; set; } = WhatsAppMessageStatus.Pending;
     public DateTime? SentAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
