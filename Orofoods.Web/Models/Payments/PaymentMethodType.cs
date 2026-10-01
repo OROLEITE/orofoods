@@ -7,5 +7,6 @@ public enum PaymentMethodType
     Pix = 1,
     CreditCard = 2,
     Cash = 3,
-    Boleto = 4
+    Boleto = 4,
+    CardOnDelivery = 5
 }

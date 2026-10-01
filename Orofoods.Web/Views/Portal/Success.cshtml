@@ -2,6 +2,11 @@
 @{
     ViewData["Title"] = "Pedido confirmado";
     var payment = Model.Payments.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+    var cardPaymentLabel = payment?.Status is Orofoods.Web.Models.Payments.PaymentStatus.Approved or Orofoods.Web.Models.Payments.PaymentStatus.Paid
+        ? "Pago"
+        : payment?.Status == Orofoods.Web.Models.Payments.PaymentStatus.Rejected ? "Pagamento recusado"
+        : payment?.Status == Orofoods.Web.Models.Payments.PaymentStatus.Cancelled ? "Pagamento cancelado"
+        : "Aguardando pagamento";
 }
 <section class="success-page portal-page"><div class="success-card"><div class="success-icon">✓</div><div class="eyebrow"><span></span> PEDIDO RECEBIDO</div><h1>Tudo certo!</h1><p>Seu pedido <strong>@Model.Number</strong> foi recebido e já entrou na nossa operação.</p><div class="success-details"><div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div><div><small>ENTREGA SOLICITADA</small><strong>@Model.RequestedDeliveryDate?.ToString("dd/MM/yyyy")</strong></div><div><small>DESTINO</small><strong>@Model.DeliveryAddress?.Label</strong></div></div>
 @if (payment?.Method == Orofoods.Web.Models.Payments.PaymentMethodType.Pix && !string.IsNullOrEmpty(payment.PixCopyPaste))
@@ -21,5 +26,9 @@
 else if (payment?.Method == Orofoods.Web.Models.Payments.PaymentMethodType.CreditCard)
 {
     <div class="success-pix"><h2>Pagamento com cartão</h2><p>Status: @payment.Status</p></div>
+}
+else if (payment?.Method == Orofoods.Web.Models.Payments.PaymentMethodType.CardOnDelivery)
+{
+    <div class="success-pix" data-payment-status="@(cardPaymentLabel == "Pago" ? "paid" : "pending")"><h2>Forma de pagamento: Cartão na entrega</h2><p>Status: @cardPaymentLabel</p></div>
 }
 <div class="status-track"><i class="done"></i><i></i><i></i><i></i></div><div class="status-labels"><span>Recebido</span><span>Análise</span><span>Separação</span><span>Entrega</span></div><div class="d-flex justify-content-center gap-3 mt-5"><a class="btn btn-dark" asp-action="Dashboard">Voltar ao painel</a><a class="btn btn-gold" href="https://wa.me/5519999999999?text=@Uri.EscapeDataString($"Olá! Quero acompanhar o pedido {Model.Number}")">Enviar pelo WhatsApp</a></div></div></section>

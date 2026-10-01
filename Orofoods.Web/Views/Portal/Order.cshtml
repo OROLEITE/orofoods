@@ -1,5 +1,16 @@
 @model Orofoods.Web.Models.Orders.Order
-@{ ViewData["Title"] = Model.Number; var steps = new[] { OrderStatus.Received, OrderStatus.Approved, OrderStatus.Picking, OrderStatus.Invoiced, OrderStatus.OutForDelivery, OrderStatus.Delivered }; var current = Array.IndexOf(steps, Model.Status); }
+@{
+    ViewData["Title"] = Model.Number;
+    var steps = new[] { OrderStatus.Received, OrderStatus.Approved, OrderStatus.Picking, OrderStatus.Invoiced, OrderStatus.OutForDelivery, OrderStatus.Delivered };
+    var current = Array.IndexOf(steps, Model.Status);
+    var cardPayment = Model.Payments.Where(payment => payment.Method == Orofoods.Web.Models.Payments.PaymentMethodType.CardOnDelivery)
+        .OrderByDescending(payment => payment.CreatedAt).ThenByDescending(payment => payment.Id).FirstOrDefault();
+    var cardPaymentLabel = cardPayment?.Status is Orofoods.Web.Models.Payments.PaymentStatus.Approved or Orofoods.Web.Models.Payments.PaymentStatus.Paid
+        ? "Pago"
+        : cardPayment?.Status == Orofoods.Web.Models.Payments.PaymentStatus.Rejected ? "Pagamento recusado"
+        : cardPayment?.Status == Orofoods.Web.Models.Payments.PaymentStatus.Cancelled ? "Pagamento cancelado"
+        : "Aguardando pagamento";
+}
 <section class="page-hero portal-page-hero">
     <div class="container">
         <a class="back-link" asp-action="Orders">&larr; Meus pedidos</a>
@@ -12,6 +23,10 @@
     <div class="container">
         <div class="status-track">@for (var i = 0; i < steps.Length; i++) { <i class="@(i <= current ? "done" : "")"></i> }</div>
         <div class="status-labels">@foreach (var step in steps) { <span>@step.ToDisplayName()</span> }</div>
+        @if (Model.PaymentTerm?.Code == "CARD_ON_DELIVERY")
+        {
+            <div class="success-pix mt-4" data-payment-status="@(cardPaymentLabel == "Pago" ? "paid" : "pending")"><h2>Forma de pagamento: Cartão na entrega</h2><p>Status: @cardPaymentLabel</p></div>
+        }
         <div class="mt-5">
             <div class="eyebrow"><span></span> Atualizacoes</div>
             <h2>Historico do pedido</h2>

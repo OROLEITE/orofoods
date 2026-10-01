@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Pricing;
@@ -186,6 +187,19 @@ public sealed class OrderPlacementService(
 
             order.Number = $"ORO-{DateTime.UtcNow:yyyy}-{order.Id:000000}";
             order.ConfirmedAt = DateTime.UtcNow;
+            if (paymentTerm.Code == "CARD_ON_DELIVERY")
+            {
+                order.Payments.Add(new Payment
+                {
+                    CustomerId = customerId,
+                    PaymentMethod = paymentTerm.Code,
+                    Method = PaymentMethodType.CardOnDelivery,
+                    Amount = order.Total,
+                    Status = PaymentStatus.Pending,
+                    CreatedAt = order.ConfirmedAt.Value,
+                    UpdatedAt = order.ConfirmedAt.Value
+                });
+            }
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }

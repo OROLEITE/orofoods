@@ -11,6 +11,7 @@
     const expiryPreview = document.getElementById("cardExpiryPreview");
     const tokenError = document.getElementById("cardTokenError");
     const cardUnavailableNotice = document.getElementById("cardUnavailableNotice");
+    const cardOnDeliveryNotice = document.querySelector('[data-payment-description="CARD_ON_DELIVERY"]');
     const installmentsSelect = document.getElementById("cardInstallmentsSelect");
     const installmentsHint = document.getElementById("cardInstallmentsHint");
     const cardTokenField = document.getElementById("CardToken");
@@ -26,6 +27,11 @@
         const selected = paymentTermSelect.options[paymentTermSelect.selectedIndex];
         return selected?.dataset.code === "CREDIT_CARD";
     };
+    const isCardOnDeliverySelected = () => {
+        if (!paymentTermSelect) return false;
+        const selected = paymentTermSelect.options[paymentTermSelect.selectedIndex];
+        return selected?.dataset.code === "CARD_ON_DELIVERY";
+    };
 
     // Card tokenization uses the official Mercado Pago SDK V2 in the browser (Checkout Transparente).
     // Only the resulting token and payment-method id are sent to the server; the raw card
@@ -37,6 +43,7 @@
     const updateVisibility = () => {
         cardForm.hidden = !isCreditCardSelected();
         if (cardUnavailableNotice) cardUnavailableNotice.hidden = !(isCreditCardSelected() && !mercadoPago);
+        if (cardOnDeliveryNotice) cardOnDeliveryNotice.hidden = !isCardOnDeliverySelected();
     };
 
     // Installment options come exclusively from Mercado Pago's official getInstallments API;

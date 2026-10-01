@@ -28,7 +28,9 @@ public sealed class PaymentEligibilityService(
         var validPurchases = await GetValidPurchaseCountAsync(customerId, cancellationToken);
         var maximumTermDays = GetMaximumTermDays(customer, validPurchases);
         var paymentMethods = await db.PaymentTerms.AsNoTracking()
-            .Where(term => term.IsActive && term.DaysUntilDue <= maximumTermDays)
+            .Where(term => term.IsActive
+                && term.DaysUntilDue <= maximumTermDays
+                && (options.Value.CardOnDeliveryEnabled || term.Code != "CARD_ON_DELIVERY"))
             .OrderBy(term => term.SortOrder)
             .ToListAsync(cancellationToken);
 
@@ -84,6 +86,7 @@ public sealed class PaymentEligibilityOptions
     public int AbsoluteMaximumTermDays { get; set; } = 14;
     public HashSet<OrderStatus> ValidPurchaseStatuses { get; set; } = [OrderStatus.Invoiced, OrderStatus.Delivered];
     public PaymentTermBaseDate PaymentTermBaseDate { get; set; } = PaymentTermBaseDate.InvoiceDate;
+    public bool CardOnDeliveryEnabled { get; set; }
 }
 
 public enum PaymentTermBaseDate

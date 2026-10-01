@@ -86,7 +86,10 @@ public sealed class PaymentOrchestrationService(
         // Serializable isolation prevents two concurrent webhook deliveries for the same order from applying conflicting updates.
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        var payment = await db.Payments.FirstOrDefaultAsync(payment => payment.GatewayOrderId == gatewayOrderId, cancellationToken)
+        var payment = await db.Payments.FirstOrDefaultAsync(payment => payment.GatewayOrderId == gatewayOrderId
+                && payment.Gateway == "MercadoPago"
+                && payment.Method != PaymentMethodType.CardOnDelivery,
+            cancellationToken)
             ?? throw new UnknownMercadoPagoOrderException(gatewayOrderId);
 
         var result = await gateway.GetOrderAsync(gatewayOrderId, cancellationToken);
@@ -152,7 +155,7 @@ public sealed class PaymentOrchestrationService(
 
     private async Task<(Order Order, Customer Customer)> LoadOwnedOrderAsync(int orderId, int customerId, CancellationToken cancellationToken)
     {
-        var order = await db.Orders.Include(order => order.Customer)
+        var order = await db.Orders.Include(order => order.Customer).Include(order => order.PaymentTerm)
             .FirstOrDefaultAsync(order => order.Id == orderId, cancellationToken)
             ?? throw new InvalidOperationException($"Order '{orderId}' was not found.");
         if (order.CustomerId != customerId || order.Customer is null)
@@ -165,6 +168,11 @@ public sealed class PaymentOrchestrationService(
 
     private async Task ValidatePaymentTermAsync(int customerId, Order order, CancellationToken cancellationToken)
     {
+        if (order.PaymentTerm?.Code == "CARD_ON_DELIVERY")
+        {
+            throw new InvalidOperationException("O pagamento Cartão na entrega será realizado no momento da entrega.");
+        }
+
         if (order.PaymentTermId is null)
         {
             return;
