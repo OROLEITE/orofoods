@@ -10,6 +10,9 @@ public class WhatsAppPollingUiTests
         Assert.Contains("setInterval(synchronize, 4000)", script);
         Assert.Contains("requestInFlight", script);
         Assert.Contains("document.hidden", script);
+        Assert.Contains("AbortController", script);
+        Assert.Contains("cache: 'no-store'", script);
+        Assert.Contains("America/Sao_Paulo", script);
         Assert.Contains("data-message-id", script);
         Assert.Contains("article.dataset.messageId", script);
         Assert.DoesNotContain("textarea.value =", script);
@@ -28,6 +31,17 @@ public class WhatsAppPollingUiTests
         Assert.Contains("playInboundBeep()", script);
         Assert.Contains("soundToggle", script);
         Assert.Contains("AudioContext", script);
+    }
+
+    [Fact]
+    public void Customer_linking_uses_search_modal_instead_of_loading_a_permanent_select()
+    {
+        var view = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+
+        Assert.Contains("whatsappCustomerDialog", view);
+        Assert.Contains("CustomerSearch", view);
+        Assert.DoesNotContain("Model.CustomerChoices", view);
+        Assert.DoesNotContain("<select id=\"customerId\"", view);
     }
 
     private static string FindRepositoryRoot()

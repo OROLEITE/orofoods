@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -41,16 +42,14 @@ public class WhatsAppController(
 
         var messages = selected is null ? [] : await db.WhatsAppMessages.AsNoTracking().Where(x => x.ConversationId == selected.Id).OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id).Take(100).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync(cancellationToken);
         var latestMessages = await LoadLatestMessagesAsync(conversations.Select(x => x.Id), cancellationToken);
-        var customerChoices = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
-            .OrderBy(x => x.TradeName).ThenBy(x => x.LegalName).Take(200)
-            .Select(x => new WhatsAppCustomerChoice(x.Id, x.TradeName ?? x.LegalName ?? $"Cliente {x.Id}"))
-            .ToListAsync(cancellationToken);
-        return View(new WhatsAppInboxViewModel(conversations, selected, messages, latestMessages, customerChoices));
+        return View(new WhatsAppInboxViewModel(conversations, selected, messages, latestMessages));
     }
 
     [HttpGet]
     public async Task<IActionResult> Updates(long? conversationId, CancellationToken cancellationToken)
     {
+        Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+        Response.Headers.Pragma = "no-cache";
         var scope = await accessService.GetScopeAsync(User, cancellationToken);
         var customerIds = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope).Select(x => x.Id);
         IQueryable<WhatsAppConversation> query = db.WhatsAppConversations.AsNoTracking().Include(x => x.Customer);
@@ -85,13 +84,45 @@ public class WhatsAppController(
                     messageType = lastMessage?.Type.ToString().ToLowerInvariant(),
                     lastMessageId = lastMessage?.Id,
                     lastMessageDirection = lastMessage?.Direction.ToString().ToLowerInvariant(),
-                    lastMessageAt = item.LastMessageAt,
+                    lastMessageAt = item.LastMessageAt.HasValue ? ToUtcIso(item.LastMessageAt.Value) : null,
                     item.UnreadCount,
                     status = item.Status.ToString().ToLowerInvariant()
                 };
             }),
             messages = messages.Select(MessagePayload)
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> CustomerSearch(string? q, CancellationToken cancellationToken)
+    {
+        var term = q?.Trim();
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+            return Json(new { results = Array.Empty<object>() });
+
+        var scope = await accessService.GetScopeAsync(User, cancellationToken);
+        var normalized = term.ToLowerInvariant();
+        var customers = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+            .Where(x => x.IsActive)
+            .Where(x => x.TradeName.ToLower().Contains(normalized)
+                || x.LegalName.ToLower().Contains(normalized)
+                || x.Cnpj.ToLower().Contains(normalized)
+                || x.Phone.ToLower().Contains(normalized)
+                || x.WhatsApp.ToLower().Contains(normalized)
+                || (x.WmcCode != null && x.WmcCode.ToLower().Contains(normalized)))
+            .OrderBy(x => x.TradeName)
+            .ThenBy(x => x.LegalName)
+            .Take(20)
+            .Select(x => new
+            {
+                id = x.Id,
+                name = string.IsNullOrWhiteSpace(x.TradeName) ? x.LegalName : x.TradeName,
+                code = x.WmcCode,
+                cnpj = x.Cnpj,
+                phone = string.IsNullOrWhiteSpace(x.WhatsApp) ? x.Phone : x.WhatsApp
+            });
+
+        return Json(new { results = await customers.ToListAsync(cancellationToken) });
     }
 
     [HttpGet("/Admin/WhatsApp/media/{messageId:long}")]
@@ -222,8 +253,10 @@ public class WhatsAppController(
         mediaUrl = message.MediaState == WhatsAppMediaState.Available ? $"/Admin/WhatsApp/media/{message.Id}" : null,
         status = message.Status.ToString().ToLowerInvariant(),
         statusLabel = StatusLabel(message.Status),
-        message.CreatedAt
+        createdAt = ToUtcIso(message.CreatedAt)
     };
+
+    private static string ToUtcIso(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture);
 
     private static string Preview(WhatsAppMessage? message) => message switch
     {
@@ -256,7 +289,4 @@ public sealed record WhatsAppInboxViewModel(
     IReadOnlyList<WhatsAppConversation> Conversations,
     WhatsAppConversation? Selected,
     IReadOnlyList<WhatsAppMessage> Messages,
-    IReadOnlyDictionary<long, WhatsAppMessage> LatestMessages,
-    IReadOnlyList<WhatsAppCustomerChoice> CustomerChoices);
-
-public sealed record WhatsAppCustomerChoice(int Id, string Name);
+    IReadOnlyDictionary<long, WhatsAppMessage> LatestMessages);

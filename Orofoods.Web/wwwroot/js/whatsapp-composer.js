@@ -48,7 +48,8 @@
     };
     updateSoundToggle();
     soundToggle?.addEventListener('click', () => { soundEnabled = !soundEnabled; localStorage.setItem(soundPreferenceKey, soundEnabled ? 'on' : 'off'); updateSoundToggle(); if (soundEnabled) unlockAudio(); });
-    document.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
+    ['pointerdown', 'keydown', 'click'].forEach(eventName =>
+        document.addEventListener(eventName, unlockAudio, { once: true, passive: true }));
 
     const resizeComposer = () => {
         if (!textarea) return;
@@ -63,6 +64,76 @@
         window.addEventListener('resize', resizeComposer);
         resizeComposer();
     }
+
+    const customerDialog = document.getElementById('whatsappCustomerDialog');
+    const customerSearch = document.getElementById('whatsappCustomerSearch');
+    const customerResults = document.getElementById('whatsappCustomerResults');
+    const customerIdInput = document.getElementById('whatsappCustomerId');
+    const customerConversationId = document.getElementById('whatsappCustomerConversationId');
+    const customerSubmit = document.getElementById('whatsappCustomerSubmit');
+    const customerTrigger = document.querySelector('.whatsapp-link-customer-trigger');
+    let customerSearchController;
+    let customerSearchTimer;
+
+    const closeCustomerDialog = () => {
+        customerSearchController?.abort();
+        if (customerDialog?.open) customerDialog.close();
+    };
+    const renderCustomerResults = results => {
+        if (!customerResults) return;
+        customerResults.replaceChildren();
+        if (!results.length) {
+            appendText(customerResults, 'p', 'Nenhum cliente encontrado.', 'whatsapp-customer-results-empty');
+            return;
+        }
+        for (const customer of results) {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'whatsapp-customer-result';
+            option.dataset.customerId = customer.id;
+            option.setAttribute('role', 'option');
+            appendText(option, 'strong', customer.name || `Cliente ${customer.id}`);
+            const details = [customer.code, customer.cnpj, customer.phone].filter(Boolean).join(' · ');
+            if (details) appendText(option, 'small', details);
+            option.addEventListener('click', () => {
+                customerIdInput.value = customer.id;
+                customerSubmit.disabled = false;
+                customerResults.querySelectorAll('.whatsapp-customer-result').forEach(item => item.classList.remove('is-selected'));
+                option.classList.add('is-selected');
+            });
+            customerResults.append(option);
+        }
+    };
+    const searchCustomers = async () => {
+        const term = customerSearch?.value.trim() || '';
+        customerSearchController?.abort();
+        if (term.length < 2) { renderCustomerResults([]); return; }
+        customerSearchController = new AbortController();
+        try {
+            const url = new URL(customerTrigger.dataset.customerSearchUrl, window.location.origin);
+            url.searchParams.set('q', term);
+            const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: customerSearchController.signal });
+            if (!response.ok) throw new Error('customer search failed');
+            renderCustomerResults((await response.json()).results || []);
+        } catch (error) {
+            if (error?.name !== 'AbortError') renderCustomerResults([]);
+        }
+    };
+    customerTrigger?.addEventListener('click', () => {
+        customerConversationId.value = customerTrigger.dataset.conversationId;
+        customerIdInput.value = '';
+        customerSubmit.disabled = true;
+        customerSearch.value = '';
+        renderCustomerResults([]);
+        if (typeof customerDialog?.showModal === 'function') customerDialog.showModal();
+        else customerDialog?.setAttribute('open', '');
+        customerSearch?.focus();
+    });
+    customerSearch?.addEventListener('input', () => {
+        window.clearTimeout(customerSearchTimer);
+        customerSearchTimer = window.setTimeout(searchCustomers, 250);
+    });
+    document.querySelector('.whatsapp-dialog-cancel')?.addEventListener('click', closeCustomerDialog);
 
     if (!form || !messageList || !conversationList) return;
 
@@ -89,10 +160,18 @@
     const statusIcon = status => status === 'pending' ? 'fa-clock'
         : status === 'failed' ? 'fa-circle-exclamation'
             : status === 'delivered' || status === 'read' ? 'fa-check-double' : 'fa-check';
-    const formatTime = value => value
-        ? new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '';
+    const saoPauloTimeZone = 'America/Sao_Paulo';
+    const saoPauloDate = new Intl.DateTimeFormat('en-CA', { timeZone: saoPauloTimeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    const sameSaoPauloDay = value => value && saoPauloDate.format(new Date(value)) === saoPauloDate.format(new Date());
+    const formatTime = value => {
+        if (!value) return '';
+        const options = sameSaoPauloDay(value)
+            ? { hour: '2-digit', minute: '2-digit' }
+            : { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+        return new Intl.DateTimeFormat('pt-BR', { timeZone: saoPauloTimeZone, ...options }).format(new Date(value));
+    };
     const formatMessageTime = value => value
-        ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '';
+        ? new Intl.DateTimeFormat('pt-BR', { timeZone: saoPauloTimeZone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '';
     const formatSize = bytes => {
         if (!bytes) return '';
         if (bytes < 1024) return `${bytes} B`;
@@ -260,23 +339,30 @@
 
     const updateConversations = conversations => {
         conversationList.querySelector('.whatsapp-list-empty')?.remove();
+        const visibleIds = new Set();
         for (const conversation of conversations) {
-            if (conversation.lastMessageDirection === 'inbound' && conversation.lastMessageId != null)
+            visibleIds.add(String(conversation.id));
+            if (conversation.lastMessageDirection === 'inbound' && conversation.lastMessageId != null && !knownInboundIds.has(String(conversation.lastMessageId)))
                 knownInboundIds.add(String(conversation.lastMessageId));
             let element = conversationList.querySelector(`[data-conversation-id="${conversation.id}"]`);
             if (!element) element = conversationElement(conversation);
             updateConversation(element, conversation);
             conversationList.append(element);
         }
+        conversationList.querySelectorAll('[data-conversation-id]').forEach(element => {
+            if (!visibleIds.has(String(element.dataset.conversationId))) element.remove();
+        });
     };
 
     const synchronize = async () => {
         if (requestInFlight || document.hidden || !updatesUrl) return;
         requestInFlight = true;
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 8000);
         try {
             const url = new URL(updatesUrl, window.location.origin);
             url.searchParams.set('conversationId', selectedConversationId);
-            const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
             if (!response.ok) return;
             const payload = await response.json();
             const before = knownInboundIds.size;
@@ -288,6 +374,7 @@
         } catch (error) {
             if (error?.name !== 'AbortError') console.debug('WhatsApp sync unavailable.');
         } finally {
+            window.clearTimeout(timeoutId);
             requestInFlight = false;
         }
     };
@@ -301,4 +388,5 @@
         if (!document.hidden) void synchronize();
     });
     schedule();
+    void synchronize();
 })();
