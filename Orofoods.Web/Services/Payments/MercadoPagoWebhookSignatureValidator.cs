@@ -7,14 +7,20 @@ namespace Orofoods.Web.Services.Payments;
 
 public sealed class MercadoPagoWebhookSignatureValidator(
     IOptions<MercadoPagoOptions> options,
+    IOptions<MercadoPagoPointOptions> pointOptions,
     TimeProvider timeProvider) : IMercadoPagoWebhookSignatureValidator
 {
+    private readonly string[] _webhookSecrets =
+    [
+        options.Value.WebhookSecret,
+        pointOptions.Value.WebhookSecret
+    ];
+
     public bool IsValid(string? signature, string? requestId, string? dataId)
     {
         if (string.IsNullOrWhiteSpace(signature)
             || string.IsNullOrWhiteSpace(requestId)
-            || string.IsNullOrWhiteSpace(dataId)
-            || string.IsNullOrWhiteSpace(options.Value.WebhookSecret))
+            || string.IsNullOrWhiteSpace(dataId))
         {
             return false;
         }
@@ -53,9 +59,15 @@ public sealed class MercadoPagoWebhookSignatureValidator(
         }
 
         var manifest = $"id:{dataId.Trim().ToLowerInvariant()};request-id:{requestId.Trim()};ts:{timestampText};";
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(options.Value.WebhookSecret));
-        var expectedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(manifest));
-        return CryptographicOperations.FixedTimeEquals(expectedHash, receivedHash);
+        var manifestBytes = Encoding.UTF8.GetBytes(manifest);
+        var valid = false;
+        foreach (var secret in _webhookSecrets.Where(secret => !string.IsNullOrWhiteSpace(secret)).Distinct(StringComparer.Ordinal))
+        {
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+            var expectedHash = hmac.ComputeHash(manifestBytes);
+            valid |= CryptographicOperations.FixedTimeEquals(expectedHash, receivedHash);
+        }
+        return valid;
     }
 
     private static string? GetPart(IEnumerable<string> parts, string key)

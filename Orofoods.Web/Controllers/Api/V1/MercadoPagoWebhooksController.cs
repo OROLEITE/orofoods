@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Data;
+using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Payments;
 
 namespace Orofoods.Web.Controllers.Api.V1;
@@ -18,6 +21,8 @@ namespace Orofoods.Web.Controllers.Api.V1;
 public class MercadoPagoWebhooksController(
     IMercadoPagoWebhookSignatureValidator signatureValidator,
     PaymentOrchestrationService orchestrationService,
+    IPointPaymentOrchestrationService pointOrchestrationService,
+    ApplicationDbContext db,
     ILogger<MercadoPagoWebhooksController> logger) : ControllerBase
 {
     [HttpPost]
@@ -65,10 +70,43 @@ public class MercadoPagoWebhooksController(
 
         try
         {
-            var applied = await orchestrationService.ReconcileMercadoPagoOrderAsync(dataId, cancellationToken);
+            var pointPaymentId = await db.Payments.AsNoTracking()
+                .Where(payment => payment.Gateway == "MercadoPagoPoint" && payment.Method == PaymentMethodType.CardOnDelivery
+                    && payment.GatewayOrderId == dataId)
+                .Select(payment => (int?)payment.Id)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (pointPaymentId.HasValue)
+            {
+                var result = await pointOrchestrationService.RefreshAsync(pointPaymentId.Value, cancellationToken);
+                if (!result.Succeeded)
+                {
+                    if (result.ErrorCode is "POINT_ORDER_ID_MISSING" or "POINT_ORDER_ID_MISMATCH"
+                        or "POINT_REFERENCE_MISSING" or "POINT_REFERENCE_MISMATCH"
+                        or "POINT_AMOUNT_MISSING" or "POINT_AMOUNT_MISMATCH"
+                        or "POINT_ORDER_STATUS_INVALID" or "POINT_STATUS_DETAIL_INVALID"
+                        or "POINT_TOTAL_PAID_AMOUNT_MISMATCH" or "POINT_TRANSACTION_MISSING"
+                        or "POINT_TRANSACTION_AMBIGUOUS" or "POINT_TRANSACTION_STATUS_INVALID"
+                        or "POINT_TRANSACTION_AMOUNT_MISMATCH" or "POINT_PAID_AMOUNT_MISMATCH")
+                    {
+                        return UnprocessableEntity();
+                    }
+                    if (result.ErrorCode is "POINT_GATEWAY_UNAVAILABLE" or "POINT_ORDER_NOT_CREATED"
+                        or "POINT_ATTEMPT_NOT_FOUND" or "POINT_RECONCILIATION_CONFLICT")
+                    {
+                        return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                    }
+                    logger.LogWarning("Mercado Pago Point webhook reconciliation failed validation. GatewayOrderId={GatewayOrderId} RequestId={RequestId} ErrorCode={ErrorCode}", dataId, requestId, result.ErrorCode);
+                    return UnprocessableEntity();
+                }
+                logger.LogInformation("Processed Mercado Pago Point webhook. GatewayOrderId={GatewayOrderId} RequestId={RequestId}", dataId, requestId);
+            }
+            else
+            {
+                var applied = await orchestrationService.ReconcileMercadoPagoOrderAsync(dataId, cancellationToken);
             logger.LogInformation(
                 "Processed Mercado Pago webhook. GatewayOrderId={GatewayOrderId} RequestId={RequestId} Applied={Applied}",
                 dataId, requestId, applied);
+            }
         }
         catch (UnknownMercadoPagoOrderException)
         {
