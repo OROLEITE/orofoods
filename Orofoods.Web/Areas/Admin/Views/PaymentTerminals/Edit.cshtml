@@ -1,0 +1,18 @@
+@model Orofoods.Web.ViewModels.PaymentTerminalEditViewModel
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Novo terminal" : "Editar terminal";
+}
+
+<h1>@ViewData["Title"]</h1>
+<p>Os identificadores são metadados operacionais. Não informe tokens ou credenciais.</p>
+<form asp-action="Edit" method="post">
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="mb-3"><label asp-for="Provider" class="form-label">Provedor</label><select asp-for="Provider" class="form-select"><option value="0">Mercado Pago</option></select></div>
+    <div class="mb-3"><label asp-for="DeviceId" class="form-label">Device ID</label><input asp-for="DeviceId" class="form-control" autocomplete="off" /><span asp-validation-for="DeviceId" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="StoreId" class="form-label">Store ID</label><input asp-for="StoreId" class="form-control" autocomplete="off" /></div>
+    <div class="mb-3"><label asp-for="PosId" class="form-label">POS ID</label><input asp-for="PosId" class="form-control" autocomplete="off" /></div>
+    <div class="form-check mb-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Ativo</label></div>
+    <button class="btn btn-primary" type="submit">Salvar</button>
+    <a class="btn btn-outline-secondary" asp-action="Index">Voltar</a>
+</form>

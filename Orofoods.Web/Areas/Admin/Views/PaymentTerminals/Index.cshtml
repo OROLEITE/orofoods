@@ -1,0 +1,30 @@
+@model IReadOnlyList<Orofoods.Web.Models.Payments.PaymentTerminal>
+@{
+    ViewData["Title"] = "Terminais Point";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div><h1>Terminais de pagamento</h1><p>Cadastro interno. Esta tela não consulta o Mercado Pago nem realiza cobranças.</p></div>
+    <a class="btn btn-primary" asp-action="Edit">Novo terminal</a>
+</div>
+<div class="table-responsive"><table class="table align-middle">
+    <thead><tr><th>Provedor</th><th>Device ID</th><th>Store ID</th><th>POS ID</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var terminal in Model)
+    {
+        <tr>
+            <td>@terminal.Provider</td><td>@(terminal.DeviceId ?? "Não configurado")</td><td>@(terminal.StoreId ?? "—")</td><td>@(terminal.PosId ?? "—")</td><td>@(terminal.IsActive ? "Ativo" : "Inativo")</td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@terminal.Id">Editar</a>
+                @if (terminal.IsActive)
+                {
+                    <form asp-action="Deactivate" method="post" class="d-inline">
+                        <input type="hidden" name="id" value="@terminal.Id" />
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Desativar</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table></div>

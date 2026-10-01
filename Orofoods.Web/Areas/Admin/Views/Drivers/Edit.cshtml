@@ -1,0 +1,15 @@
+@model Orofoods.Web.ViewModels.DriverEditViewModel
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Novo motorista" : "Editar motorista";
+}
+
+<h1>@ViewData["Title"]</h1>
+<p>Este cadastro operacional não cria usuário nem credenciais de acesso.</p>
+<form asp-action="Edit" method="post">
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="mb-3"><label asp-for="Name" class="form-label">Nome</label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger"></span></div>
+    <div class="form-check mb-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Ativo</label></div>
+    <button class="btn btn-primary" type="submit">Salvar</button>
+    <a class="btn btn-outline-secondary" asp-action="Index">Voltar</a>
+</form>
