@@ -21,6 +21,20 @@
         < 1024 * 1024 => $"{bytes / 1024d:0.#} KB",
         _ => $"{bytes / 1024d / 1024d:0.#} MB"
     };
+
+    private static readonly TimeZoneInfo SaoPauloTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    private static DateTime ToSaoPaulo(DateTime value) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(value, DateTimeKind.Utc), SaoPauloTimeZone);
+
+    private static string FormatDateTime(DateTime value) => ToSaoPaulo(value).ToString("dd/MM HH:mm");
+    private static string FormatTime(DateTime value)
+    {
+        var local = ToSaoPaulo(value);
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, SaoPauloTimeZone).Date;
+        return local.Date == today ? local.ToString("HH:mm") : local.ToString("dd/MM HH:mm");
+    }
+    private static string ToUtcIso(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc).ToString("O");
 }
 
 @section Head {
@@ -83,7 +97,7 @@
                                     <strong>@contactLabel</strong>
                                     @if (conversation.LastMessageAt.HasValue)
                                     {
-                                        <time datetime="@(conversation.LastMessageAt.Value.ToString("O"))">@conversation.LastMessageAt.Value.ToLocalTime().ToString("HH:mm")</time>
+                                        <time datetime="@(ToUtcIso(conversation.LastMessageAt.Value))">@FormatTime(conversation.LastMessageAt.Value)</time>
                                     }
                                 </span>
                                 <span class="whatsapp-conversation-preview">
@@ -235,7 +249,7 @@
                                         <p class="whatsapp-media-caption">@message.Caption</p>
                                     }
                                     <footer>
-                                        <time datetime="@message.CreatedAt.ToString("O")">@message.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</time>
+                                        <time datetime="@ToUtcIso(message.CreatedAt)">@FormatDateTime(message.CreatedAt)</time>
                                         @if (isOutbound)
                                         {
                                             <span class="whatsapp-message-status whatsapp-message-status--@message.Status.ToString().ToLowerInvariant()" title="@statusLabel" aria-label="@statusLabel">
@@ -283,18 +297,11 @@
                         @if (selected is not null)
                         {
                             <a href="tel:@selected.PhoneNumber" class="whatsapp-phone-link"><i class="fa-solid fa-phone" aria-hidden="true"></i> @selected.PhoneNumber</a>
-                            <form asp-action="LinkCustomer" method="post" class="whatsapp-link-customer-form">
-                                <input type="hidden" name="conversationId" value="@selected.Id" />
-                                <label for="customerId">Vincular cliente existente</label>
-                                <select id="customerId" name="customerId" required>
-                                    <option value="">Selecione um cliente</option>
-                                    @foreach (var customer in Model.CustomerChoices)
-                                    {
-                                        <option value="@customer.Id">@customer.Name</option>
-                                    }
-                                </select>
-                                <button class="btn btn-sm btn-outline-dark" type="submit">Vincular cliente</button>
-                            </form>
+                            <button class="btn btn-sm btn-outline-dark whatsapp-link-customer-trigger" type="button"
+                                    data-customer-search-url="@Url.Action("CustomerSearch", "WhatsApp", new { area = "Admin" })"
+                                    data-conversation-id="@selected.Id">
+                                <i class="fa-solid fa-link" aria-hidden="true"></i> Vincular cliente
+                            </button>
                         }
                     </div>
                 }
@@ -321,6 +328,27 @@
         </div>
     </div>
 </section>
+
+<dialog class="whatsapp-customer-dialog" id="whatsappCustomerDialog" aria-labelledby="whatsappCustomerDialogTitle">
+    <form method="dialog" class="whatsapp-customer-dialog__close-form">
+        <button type="submit" class="whatsapp-dialog-close" aria-label="Fechar busca de cliente"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </form>
+    <h2 id="whatsappCustomerDialogTitle">Vincular cliente</h2>
+    <p>Busque por nome, CNPJ, telefone ou código.</p>
+    <form asp-action="LinkCustomer" method="post" class="whatsapp-customer-search-form">
+        <input type="hidden" name="conversationId" id="whatsappCustomerConversationId" />
+        <input type="hidden" name="customerId" id="whatsappCustomerId" required />
+        <label for="whatsappCustomerSearch">Buscar cliente</label>
+        <input id="whatsappCustomerSearch" type="search" autocomplete="off" placeholder="Digite pelo menos 2 caracteres" />
+        <div class="whatsapp-customer-results" id="whatsappCustomerResults" role="listbox" aria-label="Resultados de clientes">
+            <p class="whatsapp-customer-results-empty">Digite para buscar clientes.</p>
+        </div>
+        <div class="whatsapp-customer-dialog__actions">
+            <button type="button" class="btn btn-sm btn-outline-dark whatsapp-dialog-cancel">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-gold" id="whatsappCustomerSubmit" disabled>Vincular cliente</button>
+        </div>
+    </form>
+</dialog>
 
 @section Scripts {
     <script src="~/js/whatsapp-composer.js" asp-append-version="true"></script>

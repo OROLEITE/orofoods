@@ -478,6 +478,8 @@ public class WhatsAppBusinessTests
 
         Assert.Equal(2, messages.Count);
         Assert.Equal(2, messages.Select(item => item.GetProperty("id").GetInt64()).Distinct().Count());
+        Assert.Equal("no-store, no-cache, must-revalidate", controller.Response.Headers.CacheControl.ToString());
+        Assert.EndsWith("Z", messages[0].GetProperty("createdAt").GetString());
     }
 
     [Fact]
