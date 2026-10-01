@@ -23,17 +23,24 @@ jobs:
         with:
           dotnet-version: '10.x'
 
+      - name: Clean build outputs
+        run: dotnet clean Orofoods.slnx --configuration Release --no-restore
+
       - name: Build with dotnet
         run: dotnet build Orofoods.slnx --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish Orofoods.Web/Orofoods.Web.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: |
+          publish_dir="${{ runner.temp }}/orofoods-publish"
+          rm -rf "$publish_dir"
+          mkdir -p "$publish_dir"
+          dotnet publish Orofoods.Web/Orofoods.Web.csproj -c Release --no-restore -o "$publish_dir"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: ${{ runner.temp }}/orofoods-publish
 
   deploy:
     runs-on: ubuntu-latest
@@ -85,3 +92,4 @@ jobs:
           app-name: 'app-orofoods-stg-01'
           slot-name: 'Production'
           package: ./publish
+          clean: true
