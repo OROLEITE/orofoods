@@ -64,7 +64,7 @@
                             _ => "Encerrada"
                         };
 
-                        <a class="whatsapp-conversation @(Model.Selected?.Id == conversation.Id ? "is-active" : "")"
+                        <a class="whatsapp-conversation whatsapp-conversation--@conversation.Status.ToString().ToLowerInvariant() @(Model.Selected?.Id == conversation.Id ? "is-active" : "")"
                            asp-route-id="@conversation.Id"
                            data-conversation-id="@conversation.Id"
                            aria-current="@(Model.Selected?.Id == conversation.Id ? "page" : null)">

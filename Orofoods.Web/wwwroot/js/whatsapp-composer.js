@@ -238,6 +238,8 @@
 
     const updateConversation = (element, conversation) => {
         element.classList.toggle('is-active', conversation.id === selectedConversationId);
+        element.classList.remove('whatsapp-conversation--open', 'whatsapp-conversation--pending', 'whatsapp-conversation--closed');
+        element.classList.add(`whatsapp-conversation--${conversation.status}`);
         if (conversation.id === selectedConversationId) element.setAttribute('aria-current', 'page');
         element.querySelector('.whatsapp-conversation-title strong').textContent = conversation.name;
         const time = element.querySelector('.whatsapp-conversation-title time');
