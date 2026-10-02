@@ -2327,3 +2327,82 @@ body:has(.whatsapp-inbox-page) .whatsapp-compose {
         scroll-padding-block-end: 18px;
     }
 }
+
+/* Bind the final control styles to the rendered CRM tree without relying on :has(). */
+html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--crm-accent, #a97522) 45%, var(--crm-border, #ded8ce));
+    background-color: var(--crm-accent-soft, #f7ecd7);
+    color: var(--crm-text, #2e302d);
+}
+
+html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle[aria-pressed="false"] {
+    border-color: var(--crm-border, #ded8ce);
+    background-color: var(--crm-surface-muted, #f7f3eb);
+    color: var(--crm-muted, #6f746f);
+}
+
+html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:hover,
+html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:focus-visible {
+    border-color: var(--crm-accent, #a97522);
+    background-color: var(--crm-surface, #fffdf9);
+    color: var(--crm-text, #2e302d);
+}
+
+html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--crm-accent, #a97522) 35%, transparent);
+    outline-offset: 2px;
+}
+
+html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:active {
+    background-color: var(--crm-accent-soft, #f7ecd7);
+}
+
+html[data-theme="dark"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--crm-accent, #d2a24e) 55%, var(--crm-border, #384756));
+    background-color: var(--crm-accent-soft, #38301f);
+    color: var(--crm-text, #e5eaf0);
+}
+
+html[data-theme="dark"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle[aria-pressed="false"] {
+    border-color: var(--crm-border, #384756);
+    background-color: var(--crm-surface-muted, #222e3a);
+    color: var(--crm-muted, #b0bbc6);
+}
+
+html[data-theme="dark"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:hover,
+html[data-theme="dark"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:focus-visible {
+    border-color: var(--crm-accent, #d2a24e);
+    background-color: var(--crm-surface, #1b2632);
+    color: var(--crm-text, #e5eaf0);
+}
+
+html[data-theme="dark"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:focus-visible {
+    outline-color: color-mix(in srgb, var(--crm-accent, #d2a24e) 45%, transparent);
+}
+
+html[data-theme="dark"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:active {
+    background-color: var(--crm-accent-soft, #38301f);
+}
+
+.whatsapp-inbox-page .whatsapp-customer-panel .whatsapp-customer-actions {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+
+.whatsapp-inbox-page .whatsapp-customer-panel .whatsapp-customer-actions > form {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+}
+
+.whatsapp-inbox-page .whatsapp-customer-panel .whatsapp-customer-actions > :is(a, form > button) {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+}
