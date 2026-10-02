@@ -181,6 +181,16 @@
         sendFeedback.classList.toggle('whatsapp-send-feedback--error', isError);
     };
 
+    const handleComposerKeydown = event => {
+        if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+
+        event.preventDefault();
+        if (!textarea?.value.trim() || sendInFlight) return;
+
+        form.requestSubmit(sendButton ?? undefined);
+    };
+    textarea?.addEventListener('keydown', handleComposerKeydown);
+
     const isNearBottom = () => messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 64;
     const scrollToBottom = () => {
         messageList.scrollTop = messageList.scrollHeight;
@@ -479,11 +489,13 @@
         }
 
         event.preventDefault();
+        const submittedText = textarea?.value ?? '';
+        if (!submittedText.trim()) return;
+
         sendInFlight = true;
         form.querySelector('.whatsapp-send-feedback--error')?.remove();
         showSendFeedback('');
 
-        const submittedText = textarea?.value ?? '';
         const keepAtBottom = isNearBottom();
         const previousScrollTop = messageList.scrollTop;
         const buttonLabel = sendButton?.querySelector('span');

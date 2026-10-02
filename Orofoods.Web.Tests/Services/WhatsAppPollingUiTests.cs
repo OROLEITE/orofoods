@@ -65,6 +65,77 @@ public class WhatsAppPollingUiTests
         Assert.Contains(".whatsapp-channel-badge", styles);
         Assert.Contains("--crm-message-in", styles);
         Assert.Contains("--crm-message-out", styles);
+
+        var soundOnLight = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"true\"]");
+        var soundOffLight = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"false\"]");
+        var soundOnDark = ReadCssRule(styles, "html[data-theme=\"dark\"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"true\"]");
+        var soundOffDark = ReadCssRule(styles, "html[data-theme=\"dark\"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"false\"]");
+        var customerActions = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-customer-panel .whatsapp-customer-actions");
+
+        Assert.Contains("background: var(--crm-accent-soft)", soundOnLight);
+        Assert.Contains("background: var(--crm-surface-muted)", soundOffLight);
+        Assert.Contains("background: var(--crm-accent-soft)", soundOnDark);
+        Assert.Contains("background: var(--crm-surface-muted)", soundOffDark);
+        Assert.DoesNotContain("#fff", soundOnDark, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("#fff", soundOffDark, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("display: flex", customerActions);
+        Assert.Contains("flex-direction: column", customerActions);
+        Assert.Contains("gap: 12px", customerActions);
+    }
+
+    [Theory]
+    [InlineData("Mensagem", false, false, false, false, 1, true)]
+    [InlineData("Mensagem", true, false, false, false, 0, false)]
+    [InlineData("   ", false, false, false, false, 0, true)]
+    [InlineData("texto em composição", false, true, false, false, 0, false)]
+    [InlineData("Mensagem", false, false, false, true, 1, true)]
+    public async Task Composer_keyboard_sends_only_unmodified_nonempty_enter_once(
+        string text,
+        bool shiftKey,
+        bool isComposing,
+        bool sendInFlightInitially,
+        bool repeatEnter,
+        int expectedSubmits,
+        bool expectedPreventDefault)
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var handler = ExtractBetween(script, "    const handleComposerKeydown = event =>", "    textarea?.addEventListener('keydown', handleComposerKeydown);");
+        var scenario = JsonSerializer.Serialize(new { text, shiftKey, isComposing, sendInFlightInitially, repeatEnter });
+        const string harness = """
+            const scenario = __SCENARIO__;
+            const textarea = { value: scenario.text };
+            let sendInFlight = scenario.sendInFlightInitially;
+            let submitCount = 0;
+            const sendButton = { id: 'send-button' };
+            const form = { requestSubmit(submitter) { submitCount++; if (submitter !== sendButton) throw new Error('Expected existing submit button'); sendInFlight = true; } };
+            let preventDefaultCount = 0;
+            const makeEvent = () => ({
+                key: 'Enter', shiftKey: scenario.shiftKey, isComposing: scenario.isComposing, keyCode: 13,
+                preventDefault() { preventDefaultCount++; }
+            });
+            __HANDLER__
+            handleComposerKeydown(makeEvent());
+            if (scenario.repeatEnter) handleComposerKeydown(makeEvent());
+            JSON.stringify({ submitCount, preventDefaultCount });
+            """;
+        var executable = harness
+            .Replace("__SCENARIO__", scenario, StringComparison.Ordinal)
+            .Replace("__HANDLER__", handler, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(executable);
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.Equal(expectedSubmits, state.GetProperty("submitCount").GetInt32());
+        Assert.Equal(expectedPreventDefault ? (repeatEnter ? 2 : 1) : 0, state.GetProperty("preventDefaultCount").GetInt32());
+
+        var submitHandler = ExtractBetween(script, "form.addEventListener('submit', async event =>", "    const schedule =");
+        Assert.Contains("event.preventDefault()", submitHandler);
+        Assert.Contains("if (!submittedText.trim()) return;", submitHandler);
+        Assert.Contains("if (sendInFlight)", submitHandler);
+        Assert.Contains("sendInFlight = true;", submitHandler);
+        Assert.DoesNotContain("location.reload", script);
+        Assert.Contains("setInterval(synchronize, 4000)", script);
+        Assert.Contains("WhatsApp sync failed.", script);
     }
 
     [Fact]
@@ -401,5 +472,15 @@ public class WhatsAppPollingUiTests
         var end = source.IndexOf(endMarker, start, StringComparison.Ordinal);
         Assert.True(end > start, $"Could not find {endMarker} after {startMarker}.");
         return source[start..end];
+    }
+
+    private static string ReadCssRule(string source, string selector)
+    {
+        var start = source.IndexOf(selector, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Could not find CSS selector {selector}.");
+        var openBrace = source.IndexOf('{', start);
+        var closeBrace = source.IndexOf('}', openBrace);
+        Assert.True(openBrace > start && closeBrace > openBrace, $"Could not read CSS rule for {selector}.");
+        return source[openBrace..(closeBrace + 1)];
     }
 }
