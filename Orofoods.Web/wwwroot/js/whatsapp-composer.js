@@ -181,11 +181,27 @@
         sendFeedback.classList.toggle('whatsapp-send-feedback--error', isError);
     };
 
+    const handleComposerKeydown = event => {
+        if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+
+        event.preventDefault();
+        if (!textarea?.value.trim() || sendInFlight) return;
+
+        form.requestSubmit(sendButton ?? undefined);
+    };
+    textarea?.addEventListener('keydown', handleComposerKeydown);
+
     const isNearBottom = () => messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 64;
     const scrollToBottom = () => {
         messageList.scrollTop = messageList.scrollHeight;
         if (newMessageButton) newMessageButton.hidden = true;
     };
+    const scrollToBottomAfterUpdate = () => new Promise(resolve => {
+        window.requestAnimationFrame(() => {
+            scrollToBottom();
+            resolve();
+        });
+    });
     scrollToBottom();
 
     newMessageButton?.addEventListener('click', scrollToBottom);
@@ -479,11 +495,13 @@
         }
 
         event.preventDefault();
+        const submittedText = textarea?.value ?? '';
+        if (!submittedText.trim()) return;
+
         sendInFlight = true;
         form.querySelector('.whatsapp-send-feedback--error')?.remove();
         showSendFeedback('');
 
-        const submittedText = textarea?.value ?? '';
         const keepAtBottom = isNearBottom();
         const previousScrollTop = messageList.scrollTop;
         const buttonLabel = sendButton?.querySelector('span');
@@ -518,12 +536,12 @@
             }
 
             await synchronize();
-            if (!keepAtBottom) messageList.scrollTop = previousScrollTop;
             if (textarea && textarea.value === submittedText) {
                 textarea.value = '';
                 resizeComposer();
             }
-            showSendFeedback('Mensagem enviada.');
+            textarea?.focus();
+            await scrollToBottomAfterUpdate();
         } catch {
             if (!keepAtBottom) messageList.scrollTop = previousScrollTop;
             showSendFeedback('Não foi possível confirmar o envio. Confira sua conexão e tente novamente.', true);

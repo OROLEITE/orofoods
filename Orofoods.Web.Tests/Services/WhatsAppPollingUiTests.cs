@@ -65,6 +65,216 @@ public class WhatsAppPollingUiTests
         Assert.Contains(".whatsapp-channel-badge", styles);
         Assert.Contains("--crm-message-in", styles);
         Assert.Contains("--crm-message-out", styles);
+
+        var soundOnLight = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"true\"]");
+        var soundOffLight = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"false\"]");
+        var soundOnDark = ReadCssRule(styles, "html[data-theme=\"dark\"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"true\"]");
+        var soundOffDark = ReadCssRule(styles, "html[data-theme=\"dark\"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"false\"]");
+        var customerActions = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-customer-panel .whatsapp-customer-actions");
+
+        Assert.Contains("background: var(--crm-accent-soft)", soundOnLight);
+        Assert.Contains("background: var(--crm-surface-muted)", soundOffLight);
+        Assert.Contains("background: var(--crm-accent-soft)", soundOnDark);
+        Assert.Contains("background: var(--crm-surface-muted)", soundOffDark);
+        Assert.DoesNotContain("#fff", soundOnDark, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("#fff", soundOffDark, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("display: flex", customerActions);
+        Assert.Contains("flex-direction: column", customerActions);
+        Assert.Contains("gap: 12px", customerActions);
+    }
+
+    [Fact]
+    public void Dark_theme_uses_a_slightly_lighter_inbound_message_surface_only()
+    {
+        var styles = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var lightTheme = ReadCssRule(styles, "html:has(.whatsapp-inbox-page)");
+        var darkTheme = ReadCssRule(styles, "html[data-theme=\"dark\"]:has(.whatsapp-inbox-page)");
+
+        Assert.Contains("--crm-message-in: #fffefa", lightTheme);
+        Assert.Contains("--crm-message-in: #2c3a46", darkTheme);
+        Assert.Contains("--crm-message-out: #2b4036", darkTheme);
+        Assert.Contains("--crm-chat-bg: #151e27", darkTheme);
+    }
+
+    [Theory]
+    [InlineData("Mensagem", false, false, false, false, 1, true)]
+    [InlineData("Mensagem", true, false, false, false, 0, false)]
+    [InlineData("   ", false, false, false, false, 0, true)]
+    [InlineData("texto em composição", false, true, false, false, 0, false)]
+    [InlineData("Mensagem", false, false, false, true, 1, true)]
+    public async Task Composer_keyboard_sends_only_unmodified_nonempty_enter_once(
+        string text,
+        bool shiftKey,
+        bool isComposing,
+        bool sendInFlightInitially,
+        bool repeatEnter,
+        int expectedSubmits,
+        bool expectedPreventDefault)
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var handler = ExtractBetween(script, "    const handleComposerKeydown = event =>", "    textarea?.addEventListener('keydown', handleComposerKeydown);");
+        var scenario = JsonSerializer.Serialize(new { text, shiftKey, isComposing, sendInFlightInitially, repeatEnter });
+        const string harness = """
+            const scenario = __SCENARIO__;
+            const textarea = { value: scenario.text };
+            let sendInFlight = scenario.sendInFlightInitially;
+            let submitCount = 0;
+            const sendButton = { id: 'send-button' };
+            const form = { requestSubmit(submitter) { submitCount++; if (submitter !== sendButton) throw new Error('Expected existing submit button'); sendInFlight = true; } };
+            let preventDefaultCount = 0;
+            const makeEvent = () => ({
+                key: 'Enter', shiftKey: scenario.shiftKey, isComposing: scenario.isComposing, keyCode: 13,
+                preventDefault() { preventDefaultCount++; }
+            });
+            __HANDLER__
+            handleComposerKeydown(makeEvent());
+            if (scenario.repeatEnter) handleComposerKeydown(makeEvent());
+            JSON.stringify({ submitCount, preventDefaultCount });
+            """;
+        var executable = harness
+            .Replace("__SCENARIO__", scenario, StringComparison.Ordinal)
+            .Replace("__HANDLER__", handler, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(executable);
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.Equal(expectedSubmits, state.GetProperty("submitCount").GetInt32());
+        Assert.Equal(expectedPreventDefault ? (repeatEnter ? 2 : 1) : 0, state.GetProperty("preventDefaultCount").GetInt32());
+
+        var submitHandler = ExtractBetween(script, "form.addEventListener('submit', async event =>", "    const schedule =");
+        Assert.Contains("event.preventDefault()", submitHandler);
+        Assert.Contains("if (!submittedText.trim()) return;", submitHandler);
+        Assert.Contains("if (sendInFlight)", submitHandler);
+        Assert.Contains("sendInFlight = true;", submitHandler);
+        Assert.DoesNotContain("location.reload", script);
+        Assert.Contains("setInterval(synchronize, 4000)", script);
+        Assert.Contains("WhatsApp sync failed.", script);
+    }
+
+    [Fact]
+    public async Task Outbound_success_is_silent_preserves_errors_and_scrolls_after_render()
+    {
+        var root = FindRepositoryRoot();
+        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var submitHandler = ExtractBetween(script, "form.addEventListener('submit', async event =>", "    const schedule =");
+        var successPath = ExtractBetween(submitHandler, "await synchronize();", "        } catch {");
+
+        Assert.DoesNotContain("Mensagem enviada.", script);
+        Assert.Contains("showSendFeedback(serverError, true)", submitHandler);
+        Assert.Contains("showSendFeedback('Não foi possível confirmar o envio. Confira sua conexão e tente novamente.', true)", submitHandler);
+        Assert.Contains("whatsapp-send-feedback--error", view);
+        Assert.Contains("role=\"alert\"", view);
+        Assert.Contains("textarea.value = ''", successPath);
+        Assert.Contains("textarea?.focus()", successPath);
+        Assert.Contains("await scrollToBottomAfterUpdate()", successPath);
+        Assert.DoesNotContain("previousScrollTop", successPath);
+        Assert.True(successPath.IndexOf("textarea.value = ''", StringComparison.Ordinal)
+            < successPath.IndexOf("await scrollToBottomAfterUpdate()", StringComparison.Ordinal));
+
+        var scrollHelper = ExtractBetween(script, "    const scrollToBottomAfterUpdate = () =>", "\n    scrollToBottom();\n");
+        const string harness = """
+            let frameRequested = false;
+            const messageList = { scrollTop: 16, scrollHeight: 120 };
+            const newMessageButton = { hidden: false };
+            const window = { requestAnimationFrame(callback) { frameRequested = true; messageList.scrollHeight = 340; callback(); } };
+            const scrollToBottom = () => {
+                messageList.scrollTop = messageList.scrollHeight;
+                newMessageButton.hidden = true;
+            };
+            __HELPER__
+            (async () => {
+                await scrollToBottomAfterUpdate();
+                return JSON.stringify({ frameRequested, scrollTop: messageList.scrollTop, scrollHeight: messageList.scrollHeight, indicatorHidden: newMessageButton.hidden });
+            })()
+            """;
+        var result = await new Engine().EvaluateAsync(harness.Replace("__HELPER__", scrollHelper, StringComparison.Ordinal));
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.True(state.GetProperty("frameRequested").GetBoolean());
+        Assert.Equal(state.GetProperty("scrollHeight").GetInt32(), state.GetProperty("scrollTop").GetInt32());
+        Assert.True(state.GetProperty("indicatorHidden").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(true, 1, true)]
+    [InlineData(false, 0, false)]
+    public async Task Inbound_polling_scrolls_only_near_the_bottom_and_shows_new_message_indicator(
+        bool initiallyNearBottom,
+        int expectedScrollCalls,
+        bool expectedIndicatorHidden)
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var scrollLogic = ExtractBetween(script, "    const isNearBottom = () =>", "\n    scrollToBottom();\n");
+        var updateMessages = ExtractBetween(script, "    const updateMessages = messages =>", "    const conversationElement = conversation =>");
+        var scenario = JsonSerializer.Serialize(new { initiallyNearBottom });
+        const string harness = """
+            const scenario = __SCENARIO__;
+            const newMessageButton = { hidden: true };
+            const messageList = {
+                scrollHeight: scenario.initiallyNearBottom ? 180 : 1000,
+                scrollTop: scenario.initiallyNearBottom ? 80 : 100,
+                clientHeight: 100,
+                querySelector() { return null; },
+                append() { this.scrollHeight += 80; }
+            };
+            const renderedMessageElements = new Map();
+            const notificationSeenInboundIds = new Set();
+            const window = { requestAnimationFrame(callback) { callback(); } };
+            const document = { createElement() { return { dataset: {} }; } };
+            const renderMessage = article => { article.dataset.renderKey = 'rendered'; };
+            const console = { error() {} };
+            __SCROLL_LOGIC__
+            __UPDATE_MESSAGES__
+            updateMessages([{ id: 701, direction: 'inbound', type: 'text', mediaState: 'none' }]);
+            JSON.stringify({ scrollTop: messageList.scrollTop, scrollHeight: messageList.scrollHeight, indicatorHidden: newMessageButton.hidden });
+            """;
+        var executable = harness
+            .Replace("__SCENARIO__", scenario, StringComparison.Ordinal)
+            .Replace("__SCROLL_LOGIC__", scrollLogic, StringComparison.Ordinal)
+            .Replace("__UPDATE_MESSAGES__", updateMessages, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(executable);
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.Equal(expectedIndicatorHidden, state.GetProperty("indicatorHidden").GetBoolean());
+        Assert.Equal(expectedScrollCalls > 0, state.GetProperty("scrollTop").GetInt32() != 100);
+        if (initiallyNearBottom)
+            Assert.Equal(state.GetProperty("scrollHeight").GetInt32(), state.GetProperty("scrollTop").GetInt32());
+        else
+            Assert.Equal(100, state.GetProperty("scrollTop").GetInt32());
+
+        Assert.Contains("newMessageButton?.addEventListener('click', scrollToBottom)", script);
+    }
+
+    [Fact]
+    public void Chat_scroll_keeps_composer_in_its_own_row_and_reserves_bottom_space()
+    {
+        var root = FindRepositoryRoot();
+        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        const string threadSelector = "body:has(.whatsapp-inbox-page) .whatsapp-thread";
+        const string messagesSelector = "body:has(.whatsapp-inbox-page) .whatsapp-messages";
+        const string composerSelector = "body:has(.whatsapp-inbox-page) .whatsapp-compose";
+        var responsiveStart = styles.LastIndexOf("@media (max-width: 767.98px)", StringComparison.Ordinal);
+        var thread = ReadCssRule(styles, threadSelector, styles.LastIndexOf(threadSelector, StringComparison.Ordinal));
+        var messages = ReadCssRule(styles, messagesSelector, styles.LastIndexOf(messagesSelector, responsiveStart - 1, StringComparison.Ordinal));
+        var composer = ReadCssRule(styles, composerSelector, styles.LastIndexOf(composerSelector, StringComparison.Ordinal));
+        var mobileMessages = ReadCssRule(styles, messagesSelector, responsiveStart);
+
+        Assert.Contains("display: flex", ReadCssRule(styles, ".whatsapp-thread"));
+        Assert.Contains("overflow: hidden", thread);
+        Assert.Contains("min-height: 0", thread);
+        Assert.Contains("flex: 1 1 auto", messages);
+        Assert.Contains("overflow-y: auto", messages);
+        Assert.Contains("padding-block-end: 24px", messages);
+        Assert.Contains("scroll-padding-block-end: 24px", messages);
+        Assert.Contains("position: relative", composer);
+        Assert.Contains("flex: 0 0 auto", composer);
+        Assert.Contains("body:has(.whatsapp-inbox-page) {\n    overflow: hidden;", styles);
+        Assert.Contains("max-width: 767.98px", styles);
+        Assert.Contains("padding-block-end: 18px", mobileMessages);
+        Assert.Contains("scroll-padding-block-end: 18px", mobileMessages);
     }
 
     [Fact]
@@ -401,5 +611,15 @@ public class WhatsAppPollingUiTests
         var end = source.IndexOf(endMarker, start, StringComparison.Ordinal);
         Assert.True(end > start, $"Could not find {endMarker} after {startMarker}.");
         return source[start..end];
+    }
+
+    private static string ReadCssRule(string source, string selector, int startAt = 0)
+    {
+        var start = source.IndexOf(selector, startAt, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Could not find CSS selector {selector}.");
+        var openBrace = source.IndexOf('{', start);
+        var closeBrace = source.IndexOf('}', openBrace);
+        Assert.True(openBrace > start && closeBrace > openBrace, $"Could not read CSS rule for {selector}.");
+        return source[openBrace..(closeBrace + 1)];
     }
 }
