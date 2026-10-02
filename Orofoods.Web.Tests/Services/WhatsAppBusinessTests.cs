@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Orofoods.Web.Areas.Admin.Controllers;
@@ -407,7 +409,7 @@ public class WhatsAppBusinessTests
     {
         var handler = new FakeHandler();
         var client = new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") };
-        var gateway = new MetaWhatsAppBusinessGateway(client, Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-test", AccessToken = "fake-token" }));
+        var gateway = new MetaWhatsAppBusinessGateway(client, Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-test", AccessToken = "fake-token" }), NullLogger<MetaWhatsAppBusinessGateway>.Instance);
         var result = await gateway.SendTextAsync("5511999990000", "Olá");
         Assert.True(result.Succeeded);
         Assert.Equal("wamid.sent.1", result.ExternalMessageId);
@@ -697,21 +699,118 @@ public class WhatsAppBusinessTests
     public async Task Gateway_returns_sanitized_error_for_meta_failure_and_disabled_mode()
     {
         var failingClient = new HttpClient(new FakeHandler(HttpStatusCode.Unauthorized)) { BaseAddress = new Uri("https://graph.facebook.com/") };
-        var gateway = new MetaWhatsAppBusinessGateway(failingClient, Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-test", AccessToken = "fake-token" }));
+        var gateway = new MetaWhatsAppBusinessGateway(failingClient, Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-test", AccessToken = "fake-token" }), NullLogger<MetaWhatsAppBusinessGateway>.Instance);
         var failed = await gateway.SendTextAsync("5511999990000", "Olá");
         Assert.False(failed.Succeeded);
         Assert.Equal("401", failed.ErrorCode);
         Assert.DoesNotContain("fake-token", failed.ErrorMessage ?? "");
 
-        var disabled = new MetaWhatsAppBusinessGateway(new HttpClient(new FakeHandler()), Options.Create(new WhatsAppBusinessOptions { Enabled = false }));
+        var disabled = new MetaWhatsAppBusinessGateway(new HttpClient(new FakeHandler()), Options.Create(new WhatsAppBusinessOptions { Enabled = false }), NullLogger<MetaWhatsAppBusinessGateway>.Instance);
         var disabledResult = await disabled.SendTextAsync("5511999990000", "Olá");
         Assert.Equal("DISABLED", disabledResult.ErrorCode);
     }
 
     [Fact]
+    public async Task Gateway_logs_sanitized_meta_error_details_and_masks_request_identifiers()
+    {
+        const string recipient = "5511999992273";
+        const string message = "texto confidencial do pedido";
+        const string accessToken = "access-token-private-value";
+        const string appSecret = "app-secret-private-value";
+        const string verifyToken = "verify-token-private-value";
+        const string phoneNumberId = "1234567890128243";
+        var log = new CapturingLogger<MetaWhatsAppBusinessGateway>();
+        var responseJson = JsonSerializer.Serialize(new
+        {
+            error = new
+            {
+                code = 131047,
+                type = "OAuthException",
+                message = $"Rejected {message} for {recipient}; token={accessToken}; app_secret={appSecret}; verify_token={verifyToken}; Authorization: Bearer {accessToken}; phone_number_id={phoneNumberId}",
+                error_subcode = 2494010,
+                fbtrace_id = "AbCdEf123456"
+            }
+        });
+        var handler = new FakeHandler(HttpStatusCode.BadRequest, responseJson);
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") };
+        var settings = new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            GraphApiVersion = "v23.0",
+            PhoneNumberId = phoneNumberId,
+            AccessToken = accessToken,
+            AppSecret = appSecret,
+            VerifyToken = verifyToken
+        };
+        var gateway = new MetaWhatsAppBusinessGateway(client, Options.Create(settings), log);
+
+        var result = await gateway.SendTextAsync(recipient, message);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("400", result.ErrorCode);
+        Assert.Equal("Falha ao enviar mensagem WhatsApp.", result.ErrorMessage);
+        var entry = Assert.Single(log.Entries);
+        Assert.Equal(4201, entry.EventId.Id);
+        Assert.Equal("WhatsApp.MetaSendRejected", entry.EventId.Name);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains("HttpStatus=400", entry.Message);
+        Assert.Contains("MetaErrorCode=131047", entry.Message);
+        Assert.Contains("MetaErrorSubcode=2494010", entry.Message);
+        Assert.Contains("MetaErrorType=OAuthException", entry.Message);
+        Assert.Contains("FbtraceId=AbCdEf123456", entry.Message);
+        Assert.Contains("PhoneNumberId=************8243", entry.Message);
+        Assert.Contains("Recipient=*********2273", entry.Message);
+        Assert.Contains("[REDACTED]", entry.Message);
+        Assert.DoesNotContain(accessToken, entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(appSecret, entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(verifyToken, entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(message, entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(recipient, entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(phoneNumberId, entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", entry.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("messaging_product", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(handler.Body, entry.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Gateway_logs_optional_meta_error_fields_as_null_when_absent()
+    {
+        var log = new CapturingLogger<MetaWhatsAppBusinessGateway>();
+        var handler = new FakeHandler(HttpStatusCode.BadRequest, "{\"error\":{\"code\":100,\"type\":\"OAuthException\",\"message\":\"Invalid parameter\"}}");
+        var gateway = new MetaWhatsAppBusinessGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-id-8243", AccessToken = "test-token" }),
+            log);
+
+        var result = await gateway.SendTextAsync("5511999992273", "Teste");
+
+        Assert.False(result.Succeeded);
+        var entry = Assert.Single(log.Entries);
+        Assert.Contains("MetaErrorCode=100", entry.Message);
+        Assert.Contains("MetaErrorSubcode=", entry.Message);
+        Assert.Contains("FbtraceId=", entry.Message);
+    }
+
+    [Fact]
+    public async Task Gateway_does_not_log_meta_rejection_event_for_successful_response()
+    {
+        var log = new CapturingLogger<MetaWhatsAppBusinessGateway>();
+        var gateway = new MetaWhatsAppBusinessGateway(
+            new HttpClient(new FakeHandler()) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-id-8243", AccessToken = "test-token" }),
+            log);
+
+        var result = await gateway.SendTextAsync("5511999992273", "Teste");
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("wamid.sent.1", result.ExternalMessageId);
+        Assert.Empty(log.Entries);
+    }
+
+    [Fact]
     public async Task Gateway_propagates_cancellation_from_timeout_handler()
     {
-        var gateway = new MetaWhatsAppBusinessGateway(new HttpClient(new TimeoutHandler()) { BaseAddress = new Uri("https://graph.facebook.com/") }, Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-test", AccessToken = "fake-token" }));
+        var gateway = new MetaWhatsAppBusinessGateway(new HttpClient(new TimeoutHandler()) { BaseAddress = new Uri("https://graph.facebook.com/") }, Options.Create(new WhatsAppBusinessOptions { Enabled = true, GraphApiVersion = "v23.0", PhoneNumberId = "phone-test", AccessToken = "fake-token" }), NullLogger<MetaWhatsAppBusinessGateway>.Instance);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => gateway.SendTextAsync("5511999990000", "Olá", new CancellationToken(true)));
     }
 
@@ -721,14 +820,43 @@ public class WhatsAppBusinessTests
         public string RequestUri { get; private set; } = "";
         public string Body { get; private set; } = "";
         private readonly HttpStatusCode statusCode;
-        public FakeHandler(HttpStatusCode statusCode = HttpStatusCode.OK) => this.statusCode = statusCode;
+        private readonly string? responseJson;
+        public FakeHandler(HttpStatusCode statusCode = HttpStatusCode.OK, string? responseJson = null)
+        {
+            this.statusCode = statusCode;
+            this.responseJson = responseJson;
+        }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Method = request.Method;
             RequestUri = request.RequestUri?.ToString() ?? "";
             Body = await request.Content!.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(statusCode) { Content = JsonContent.Create(new { messages = new[] { new { id = "wamid.sent.1" } } }) };
+            HttpContent content = responseJson is null
+                ? JsonContent.Create(new { messages = new[] { new { id = "wamid.sent.1" } } })
+                : new StringContent(responseJson, Encoding.UTF8, "application/json");
+            return new HttpResponseMessage(statusCode) { Content = content };
         }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<CapturedLogEntry> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullLoggerScope.Instance;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add(new CapturedLogEntry(logLevel, eventId, formatter(state, exception)));
+        }
+    }
+
+    private sealed record CapturedLogEntry(LogLevel Level, EventId EventId, string Message);
+
+    private sealed class NullLoggerScope : IDisposable
+    {
+        public static NullLoggerScope Instance { get; } = new();
+        public void Dispose() { }
     }
 
     private sealed class TimeoutHandler : HttpMessageHandler

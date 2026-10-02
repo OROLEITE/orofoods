@@ -209,7 +209,7 @@ builder.Services.AddHttpClient<IWhatsAppBusinessGateway, MetaWhatsAppBusinessGat
 {
     client.BaseAddress = new Uri("https://graph.facebook.com/");
     client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
-});
+}).RemoveAllLoggers(); // The request URL contains the unmasked PhoneNumberId; the gateway logs only sanitized rejection details.
 builder.Services.AddHttpClient<IWhatsAppMediaClient, MetaWhatsAppMediaClient>((sp, client) =>
 {
     client.BaseAddress = new Uri("https://graph.facebook.com/");
