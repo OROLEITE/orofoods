@@ -1744,24 +1744,24 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog :is(input, button):focu
 /* Final CRM tokens and component states shared by Light and Dark themes. */
 html:has(.whatsapp-inbox-page) {
     color-scheme: light;
-    --crm-page-bg: #f3f1ec;
-    --crm-surface: #fffdf9;
-    --crm-surface-muted: #f7f3eb;
-    --crm-border: #ded8ce;
-    --crm-text: #2e302d;
-    --crm-muted: #6f746f;
-    --crm-accent: #a97522;
-    --crm-accent-hover: #895e18;
-    --crm-accent-soft: #f7ecd7;
+    --crm-page-bg: #F8FAFC;
+    --crm-surface: #FFFFFF;
+    --crm-surface-muted: #F8FAFC;
+    --crm-border: #E2E8F0;
+    --crm-text: #0F172A;
+    --crm-muted: #475569;
+    --crm-accent: #2563EB;
+    --crm-accent-hover: #1D4ED8;
+    --crm-accent-soft: #EFF6FF;
     --crm-action-text: #ffffff;
     --crm-message-in: #fffefa;
     --crm-message-out: #e8f1e2;
-    --crm-chat-bg: #eeeae3;
+    --crm-chat-bg: #F8FAFC;
     --crm-success: #477654;
     --crm-success-soft: #edf6ed;
     --crm-danger: #a64e48;
     --crm-danger-soft: #fbefed;
-    --crm-shadow: 0 12px 32px rgba(44, 39, 30, .08);
+    --crm-shadow: 0 8px 24px rgba(15, 23, 42, .06);
     background-color: var(--crm-page-bg);
 }
 
@@ -1840,7 +1840,7 @@ body:has(.whatsapp-inbox-page) .whatsapp-inbox {
 }
 
 body:has(.whatsapp-inbox-page) :is(.whatsapp-conversations, .whatsapp-customer-panel) {
-    background: var(--crm-surface-muted);
+    background: var(--crm-surface);
     color: var(--crm-text);
 }
 
@@ -1902,7 +1902,7 @@ body:has(.whatsapp-inbox-page) .whatsapp-conversation:hover {
 body:has(.whatsapp-inbox-page) .whatsapp-conversation.is-active {
     border-color: color-mix(in srgb, var(--crm-accent) 42%, var(--crm-border));
     background: var(--crm-accent-soft);
-    box-shadow: inset 4px 0 var(--crm-accent);
+    box-shadow: inset 3px 0 var(--crm-accent);
 }
 
 body:has(.whatsapp-inbox-page) .whatsapp-conversation.is-active :is(strong, .whatsapp-conversation-preview, .whatsapp-conversation-meta, time) {
@@ -1945,9 +1945,9 @@ body:has(.whatsapp-inbox-page) .whatsapp-thread-contact strong {
 }
 
 body:has(.whatsapp-inbox-page) .whatsapp-status-pill--pending {
-    border-color: color-mix(in srgb, var(--crm-accent) 38%, var(--crm-border));
-    background: var(--crm-accent-soft);
-    color: var(--crm-accent-hover);
+    border-color: #CBD5E1;
+    background: #F1F5F9;
+    color: #475569;
 }
 
 body:has(.whatsapp-inbox-page) .whatsapp-status-pill--open {
@@ -2003,6 +2003,12 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-search-form input[type="search
     background: var(--crm-surface-muted);
     color: var(--crm-text);
     font-size: 14px;
+}
+
+body:has(.whatsapp-inbox-page) .whatsapp-compose textarea,
+body:has(.whatsapp-inbox-page) .whatsapp-customer-search-form input[type="search"],
+body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog :is(input, .whatsapp-customer-result) {
+    background: var(--crm-surface);
 }
 
 body:has(.whatsapp-inbox-page) .whatsapp-compose textarea:focus,
@@ -2483,4 +2489,8 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-customer-sear
     border-color: var(--crm-accent);
     outline: 3px solid color-mix(in srgb, var(--crm-accent) 35%, transparent);
     outline-offset: 2px;
+}
+
+body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog :is(input, .whatsapp-customer-result) {
+    background-color: var(--crm-surface);
 }

@@ -127,3 +127,83 @@ body>.site-header,body>.auth-user-menu{display:none}.site-header-modern{position
         border-top: 1px solid var(--nav-border);
     }
 }
+
+/* Light Mode header surfaces and navigation contrast. */
+html:not([data-theme="dark"]) .site-header-modern {
+    border-bottom-color: var(--border-subtle);
+    background: var(--surface-card);
+}
+
+html:not([data-theme="dark"]) .site-header-modern .main-nav .nav-link {
+    color: #1E293B;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .main-nav .nav-link:hover,
+html:not([data-theme="dark"]) .site-header-modern .main-nav .nav-link:focus-visible {
+    background: var(--action-primary-soft);
+    color: #0F172A;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .main-nav .nav-link.active {
+    box-shadow: inset 0 -2px 0 var(--gold);
+    color: #0F172A;
+}
+
+html:not([data-theme="dark"]) .site-header-modern :is(.navbar-toggler, .btn-outline-dark) {
+    border-color: var(--border-subtle);
+    color: #334155;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .navbar-toggler-icon {
+    filter: none;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .btn-outline-dark:hover,
+html:not([data-theme="dark"]) .site-header-modern .btn-outline-dark:focus-visible {
+    border-color: #CBD5E1;
+    background: #F1F5F9;
+    color: #0F172A;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .account-trigger {
+    border-color: var(--border-subtle);
+    background: var(--surface-card);
+    color: #1E293B;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .account-trigger:hover,
+html:not([data-theme="dark"]) .site-header-modern .account-trigger:focus-visible,
+html:not([data-theme="dark"]) .site-header-modern .account-trigger.show {
+    border-color: #CBD5E1;
+    background: #F8FAFC;
+    color: #0F172A;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .account-context {
+    color: #475569;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .account-menu {
+    border-color: var(--border-subtle);
+    background: var(--surface-card);
+}
+
+html:not([data-theme="dark"]) .site-header-modern .account-menu .dropdown-item {
+    color: #1E293B;
+}
+
+html:not([data-theme="dark"]) .site-header-modern .account-menu .dropdown-item:hover,
+html:not([data-theme="dark"]) .site-header-modern .account-menu .dropdown-item:focus {
+    background: #F1F5F9;
+}
+
+html:not([data-theme="dark"]) .site-header-modern :is(.account-trigger, .main-nav .nav-link, .navbar-toggler, .btn-outline-dark):focus-visible {
+    outline-color: var(--action-primary);
+}
+
+@media (max-width: 991.98px) {
+    html:not([data-theme="dark"]) .site-header-modern .navbar-collapse,
+    html:not([data-theme="dark"]) .site-header-modern .header-account {
+        border-color: var(--border-subtle);
+    }
+}
