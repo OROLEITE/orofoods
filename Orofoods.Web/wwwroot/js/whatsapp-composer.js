@@ -1,8 +1,34 @@
 (() => {
+    const themeToggle = document.querySelector('.whatsapp-theme-toggle');
+    const themeRoot = document.documentElement;
+    const applyTheme = theme => {
+        const isDark = theme === 'dark';
+        themeRoot.dataset.theme = isDark ? 'dark' : 'light';
+        if (!themeToggle) return;
+        themeToggle.setAttribute('aria-pressed', String(isDark));
+        themeToggle.setAttribute('aria-label', isDark ? 'Ativar tema claro' : 'Ativar tema escuro');
+        themeToggle.title = isDark ? 'Ativar tema claro' : 'Ativar tema escuro';
+        themeToggle.querySelector('i')?.classList.toggle('fa-sun', isDark);
+        themeToggle.querySelector('i')?.classList.toggle('fa-moon', !isDark);
+        const label = themeToggle.querySelector('span');
+        if (label) label.textContent = isDark ? 'Tema claro' : 'Tema escuro';
+    };
+    try {
+        applyTheme(window.localStorage.getItem('orofoods.crm.theme') === 'dark' ? 'dark' : 'light');
+    } catch {
+        applyTheme('light');
+    }
+    themeToggle?.addEventListener('click', () => {
+        const nextTheme = themeRoot.dataset.theme === 'dark' ? 'light' : 'dark';
+        applyTheme(nextTheme);
+        try { window.localStorage.setItem('orofoods.crm.theme', nextTheme); } catch { /* Storage may be disabled. */ }
+    });
+
     const textarea = document.getElementById('whatsappText');
     const form = document.querySelector('.whatsapp-compose');
     const messageList = document.querySelector('.whatsapp-messages');
     const conversationList = document.querySelector('.whatsapp-conversation-list');
+    const conversationSearch = document.querySelector('.whatsapp-search-input');
     const newMessageButton = document.querySelector('.whatsapp-new-message');
     const soundToggle = document.querySelector('.whatsapp-sound-toggle');
     const minHeight = 46;
@@ -321,6 +347,7 @@
         element.classList.add(`whatsapp-conversation--${conversation.status}`);
         if (conversation.id === selectedConversationId) element.setAttribute('aria-current', 'page');
         element.querySelector('.whatsapp-conversation-title strong').textContent = conversation.name;
+        if (conversation.phoneNumber) element.dataset.searchPhone = conversation.phoneNumber;
         const time = element.querySelector('.whatsapp-conversation-title time');
         time.textContent = formatTime(conversation.lastMessageAt);
         time.dateTime = conversation.lastMessageAt || '';
@@ -334,8 +361,23 @@
         badge.textContent = conversation.unreadCount > 99 ? '99+' : conversation.unreadCount;
         badge.setAttribute('aria-label', `${conversation.unreadCount} mensagens não lidas`);
         element.querySelector('.whatsapp-conversation-meta').textContent = conversation.status === 'open'
-            ? 'Em atendimento' : conversation.status === 'pending' ? 'Pendente' : 'Encerrada';
+            ? 'Em atendimento' : conversation.status === 'pending' ? 'Novo' : 'Finalizado';
     };
+
+    const applyConversationFilter = () => {
+        if (!conversationList || !conversationSearch) return;
+        const query = conversationSearch.value.trim().toLocaleLowerCase('pt-BR');
+        const conversations = [...conversationList.querySelectorAll('.whatsapp-conversation')];
+        let visibleCount = 0;
+        for (const conversation of conversations) {
+            const searchable = `${conversation.textContent} ${conversation.dataset.searchPhone || ''}`.toLocaleLowerCase('pt-BR');
+            conversation.hidden = query.length > 0 && !searchable.includes(query);
+            if (!conversation.hidden) visibleCount++;
+        }
+        const emptyResult = conversationList.querySelector('.whatsapp-search-empty');
+        if (emptyResult) emptyResult.hidden = query.length === 0 || visibleCount > 0;
+    };
+    conversationSearch?.addEventListener('input', applyConversationFilter);
 
     const updateConversations = conversations => {
         conversationList.querySelector('.whatsapp-list-empty')?.remove();
@@ -352,6 +394,7 @@
         conversationList.querySelectorAll('[data-conversation-id]').forEach(element => {
             if (!visibleIds.has(String(element.dataset.conversationId))) element.remove();
         });
+        applyConversationFilter();
     };
 
     const synchronize = async () => {
