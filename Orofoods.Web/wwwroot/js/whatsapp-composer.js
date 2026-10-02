@@ -334,7 +334,11 @@
             try {
                 renderMessage(article, message);
             } catch (error) {
-                console.error(`WhatsApp message ${messageId} could not be reconciled.`, error);
+                console.error('WhatsApp message reconciliation failed.', {
+                    messageId,
+                    name: error?.name ?? null,
+                    message: error?.message ?? null
+                });
                 continue;
             }
 
@@ -423,23 +427,38 @@
 
     const synchronize = async () => {
         if (requestInFlight || document.hidden || !updatesUrl) return;
+        let syncStage = 'start';
         requestInFlight = true;
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 8000);
         try {
+            syncStage = 'fetch';
             const url = new URL(updatesUrl, window.location.origin);
             url.searchParams.set('conversationId', selectedConversationId);
             const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
             if (!response.ok) return;
+            syncStage = 'parse';
             const payload = await response.json();
             const before = notificationSeenInboundIds.size;
+            syncStage = 'update-conversations';
             updateConversations(payload.conversations || []);
+            syncStage = 'update-messages';
             updateMessages(payload.messages || []);
+            syncStage = 'notification';
             const newInbound = notificationSeenInboundIds.size > before && !initialState;
             initialState = false;
-            if (newInbound) playInboundBeep();
+            if (newInbound) {
+                syncStage = 'beep';
+                playInboundBeep();
+            }
         } catch (error) {
-            if (error?.name !== 'AbortError') console.debug('WhatsApp sync unavailable.');
+            if (error?.name !== 'AbortError') {
+                console.error('WhatsApp sync failed.', {
+                    stage: syncStage,
+                    name: error?.name ?? null,
+                    message: error?.message ?? null
+                });
+            }
         } finally {
             window.clearTimeout(timeoutId);
             requestInFlight = false;
