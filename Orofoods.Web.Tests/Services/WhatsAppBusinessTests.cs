@@ -470,7 +470,8 @@ public class WhatsAppBusinessTests
         var (user, conversation) = await CreateAssignedConversationAsync(db, unreadCount: 0);
         db.WhatsAppMessages.AddRange(
             new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-1", Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Um", CreatedAt = DateTime.UtcNow.AddSeconds(-1) },
-            new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-2", Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Dois", CreatedAt = DateTime.UtcNow });
+            new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-2", Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Dois", CreatedAt = DateTime.UtcNow },
+            new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-3", Direction = WhatsAppMessageDirection.Outbound, Type = WhatsAppMessageType.Text, TextBody = "Resposta", Status = WhatsAppMessageStatus.Sent, CreatedAt = DateTime.UtcNow.AddSeconds(1) });
         await db.SaveChangesAsync();
         var controller = CreateController(db, user.Id, new TrackingWhatsAppGateway());
 
@@ -479,11 +480,81 @@ public class WhatsAppBusinessTests
         var messages = json.RootElement.GetProperty("messages").EnumerateArray().ToList();
         var conversations = json.RootElement.GetProperty("conversations").EnumerateArray().ToList();
 
-        Assert.Equal(2, messages.Count);
-        Assert.Equal(2, messages.Select(item => item.GetProperty("id").GetInt64()).Distinct().Count());
+        Assert.Equal(3, messages.Count);
+        Assert.Equal(3, messages.Select(item => item.GetProperty("id").GetInt64()).Distinct().Count());
+        Assert.Equal("outbound", messages[^1].GetProperty("direction").GetString());
+        Assert.Equal("Resposta", messages[^1].GetProperty("textBody").GetString());
         Assert.Equal(conversation.PhoneNumber, conversations.Single().GetProperty("phoneNumber").GetString());
         Assert.Equal("no-store, no-cache, must-revalidate", controller.Response.Headers.CacheControl.ToString());
         Assert.EndsWith("Z", messages[0].GetProperty("createdAt").GetString());
+    }
+
+    [Fact]
+    public async Task Updates_without_selected_conversation_returns_new_conversation_and_preview()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (user, conversation) = await CreateAssignedConversationAsync(db, unreadCount: 1);
+        db.WhatsAppMessages.Add(new WhatsAppMessage
+        {
+            ConversationId = conversation.Id,
+            ExternalMessageId = "poll-empty-thread",
+            Direction = WhatsAppMessageDirection.Inbound,
+            Type = WhatsAppMessageType.Text,
+            TextBody = "Mensagem recém-recebida",
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, user.Id, new TrackingWhatsAppGateway());
+
+        var result = Assert.IsType<JsonResult>(await controller.Updates(null, CancellationToken.None));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var conversationPayload = Assert.Single(json.RootElement.GetProperty("conversations").EnumerateArray().ToList());
+
+        Assert.Equal(conversation.Id, conversationPayload.GetProperty("id").GetInt64());
+        Assert.Equal("Mensagem recém-recebida", conversationPayload.GetProperty("preview").GetString());
+        Assert.Equal(1, conversationPayload.GetProperty("unreadCount").GetInt32());
+        Assert.Empty(json.RootElement.GetProperty("messages").EnumerateArray());
+        Assert.Equal("no-store, no-cache, must-revalidate", controller.Response.Headers.CacheControl.ToString());
+    }
+
+    [Fact]
+    public async Task Updates_returns_available_inbound_media_for_the_chat_renderer()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (user, conversation) = await CreateAssignedConversationAsync(db, unreadCount: 0);
+        var mediaTypes = new[]
+        {
+            WhatsAppMessageType.Image,
+            WhatsAppMessageType.Audio,
+            WhatsAppMessageType.Video,
+            WhatsAppMessageType.Document
+        };
+        db.WhatsAppMessages.AddRange(mediaTypes.Select((type, index) => new WhatsAppMessage
+        {
+            ConversationId = conversation.Id,
+            ExternalMessageId = $"poll-media-{index}",
+            Direction = WhatsAppMessageDirection.Inbound,
+            Type = type,
+            MediaState = WhatsAppMediaState.Available,
+            MediaStorageReference = $"media/{index}",
+            MimeType = type == WhatsAppMessageType.Image ? "image/png" : "application/octet-stream",
+            FileName = type == WhatsAppMessageType.Document ? "arquivo.pdf" : null,
+            CreatedAt = DateTime.UtcNow.AddSeconds(index)
+        }));
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, user.Id, new TrackingWhatsAppGateway());
+
+        var result = Assert.IsType<JsonResult>(await controller.Updates(conversation.Id, CancellationToken.None));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var messages = json.RootElement.GetProperty("messages").EnumerateArray().ToList();
+
+        Assert.Equal(mediaTypes.Select(type => type.ToString().ToLowerInvariant()), messages.Select(message => message.GetProperty("type").GetString()));
+        Assert.All(messages, message => Assert.Equal("available", message.GetProperty("mediaState").GetString()));
+        Assert.All(messages, message =>
+        {
+            var messageId = message.GetProperty("id").GetInt64();
+            Assert.Equal($"/Admin/WhatsApp/media/{messageId}", message.GetProperty("mediaUrl").GetString());
+        });
     }
 
     [Fact]

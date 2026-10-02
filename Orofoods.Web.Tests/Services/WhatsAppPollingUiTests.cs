@@ -21,6 +21,70 @@ public class WhatsAppPollingUiTests
     }
 
     [Fact]
+    public void Polling_keeps_refreshing_the_conversation_list_without_an_open_thread()
+    {
+        var root = FindRepositoryRoot();
+        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+
+        Assert.Contains("class=\"whatsapp-inbox\" data-updates-url=", view);
+        Assert.Contains("data-selected-conversation-id=\"@(selected?.Id)\"", view);
+        Assert.Contains("const updatesUrl = inbox?.dataset.updatesUrl || form?.dataset.updatesUrl", script);
+        Assert.Contains("if (!conversationList || !updatesUrl) return", script);
+        Assert.Contains("url.searchParams.delete('conversationId')", script);
+        Assert.DoesNotContain("if (!form || !messageList || !conversationList) return", script);
+    }
+
+    [Fact]
+    public void Polling_recovers_after_errors_and_resumes_immediately_when_visible()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+
+        Assert.Contains("setInterval(synchronize, 4000)", script);
+        Assert.Contains("controller.abort()", script);
+        Assert.Contains("catch (error)", script);
+        Assert.Contains("finally", script);
+        Assert.Contains("requestInFlight = false", script);
+        Assert.Contains("document.addEventListener('visibilitychange'", script);
+        Assert.Contains("if (!document.hidden) void synchronize()", script);
+        Assert.Contains("cache: 'no-store'", script);
+        Assert.Contains("content-type", script);
+    }
+
+    [Fact]
+    public void Polling_inserts_messages_once_and_reorders_conversation_rows_from_the_latest_payload()
+    {
+        var root = FindRepositoryRoot();
+        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+
+        Assert.Contains("updateConversations(payload.conversations || [])", script);
+        Assert.Contains("conversationList.append(element)", script);
+        Assert.Contains("visibleIds.has(String(element.dataset.conversationId))", script);
+        Assert.Contains("messageList.querySelector(`[data-message-id=\"${message.id}\"]`)", script);
+        Assert.Contains("if (!article)", script);
+        Assert.Contains("messageList.append(article)", script);
+        Assert.Contains("updateMessages(payload.messages || [])", script);
+    }
+
+    [Fact]
+    public void Polling_has_no_client_cursor_and_renders_all_supported_media_types()
+    {
+        var root = FindRepositoryRoot();
+        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var controller = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Controllers", "WhatsAppController.cs"));
+
+        Assert.Contains("url.searchParams.set('conversationId', String(selectedConversationId))", script);
+        Assert.Contains("url.searchParams.delete('conversationId')", script);
+        Assert.DoesNotContain("searchParams.set('cursor'", script);
+        Assert.DoesNotContain("searchParams.set('after'", script);
+        Assert.Contains(".Take(100)", controller);
+        Assert.Contains("message.type === 'image'", script);
+        Assert.Contains("message.type === 'audio'", script);
+        Assert.Contains("message.type === 'video'", script);
+        Assert.Contains("message.type === 'document'", script);
+    }
+
+    [Fact]
     public void Sending_is_async_with_a_traditional_form_fallback_and_early_theme_bootstrap()
     {
         var root = FindRepositoryRoot();

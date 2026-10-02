@@ -59,7 +59,7 @@
             </div>
         </header>
 
-        <div class="whatsapp-inbox">
+        <div class="whatsapp-inbox" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })" data-selected-conversation-id="@(selected?.Id)">
             <aside class="whatsapp-conversations" aria-label="Lista de conversas">
                 <header class="whatsapp-panel-heading">
                     <div>
@@ -283,7 +283,7 @@
 
                     <button class="whatsapp-new-message" type="button" hidden><i class="fa-solid fa-arrow-down" aria-hidden="true"></i> Nova mensagem</button>
 
-                    <form asp-action="Send" method="post" class="whatsapp-compose" data-conversation-id="@selected.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })">
+                    <form asp-action="Send" method="post" class="whatsapp-compose" data-conversation-id="@selected.Id">
                         <input type="hidden" name="conversationId" value="@selected.Id" />
                         <label for="whatsappText">Mensagem</label>
                         <textarea id="whatsappText" name="text" rows="1" required maxlength="4096" placeholder="Escreva sua mensagem..." aria-label="Escreva uma mensagem"></textarea>

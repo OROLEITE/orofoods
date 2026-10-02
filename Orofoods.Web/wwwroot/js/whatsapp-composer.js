@@ -26,6 +26,7 @@
 
     const textarea = document.getElementById('whatsappText');
     const form = document.querySelector('.whatsapp-compose');
+    const inbox = document.querySelector('.whatsapp-inbox');
     const messageList = document.querySelector('.whatsapp-messages');
     const conversationList = document.querySelector('.whatsapp-conversation-list');
     const conversationSearch = document.querySelector('.whatsapp-search-input');
@@ -161,14 +162,15 @@
     });
     document.querySelector('.whatsapp-dialog-cancel')?.addEventListener('click', closeCustomerDialog);
 
-    if (!form || !messageList || !conversationList) return;
+    const updatesUrl = inbox?.dataset.updatesUrl || form?.dataset.updatesUrl;
+    const selectedConversationValue = inbox?.dataset.selectedConversationId || form?.dataset.conversationId;
+    const selectedConversationId = selectedConversationValue ? Number(selectedConversationValue) : null;
+    if (!conversationList || !updatesUrl) return;
 
-    const selectedConversationId = Number(form.dataset.conversationId);
-    const updatesUrl = form.dataset.updatesUrl;
     let requestInFlight = false;
     let sendInFlight = false;
     let timerId = null;
-    const sendButton = form.querySelector('button[type="submit"]');
+    const sendButton = form?.querySelector('button[type="submit"]');
     const sendFeedback = document.getElementById('whatsappSendFeedback');
 
     const showSendFeedback = (message, isError = false) => {
@@ -178,15 +180,16 @@
         sendFeedback.classList.toggle('whatsapp-send-feedback--error', isError);
     };
 
-    const isNearBottom = () => messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 64;
+    const isNearBottom = () => !messageList || messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 64;
     const scrollToBottom = () => {
+        if (!messageList) return;
         messageList.scrollTop = messageList.scrollHeight;
         if (newMessageButton) newMessageButton.hidden = true;
     };
     scrollToBottom();
 
     newMessageButton?.addEventListener('click', scrollToBottom);
-    messageList.addEventListener('scroll', () => {
+    messageList?.addEventListener('scroll', () => {
         if (isNearBottom() && newMessageButton) newMessageButton.hidden = true;
     }, { passive: true });
 
@@ -313,6 +316,7 @@
     };
 
     const updateMessages = messages => {
+        if (!messageList) return;
         const keepBottom = isNearBottom();
         let appended = false;
         messageList.querySelector('.whatsapp-messages-empty')?.remove();
@@ -414,9 +418,14 @@
         const timeoutId = window.setTimeout(() => controller.abort(), 8000);
         try {
             const url = new URL(updatesUrl, window.location.origin);
-            url.searchParams.set('conversationId', selectedConversationId);
+            if (selectedConversationId !== null && Number.isSafeInteger(selectedConversationId) && selectedConversationId > 0)
+                url.searchParams.set('conversationId', String(selectedConversationId));
+            else
+                url.searchParams.delete('conversationId');
             const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
             if (!response.ok) return;
+            if (!response.headers.get('content-type')?.toLowerCase().includes('application/json'))
+                throw new Error('Unexpected WhatsApp sync response type.');
             const payload = await response.json();
             const before = knownInboundIds.size;
             updateConversations(payload.conversations || []);
@@ -432,7 +441,7 @@
         }
     };
 
-    form.addEventListener('submit', async event => {
+    if (form && messageList) form.addEventListener('submit', async event => {
         if (sendInFlight) {
             event.preventDefault();
             return;
