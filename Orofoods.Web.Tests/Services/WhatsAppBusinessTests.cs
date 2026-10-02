@@ -475,9 +475,11 @@ public class WhatsAppBusinessTests
         var result = Assert.IsType<JsonResult>(await controller.Updates(conversation.Id, CancellationToken.None));
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         var messages = json.RootElement.GetProperty("messages").EnumerateArray().ToList();
+        var conversations = json.RootElement.GetProperty("conversations").EnumerateArray().ToList();
 
         Assert.Equal(2, messages.Count);
         Assert.Equal(2, messages.Select(item => item.GetProperty("id").GetInt64()).Distinct().Count());
+        Assert.Equal(conversation.PhoneNumber, conversations.Single().GetProperty("phoneNumber").GetString());
         Assert.Equal("no-store, no-cache, must-revalidate", controller.Response.Headers.CacheControl.ToString());
         Assert.EndsWith("Z", messages[0].GetProperty("createdAt").GetString());
     }

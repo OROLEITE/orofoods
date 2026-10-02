@@ -78,6 +78,7 @@ public class WhatsAppController(
                 {
                     item.Id,
                     name = item.Customer?.TradeName ?? item.PhoneNumber,
+                    phoneNumber = item.PhoneNumber,
                     initials = Initials(item.Customer?.TradeName),
                     identified = item.CustomerId.HasValue,
                     preview = Preview(lastMessage),

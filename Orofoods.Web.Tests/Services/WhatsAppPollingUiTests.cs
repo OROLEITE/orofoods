@@ -44,6 +44,25 @@ public class WhatsAppPollingUiTests
         Assert.DoesNotContain("<select id=\"customerId\"", view);
     }
 
+    [Fact]
+    public void Theme_and_conversation_search_are_additive_to_the_existing_whatsapp_page()
+    {
+        var root = FindRepositoryRoot();
+        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+
+        Assert.Contains("whatsapp-theme-toggle", view);
+        Assert.Contains("orofoods.crm.theme", script);
+        Assert.Contains("whatsapp-search-input", view);
+        Assert.Contains("data-search-phone", view);
+        Assert.Contains("conversation.textContent", script);
+        Assert.Contains("has-explicit-selection", view);
+        Assert.Contains("whatsapp-mobile-back", view);
+        Assert.Contains("grid-template-columns: minmax(300px, 330px) minmax(0, 1fr) minmax(300px, 330px)", styles);
+        Assert.Contains("[data-theme=\"dark\"]", styles);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

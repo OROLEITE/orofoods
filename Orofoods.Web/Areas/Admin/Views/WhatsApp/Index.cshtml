@@ -3,6 +3,7 @@
     ViewData["Title"] = "WhatsApp";
     var selected = Model.Selected;
     var selectedName = selected?.Customer?.TradeName ?? selected?.PhoneNumber;
+    var hasExplicitSelection = selected is not null && Context.Request.Query.ContainsKey("id");
 }
 
 @functions {
@@ -41,7 +42,7 @@
     <link rel="stylesheet" href="~/css/whatsapp-composer.css" asp-append-version="true" />
 }
 
-<section class="section whatsapp-inbox-page" aria-label="Atendimento WhatsApp">
+<section class="section whatsapp-inbox-page @(selected is null ? "" : "has-selection") @(hasExplicitSelection ? "has-explicit-selection" : "")" aria-label="Atendimento WhatsApp">
     <div class="container">
         <header class="whatsapp-page-heading">
             <div>
@@ -50,6 +51,9 @@
                 <p>Atendimento das conversas recebidas.</p>
             </div>
             <div class="whatsapp-header-actions">
+                <button type="button" class="whatsapp-theme-toggle" aria-pressed="false" aria-label="Ativar tema escuro" title="Alternar tema">
+                    <i class="fa-solid fa-moon" aria-hidden="true"></i><span>Tema escuro</span>
+                </button>
                 <button type="button" class="whatsapp-sound-toggle" aria-pressed="true" aria-label="Som ligado" title="Som ligado"><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Som ligado</span></button>
                 <span class="whatsapp-channel-badge"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Atendimento</span>
             </div>
@@ -64,6 +68,11 @@
                     </div>
                 </header>
 
+                <label class="whatsapp-search">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input class="whatsapp-search-input" type="search" placeholder="Buscar nome, telefone ou mensagem" aria-label="Buscar nome, telefone ou mensagem" />
+                </label>
+
                 <nav class="whatsapp-conversation-list" aria-label="Conversas recentes">
                     @foreach (var conversation in Model.Conversations)
                     {
@@ -75,12 +84,13 @@
                         {
                             Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open => "Em atendimento",
                             Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending => "Novo",
-                            _ => "Encerrada"
+                            _ => "Finalizado"
                         };
 
                         <a class="whatsapp-conversation whatsapp-conversation--@conversation.Status.ToString().ToLowerInvariant() @(Model.Selected?.Id == conversation.Id ? "is-active" : "")"
                            asp-route-id="@conversation.Id"
                            data-conversation-id="@conversation.Id"
+                           data-search-phone="@conversation.PhoneNumber"
                            aria-current="@(Model.Selected?.Id == conversation.Id ? "page" : null)">
                             <span class="whatsapp-avatar @(string.IsNullOrWhiteSpace(contactName) ? "whatsapp-avatar--unknown" : "")" aria-hidden="true">
                                 @if (string.IsNullOrWhiteSpace(contactName))
@@ -129,6 +139,7 @@
                             <span>As novas mensagens aparecerão aqui.</span>
                         </div>
                     }
+                    <p class="whatsapp-search-empty" hidden>Nenhuma conversa encontrada.</p>
                 </nav>
             </aside>
 
@@ -144,6 +155,9 @@
                 else
                 {
                     <header class="whatsapp-thread-header">
+                        <a class="whatsapp-mobile-back" asp-action="Index" aria-label="Voltar para a lista de conversas">
+                            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Conversas</span>
+                        </a>
                         <span class="whatsapp-avatar @(selected.Customer is null ? "whatsapp-avatar--unknown" : "")" aria-hidden="true">
                             @if (selected.Customer is null)
                             {
