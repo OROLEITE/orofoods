@@ -2385,6 +2385,54 @@ html[data-theme="dark"] .whatsapp-inbox-page > .container > .whatsapp-page-headi
     background-color: var(--crm-accent-soft, #38301f);
 }
 
+/* Keep the send control aligned and blue in both CRM themes. */
+html .whatsapp-inbox-page .whatsapp-compose {
+    --whatsapp-composer-control-height: 46px;
+    --whatsapp-send-blue: #2563EB;
+    --whatsapp-send-blue-hover: #1D4ED8;
+    --whatsapp-send-blue-active: #1E40AF;
+}
+
+html .whatsapp-inbox-page .whatsapp-compose textarea {
+    height: var(--whatsapp-composer-control-height);
+    min-height: var(--whatsapp-composer-control-height);
+}
+
+html .whatsapp-inbox-page .whatsapp-compose .whatsapp-send-button {
+    box-sizing: border-box;
+    height: var(--whatsapp-composer-control-height);
+    min-height: var(--whatsapp-composer-control-height);
+    align-self: end;
+    border: 1px solid var(--whatsapp-send-blue);
+    background: var(--whatsapp-send-blue);
+    color: #fff;
+}
+
+html .whatsapp-inbox-page .whatsapp-compose .whatsapp-send-button:hover:not(:disabled) {
+    border-color: var(--whatsapp-send-blue-hover);
+    background: var(--whatsapp-send-blue-hover);
+    color: #fff;
+}
+
+html .whatsapp-inbox-page .whatsapp-compose .whatsapp-send-button:active:not(:disabled) {
+    border-color: var(--whatsapp-send-blue-active);
+    background: var(--whatsapp-send-blue-active);
+    color: #fff;
+}
+
+html .whatsapp-inbox-page .whatsapp-compose .whatsapp-send-button:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--whatsapp-send-blue) 38%, transparent);
+    outline-offset: 2px;
+}
+
+html .whatsapp-inbox-page .whatsapp-compose .whatsapp-send-button:disabled {
+    border-color: var(--whatsapp-send-blue);
+    background: var(--whatsapp-send-blue);
+    color: #fff;
+    cursor: wait;
+    opacity: .68;
+}
+
 .whatsapp-inbox-page .whatsapp-customer-panel .whatsapp-customer-actions {
     display: flex;
     width: 100%;

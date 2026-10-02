@@ -287,7 +287,7 @@
                         <input type="hidden" name="conversationId" value="@selected.Id" />
                         <label for="whatsappText">Mensagem</label>
                         <textarea id="whatsappText" name="text" rows="1" required maxlength="4096" placeholder="Escreva sua mensagem..." aria-label="Escreva uma mensagem"></textarea>
-                        <button class="btn btn-gold" type="submit" aria-label="Enviar mensagem">
+                        <button class="btn whatsapp-send-button" type="submit" aria-label="Enviar mensagem">
                             <span>Enviar</span><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
                         </button>
                         @if (TempData["WhatsAppError"] is string sendError)
