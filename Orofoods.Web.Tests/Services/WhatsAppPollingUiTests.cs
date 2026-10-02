@@ -66,21 +66,45 @@ public class WhatsAppPollingUiTests
         Assert.Contains("--crm-message-in", styles);
         Assert.Contains("--crm-message-out", styles);
 
-        var soundOnLight = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"true\"]");
-        var soundOffLight = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"false\"]");
-        var soundOnDark = ReadCssRule(styles, "html[data-theme=\"dark\"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"true\"]");
-        var soundOffDark = ReadCssRule(styles, "html[data-theme=\"dark\"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle[aria-pressed=\"false\"]");
-        var customerActions = ReadCssRule(styles, "body:has(.whatsapp-inbox-page) .whatsapp-customer-panel .whatsapp-customer-actions");
+        const string soundButtonBase = "html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle";
+        var soundOnLight = ReadCssRule(styles, $"{soundButtonBase}[aria-pressed=\"true\"]");
+        var soundOffLight = ReadCssRule(styles, $"{soundButtonBase}[aria-pressed=\"false\"]");
+        var soundOnDark = ReadCssRule(styles, $"html[data-theme=\"dark\"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle[aria-pressed=\"true\"]");
+        var soundOffDark = ReadCssRule(styles, $"html[data-theme=\"dark\"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle[aria-pressed=\"false\"]");
+        var soundHoverDark = ReadCssRule(styles, "html[data-theme=\"dark\"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:hover");
+        const string soundFocusSelector = "html[data-theme=\"dark\"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:focus-visible";
+        var soundFocusDark = ReadCssRule(styles, soundFocusSelector, styles.LastIndexOf(soundFocusSelector, StringComparison.Ordinal));
+        const string soundFocusLightSelector = "html .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:focus-visible";
+        var soundFocusLight = ReadCssRule(styles, soundFocusLightSelector, styles.LastIndexOf(soundFocusLightSelector, StringComparison.Ordinal));
+        var soundActiveDark = ReadCssRule(styles, "html[data-theme=\"dark\"] .whatsapp-inbox-page > .container > .whatsapp-page-heading > .whatsapp-header-actions > .whatsapp-sound-toggle:active");
+        var customerActions = ReadCssRule(styles, ".whatsapp-inbox-page .whatsapp-customer-panel .whatsapp-customer-actions");
+        var renderedActions = ExtractBetween(view, "<div class=\"whatsapp-customer-actions\">", "</div>");
 
-        Assert.Contains("background: var(--crm-accent-soft)", soundOnLight);
-        Assert.Contains("background: var(--crm-surface-muted)", soundOffLight);
-        Assert.Contains("background: var(--crm-accent-soft)", soundOnDark);
-        Assert.Contains("background: var(--crm-surface-muted)", soundOffDark);
+        Assert.Contains("<section class=\"section whatsapp-inbox-page", view);
+        Assert.Contains("<header class=\"whatsapp-page-heading\">", view);
+        Assert.Contains("<div class=\"whatsapp-header-actions\">", view);
+        Assert.Contains("class=\"whatsapp-sound-toggle\" aria-pressed=\"true\"", view);
+        Assert.Contains("background-color: var(--crm-accent-soft, #f7ecd7)", soundOnLight);
+        Assert.Contains("background-color: var(--crm-surface-muted", soundOffLight);
+        Assert.Contains("background-color: var(--crm-accent-soft", soundOnDark);
+        Assert.Contains("background-color: var(--crm-surface-muted", soundOffDark);
+        Assert.Contains("color: var(--crm-text, #e5eaf0)", soundOnDark);
         Assert.DoesNotContain("#fff", soundOnDark, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("#fff", soundOffDark, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("white", soundOnDark, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(":has(", soundOnDark, StringComparison.Ordinal);
+        Assert.Contains("background-color: var(--crm-surface, #1b2632)", soundHoverDark);
+        Assert.Contains("outline: 3px", soundFocusLight);
+        Assert.Contains("outline-color:", soundFocusDark);
+        Assert.Contains("background-color: var(--crm-accent-soft, #38301f)", soundActiveDark);
+        Assert.Contains("<aside class=\"whatsapp-customer-panel\"", view);
+        Assert.Contains("whatsapp-customer-link", renderedActions);
+        Assert.Contains("<form", renderedActions);
+        Assert.Contains("whatsapp-unlink-customer", renderedActions);
         Assert.Contains("display: flex", customerActions);
         Assert.Contains("flex-direction: column", customerActions);
         Assert.Contains("gap: 12px", customerActions);
+        Assert.Contains("min-width: 0", customerActions);
+        Assert.Contains("@media (max-width: 767.98px)", styles);
     }
 
     [Fact]
