@@ -1,9 +1,10 @@
 :root {
     --admin-sidebar-width: 264px;
     --admin-sidebar-collapsed-width: 80px;
-    --admin-sidebar-text: #fff;
-    --admin-sidebar-muted: #d8d0c4;
-    --admin-sidebar-accent: #c99528;
+    --admin-sidebar-bg: var(--nav-sidebar-bg);
+    --admin-sidebar-text: var(--nav-text-active);
+    --admin-sidebar-muted: var(--nav-text);
+    --admin-sidebar-accent: var(--gold);
 }
 
 .admin-authenticated .site-header-modern {
@@ -11,54 +12,6 @@
     top: 0;
     right: 0;
     left: 0;
-    border-bottom: 1px solid rgba(201, 149, 40, .18);
-    background: linear-gradient(90deg, #42382c 0%, #3a3127 45%, #352e25 100%);
-    box-shadow: none;
-}
-
-.admin-authenticated .site-header-modern .navbar.bg-white {
-    background: transparent !important;
-}
-
-.admin-authenticated .site-header-modern .main-nav .nav-link {
-    color: #f7f3ea !important;
-}
-
-.admin-authenticated .site-header-modern .main-nav .nav-link:hover,
-.admin-authenticated .site-header-modern .main-nav .nav-link:focus-visible,
-.admin-authenticated .site-header-modern .main-nav .nav-link.active {
-    background: rgba(255, 255, 255, .06);
-    color: #e5c77d !important;
-}
-
-.admin-authenticated .site-header-modern .account-trigger {
-    border-color: rgba(255, 255, 255, .12);
-    background: rgba(255, 255, 255, .06);
-    color: #fff;
-}
-
-.admin-authenticated .site-header-modern .account-trigger:hover,
-.admin-authenticated .site-header-modern .account-trigger:focus-visible,
-.admin-authenticated .site-header-modern .account-trigger.show {
-    border-color: rgba(229, 199, 125, .38);
-    background: rgba(255, 255, 255, .1);
-    color: #fff;
-}
-
-.admin-authenticated .site-header-modern .account-context {
-    color: #d8d0c4;
-}
-
-.admin-authenticated .site-header-modern .account-trigger::after {
-    color: #f7f3ea;
-}
-
-.admin-authenticated .site-header-modern .navbar-toggler {
-    border-color: rgba(255, 255, 255, .18);
-}
-
-.admin-authenticated .site-header-modern .navbar-toggler-icon {
-    filter: invert(1) sepia(.15);
 }
 
 .admin-authenticated {
@@ -81,8 +34,8 @@
     max-height: none;
     padding: 18px 12px 16px;
     overflow: visible;
-    background: linear-gradient(180deg, #352e25 0%, #2d271f 55%, #26211b 100%);
-    box-shadow: 10px 0 30px rgba(28, 23, 18, .12);
+    background: var(--nav-sidebar-bg);
+    box-shadow: 10px 0 30px rgba(2, 6, 23, .12);
     transition: width 240ms ease;
 }
 
@@ -100,7 +53,7 @@
 }
 
 .admin-sidebar-header small {
-    color: #e5c77d;
+    color: var(--admin-sidebar-accent);
 }
 
 .admin-sidebar-header h2 {
@@ -122,18 +75,23 @@
     width: 32px;
     height: 32px;
     padding: 0;
-    border: 1px solid rgba(229, 199, 125, .28);
+    border: 1px solid var(--nav-border);
     border-radius: 6px;
-    background: rgba(255, 255, 255, .04);
-    color: #e5c77d;
-    transition: background-color 180ms ease, border-color 180ms ease;
+    background: var(--nav-item-hover);
+    color: var(--nav-text);
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 
 .admin-sidebar-toggle:hover,
 .admin-sidebar-toggle:focus-visible {
-    border-color: rgba(229, 199, 125, .58);
-    background: rgba(255, 255, 255, .09);
-    outline: none;
+    border-color: #475569;
+    background: var(--nav-account-hover);
+    color: var(--admin-sidebar-accent);
+}
+
+.admin-sidebar-toggle:focus-visible {
+    outline: 2px solid var(--nav-focus);
+    outline-offset: 2px;
 }
 
 .admin-nav {
@@ -143,7 +101,7 @@
     padding-right: 2px;
     overflow-x: hidden;
     overflow-y: auto;
-    scrollbar-color: rgba(229, 199, 125, .35) transparent;
+    scrollbar-color: #475569 transparent;
     scrollbar-width: thin;
 }
 
@@ -159,9 +117,9 @@
     min-height: 46px;
     padding: 8px 12px;
     border-radius: 6px;
-    color: var(--admin-sidebar-muted);
+    color: var(--nav-text);
     font: 600 15px 'DM Sans', sans-serif;
-    transition: color 180ms ease, background-color 180ms ease;
+    transition: color .15s ease, background-color .15s ease;
 }
 
 .admin-nav-group > span {
@@ -173,27 +131,53 @@
 .admin-nav-group span > i {
     flex: 0 0 24px;
     width: 24px;
-    color: #d8d0c4;
+    color: var(--nav-icon);
     font-size: 19px;
     text-align: center;
 }
 
 .admin-nav-link:hover,
-.admin-nav-group:hover,
+.admin-nav-group:hover {
+    background: var(--nav-item-hover);
+    color: var(--nav-text-active);
+}
+
+.admin-nav-link:hover > i,
+.admin-nav-group:hover span > i {
+    color: var(--nav-text);
+}
+
 .admin-nav-link:focus-visible,
 .admin-nav-group:focus-visible {
-    background: rgba(255, 255, 255, .06);
-    color: #fff;
-    outline: none;
+    background: var(--nav-item-hover);
+    color: var(--nav-text-active);
+    outline: 2px solid var(--nav-focus);
+    outline-offset: 1px;
+}
+
+.admin-nav-link:focus-visible > i,
+.admin-nav-group:focus-visible span > i {
+    color: var(--nav-text);
 }
 
 .admin-nav-link.active,
 .admin-nav-cluster.is-active > .admin-nav-group {
-    background: rgba(201, 149, 40, .12);
-    color: #fff;
+    background: var(--nav-item-hover);
+    color: var(--nav-text-active);
 }
 
 .admin-nav-link.active::before {
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--admin-sidebar-accent);
+    content: '';
+}
+
+.admin-nav-cluster.is-active > .admin-nav-group::before {
     position: absolute;
     top: 10px;
     bottom: 10px;
@@ -213,7 +197,7 @@
     flex: 0 0 12px;
     width: 12px;
     margin-left: auto;
-    color: #bdb4a7;
+    color: var(--nav-icon);
     font-size: 10px;
     text-align: center;
     transition: transform 180ms ease;
@@ -303,9 +287,9 @@
     left: 68px;
     width: 224px;
     padding: 6px;
-    border: 1px solid rgba(229, 199, 125, .18);
+    border: 1px solid var(--nav-border);
     border-radius: 7px;
-    background: #2d271f;
+    background: var(--nav-sidebar-bg-secondary);
     box-shadow: 12px 14px 28px rgba(20, 17, 14, .24);
 }
 
@@ -324,7 +308,7 @@
 .admin-offcanvas {
     --bs-offcanvas-width: min(320px, 86vw);
     width: var(--bs-offcanvas-width);
-    background: linear-gradient(180deg, #352e25 0%, #2d271f 55%, #26211b 100%);
+    background: var(--nav-sidebar-bg);
 }
 
 .admin-offcanvas .admin-sidebar-header {

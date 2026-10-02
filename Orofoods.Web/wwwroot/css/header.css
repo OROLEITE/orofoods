@@ -1,2 +1,129 @@
 body>.site-header,body>.auth-user-menu{display:none}.site-header-modern{position:relative;z-index:1030;background:#fff;border-bottom:1px solid #141f1814}.site-header-modern .navbar{min-height:72px;padding:.5rem 0}.site-header-container{width:100%;max-width:1680px;margin:0 auto;padding-inline:clamp(1rem,3vw,3rem)}.site-brand{margin:0}.site-logo{display:block;width:auto;height:46px;object-fit:contain}.main-nav{gap:clamp(.25rem,1vw,1rem)}.main-nav .nav-link{border-radius:.5rem;color:#1b241d;font-size:.95rem;font-weight:500;padding:.65rem .75rem!important;white-space:nowrap;transition:color .18s ease,background-color .18s ease}.main-nav .nav-link:hover,.main-nav .nav-link:focus-visible{background:#1b241d0e;color:#111812}.header-account{display:flex;align-items:center;flex:0 0 auto}.account-trigger{display:flex;align-items:center;gap:.65rem;min-width:0;padding:.4rem .65rem;border:1px solid #1b241d29;border-radius:.75rem;background:#fff;color:#172019;box-shadow:none}.account-trigger:hover,.account-trigger:focus-visible,.account-trigger.show{border-color:#1b241d47;background:#f7f6f1;color:#172019}.account-trigger:focus-visible{outline:3px solid #d9a22a66;outline-offset:2px}.account-avatar{display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;border-radius:50%;background:#efe3bf;color:#725719;font-size:.9rem;font-weight:700}.account-copy{display:flex;flex-direction:column;align-items:flex-start;min-width:0;line-height:1.15}.account-name,.account-context{display:block;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.account-name{font-size:.875rem;font-weight:700}.account-context{margin-top:.15rem;color:#6b716c;font-size:.7rem}.account-menu{min-width:220px;padding:.45rem;border:1px solid #1b241d1a;border-radius:.75rem;box-shadow:0 .75rem 2rem #141f1f1f}.account-menu .dropdown-item{padding:.65rem .75rem;border-radius:.5rem;color:#172019;font-size:.875rem}.account-menu .dropdown-item:hover,.account-menu .dropdown-item:focus{background:#f4f2eb}.account-menu i{width:20px;color:#8a6617}.account-logout{color:#8c342c!important}@media(min-width:1400px){.site-logo{height:52px}.main-nav .nav-link{padding-inline:.9rem!important}.account-name,.account-context{max-width:190px}}@media(min-width:992px) and (max-width:1399.98px){.site-header-container{padding-inline:1.25rem}.main-nav{gap:.15rem}.main-nav .nav-link{font-size:.875rem;padding-inline:.55rem!important}.account-name,.account-context{max-width:130px}}@media(max-width:991.98px){.site-header-modern .navbar{min-height:64px}.site-header-container{padding-inline:1rem}.site-logo{height:42px}.site-header-modern .navbar-collapse{padding:14px 0 4px}.main-nav{gap:2px;padding:8px 0}.main-nav .nav-link{padding:.7rem .75rem!important}.header-account{margin-top:10px;padding-top:12px;border-top:1px solid #141f1814}.header-account .account-dropdown{width:100%}.account-trigger{width:100%;justify-content:flex-start}.account-menu{width:100%;margin-top:6px}.site-header-modern .btn-outline-dark{width:100%}}@media(max-width:420px){.site-logo{height:38px}.account-name,.account-context{max-width:150px}}
 .header-account{gap:10px}.header-notifications{display:flex;align-items:center;flex:0 0 auto}
+
+/* Shared dark navigation frame. The logo and dropdown behavior remain unchanged. */
+.site-header-modern {
+    border-bottom: 1px solid var(--nav-border);
+    background: var(--nav-header-bg);
+    box-shadow: none;
+}
+
+.site-header-modern .navbar.bg-white {
+    background: transparent !important;
+}
+
+.site-header-modern .main-nav .nav-link {
+    border-radius: .5rem;
+    background: transparent;
+    box-shadow: inset 0 -2px 0 transparent;
+    color: #E5E7EB;
+    transition: color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+
+.site-header-modern .main-nav .nav-link:hover {
+    background: transparent;
+    color: #FFFFFF;
+}
+
+.site-header-modern .main-nav .nav-link:focus-visible {
+    background: transparent;
+    color: #FFFFFF;
+    outline: 2px solid var(--nav-focus);
+    outline-offset: 2px;
+}
+
+.site-header-modern .main-nav .nav-link.active {
+    background: transparent;
+    box-shadow: inset 0 -2px 0 var(--gold);
+    color: #FFFFFF;
+}
+
+.site-header-modern .navbar-toggler {
+    border-color: var(--nav-border);
+}
+
+.site-header-modern .navbar-toggler:focus-visible {
+    box-shadow: 0 0 0 3px var(--nav-focus);
+}
+
+.site-header-modern .navbar-toggler-icon {
+    filter: invert(1);
+}
+
+.site-header-modern .btn-outline-dark {
+    border-color: var(--nav-border);
+    color: #E5E7EB;
+}
+
+.site-header-modern .btn-outline-dark:hover,
+.site-header-modern .btn-outline-dark:focus-visible {
+    border-color: #475569;
+    background: var(--nav-item-hover);
+    color: #FFFFFF;
+}
+
+.site-header-modern .btn-outline-dark:focus-visible {
+    outline: 2px solid var(--nav-focus);
+    outline-offset: 2px;
+}
+
+.site-header-modern .navbar-collapse {
+    border-color: var(--nav-border);
+}
+
+.site-header-modern .header-account {
+    border-color: var(--nav-border);
+}
+
+.site-header-modern .account-trigger {
+    border-color: var(--nav-border);
+    background: var(--nav-item-hover);
+    color: var(--nav-text-active);
+}
+
+.site-header-modern .account-trigger:hover,
+.site-header-modern .account-trigger:focus-visible,
+.site-header-modern .account-trigger.show {
+    border-color: #475569;
+    background: var(--nav-account-hover);
+    color: var(--nav-text-active);
+}
+
+.site-header-modern .account-trigger:focus-visible {
+    outline: 2px solid var(--nav-focus);
+    outline-offset: 2px;
+}
+
+.site-header-modern .account-avatar {
+    background: #334155;
+    color: var(--nav-text-active);
+}
+
+.site-header-modern .account-context,
+.site-header-modern .account-trigger::after {
+    color: var(--nav-text);
+}
+
+.site-header-modern .global-notification-trigger {
+    border-color: var(--nav-border);
+    background: #F8FAFC;
+    color: #1E293B;
+    box-shadow: none;
+}
+
+.site-header-modern .global-notification-trigger:focus-visible {
+    outline: 2px solid var(--nav-focus);
+    outline-offset: 3px;
+}
+
+.site-header-modern .global-notification-badge {
+    border-color: var(--nav-header-bg);
+    background: var(--gold);
+    color: #1E293B;
+}
+
+@media (max-width: 991.98px) {
+    .site-header-modern .navbar-collapse {
+        border-top: 1px solid var(--nav-border);
+    }
+}
