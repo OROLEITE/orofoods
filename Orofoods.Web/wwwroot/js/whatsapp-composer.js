@@ -37,7 +37,7 @@
     let soundEnabled = localStorage.getItem(soundPreferenceKey) !== 'off';
     let audioContext;
     let initialState = true;
-    const knownInboundIds = new Set();
+    const notificationSeenInboundIds = new Set();
 
     const updateSoundToggle = () => {
         if (!soundToggle) return;
@@ -165,6 +165,9 @@
 
     const selectedConversationId = Number(form.dataset.conversationId);
     const updatesUrl = form.dataset.updatesUrl;
+    const renderedMessageElements = new Map(
+        [...messageList.querySelectorAll('[data-message-id]')]
+            .map(element => [String(element.dataset.messageId), element]));
     let requestInFlight = false;
     let sendInFlight = false;
     let timerId = null;
@@ -238,7 +241,6 @@
         const key = [message.type, message.mediaState, message.mediaUrl, message.textBody, message.caption,
             message.fileName, message.mediaSizeBytes, message.status].join('|');
         if (article.dataset.renderKey === key) return;
-        article.dataset.renderKey = key;
         article.dataset.messageStatus = message.status;
         article.className = `whatsapp-message whatsapp-message--${message.direction} whatsapp-message--${message.type}`;
         article.replaceChildren();
@@ -310,6 +312,7 @@
         if (message.direction === 'outbound') appendText(status, 'span', message.statusLabel);
         footer.append(status);
         article.append(footer);
+        article.dataset.renderKey = key;
     };
 
     const updateMessages = messages => {
@@ -317,18 +320,29 @@
         let appended = false;
         messageList.querySelector('.whatsapp-messages-empty')?.remove();
         for (const message of messages) {
-            if (message.direction === 'inbound' && message.id != null && !knownInboundIds.has(String(message.id))) {
-                if (!initialState) appended = true;
-                knownInboundIds.add(String(message.id));
-            }
-            let article = messageList.querySelector(`[data-message-id="${message.id}"]`);
-            if (!article) {
+            if (message.id == null) continue;
+            const messageId = String(message.id);
+            if (message.direction === 'inbound') notificationSeenInboundIds.add(messageId);
+
+            let article = renderedMessageElements.get(messageId);
+            const isNewMessage = !article;
+            if (isNewMessage) {
                 article = document.createElement('article');
-                article.dataset.messageId = message.id;
+                article.dataset.messageId = messageId;
+            }
+
+            try {
+                renderMessage(article, message);
+            } catch (error) {
+                console.error(`WhatsApp message ${messageId} could not be reconciled.`, error);
+                continue;
+            }
+
+            if (isNewMessage) {
                 messageList.append(article);
+                renderedMessageElements.set(messageId, article);
                 appended = true;
             }
-            renderMessage(article, message);
         }
         if (!appended) return;
         if (keepBottom) scrollToBottom();
@@ -394,8 +408,8 @@
         const visibleIds = new Set();
         for (const conversation of conversations) {
             visibleIds.add(String(conversation.id));
-            if (conversation.lastMessageDirection === 'inbound' && conversation.lastMessageId != null && !knownInboundIds.has(String(conversation.lastMessageId)))
-                knownInboundIds.add(String(conversation.lastMessageId));
+            if (conversation.lastMessageDirection === 'inbound' && conversation.lastMessageId != null)
+                notificationSeenInboundIds.add(String(conversation.lastMessageId));
             let element = conversationList.querySelector(`[data-conversation-id="${conversation.id}"]`);
             if (!element) element = conversationElement(conversation);
             updateConversation(element, conversation);
@@ -418,10 +432,10 @@
             const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
             if (!response.ok) return;
             const payload = await response.json();
-            const before = knownInboundIds.size;
+            const before = notificationSeenInboundIds.size;
             updateConversations(payload.conversations || []);
             updateMessages(payload.messages || []);
-            const newInbound = knownInboundIds.size > before && !initialState;
+            const newInbound = notificationSeenInboundIds.size > before && !initialState;
             initialState = false;
             if (newInbound) playInboundBeep();
         } catch (error) {
