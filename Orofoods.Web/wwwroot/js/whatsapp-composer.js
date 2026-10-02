@@ -384,10 +384,17 @@
         const icon = iconForType(conversation.messageType);
         if (icon) appendIcon(preview, `fa-solid ${icon}`);
         preview.append(document.createTextNode(`${icon ? ' ' : ''}${conversation.preview}`));
-        const badge = element.querySelector('.whatsapp-unread-badge');
-        badge.hidden = conversation.unreadCount < 1;
-        badge.textContent = conversation.unreadCount > 99 ? '99+' : conversation.unreadCount;
-        badge.setAttribute('aria-label', `${conversation.unreadCount} mensagens não lidas`);
+        let badge = element.querySelector('.whatsapp-unread-badge');
+        if (!badge && conversation.unreadCount > 0) {
+            badge = document.createElement('span');
+            badge.className = 'whatsapp-unread-badge';
+            element.querySelector('.whatsapp-conversation-preview').append(badge);
+        }
+        if (badge) {
+            badge.hidden = conversation.unreadCount < 1;
+            badge.textContent = conversation.unreadCount > 99 ? '99+' : conversation.unreadCount;
+            badge.setAttribute('aria-label', `${conversation.unreadCount} mensagens não lidas`);
+        }
         element.querySelector('.whatsapp-conversation-meta').textContent = conversation.status === 'open'
             ? 'Em atendimento' : conversation.status === 'pending' ? 'Novo' : 'Finalizado';
     };
