@@ -307,6 +307,8 @@ else
     app.UseHsts();
 }
 
+app.UseMiddleware<BadImageRequestDiagnosticsMiddleware>();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseForwardedHeaders();
