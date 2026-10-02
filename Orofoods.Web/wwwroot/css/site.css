@@ -171,3 +171,105 @@ html,body{max-width:100%;overflow-x:hidden}.container,.order-layout,.order-items
     --nav-icon: #94A3B8;
     --nav-focus: #60A5FA;
 }
+
+/* Shared Light Mode foundation. Brand gold remains available through --gold. */
+:root {
+    --surface-canvas: #F8FAFC;
+    --surface-card: #FFFFFF;
+    --surface-muted: #F8FAFC;
+    --border-subtle: #E2E8F0;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --action-primary: #2563EB;
+    --action-primary-hover: #1D4ED8;
+    --action-primary-soft: #EFF6FF;
+}
+
+html:not([data-theme="dark"]),
+html:not([data-theme="dark"]) body {
+    --ink: var(--text-primary);
+    --muted: var(--text-secondary);
+    --cream: var(--surface-muted);
+    --line: var(--border-subtle);
+    background-color: var(--surface-canvas);
+    color: var(--text-primary);
+}
+
+html:not([data-theme="dark"]) .admin-authenticated .admin-shell {
+    background: var(--surface-canvas);
+}
+
+html:not([data-theme="dark"]) .admin-authenticated :is(.summary-card, .report-card, .commercial-routine-panel, .commercial-bar, .order-items, .metric-grid article) {
+    border-color: var(--border-subtle);
+    background-color: var(--surface-card);
+}
+
+html:not([data-theme="dark"]) .admin-authenticated :is(.summary-card, .report-card, .commercial-routine-panel, .commercial-bar, .order-items, .metric-grid article) :is(p, small, dt, .text-muted) {
+    color: var(--text-secondary);
+}
+
+html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold) {
+    border-color: var(--action-primary);
+    background: var(--action-primary);
+    color: #FFFFFF;
+}
+
+html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):hover,
+html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):active {
+    border-color: var(--action-primary-hover);
+    background: var(--action-primary-hover);
+    color: #FFFFFF;
+}
+
+html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--action-primary) 35%, transparent);
+    outline-offset: 2px;
+}
+
+html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):disabled {
+    border-color: var(--action-primary);
+    background: var(--action-primary);
+    color: #FFFFFF;
+    opacity: .65;
+}
+
+html:not([data-theme="dark"]) :is(.portal-shell, .order-page, .success-page, .registration-page) {
+    background: var(--surface-canvas);
+}
+
+html:not([data-theme="dark"]) :is(.registration-card--access, .success-details, .minimum, .timer) {
+    border-color: var(--border-subtle);
+    background: var(--surface-card);
+}
+
+html:not([data-theme="dark"]) .success-details {
+    background: var(--surface-muted);
+}
+
+html:not([data-theme="dark"]) .customer-commercial-attention {
+    border-color: var(--border-subtle);
+    background: var(--surface-card);
+}
+
+html:not([data-theme="dark"]) .customer-commercial-attention dt {
+    color: var(--text-secondary);
+}
+
+html:not([data-theme="dark"]) .trust-strip {
+    background: #0F172A;
+    color: #FFFFFF;
+}
+
+html:not([data-theme="dark"]) :is(.contact-form, .registration-hero, .registration-card, .success-card, .order-items, .summary-card) {
+    border-color: var(--border-subtle);
+    background-color: var(--surface-card);
+}
+
+html:not([data-theme="dark"]) :is(.registration-card .form-control, .contact-form input, .contact-form textarea) {
+    border-color: var(--border-subtle);
+}
+
+html:not([data-theme="dark"]) :is(.registration-card .form-control, .contact-form input, .contact-form textarea):focus {
+    border-color: var(--action-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-primary) 18%, transparent);
+}

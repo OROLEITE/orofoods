@@ -37,8 +37,33 @@ public class WhatsAppThemeSurfaceTests
         Assert.DoesNotContain("opacity:", backdropRule);
 
         var tokens = Read("Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css");
-        Assert.Contains("--crm-surface: #fffdf9;", tokens);
+        Assert.Contains("--crm-surface: #FFFFFF;", tokens);
         Assert.Contains("--crm-surface: #1b2632;", tokens);
+    }
+
+    [Fact]
+    public void Light_crm_uses_the_shared_slate_and_blue_palette_while_dark_tokens_remain_intact()
+    {
+        var css = Read("Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css");
+        var globals = Read("Orofoods.Web", "wwwroot", "css", "site.css");
+
+        Assert.Contains("--crm-page-bg: #F8FAFC;", css);
+        Assert.Contains("--crm-surface: #FFFFFF;", css);
+        Assert.Contains("--crm-border: #E2E8F0;", css);
+        Assert.Contains("--crm-text: #0F172A;", css);
+        Assert.Contains("--crm-muted: #475569;", css);
+        Assert.Contains("--crm-accent: #2563EB;", css);
+        Assert.Contains("--crm-accent-hover: #1D4ED8;", css);
+        Assert.Contains("--crm-accent-soft: #EFF6FF;", css);
+        Assert.Contains("--crm-page-bg: #111720;", css);
+        Assert.Contains("--crm-surface: #1b2632;", css);
+        Assert.Contains("--crm-accent: #d2a24e;", css);
+
+        Assert.Contains("--surface-canvas: #F8FAFC;", globals);
+        Assert.Contains("--surface-card: #FFFFFF;", globals);
+        Assert.Contains("--border-subtle: #E2E8F0;", globals);
+        Assert.Contains("--text-primary: #0F172A;", globals);
+        Assert.Contains("--action-primary-soft: #EFF6FF;", globals);
     }
 
     [Fact]

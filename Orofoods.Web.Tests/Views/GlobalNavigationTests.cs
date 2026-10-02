@@ -57,4 +57,23 @@ public class GlobalNavigationTests
 
         Assert.Equal(6, header.Split("asp-area=\"\" asp-controller=\"Home\"").Length - 1);
     }
+
+    [Fact]
+    public void Light_header_has_high_contrast_links_and_keeps_the_dark_navigation_frame()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "header.css"));
+        var navigation = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
+        var globalStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
+
+        Assert.Contains("html:not([data-theme=\"dark\"]) .site-header-modern .main-nav .nav-link", header);
+        Assert.Contains("color: #1E293B;", header);
+        Assert.Contains("background: var(--surface-card);", header);
+        Assert.Contains("color: var(--nav-text);", navigation);
+        Assert.Contains("color: var(--nav-text-active);", navigation);
+        Assert.Contains("background: var(--admin-sidebar-accent);", navigation);
+        Assert.Contains("--cream: var(--surface-muted);", globalStyles);
+        Assert.Contains("html:not([data-theme=\"dark\"]) :is(.portal-shell, .order-page, .success-page, .registration-page)", globalStyles);
+        Assert.Contains("html:not([data-theme=\"dark\"]) .customer-commercial-attention", globalStyles);
+    }
 }
