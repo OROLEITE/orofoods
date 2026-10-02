@@ -95,11 +95,76 @@ public class WhatsAppPollingUiTests
         Assert.Contains("messageList.querySelectorAll('[data-message-id]')", script);
         Assert.Contains("renderedMessageElements.get(messageId)", reconcile);
         Assert.DoesNotContain("notificationSeenInboundIds.has", reconcile);
-        Assert.Contains("console.error(`WhatsApp message ${messageId} could not be reconciled.`, error)", reconcile);
+        Assert.Contains("console.error('WhatsApp message reconciliation failed.'", reconcile);
+        Assert.Contains("messageId,\n                    name: error?.name ?? null,\n                    message: error?.message ?? null", reconcile);
         Assert.True(appendFooterPosition >= 0 && renderKeyPosition > appendFooterPosition,
             "A message must receive its render key only after its DOM has been fully built.");
         Assert.True(renderMessagePosition >= 0 && appendMessagePosition > renderMessagePosition,
             "New messages must be rendered successfully before they are appended.");
+    }
+
+    [Fact]
+    public void Sync_failure_reports_the_current_stage_and_keeps_abort_silent()
+    {
+        var sync = ReadSynchronizeFunction();
+        var catchStart = sync.IndexOf("} catch (error) {", StringComparison.Ordinal);
+        var finallyStart = sync.IndexOf("} finally {", catchStart, StringComparison.Ordinal);
+        var catchBlock = sync[catchStart..finallyStart];
+
+        Assert.Contains("let syncStage = 'start';", sync);
+        Assert.Contains("if (error?.name !== 'AbortError')", catchBlock);
+        Assert.Contains("console.error('WhatsApp sync failed.'", catchBlock);
+        Assert.Contains("stage: syncStage", catchBlock);
+        Assert.Contains("name: error?.name ?? null", catchBlock);
+        Assert.Contains("message: error?.message ?? null", catchBlock);
+        Assert.DoesNotContain("WhatsApp sync unavailable.", sync);
+        Assert.DoesNotContain("payload", catchBlock);
+        Assert.DoesNotContain("textBody", catchBlock);
+        Assert.DoesNotContain("caption", catchBlock);
+        Assert.DoesNotContain("fileName", catchBlock);
+        Assert.DoesNotContain("phoneNumber", catchBlock);
+    }
+
+    [Fact]
+    public void Sync_stage_markers_identify_each_operation_and_release_the_polling_lock()
+    {
+        var sync = ReadSynchronizeFunction();
+
+        AssertStagePrecedes(sync, "syncStage = 'fetch';", "await fetch(url,");
+        AssertStagePrecedes(sync, "syncStage = 'parse';", "await response.json()");
+        AssertStagePrecedes(sync, "syncStage = 'update-conversations';", "updateConversations(payload.conversations || [])");
+        AssertStagePrecedes(sync, "syncStage = 'update-messages';", "updateMessages(payload.messages || [])");
+        AssertStagePrecedes(sync, "syncStage = 'notification';", "const newInbound =");
+        AssertStagePrecedes(sync, "syncStage = 'beep';", "playInboundBeep()");
+
+        var finallyStart = sync.IndexOf("} finally {", StringComparison.Ordinal);
+        var finallyBlock = sync[finallyStart..];
+        Assert.Contains("window.clearTimeout(timeoutId);", finallyBlock);
+        Assert.Contains("requestInFlight = false;", finallyBlock);
+        Assert.True(finallyBlock.IndexOf("window.clearTimeout(timeoutId);", StringComparison.Ordinal)
+            < finallyBlock.IndexOf("requestInFlight = false;", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Per_message_reconciliation_diagnostic_contains_only_technical_error_fields()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var reconcileStart = script.IndexOf("const updateMessages = messages =>", StringComparison.Ordinal);
+        var reconcileEnd = script.IndexOf("const conversationElement =", reconcileStart, StringComparison.Ordinal);
+        var reconcile = script[reconcileStart..reconcileEnd];
+        var diagnosticStart = reconcile.IndexOf("console.error('WhatsApp message reconciliation failed.'", StringComparison.Ordinal);
+        var diagnosticEnd = reconcile.IndexOf("continue;", diagnosticStart, StringComparison.Ordinal);
+        var diagnostic = reconcile[diagnosticStart..diagnosticEnd];
+
+        Assert.Contains("messageId", diagnostic);
+        Assert.Contains("name: error?.name ?? null", diagnostic);
+        Assert.Contains("message: error?.message ?? null", diagnostic);
+        Assert.DoesNotContain("payload", diagnostic);
+        Assert.DoesNotContain("textBody", diagnostic);
+        Assert.DoesNotContain("caption", diagnostic);
+        Assert.DoesNotContain("fileName", diagnostic);
+        Assert.DoesNotContain("phoneNumber", diagnostic);
+        Assert.DoesNotContain("customer", diagnostic);
     }
 
     [Fact]
@@ -138,5 +203,22 @@ public class WhatsAppPollingUiTests
         while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "Orofoods.Web")))
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
+    }
+
+    private static string ReadSynchronizeFunction()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var syncStart = script.IndexOf("const synchronize = async () =>", StringComparison.Ordinal);
+        var syncEnd = script.IndexOf("form.addEventListener('submit'", syncStart, StringComparison.Ordinal);
+        return script[syncStart..syncEnd];
+    }
+
+    private static void AssertStagePrecedes(string sync, string stageMarker, string operation)
+    {
+        var stagePosition = sync.IndexOf(stageMarker, StringComparison.Ordinal);
+        var operationPosition = sync.IndexOf(operation, stagePosition, StringComparison.Ordinal);
+
+        Assert.True(stagePosition >= 0 && operationPosition > stagePosition,
+            $"Expected {stageMarker} before {operation}.");
     }
 }
