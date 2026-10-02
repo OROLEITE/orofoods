@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
+using Orofoods.Web.Infrastructure.Logging;
 using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Services.Orders;
 
@@ -17,7 +18,21 @@ public sealed class ErpRetryBackgroundService(
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            if (!wmcOptions.Value.Enabled)
+            WmcFileDropOptions resolvedOptions;
+            try
+            {
+                resolvedOptions = wmcOptions.Value;
+            }
+            catch (Exception exception) when (BadImageRuntimeDiagnostics.FindBadImageException(exception) is not null)
+            {
+                BadImageRuntimeDiagnostics.LogWmcOptionsFailure(
+                    logger,
+                    exception,
+                    typeof(WmcFileDropOptions));
+                throw;
+            }
+
+            if (!resolvedOptions.Enabled)
             {
                 logger.LogDebug("Integracao WMC permanece desativada.");
             }
@@ -28,7 +43,7 @@ public sealed class ErpRetryBackgroundService(
                 var service = scope.ServiceProvider.GetRequiredService<OrderIntegrationService>();
                 var ids = await db.Orders
                     .Where(order => order.IntegrationStatus == IntegrationStatus.Pending ||
-                        (wmcOptions.Value.AutoRetryEnabled && order.IntegrationStatus == IntegrationStatus.Failed))
+                        (resolvedOptions.AutoRetryEnabled && order.IntegrationStatus == IntegrationStatus.Failed))
                     .OrderBy(order => order.LastIntegrationAttempt ?? order.CreatedAt)
                     .Select(order => order.Id)
                     .Take(20)
