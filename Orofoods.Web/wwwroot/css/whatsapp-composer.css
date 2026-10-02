@@ -2301,3 +2301,29 @@ html[data-theme="dark"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions 
 html[data-theme="dark"] body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle:active {
     background: var(--crm-accent-soft);
 }
+
+body:has(.whatsapp-inbox-page) .whatsapp-thread {
+    min-height: 0;
+    overflow: hidden;
+}
+
+body:has(.whatsapp-inbox-page) .whatsapp-messages {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-block-end: 24px;
+    scroll-padding-block-end: 24px;
+}
+
+body:has(.whatsapp-inbox-page) .whatsapp-compose {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 767.98px) {
+    body:has(.whatsapp-inbox-page) .whatsapp-messages {
+        padding-block-end: 18px;
+        scroll-padding-block-end: 18px;
+    }
+}

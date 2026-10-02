@@ -196,6 +196,12 @@
         messageList.scrollTop = messageList.scrollHeight;
         if (newMessageButton) newMessageButton.hidden = true;
     };
+    const scrollToBottomAfterUpdate = () => new Promise(resolve => {
+        window.requestAnimationFrame(() => {
+            scrollToBottom();
+            resolve();
+        });
+    });
     scrollToBottom();
 
     newMessageButton?.addEventListener('click', scrollToBottom);
@@ -530,12 +536,12 @@
             }
 
             await synchronize();
-            if (!keepAtBottom) messageList.scrollTop = previousScrollTop;
             if (textarea && textarea.value === submittedText) {
                 textarea.value = '';
                 resizeComposer();
             }
-            showSendFeedback('Mensagem enviada.');
+            textarea?.focus();
+            await scrollToBottomAfterUpdate();
         } catch {
             if (!keepAtBottom) messageList.scrollTop = previousScrollTop;
             showSendFeedback('Não foi possível confirmar o envio. Confira sua conexão e tente novamente.', true);
