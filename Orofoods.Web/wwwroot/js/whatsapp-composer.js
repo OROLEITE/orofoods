@@ -166,7 +166,17 @@
     const selectedConversationId = Number(form.dataset.conversationId);
     const updatesUrl = form.dataset.updatesUrl;
     let requestInFlight = false;
+    let sendInFlight = false;
     let timerId = null;
+    const sendButton = form.querySelector('button[type="submit"]');
+    const sendFeedback = document.getElementById('whatsappSendFeedback');
+
+    const showSendFeedback = (message, isError = false) => {
+        if (!sendFeedback) return;
+        sendFeedback.textContent = message;
+        sendFeedback.hidden = !message;
+        sendFeedback.classList.toggle('whatsapp-send-feedback--error', isError);
+    };
 
     const isNearBottom = () => messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 64;
     const scrollToBottom = () => {
@@ -421,6 +431,72 @@
             requestInFlight = false;
         }
     };
+
+    form.addEventListener('submit', async event => {
+        if (sendInFlight) {
+            event.preventDefault();
+            return;
+        }
+
+        event.preventDefault();
+        sendInFlight = true;
+        form.querySelector('.whatsapp-send-feedback--error')?.remove();
+        showSendFeedback('');
+
+        const submittedText = textarea?.value ?? '';
+        const keepAtBottom = isNearBottom();
+        const previousScrollTop = messageList.scrollTop;
+        const buttonLabel = sendButton?.querySelector('span');
+        const previousButtonLabel = buttonLabel?.textContent;
+        if (sendButton) {
+            sendButton.disabled = true;
+            sendButton.setAttribute('aria-busy', 'true');
+        }
+        if (buttonLabel) buttonLabel.textContent = 'Enviando…';
+        form.setAttribute('aria-busy', 'true');
+
+        try {
+            const response = await fetch(form.action, {
+                method: form.method || 'POST',
+                body: new FormData(form),
+                credentials: 'same-origin',
+                headers: { Accept: 'text/html' },
+                redirect: 'follow'
+            });
+            const responseUrl = new URL(response.url || form.action, window.location.href);
+            const responseDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const serverError = responseDocument.querySelector('.whatsapp-send-feedback--error')?.textContent.trim();
+
+            if (serverError) {
+                showSendFeedback(serverError, true);
+                return;
+            }
+            if (!response.ok || responseUrl.origin !== window.location.origin ||
+                !/\/Admin\/WhatsApp(?:\/|$)/i.test(responseUrl.pathname) ||
+                !responseDocument.querySelector('.whatsapp-compose')) {
+                throw new Error('Não foi possível confirmar o envio. Confira sua conexão e tente novamente.');
+            }
+
+            await synchronize();
+            if (!keepAtBottom) messageList.scrollTop = previousScrollTop;
+            if (textarea && textarea.value === submittedText) {
+                textarea.value = '';
+                resizeComposer();
+            }
+            showSendFeedback('Mensagem enviada.');
+        } catch {
+            if (!keepAtBottom) messageList.scrollTop = previousScrollTop;
+            showSendFeedback('Não foi possível confirmar o envio. Confira sua conexão e tente novamente.', true);
+        } finally {
+            sendInFlight = false;
+            form.removeAttribute('aria-busy');
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.removeAttribute('aria-busy');
+            }
+            if (buttonLabel && previousButtonLabel !== undefined) buttonLabel.textContent = previousButtonLabel;
+        }
+    });
 
     const schedule = () => {
         window.clearInterval(timerId);

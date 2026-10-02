@@ -15,8 +15,53 @@ public class WhatsAppPollingUiTests
         Assert.Contains("America/Sao_Paulo", script);
         Assert.Contains("data-message-id", script);
         Assert.Contains("article.dataset.messageId", script);
-        Assert.DoesNotContain("textarea.value =", script);
+        Assert.Contains("textarea.value === submittedText", script);
+        Assert.Contains("textarea.value = ''", script);
         Assert.DoesNotContain("location.reload", script);
+    }
+
+    [Fact]
+    public void Sending_is_async_with_a_traditional_form_fallback_and_early_theme_bootstrap()
+    {
+        var root = FindRepositoryRoot();
+        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var layout = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Views", "Shared", "_Layout.cshtml"));
+        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var themeBootstrap = layout.IndexOf("savedCrmTheme", StringComparison.Ordinal);
+        var firstStylesheet = layout.IndexOf("<link rel=\"stylesheet\"", StringComparison.Ordinal);
+
+        Assert.Contains("<form asp-action=\"Send\" method=\"post\"", view);
+        Assert.Contains("form.addEventListener('submit', async event =>", script);
+        Assert.Contains("event.preventDefault()", script);
+        Assert.Contains("new FormData(form)", script);
+        Assert.Contains("if (sendInFlight)", script);
+        Assert.Contains("await synchronize()", script);
+        Assert.Contains("whatsapp-send-feedback", view);
+        Assert.True(themeBootstrap >= 0 && themeBootstrap < firstStylesheet);
+        Assert.Contains("orofoods.crm.theme", layout);
+        Assert.Contains("html[data-theme=\"dark\"]:has(.whatsapp-inbox-page)", styles);
+        Assert.Contains("--crm-page-bg", styles);
+        Assert.Contains("--crm-chat-bg", styles);
+    }
+
+    [Fact]
+    public void Customer_actions_share_a_spaced_container_and_theme_controls_use_shared_tokens()
+    {
+        var root = FindRepositoryRoot();
+        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+
+        Assert.Contains("whatsapp-customer-actions", view);
+        Assert.Contains("whatsapp-unlink-customer", view);
+        Assert.Contains(".whatsapp-customer-actions {", styles);
+        Assert.Contains("gap: 12px", styles);
+        Assert.Contains(".whatsapp-unlink-customer:hover", styles);
+        Assert.Contains(".whatsapp-sound-toggle", styles);
+        Assert.Contains(".whatsapp-theme-toggle", styles);
+        Assert.Contains(".whatsapp-channel-badge", styles);
+        Assert.Contains("--crm-message-in", styles);
+        Assert.Contains("--crm-message-out", styles);
     }
 
     [Fact]
