@@ -70,12 +70,36 @@ public class WhatsAppPollingUiTests
         var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
 
         Assert.Contains("localStorage", script);
-        Assert.Contains("knownInboundIds", script);
+        Assert.Contains("notificationSeenInboundIds", script);
         Assert.Contains("message.direction === 'inbound'", script);
         Assert.Contains("!initialState", script);
         Assert.Contains("playInboundBeep()", script);
         Assert.Contains("soundToggle", script);
         Assert.Contains("AudioContext", script);
+    }
+
+    [Fact]
+    public void Message_reconciliation_deduplicates_against_rendered_dom_and_isolates_render_failures()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var reconcileStart = script.IndexOf("const updateMessages = messages =>", StringComparison.Ordinal);
+        var reconcileEnd = script.IndexOf("const conversationElement =", reconcileStart, StringComparison.Ordinal);
+        var renderMessageStart = script.IndexOf("const renderMessage = (article, message) =>", StringComparison.Ordinal);
+        var renderKeyPosition = script.IndexOf("article.dataset.renderKey = key;", renderMessageStart, StringComparison.Ordinal);
+        var appendFooterPosition = script.IndexOf("article.append(footer);", renderMessageStart, StringComparison.Ordinal);
+        var appendMessagePosition = script.IndexOf("messageList.append(article);", reconcileStart, StringComparison.Ordinal);
+        var renderMessagePosition = script.IndexOf("renderMessage(article, message);", reconcileStart, StringComparison.Ordinal);
+        var reconcile = script[reconcileStart..reconcileEnd];
+
+        Assert.Contains("const renderedMessageElements = new Map(", script);
+        Assert.Contains("messageList.querySelectorAll('[data-message-id]')", script);
+        Assert.Contains("renderedMessageElements.get(messageId)", reconcile);
+        Assert.DoesNotContain("notificationSeenInboundIds.has", reconcile);
+        Assert.Contains("console.error(`WhatsApp message ${messageId} could not be reconciled.`, error)", reconcile);
+        Assert.True(appendFooterPosition >= 0 && renderKeyPosition > appendFooterPosition,
+            "A message must receive its render key only after its DOM has been fully built.");
+        Assert.True(renderMessagePosition >= 0 && appendMessagePosition > renderMessagePosition,
+            "New messages must be rendered successfully before they are appended.");
     }
 
     [Fact]
