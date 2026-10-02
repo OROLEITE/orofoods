@@ -83,6 +83,19 @@ public class WhatsAppPollingUiTests
         Assert.Contains("gap: 12px", customerActions);
     }
 
+    [Fact]
+    public void Dark_theme_uses_a_slightly_lighter_inbound_message_surface_only()
+    {
+        var styles = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var lightTheme = ReadCssRule(styles, "html:has(.whatsapp-inbox-page)");
+        var darkTheme = ReadCssRule(styles, "html[data-theme=\"dark\"]:has(.whatsapp-inbox-page)");
+
+        Assert.Contains("--crm-message-in: #fffefa", lightTheme);
+        Assert.Contains("--crm-message-in: #2c3a46", darkTheme);
+        Assert.Contains("--crm-message-out: #2b4036", darkTheme);
+        Assert.Contains("--crm-chat-bg: #151e27", darkTheme);
+    }
+
     [Theory]
     [InlineData("Mensagem", false, false, false, false, 1, true)]
     [InlineData("Mensagem", true, false, false, false, 0, false)]
