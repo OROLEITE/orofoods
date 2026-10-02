@@ -290,6 +290,11 @@
                         <button class="btn btn-gold" type="submit" aria-label="Enviar mensagem">
                             <span>Enviar</span><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
                         </button>
+                        @if (TempData["WhatsAppError"] is string sendError)
+                        {
+                            <p class="whatsapp-send-feedback whatsapp-send-feedback--error" role="alert">@sendError</p>
+                        }
+                        <p class="whatsapp-send-feedback" id="whatsappSendFeedback" role="status" aria-live="polite" hidden></p>
                     </form>
                 }
             </section>
@@ -328,14 +333,16 @@
                         <a href="tel:@selected.PhoneNumber" class="whatsapp-phone-link"><i class="fa-solid fa-phone" aria-hidden="true"></i> @selected.PhoneNumber</a>
 
                         <dl class="whatsapp-customer-details">
-                            <div><dt>Vendedor responsável</dt><dd>@(selected.Customer.SalesRepresentative?.Name ?? "Não informado")</dd></div>
-                            <div><dt>Atendimento interno</dt><dd>@(selected.AssignedUser?.Email ?? "Não atribuído")</dd></div>
+                            <div><dt>Vendedor responsável</dt><dd class="@(selected.Customer.SalesRepresentative is null ? "is-muted" : "")">@(selected.Customer.SalesRepresentative?.Name ?? "Não informado")</dd></div>
+                            <div><dt>Atendimento interno</dt><dd class="@(selected.AssignedUser is null ? "is-muted" : "")">@(selected.AssignedUser?.Email ?? "Não atribuído")</dd></div>
                         </dl>
 
-                        <a class="whatsapp-customer-link" asp-controller="Customers" asp-action="Details" asp-route-id="@selected.CustomerId">
-                            Ver Cliente 360° <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                        </a>
-                        <form asp-action="UnlinkCustomer" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark" type="submit">Desvincular cliente</button></form>
+                        <div class="whatsapp-customer-actions">
+                            <a class="whatsapp-customer-link" asp-controller="Customers" asp-action="Details" asp-route-id="@selected.CustomerId">
+                                Ver Cliente 360° <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                            </a>
+                            <form asp-action="UnlinkCustomer" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark whatsapp-unlink-customer" type="submit">Desvincular cliente</button></form>
+                        </div>
                     </div>
                 }
             </aside>
