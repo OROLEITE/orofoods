@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Jint;
+
 namespace Orofoods.Web.Tests.Services;
 
 public class WhatsAppPollingUiTests
@@ -101,6 +104,175 @@ public class WhatsAppPollingUiTests
             "A message must receive its render key only after its DOM has been fully built.");
         Assert.True(renderMessagePosition >= 0 && appendMessagePosition > renderMessagePosition,
             "New messages must be rendered successfully before they are appended.");
+    }
+
+    [Theory]
+    [InlineData(true, "open", true, 2)]
+    [InlineData(false, "pending", false, 2)]
+    [InlineData(true, "closed", false, 0)]
+    [InlineData(false, "pending", true, 0)]
+    [InlineData(false, "open", true, 100)]
+    public async Task Sync_continues_after_optional_unread_badge_is_missing(
+        bool identified, string status, bool initialBadgePresent, int unreadCount)
+    {
+        var root = FindRepositoryRoot();
+        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+
+        Assert.Contains("var hasUnread = conversation.UnreadCount > 0;", view);
+        Assert.Contains("@if (hasUnread)", view);
+        Assert.Contains("class=\"whatsapp-unread-badge\"", view);
+
+        var updateConversation = ExtractBetween(script, "    const updateConversation = (element, conversation) =>", "    const applyConversationFilter =");
+        var updateConversations = ExtractBetween(script, "    const updateConversations = conversations =>", "    const synchronize = async () =>");
+        var updateMessages = ExtractBetween(script, "    const updateMessages = messages =>", "    const conversationElement = conversation =>");
+        var synchronize = ExtractBetween(script, "    const synchronize = async () =>", "    form.addEventListener('submit'");
+        var scenario = JsonSerializer.Serialize(new { identified, status, initialBadgePresent, unreadCount });
+
+        const string harness = """
+            const scenario = __SCENARIO__;
+            const selectedConversationId = 42;
+            const updatesUrl = '/Admin/WhatsApp/Updates';
+            let requestInFlight = false;
+            let initialState = false;
+            const notificationSeenInboundIds = new Set();
+            const renderedMessageElements = new Map();
+            const newMessageButton = null;
+            const testConversation = {
+                id: selectedConversationId,
+                identified: scenario.identified,
+                name: scenario.identified ? 'Cliente de teste' : 'Contato de teste',
+                status: scenario.status,
+                unreadCount: scenario.unreadCount,
+                lastMessageAt: '2026-10-02T12:00:00Z',
+                preview: 'Prévia sintética',
+                messageType: 'text',
+                lastMessageDirection: 'inbound',
+                lastMessageId: 7001
+            };
+            const makeNode = () => ({
+                get textContent() { return this._textContent ?? ''; },
+                set textContent(value) { this._textContent = String(value); },
+                dateTime: '', hidden: false, className: '', attributes: {}, dataset: {}, children: [],
+                classList: { toggle() {}, remove() {}, add() {} },
+                setAttribute(name, value) { this.attributes[name] = value; },
+                replaceChildren() { this.children = []; },
+                append(...nodes) { this.children.push(...nodes); }
+            });
+            const title = makeNode();
+            const time = makeNode();
+            const previewText = makeNode();
+            let unreadBadge = scenario.initialBadgePresent ? makeNode() : null;
+            const previewContainer = {
+                append(node) {
+                    if (node.className === 'whatsapp-unread-badge') unreadBadge = node;
+                }
+            };
+            previewText.parentElement = previewContainer;
+            const conversationMeta = makeNode();
+            const existingConversation = {
+                dataset: { conversationId: String(selectedConversationId) },
+                classList: { toggle() {}, remove() {}, add() {} },
+                setAttribute() {},
+                querySelector(selector) {
+                    if (selector === '.whatsapp-conversation-title strong') return title;
+                    if (selector === '.whatsapp-conversation-title time') return time;
+                    if (selector === '.whatsapp-conversation-preview > span:first-child') return previewText;
+                    if (selector === '.whatsapp-conversation-preview') return previewContainer;
+                    if (selector === '.whatsapp-unread-badge') return unreadBadge;
+                    if (selector === '.whatsapp-conversation-meta') return conversationMeta;
+                    return null;
+                }
+            };
+            const conversationList = {
+                querySelector(selector) {
+                    return selector.startsWith('[data-conversation-id=') ? existingConversation : null;
+                },
+                querySelectorAll(selector) {
+                    return selector === '[data-conversation-id]' ? [existingConversation] : [];
+                },
+                append() {}
+            };
+            const appendedMessages = [];
+            const messageList = {
+                scrollHeight: 0, scrollTop: 0, clientHeight: 100,
+                querySelector() { return null; },
+                querySelectorAll() { return []; },
+                append(article) { appendedMessages.push(article); }
+            };
+            const conversationSearch = null;
+            const applyConversationFilter = () => {};
+            const isNearBottom = () => false;
+            const scrollToBottom = () => {};
+            const statusLabel = value => ({ open: 'Em atendimento', pending: 'Novo', closed: 'Finalizado' })[value];
+            const formatTime = value => value ? '12:00' : '';
+            const iconForType = () => null;
+            const appendIcon = () => {};
+            const renderMessage = (article, message) => {
+                article.dataset.renderKey = String(message.id);
+                article.textBody = message.textBody;
+            };
+            const document = {
+                hidden: false,
+                createElement() { return makeNode(); },
+                createTextNode(text) { return { textContent: String(text) }; }
+            };
+            const window = {
+                location: { origin: 'https://example.test' },
+                setTimeout() { return 1; },
+                clearTimeout() {}
+            };
+            const AbortController = class { constructor() { this.signal = {}; } abort() {} };
+            const URL = class { constructor() { this.searchParams = { set() {} }; } };
+            const console = { errors: [], error(...args) { this.errors.push(args); } };
+            const playInboundBeep = () => {};
+            const fetch = async () => ({
+                ok: true,
+                json: async () => ({
+                    conversations: [testConversation],
+                    messages: [{ id: 7001, direction: 'inbound', textBody: 'Mensagem sintética' }]
+                })
+            });
+            __UPDATE_CONVERSATION__
+            __UPDATE_CONVERSATIONS__
+            __UPDATE_MESSAGES__
+            __SYNCHRONIZE__
+            (async () => {
+                await synchronize();
+                return JSON.stringify({
+                    syncErrors: console.errors.length,
+                    conversationUpdated: title.textContent === testConversation.name
+                        && previewText.children.map(node => node.textContent).join('') === testConversation.preview
+                        && conversationMeta.textContent === statusLabel(testConversation.status),
+                    badgePresent: unreadBadge !== null,
+                    badgeHidden: unreadBadge?.hidden ?? null,
+                    badgeText: unreadBadge?.textContent ?? null,
+                    messageInserted: appendedMessages.length === 1
+                        && appendedMessages[0].dataset.messageId === '7001'
+                        && appendedMessages[0].textBody === 'Mensagem sintética'
+                });
+            })()
+            """;
+
+        var executable = harness
+            .Replace("__SCENARIO__", scenario, StringComparison.Ordinal)
+            .Replace("__UPDATE_CONVERSATION__", updateConversation, StringComparison.Ordinal)
+            .Replace("__UPDATE_CONVERSATIONS__", updateConversations, StringComparison.Ordinal)
+            .Replace("__UPDATE_MESSAGES__", updateMessages, StringComparison.Ordinal)
+            .Replace("__SYNCHRONIZE__", synchronize, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(executable);
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.Equal(0, state.GetProperty("syncErrors").GetInt32());
+        Assert.True(state.GetProperty("conversationUpdated").GetBoolean());
+        Assert.True(state.GetProperty("messageInserted").GetBoolean());
+        Assert.Equal(initialBadgePresent || unreadCount > 0, state.GetProperty("badgePresent").GetBoolean());
+        if (state.GetProperty("badgePresent").GetBoolean())
+        {
+            Assert.Equal(unreadCount == 0, state.GetProperty("badgeHidden").GetBoolean());
+            Assert.Equal(unreadCount > 99 ? "99+" : unreadCount.ToString(), state.GetProperty("badgeText").GetString());
+        }
     }
 
     [Fact]
@@ -220,5 +392,14 @@ public class WhatsAppPollingUiTests
 
         Assert.True(stagePosition >= 0 && operationPosition > stagePosition,
             $"Expected {stageMarker} before {operation}.");
+    }
+
+    private static string ExtractBetween(string source, string startMarker, string endMarker)
+    {
+        var start = source.IndexOf(startMarker, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Could not find {startMarker}.");
+        var end = source.IndexOf(endMarker, start, StringComparison.Ordinal);
+        Assert.True(end > start, $"Could not find {endMarker} after {startMarker}.");
+        return source[start..end];
     }
 }
