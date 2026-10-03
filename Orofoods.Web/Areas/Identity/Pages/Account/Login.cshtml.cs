@@ -46,6 +46,9 @@ public class LoginModel(
             && !string.Equals(path, "/Portal/SelectCustomer", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsOperatorReturnUrl(string returnUrl) =>
+        string.Equals(GetReturnPath(returnUrl), "/Admin/WhatsApp", StringComparison.OrdinalIgnoreCase);
+
     private static string GetReturnPath(string returnUrl)
     {
         var queryOrFragment = returnUrl.IndexOfAny(['?', '#']);
@@ -102,11 +105,13 @@ public class LoginModel(
         if (user is not null && result.Succeeded)
         {
             _logger.LogInformation("User logged in.");
-            var isAdministrator = await _userManager.IsInRoleAsync(user, "Administrador");
-            var isCustomer = await _userManager.IsInRoleAsync(user, "Cliente");
+            var isAdministrator = await _userManager.IsInRoleAsync(user, ApplicationRoles.Administrator);
+            var isCustomer = await _userManager.IsInRoleAsync(user, ApplicationRoles.Customer);
+            var isOperator = await _userManager.IsInRoleAsync(user, ApplicationRoles.Operator);
             var homeUrl = Url.Content("~/");
             var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
             var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
+            const string operatorCrmUrl = "/Admin/WhatsApp";
             var hasLocalReturnUrl = !string.IsNullOrWhiteSpace(returnUrl)
                 && Url.IsLocalUrl(returnUrl)
                 && !string.Equals(returnUrl, homeUrl, StringComparison.Ordinal);
@@ -119,6 +124,16 @@ public class LoginModel(
                 }
 
                 return LocalRedirect(adminDashboardUrl);
+            }
+
+            if (isOperator)
+            {
+                if (hasLocalReturnUrl && IsOperatorReturnUrl(returnUrl!))
+                {
+                    return LocalRedirect(returnUrl!);
+                }
+
+                return LocalRedirect(operatorCrmUrl);
             }
 
             if (isCustomer)

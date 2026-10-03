@@ -36,6 +36,26 @@ public class LoginRedirectTests
     }
 
     [Fact]
+    public async Task Operator_without_return_url_redirects_to_the_whatsapp_crm()
+    {
+        var result = await LoginAsAsync("Operador", returnUrl: null);
+
+        Assert.Equal("/Admin/WhatsApp", RedirectUrl(result));
+    }
+
+    [Theory]
+    [InlineData("/Admin/WhatsApp?id=42", "/Admin/WhatsApp?id=42")]
+    [InlineData("/Admin/Users", "/Admin/WhatsApp")]
+    [InlineData("https://evil.example/", "/Admin/WhatsApp")]
+    [InlineData("/Portal/Dashboard", "/Admin/WhatsApp")]
+    public async Task Operator_return_url_cannot_escape_whatsapp(string returnUrl, string expectedRedirect)
+    {
+        var result = await LoginAsAsync("Operador", returnUrl);
+
+        Assert.Equal(expectedRedirect, RedirectUrl(result));
+    }
+
+    [Fact]
     public async Task Admin_with_valid_admin_return_url_is_returned_to_that_url()
     {
         var result = await LoginAsAsync("Administrador", "/Admin/Orders/Details/41");

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Customers;
+using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Services.Orders;
 
 namespace Orofoods.Web.Services.Identity;
@@ -14,13 +15,13 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
     public async Task<bool> HasActiveSellerAccessAsync(
         ClaimsPrincipal user,
         CancellationToken cancellationToken = default) =>
-        user.IsInRole("Vendedor") && await GetActiveRepresentativeAsync(user, cancellationToken) is not null;
+        user.IsInRole(ApplicationRoles.Seller) && await GetActiveRepresentativeAsync(user, cancellationToken) is not null;
 
     public Task<SalesRepresentative?> GetActiveRepresentativeAsync(
         ClaimsPrincipal user,
         CancellationToken cancellationToken = default)
     {
-        if (!user.IsInRole("Vendedor"))
+        if (!user.IsInRole(ApplicationRoles.Seller))
         {
             return Task.FromResult<SalesRepresentative?>(null);
         }
@@ -42,7 +43,7 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
         int customerId,
         CancellationToken cancellationToken = default)
     {
-        if (!user.IsInRole("Vendedor") || customerId <= 0)
+        if (!user.IsInRole(ApplicationRoles.Seller) || customerId <= 0)
         {
             return null;
         }
@@ -73,12 +74,12 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
 
     public async Task<SalesRepresentativeScope> GetScopeAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        if (user.IsInRole("Administrador") || user.IsInRole("GerenteComercial"))
+        if (user.IsInRole(ApplicationRoles.Administrator) || user.IsInRole(ApplicationRoles.CommercialManager))
         {
             return new SalesRepresentativeScope(false, null, null, user.FindFirstValue(ClaimTypes.NameIdentifier));
         }
 
-        if (!user.IsInRole("Vendedor"))
+        if (!user.IsInRole(ApplicationRoles.Seller))
         {
             return new SalesRepresentativeScope(true, null, null, user.FindFirstValue(ClaimTypes.NameIdentifier));
         }
@@ -100,12 +101,12 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
             return false;
         }
 
-        if (user.IsInRole("Administrador") || user.IsInRole("GerenteComercial"))
+        if (user.IsInRole(ApplicationRoles.Administrator) || user.IsInRole(ApplicationRoles.CommercialManager) || user.IsInRole(ApplicationRoles.Operator))
         {
             return true;
         }
 
-        if (!user.IsInRole("Vendedor"))
+        if (!user.IsInRole(ApplicationRoles.Seller))
         {
             return false;
         }

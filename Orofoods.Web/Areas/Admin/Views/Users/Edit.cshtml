@@ -1,3 +1,26 @@
 @model Orofoods.Web.ViewModels.AdminUserEditViewModel
-@{ ViewData["Title"] = "Editar usu&aacute;rio"; }
-<section class="admin-form-page"><div class="container admin-form-container"><nav class="customer-approval-breadcrumb"><a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Administra&ccedil;&atilde;o</a><i class="fa-solid fa-chevron-right"></i><a asp-action="Index">Usu&aacute;rios</a></nav><header class="admin-form-hero"><div><div class="eyebrow"><span></span> Acesso ao sistema</div><h1>Configurar usu&aacute;rio</h1><p>@Model.Email</p></div><i class="fa-solid fa-user-gear"></i></header><form method="post" class="admin-form-card row g-3"><input asp-for="Id" type="hidden"/><div asp-validation-summary="ModelOnly" class="text-danger"></div><div class="col-md-6"><label asp-for="Role">Perfil de acesso</label><select asp-for="Role" asp-items="Model.Roles" class="form-select"></select></div><div class="col-md-6 admin-check"><label><input asp-for="IsActive"/> Usu&aacute;rio ativo</label></div><div class="col-md-6"><label asp-for="CustomerId">Cliente vinculado</label><select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"><option value="">Nenhum cliente</option></select></div><div class="col-md-6"><label asp-for="SalesRepresentativeId">Vendedor vinculado</label><select asp-for="SalesRepresentativeId" asp-items="Model.SalesRepresentatives" class="form-select"><option value="">Nenhum vendedor</option></select></div><footer class="col-12 admin-form-actions"><a asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left"></i> Voltar</a><button class="btn btn-gold"><i class="fa-solid fa-floppy-disk"></i> Salvar acesso</button></footer></form></div></section>
+@{ ViewData["Title"] = "Editar usuário"; }
+<section class="admin-users-page admin-users-form-page">
+    <nav class="admin-users-breadcrumb"><a asp-action="Index">Usuários</a><span aria-hidden="true">/</span> Editar</nav>
+    <header class="admin-users-header"><div><p class="admin-users-eyebrow">Equipe</p><h1>Editar usuário</h1><p>Atualize dados, perfil e vínculos de acesso.</p></div></header>
+    <form asp-action="Edit" method="post" class="admin-users-form">
+        @Html.AntiForgeryToken()<input asp-for="Id" type="hidden" /><input asp-for="ConcurrencyStamp" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+        <fieldset><legend>DADOS DO USUÁRIO</legend><div class="admin-users-form-grid">
+            <div><label asp-for="Name">Nome</label><input asp-for="Name" class="form-control" autocomplete="name" /><span asp-validation-for="Name" class="text-danger"></span></div>
+            <div><label asp-for="Email">E-mail</label><input asp-for="Email" class="form-control" autocomplete="email" /><span asp-validation-for="Email" class="text-danger"></span></div>
+        </div></fieldset>
+        <fieldset><legend>ACESSO</legend><div class="admin-users-form-grid">
+            <div><label asp-for="Role">Perfil</label><select asp-for="Role" asp-items="Model.Roles" class="form-select"></select><span asp-validation-for="Role" class="text-danger"></span></div>
+            <div class="admin-users-check"><input asp-for="IsActive" /><label asp-for="IsActive">Usuário ativo</label></div>
+        </div></fieldset>
+        <fieldset><legend>VÍNCULOS</legend><div class="admin-users-form-grid">
+            <div><label asp-for="CustomerId">Cliente</label><select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"><option value="">Nenhum cliente</option></select></div>
+            <div><label asp-for="SalesRepresentativeId">Vendedor</label><select asp-for="SalesRepresentativeId" asp-items="Model.SalesRepresentatives" class="form-select"><option value="">Nenhum vendedor</option></select></div>
+        </div></fieldset>
+        <fieldset><legend>SEGURANÇA</legend><p>A senha atual nunca é exibida. Para alterá-la, use a ação “Redefinir senha” na lista de usuários.</p></fieldset>
+        <footer class="admin-users-form-actions"><a asp-action="Index" class="btn admin-users-secondary">Cancelar</a><button class="btn admin-users-primary" type="submit">Salvar alterações</button></footer>
+    </form>
+</section>
+@section Head { <link rel="stylesheet" href="~/css/admin-users.css" asp-append-version="true" /> }
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

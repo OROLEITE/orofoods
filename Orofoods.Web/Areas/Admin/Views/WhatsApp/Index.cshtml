@@ -1,3 +1,5 @@
+@using Orofoods.Web.Models.Commercial
+@using Orofoods.Web.Models.Identity
 @model Orofoods.Web.Areas.Admin.Controllers.WhatsAppInboxViewModel
 @{
     ViewData["Title"] = "WhatsApp";
@@ -185,6 +187,10 @@
                             {
                                 <form asp-action="Close" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark" type="submit">Finalizar atendimento</button></form>
                             }
+                            else if (selected.Status == WhatsAppConversationStatus.Closed)
+                            {
+                                <form asp-action="Reopen" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark" type="submit">Reabrir atendimento</button></form>
+                            }
                         </div>
                     </header>
 
@@ -338,9 +344,12 @@
                         </dl>
 
                         <div class="whatsapp-customer-actions">
+                            @if (!User.IsInRole(ApplicationRoles.Operator))
+                            {
                             <a class="whatsapp-customer-link" asp-controller="Customers" asp-action="Details" asp-route-id="@selected.CustomerId">
                                 Ver Cliente 360° <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
                             </a>
+                            }
                             <form asp-action="UnlinkCustomer" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm btn-outline-dark whatsapp-unlink-customer" type="submit">Desvincular cliente</button></form>
                         </div>
                     </div>

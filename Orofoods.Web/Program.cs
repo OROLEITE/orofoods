@@ -131,6 +131,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
         options.Lockout.MaxFailedAccessAttempts = 5;
+        options.User.AllowedUserNameCharacters = null!;
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<PostgreSqlApplicationDbContext>()
