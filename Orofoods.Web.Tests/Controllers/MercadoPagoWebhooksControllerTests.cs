@@ -301,7 +301,7 @@ public class MercadoPagoWebhooksControllerTests
     {
         var customer = new Customer { LegalName = "Webhook Ltda", TradeName = "Webhook", Cnpj = Guid.NewGuid().ToString(), Email = "buyer@testuser.com" };
         var term = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, IsActive = true };
-        var order = new Order { Customer = customer, PaymentTerm = term, PaymentMethod = "PIX", Total = 40m, Status = OrderStatus.Received };
+        var order = new Order { Customer = customer, CreatedByUser = TestDbContextFactory.CreateOrderCreator(), PaymentTerm = term, PaymentMethod = "PIX", Total = 40m, Status = OrderStatus.Received };
         db.Orders.Add(order);
         await db.SaveChangesAsync();
         var payment = new Payment

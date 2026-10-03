@@ -17,11 +17,12 @@ public class PaymentEligibilityServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = await CreateCustomerAsync(db);
         await AddPaymentTermsAsync(db);
+        var creator = TestDbContextFactory.CreateOrderCreator();
         db.Orders.AddRange(
-            new Order { CustomerId = customer.Id, Status = OrderStatus.Invoiced },
-            new Order { CustomerId = customer.Id, Status = OrderStatus.Delivered },
-            new Order { CustomerId = customer.Id, Status = OrderStatus.Received },
-            new Order { CustomerId = customer.Id, Status = OrderStatus.Cancelled });
+            new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Invoiced },
+            new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Delivered },
+            new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Received },
+            new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Cancelled });
         await db.SaveChangesAsync();
 
         var result = await CreateService(db).GetAvailablePaymentOptionsAsync(customer.Id);
@@ -38,10 +39,11 @@ public class PaymentEligibilityServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = await CreateCustomerAsync(db);
         await AddPaymentTermsAsync(db);
+        var creator = TestDbContextFactory.CreateOrderCreator();
         db.Orders.AddRange(
-            new Order { CustomerId = customer.Id, Status = OrderStatus.Invoiced },
-            new Order { CustomerId = customer.Id, Status = OrderStatus.Invoiced },
-            new Order { CustomerId = customer.Id, Status = OrderStatus.Delivered });
+            new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Invoiced },
+            new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Invoiced },
+            new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Delivered });
         await db.SaveChangesAsync();
 
         var result = await CreateService(db).GetAvailablePaymentOptionsAsync(customer.Id);
@@ -58,7 +60,8 @@ public class PaymentEligibilityServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = await CreateCustomerAsync(db, creditBlocked: true);
         await AddPaymentTermsAsync(db);
-        db.Orders.AddRange(Enumerable.Range(0, 3).Select(_ => new Order { CustomerId = customer.Id, Status = OrderStatus.Invoiced }));
+        var creator = TestDbContextFactory.CreateOrderCreator();
+        db.Orders.AddRange(Enumerable.Range(0, 3).Select(_ => new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Invoiced }));
         await db.SaveChangesAsync();
 
         var result = await CreateService(db).GetAvailablePaymentOptionsAsync(customer.Id);

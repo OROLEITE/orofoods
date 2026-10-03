@@ -18,6 +18,7 @@ public class CommercialAttentionServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = CreateCustomer("Recompra");
         db.Add(customer);
+        db.Users.Add(TestDbContextFactory.CreateOrderCreator("operator"));
         await db.SaveChangesAsync();
         foreach (var date in new[] { new DateTime(2026, 9, 1), new DateTime(2026, 9, 15), new DateTime(2026, 9, 29) })
         {
@@ -41,6 +42,7 @@ public class CommercialAttentionServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = CreateCustomer("Historico curto");
         db.Add(customer);
+        db.Users.Add(TestDbContextFactory.CreateOrderCreator("operator"));
         await db.SaveChangesAsync();
         db.Orders.AddRange(
             new Order { CustomerId = customer.Id, CreatedByUserId = "operator", CreatedAt = new DateTime(2026, 9, 1), Status = OrderStatus.Delivered },
