@@ -1,3 +1,55 @@
-@model IReadOnlyList<Orofoods.Web.ViewModels.AdminUserRow>
-@{ ViewData["Title"] = "Usu&aacute;rios"; }
-<section class="admin-registration-page"><header class="admin-page-header"><div><p class="eyebrow"><span></span> Equipe</p><h1>Usu&aacute;rios</h1><p>Administre perfis, v&iacute;nculos e acesso ao sistema.</p></div></header><div class="admin-table-card"><div class="table-responsive"><table class="table admin-table align-middle"><thead><tr><th>E-mail</th><th>Perfil</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>A&#231;&otilde;es</th></tr></thead><tbody>@foreach(var row in Model){<tr><td class="admin-table-name" data-label="E-mail"><strong>@row.User.Email</strong></td><td data-label="Perfil">@row.Role</td><td data-label="Cliente">@row.Customer</td><td data-label="Vendedor">@row.SalesRepresentative</td><td class="admin-table-status" data-label="Status"><span class="status-badge @(row.User.IsActive ? "status-badge--active" : "status-badge--inactive")"><i aria-hidden="true"></i>@(row.User.IsActive ? "Ativo" : "Inativo")</span></td><td class="admin-table-actions" data-label="A&#231;&otilde;es"><a class="btn admin-edit-action" asp-action="Edit" asp-route-id="@row.User.Id"><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Editar acesso</a></td></tr>}</tbody></table></div></div></section>
+@model Orofoods.Web.ViewModels.AdminUserListViewModel
+@{ ViewData["Title"] = "Usuários"; }
+<section class="admin-users-page admin-registration-page">
+    <header class="admin-users-header">
+        <div><p class="admin-users-eyebrow">Equipe</p><h1>Usuários</h1><p>Administre usuários, perfis e permissões de acesso ao sistema.</p></div>
+        <a class="btn admin-users-primary" asp-action="Create">+ Novo usuário</a>
+    </header>
+    @if (TempData["SuccessMessage"] is string success) { <div class="alert alert-success" role="status">@success</div> }
+    @if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    <form method="get" asp-action="Index" class="admin-users-filters">
+        <div><label for="query">Buscar por nome ou e-mail</label><input id="query" name="query" value="@Model.Query" class="form-control" placeholder="Nome ou e-mail" /></div>
+        <div><label for="role">Perfil</label><select id="role" name="role" asp-items="Model.Roles" class="form-select"><option value="">Todos os perfis</option></select></div>
+        <div><label for="isActive">Status</label><select id="isActive" name="isActive" class="form-select"><option value="">Todos</option><option value="true" selected="@(Model.IsActive == true)">Ativo</option><option value="false" selected="@(Model.IsActive == false)">Inativo</option></select></div>
+        <div class="admin-users-filter-actions"><button class="btn admin-users-primary" type="submit">Filtrar</button><a asp-action="Index" class="btn admin-users-secondary">Limpar</a></div>
+    </form>
+    <div class="admin-users-table-wrap admin-table-card"><table class="table admin-users-table admin-table align-middle">
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody>
+        @if (Model.Users.Count == 0) { <tr><td colspan="7" class="admin-users-empty">Nenhum usuário encontrado.</td></tr> }
+        @foreach (var row in Model.Users)
+        {
+            <tr>
+                <td data-label="Nome"><strong>@row.User.UserName</strong></td><td data-label="E-mail">@row.User.Email</td><td data-label="Perfil">@row.Role</td>
+                <td data-label="Cliente">@(row.Customer ?? "—")</td><td data-label="Vendedor">@(row.SalesRepresentative ?? "—")</td>
+                <td data-label="Status"><span class="admin-users-status @(row.User.IsActive ? "is-active" : "is-inactive")">@(row.User.IsActive ? "Ativo" : "Inativo")</span></td>
+                <td data-label="Ações"><details class="admin-users-actions"><summary aria-label="Ações para @row.User.UserName">Ações</summary><div class="admin-users-action-menu">
+                    <a asp-action="Edit" asp-route-id="@row.User.Id">Editar</a>
+                    <a asp-action="ResetPassword" asp-route-id="@row.User.Id">Redefinir senha</a>
+                    @if (row.User.IsActive)
+                    {
+                        <button type="button" data-bs-toggle="modal" data-bs-target="#deactivate-user-@row.User.Id">Desativar</button>
+                    }
+                    else
+                    {
+                        <form asp-action="Activate" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@row.User.Id" /><input type="hidden" name="concurrencyStamp" value="@row.User.ConcurrencyStamp" /><button type="submit">Ativar</button></form>
+                    }
+                </div></details>
+                @if (row.User.IsActive)
+                {
+                    <div class="modal fade" id="deactivate-user-@row.User.Id" tabindex="-1" aria-labelledby="deactivate-user-title-@row.User.Id" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                            <div class="modal-header"><h2 class="modal-title fs-5" id="deactivate-user-title-@row.User.Id">Desativar usuário</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+                            <div class="modal-body"><p>Este usuário não poderá acessar o sistema até ser reativado.</p></div>
+                            <div class="modal-footer"><button type="button" class="btn admin-users-secondary" data-bs-dismiss="modal">Cancelar</button><form asp-action="Deactivate" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@row.User.Id" /><input type="hidden" name="concurrencyStamp" value="@row.User.ConcurrencyStamp" /><button type="submit" class="btn btn-danger">Confirmar desativação</button></form></div>
+                        </div></div>
+                    </div>
+                }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    @if (Model.Users.Count == 200) { <p class="admin-users-limit">Exibindo até 200 usuários. Use os filtros para restringir a busca.</p> }
+</section>
+@section Head { <link rel="stylesheet" href="~/css/admin-users.css" asp-append-version="true" /> }

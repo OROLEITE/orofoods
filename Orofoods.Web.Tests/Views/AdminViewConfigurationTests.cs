@@ -22,8 +22,8 @@ public class AdminViewConfigurationTests
 
         Assert.Contains("admin-sidebar", layout);
         Assert.Contains("offcanvas offcanvas-start", layout);
-        Assert.Contains("User.IsInRole(\"Administrador\")", navigation);
-        Assert.Contains("User.IsInRole(\"Vendedor\")", navigation);
+        Assert.Contains("User.IsInRole(ApplicationRoles.Administrator)", navigation);
+        Assert.Contains("User.IsInRole(ApplicationRoles.Seller)", navigation);
         Assert.Contains("data-bs-toggle=\"collapse\"", navigation);
         Assert.Contains("asp-controller=\"Integrations\"", navigation);
         Assert.Contains("asp-controller=\"Commercial\"", navigation);

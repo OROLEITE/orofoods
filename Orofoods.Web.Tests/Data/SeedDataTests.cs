@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Tests.Infrastructure;
@@ -7,6 +8,25 @@ namespace Orofoods.Web.Tests.Data;
 
 public class SeedDataTests
 {
+    [Fact]
+    public async Task Seed_roles_includes_operator_and_is_idempotent()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var roleManager = Orofoods.Web.Tests.Infrastructure.TestIdentityFactory.CreateRoleManager(db);
+        var ensureRoles = typeof(SeedData).GetMethod("EnsureRolesAsync", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+
+        Assert.NotNull(ensureRoles);
+        await (Task)ensureRoles!.Invoke(null, [roleManager])!;
+        await (Task)ensureRoles.Invoke(null, [roleManager])!;
+
+        Assert.Contains("Operador", await roleManager.Roles.Select(role => role.Name).ToListAsync());
+        Assert.Contains("Administrador", await roleManager.Roles.Select(role => role.Name).ToListAsync());
+        Assert.Contains("Vendedor", await roleManager.Roles.Select(role => role.Name).ToListAsync());
+        Assert.Contains("GerenteComercial", await roleManager.Roles.Select(role => role.Name).ToListAsync());
+        Assert.Contains("Cliente", await roleManager.Roles.Select(role => role.Name).ToListAsync());
+        Assert.Equal(5, await roleManager.Roles.CountAsync());
+    }
+
     [Fact]
     public void Bimbo_seed_uses_correct_portuguese_accentuation()
     {

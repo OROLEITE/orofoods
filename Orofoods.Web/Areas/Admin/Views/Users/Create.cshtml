@@ -1,0 +1,28 @@
+@model Orofoods.Web.ViewModels.AdminUserCreateViewModel
+@{ ViewData["Title"] = "Novo usuário"; }
+<section class="admin-users-page admin-users-form-page">
+    <nav class="admin-users-breadcrumb"><a asp-action="Index">Usuários</a><span aria-hidden="true">/</span> Novo usuário</nav>
+    <header class="admin-users-header"><div><p class="admin-users-eyebrow">Equipe</p><h1>Novo usuário</h1><p>Cadastre a conta, o perfil e os vínculos iniciais.</p></div></header>
+    <form asp-action="Create" method="post" class="admin-users-form">
+        @Html.AntiForgeryToken()<div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+        <fieldset><legend>DADOS DO USUÁRIO</legend><div class="admin-users-form-grid">
+            <div><label asp-for="Name">Nome</label><input asp-for="Name" class="form-control" autocomplete="name" /><span asp-validation-for="Name" class="text-danger"></span></div>
+            <div><label asp-for="Email">E-mail</label><input asp-for="Email" class="form-control" autocomplete="email" /><span asp-validation-for="Email" class="text-danger"></span></div>
+        </div></fieldset>
+        <fieldset><legend>ACESSO</legend><div class="admin-users-form-grid">
+            <div><label asp-for="Role">Perfil</label><select asp-for="Role" asp-items="Model.Roles" class="form-select"><option value="">Selecione um perfil</option></select><span asp-validation-for="Role" class="text-danger"></span></div>
+            <div class="admin-users-check"><input asp-for="IsActive" /><label asp-for="IsActive">Usuário ativo</label></div>
+        </div></fieldset>
+        <fieldset><legend>VÍNCULOS</legend><div class="admin-users-form-grid">
+            <div><label asp-for="CustomerId">Cliente</label><select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"><option value="">Nenhum cliente</option></select></div>
+            <div><label asp-for="SalesRepresentativeId">Vendedor</label><select asp-for="SalesRepresentativeId" asp-items="Model.SalesRepresentatives" class="form-select"><option value="">Nenhum vendedor</option></select></div>
+        </div></fieldset>
+        <fieldset><legend>SEGURANÇA</legend><div class="admin-users-form-grid">
+            <div><label asp-for="Password">Senha inicial</label><input asp-for="Password" class="form-control" autocomplete="new-password" /><span asp-validation-for="Password" class="text-danger"></span></div>
+            <div><label asp-for="ConfirmPassword">Confirmar senha</label><input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" /><span asp-validation-for="ConfirmPassword" class="text-danger"></span></div>
+        </div><p>A senha é processada pelo Identity e não é armazenada ou exibida em texto puro.</p></fieldset>
+        <footer class="admin-users-form-actions"><a asp-action="Index" class="btn admin-users-secondary">Cancelar</a><button class="btn admin-users-primary" type="submit">Criar usuário</button></footer>
+    </form>
+</section>
+@section Head { <link rel="stylesheet" href="~/css/admin-users.css" asp-append-version="true" /> }
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

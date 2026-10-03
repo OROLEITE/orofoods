@@ -1,9 +1,11 @@
+@using Orofoods.Web.Models.Identity
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "Dashboard";
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? "Index";
     var prefix = ViewData["AdminNavPrefix"] as string ?? "admin";
-    var isAdministrator = User.IsInRole("Administrador");
-    var isCommercialUser = isAdministrator || User.IsInRole("Vendedor") || User.IsInRole("GerenteComercial");
+    var isAdministrator = User.IsInRole(ApplicationRoles.Administrator);
+    var isOperator = User.IsInRole(ApplicationRoles.Operator);
+    var isCommercialUser = isAdministrator || User.IsInRole(ApplicationRoles.Seller) || User.IsInRole(ApplicationRoles.CommercialManager);
     var crmActive = controller is "Commercial" or "Customers" or "Opportunities" or "Notifications" or "WhatsApp";
     var operationActive = controller is "Orders" or "Products" or "Inventory" or "Drivers" or "PaymentTerminals" or "DriverPaymentTerminalAssignments";
     var registrationsActive = controller is "Categories" or "PriceTables" or "PaymentTerms";
@@ -20,7 +22,15 @@
         <a class="admin-nav-link @Active("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index" title="Dashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span class="admin-nav-label">Dashboard</span></a>
     }
 
-    @if (isCommercialUser)
+    @if (isOperator)
+    {
+        <div class="admin-nav-cluster @(controller == "WhatsApp" ? "is-active" : string.Empty)">
+            <div class="admin-nav-submenu show">
+                <a class="admin-nav-link @Active("WhatsApp")" asp-area="Admin" asp-controller="WhatsApp" asp-action="Index"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
+            </div>
+        </div>
+    }
+    else if (isCommercialUser)
     {
         <div class="admin-nav-cluster @(crmActive ? "is-active" : string.Empty)">
             <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-Crm" data-admin-nav-group aria-expanded="@crmActive.ToString().ToLowerInvariant()" aria-controls="@prefix-Crm" aria-label="Alternar menu CRM" title="CRM"><span><i class="fa-solid fa-headset" aria-hidden="true"></i><span class="admin-nav-label">CRM</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>

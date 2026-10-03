@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Models.Identity;
 
 namespace Orofoods.Web.Data;
 
@@ -11,16 +12,9 @@ public static class SeedData
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
-        foreach (var role in new[] { "Administrador", "Vendedor", "GerenteComercial", "Cliente" })
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-            {
-                await roleManager.CreateAsync(new IdentityRole(role));
-            }
-        }
+        await EnsureRolesAsync(roleManager);
 
         await EnsureProductCategoriesAsync(db);
-
         if (!await db.PriceTables.AnyAsync())
         {
             db.PriceTables.AddRange(
@@ -351,6 +345,24 @@ public static class SeedData
         if (!await userManager.IsInRoleAsync(user, role))
         {
             await userManager.AddToRoleAsync(user, role);
+        }
+    }
+
+    public static async Task EnsureRolesAsync(RoleManager<IdentityRole> roleManager)
+    {
+        foreach (var role in new[]
+                 {
+                     ApplicationRoles.Administrator,
+                     ApplicationRoles.Seller,
+                     ApplicationRoles.CommercialManager,
+                     ApplicationRoles.Customer,
+                     ApplicationRoles.Operator
+                 })
+        {
+            if (await roleManager.RoleExistsAsync(role)) continue;
+            var result = await roleManager.CreateAsync(new IdentityRole(role));
+            if (!result.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", result.Errors.Select(error => error.Description)));
         }
     }
 

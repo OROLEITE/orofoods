@@ -5,13 +5,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
+using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Storage;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
 
-[Area("Admin"), Authorize(Roles = "Administrador,Vendedor,GerenteComercial")]
+[Area("Admin"), Authorize(Roles = ApplicationRoles.Administrator + "," + ApplicationRoles.Seller + "," + ApplicationRoles.CommercialManager + "," + ApplicationRoles.Operator)]
 public class WhatsAppController(
     ApplicationDbContext db,
     SalesRepresentativeAccessService accessService,
@@ -25,7 +26,7 @@ public class WhatsAppController(
         IQueryable<WhatsAppConversation> conversationsQuery = db.WhatsAppConversations.AsNoTracking()
             .Include(x => x.Customer).ThenInclude(x => x!.SalesRepresentative)
             .Include(x => x.AssignedUser);
-        if (scope.IsRestricted)
+        if (scope.IsRestricted && !User.IsInRole(ApplicationRoles.Operator))
         {
             conversationsQuery = conversationsQuery.Where(x => x.AssignedUserId == scope.UserId || (x.CustomerId.HasValue && customerIds.Contains(x.CustomerId.Value)));
         }
@@ -53,7 +54,7 @@ public class WhatsAppController(
         var scope = await accessService.GetScopeAsync(User, cancellationToken);
         var customerIds = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope).Select(x => x.Id);
         IQueryable<WhatsAppConversation> query = db.WhatsAppConversations.AsNoTracking().Include(x => x.Customer);
-        if (scope.IsRestricted)
+        if (scope.IsRestricted && !User.IsInRole(ApplicationRoles.Operator))
             query = query.Where(x => x.AssignedUserId == scope.UserId || (x.CustomerId.HasValue && customerIds.Contains(x.CustomerId.Value)));
 
         var conversations = await query.OrderByDescending(x => x.LastMessageAt).Take(50).ToListAsync(cancellationToken);
@@ -103,7 +104,10 @@ public class WhatsAppController(
 
         var scope = await accessService.GetScopeAsync(User, cancellationToken);
         var normalized = term.ToLowerInvariant();
-        var customers = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+        var customerQuery = User.IsInRole(ApplicationRoles.Operator)
+            ? db.Customers.AsNoTracking()
+            : accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope);
+        var customers = customerQuery
             .Where(x => x.IsActive)
             .Where(x => x.TradeName.ToLower().Contains(normalized)
                 || x.LegalName.ToLower().Contains(normalized)
@@ -113,17 +117,28 @@ public class WhatsAppController(
                 || (x.WmcCode != null && x.WmcCode.ToLower().Contains(normalized)))
             .OrderBy(x => x.TradeName)
             .ThenBy(x => x.LegalName)
-            .Take(20)
-            .Select(x => new
+            .Take(20);
+
+        if (User.IsInRole(ApplicationRoles.Operator))
+        {
+            var results = await customers.Select(x => new
             {
                 id = x.Id,
                 name = string.IsNullOrWhiteSpace(x.TradeName) ? x.LegalName : x.TradeName,
-                code = x.WmcCode,
-                cnpj = x.Cnpj,
                 phone = string.IsNullOrWhiteSpace(x.WhatsApp) ? x.Phone : x.WhatsApp
-            });
+            }).ToListAsync(cancellationToken);
+            return Json(new { results });
+        }
 
-        return Json(new { results = await customers.ToListAsync(cancellationToken) });
+        var sellerResults = await customers.Select(x => new
+        {
+            id = x.Id,
+            name = string.IsNullOrWhiteSpace(x.TradeName) ? x.LegalName : x.TradeName,
+            code = x.WmcCode,
+            cnpj = x.Cnpj,
+            phone = string.IsNullOrWhiteSpace(x.WhatsApp) ? x.Phone : x.WhatsApp
+        }).ToListAsync(cancellationToken);
+        return Json(new { results = sellerResults });
     }
 
     [HttpGet("/Admin/WhatsApp/media/{messageId:long}")]
@@ -203,11 +218,28 @@ public class WhatsAppController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reopen(long conversationId, CancellationToken cancellationToken)
+    {
+        if (!await accessService.CanAccessConversationAsync(User, conversationId, cancellationToken)) return Forbid();
+        await db.WhatsAppConversations.Where(x => x.Id == conversationId && x.Status == WhatsAppConversationStatus.Closed)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, WhatsAppConversationStatus.Pending)
+                .SetProperty(x => x.AssignedUserId, (string?)null)
+                .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), cancellationToken);
+        return RedirectToAction(nameof(Index), new { id = conversationId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkCustomer(long conversationId, int customerId, CancellationToken cancellationToken)
     {
         if (!await accessService.CanAccessConversationAsync(User, conversationId, cancellationToken)) return Forbid();
         var scope = await accessService.GetScopeAsync(User, cancellationToken);
-        var customer = await accessService.ApplyCustomerScope(db.Customers, scope)
+        var isOperator = User.IsInRole(ApplicationRoles.Operator);
+        var customerQuery = isOperator
+            ? db.Customers.AsQueryable()
+            : accessService.ApplyCustomerScope(db.Customers, scope);
+        var customer = await customerQuery
+            .Where(x => !isOperator || x.IsActive)
             .Where(x => x.Id == customerId).Select(x => new { x.Id, x.InternalSalesUserId }).SingleOrDefaultAsync(cancellationToken);
         if (customer is null) return NotFound();
         await db.WhatsAppConversations.Where(x => x.Id == conversationId)
