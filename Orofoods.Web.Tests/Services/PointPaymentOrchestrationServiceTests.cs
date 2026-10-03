@@ -694,7 +694,7 @@ public sealed class PointPaymentOrchestrationServiceTests
             Email = "point@test.invalid"
         };
         var term = new Orofoods.Web.Models.Pricing.PaymentTerm { Code = paymentCode, Name = paymentCode, IsActive = true };
-        var order = new Order { Customer = customer, PaymentTerm = term, PaymentMethod = paymentCode, Total = 125.50m, Status = OrderStatus.OutForDelivery };
+        var order = new Order { Customer = customer, CreatedByUser = TestDbContextFactory.CreateOrderCreator(), PaymentTerm = term, PaymentMethod = paymentCode, Total = 125.50m, Status = OrderStatus.OutForDelivery };
         var payment = new Payment
         {
             Customer = customer,
@@ -738,7 +738,7 @@ public sealed class PointPaymentOrchestrationServiceTests
             Email = "second-point@test.invalid"
         };
         var term = new Orofoods.Web.Models.Pricing.PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "CARD_ON_DELIVERY", IsActive = true };
-        var order = new Order { Customer = customer, PaymentTerm = term, PaymentMethod = term.Code, Total = 125.50m, Status = OrderStatus.OutForDelivery };
+        var order = new Order { Customer = customer, CreatedByUser = TestDbContextFactory.CreateOrderCreator(), PaymentTerm = term, PaymentMethod = term.Code, Total = 125.50m, Status = OrderStatus.OutForDelivery };
         var payment = new Payment
         {
             Customer = customer,

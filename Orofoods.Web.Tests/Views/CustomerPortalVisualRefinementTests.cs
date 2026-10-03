@@ -6,8 +6,8 @@ public class CustomerPortalVisualRefinementTests
     public void Catalog_keeps_the_existing_post_and_adds_a_minimum_aware_quantity_stepper()
     {
         var projectPath = GetWebProjectPath();
-        var view = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
-        var script = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "catalog.js"));
+        var view = ReadText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
+        var script = ReadText(Path.Combine(projectPath, "wwwroot", "js", "catalog.js"));
 
         Assert.Contains("asp-action=\"AddToCart\"", view);
         Assert.Contains("asp-action=\"Product\"", view);
@@ -26,7 +26,7 @@ public class CustomerPortalVisualRefinementTests
     public void Catalog_layout_uses_compact_hero_and_the_requested_product_column_breakpoints()
     {
         var projectPath = GetWebProjectPath();
-        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
+        var styles = ReadText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
 
         Assert.Contains(".customer-experience .portal-catalog-hero", styles);
         Assert.Contains("repeat(5, minmax(0, 1fr))", styles);
@@ -43,9 +43,9 @@ public class CustomerPortalVisualRefinementTests
     public void Portal_navigation_inherits_admin_typography_and_has_no_broad_span_highlight_rule()
     {
         var projectPath = GetWebProjectPath();
-        var portal = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
-        var density = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-density.css"));
-        var admin = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
+        var portal = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
+        var density = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-density.css"));
+        var admin = ReadText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
 
         Assert.Contains("font: 600 15px 'DM Sans', sans-serif", admin);
         Assert.Contains("font: 600 15px 'DM Sans', sans-serif", portal);
@@ -64,8 +64,8 @@ public class CustomerPortalVisualRefinementTests
     public void Customer_header_uses_shared_visual_rules_without_portal_overrides_or_logo_effects()
     {
         var projectPath = GetWebProjectPath();
-        var portal = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
-        var customer = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
+        var portal = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
+        var customer = ReadText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
         var logoRule = System.Text.RegularExpressions.Regex.Match(customer, @"(?s)\.customer-experience \.site-logo\s*\{([^}]*)\}").Groups[1].Value;
 
         Assert.Contains(".customer-experience .site-header-modern", customer);
@@ -80,7 +80,7 @@ public class CustomerPortalVisualRefinementTests
     public void Collapsed_portal_sidebar_hides_company_identity_and_has_no_initial_letter_rule()
     {
         var projectPath = GetWebProjectPath();
-        var portal = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
+        var portal = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
 
         Assert.Contains(".portal-sidebar-collapsed .portal-company {\n    display: none;\n}", portal);
         Assert.DoesNotContain(".portal-company small::first-letter", portal);
@@ -88,4 +88,6 @@ public class CustomerPortalVisualRefinementTests
 
     private static string GetWebProjectPath() =>
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+
+    private static string ReadText(string path) => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
 }

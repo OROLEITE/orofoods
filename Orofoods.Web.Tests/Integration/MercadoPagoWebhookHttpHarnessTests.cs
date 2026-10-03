@@ -246,7 +246,7 @@ public class MercadoPagoWebhookHttpHarnessTests
             var methodCode = method == PaymentMethodType.CreditCard ? "CREDIT_CARD" : "PIX";
             var customer = new Customer { LegalName = "Harness Ltda", TradeName = "Harness", Cnpj = Guid.NewGuid().ToString("N")[..14], Email = "harness@testuser.com" };
             var term = new PaymentTerm { Code = methodCode, Name = methodCode, DaysUntilDue = 0, IsActive = true };
-            var order = new Order { Customer = customer, PaymentTerm = term, PaymentMethod = methodCode, Total = 77.50m, Status = OrderStatus.Received };
+            var order = new Order { Customer = customer, CreatedByUser = TestDbContextFactory.CreateOrderCreator(), PaymentTerm = term, PaymentMethod = methodCode, Total = 77.50m, Status = OrderStatus.Received };
             db.Orders.Add(order);
             await db.SaveChangesAsync();
             var payment = new Payment

@@ -18,7 +18,7 @@ public sealed class ProductMediaControllerTests
     public async Task Anonymous_active_product_returns_stream_and_public_cache()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "ACT-01", Name = "Ativo", Brand = "Orofoods", IsActive = true };
+        var product = CreateProduct("ACT-01", "Ativo", isActive: true);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.jpg" };
@@ -39,7 +39,7 @@ public sealed class ProductMediaControllerTests
     public async Task Anonymous_inactive_product_returns_not_found()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "OLD-01", Name = "Inativo", Brand = "Orofoods", IsActive = false };
+        var product = CreateProduct("OLD-01", "Inativo", isActive: false);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.jpg" };
@@ -59,7 +59,7 @@ public sealed class ProductMediaControllerTests
     public async Task Administrator_can_read_inactive_product_with_private_cache()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "OLD-02", Name = "Inativo", Brand = "Orofoods", IsActive = false };
+        var product = CreateProduct("OLD-02", "Inativo", isActive: false);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.png" };
@@ -81,7 +81,7 @@ public sealed class ProductMediaControllerTests
     public async Task Approved_customer_can_read_active_product_with_private_cache()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "ACT-02", Name = "Ativo", Brand = "Orofoods", IsActive = true };
+        var product = CreateProduct("ACT-02", "Ativo", isActive: true);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.webp" };
@@ -108,7 +108,7 @@ public sealed class ProductMediaControllerTests
     public async Task Active_seller_can_read_active_product_with_private_cache()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "ACT-SELLER", Name = "Ativo", Brand = "Orofoods", IsActive = true };
+        var product = CreateProduct("ACT-SELLER", "Ativo", isActive: true);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.webp" };
@@ -134,7 +134,7 @@ public sealed class ProductMediaControllerTests
     public async Task Unapproved_authenticated_user_cannot_read_an_active_product()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "ACT-04", Name = "Ativo", Brand = "Orofoods", IsActive = true };
+        var product = CreateProduct("ACT-04", "Ativo", isActive: true);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.jpg" };
@@ -161,7 +161,7 @@ public sealed class ProductMediaControllerTests
     public async Task Missing_blob_reference_returns_not_found()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "ACT-03", Name = "Ativo", Brand = "Orofoods", IsActive = true };
+        var product = CreateProduct("ACT-03", "Ativo", isActive: true);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "invalid-reference" };
@@ -180,7 +180,7 @@ public sealed class ProductMediaControllerTests
     public async Task Storage_failure_returns_sanitized_service_unavailable_response()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var product = new Product { Sku = "ACT-05", Name = "Ativo", Brand = "Orofoods", IsActive = true };
+        var product = CreateProduct("ACT-05", "Ativo", isActive: true);
         db.Products.Add(product);
         await db.SaveChangesAsync();
         var image = new ProductImage { ProductId = product.Id, Url = "/uploads/products/image.jpg" };
@@ -230,6 +230,15 @@ public sealed class ProductMediaControllerTests
         storage.Setup(item => item.OpenReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
         return storage;
     }
+
+    private static Product CreateProduct(string sku, string name, bool isActive) => new()
+    {
+        Sku = sku,
+        Name = name,
+        Brand = "Orofoods",
+        IsActive = isActive,
+        ProductCategory = new ProductCategory { Name = "Teste", Slug = sku.ToLowerInvariant() }
+    };
 
     private static ProductMediaController CreateController(
         Orofoods.Web.Data.ApplicationDbContext db,

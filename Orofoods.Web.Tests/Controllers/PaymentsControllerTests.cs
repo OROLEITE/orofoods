@@ -24,7 +24,7 @@ public class PaymentsControllerTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var (customer, user) = await SeedCustomerAsync(db);
-        var order = await SeedOrderAsync(db, customer, "PIX");
+        var order = await SeedOrderAsync(db, customer, user, "PIX");
         var controller = await CreateControllerAsync(db, user);
 
         var createResult = await controller.CreatePix(new CreatePixAttemptRequest { OrderId = order.Id, IdempotencyKey = "attempt-1" }, CancellationToken.None);
@@ -42,7 +42,7 @@ public class PaymentsControllerTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var (customer, user) = await SeedCustomerAsync(db);
-        var order = await SeedOrderAsync(db, customer, "CREDIT_CARD");
+        var order = await SeedOrderAsync(db, customer, user, "CREDIT_CARD");
         var controller = await CreateControllerAsync(db, user);
 
         var createResult = await controller.CreateCard(
@@ -73,8 +73,8 @@ public class PaymentsControllerTests
     public async Task Customer_cannot_read_another_customers_payment()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var (ownerCustomer, _) = await SeedCustomerAsync(db, cnpj: "11.111.111/0001-11", userId: "owner-user");
-        var order = await SeedOrderAsync(db, ownerCustomer, "PIX");
+        var (ownerCustomer, ownerUser) = await SeedCustomerAsync(db, cnpj: "11.111.111/0001-11", userId: "owner-user");
+        var order = await SeedOrderAsync(db, ownerCustomer, ownerUser, "PIX");
         var payment = new Payment
         {
             OrderId = order.Id,
@@ -149,10 +149,10 @@ public class PaymentsControllerTests
         return (customer, user);
     }
 
-    private static async Task<Order> SeedOrderAsync(Orofoods.Web.Data.ApplicationDbContext db, Customer customer, string paymentCode)
+    private static async Task<Order> SeedOrderAsync(Orofoods.Web.Data.ApplicationDbContext db, Customer customer, ApplicationUser user, string paymentCode)
     {
         var term = new PaymentTerm { Code = paymentCode, Name = paymentCode, DaysUntilDue = 0, IsActive = true };
-        var order = new Order { Customer = customer, PaymentTerm = term, PaymentMethod = paymentCode, Total = 50m, Status = OrderStatus.Received };
+        var order = new Order { Customer = customer, CreatedByUser = user, PaymentTerm = term, PaymentMethod = paymentCode, Total = 50m, Status = OrderStatus.Received };
         db.Orders.Add(order);
         await db.SaveChangesAsync();
         return order;

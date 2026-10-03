@@ -456,6 +456,7 @@ public class PaymentOrchestrationServiceTests
         var order = new Order
         {
             Customer = customer,
+            CreatedByUser = TestDbContextFactory.CreateOrderCreator(),
             PaymentTerm = term,
             PaymentMethod = paymentCode,
             Total = total,

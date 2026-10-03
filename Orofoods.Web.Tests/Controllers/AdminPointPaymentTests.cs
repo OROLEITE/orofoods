@@ -106,7 +106,7 @@ public sealed class AdminPointPaymentTests
     {
         var customer = new Customer { LegalName = "Point Admin Ltda", TradeName = "Point Admin", Cnpj = Guid.NewGuid().ToString("N")[..14], Email = "point-admin@test.invalid" };
         var term = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", IsActive = true };
-        var order = new Order { Customer = customer, PaymentTerm = term, Number = "ORO-POINT-1", Status = OrderStatus.OutForDelivery, Total = 55m };
+        var order = new Order { Customer = customer, CreatedByUser = TestDbContextFactory.CreateOrderCreator(), PaymentTerm = term, Number = "ORO-POINT-1", Status = OrderStatus.OutForDelivery, Total = 55m };
         db.Orders.Add(order);
         await db.SaveChangesAsync();
         return order;

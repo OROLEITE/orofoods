@@ -36,6 +36,8 @@ public class CrmOpportunityAndNotificationTests
     public async Task NotificationIsOwnedAndDeduplicated()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
+        db.Users.Add(new ApplicationUser { Id = "internal", UserName = "internal", Email = "internal@test.local", IsActive = true });
+        await db.SaveChangesAsync();
         var service = new UserNotificationService(db);
         var notification = new UserNotification { UserId = "internal", Type = UserNotificationType.RepurchaseDue, Title = "Recompra", Message = "Cliente", DeduplicationKey = "REPURCHASE:1:2026-09-18" };
 

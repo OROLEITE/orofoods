@@ -60,6 +60,8 @@ public class CustomerDashboardServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = await AddCustomerAsync(db);
         var otherCustomer = await AddCustomerAsync(db, "98.765.432/0001-10");
+        db.Users.Add(TestDbContextFactory.CreateOrderCreator("user-1"));
+        await db.SaveChangesAsync();
         db.Orders.AddRange(
             NewOrder(customer.Id, new DateTime(2026, 8, 5, 10, 0, 0, DateTimeKind.Utc), 120m),
             NewOrder(customer.Id, new DateTime(2026, 8, 9, 10, 0, 0, DateTimeKind.Utc), 60m, OrderStatus.Delivered),

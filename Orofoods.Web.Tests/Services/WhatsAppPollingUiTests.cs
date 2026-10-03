@@ -8,7 +8,7 @@ public class WhatsAppPollingUiTests
     [Fact]
     public void Polling_is_incremental_single_flight_and_preserves_the_composer_value()
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
 
         Assert.Contains("setInterval(synchronize, 4000)", script);
         Assert.Contains("requestInFlight", script);
@@ -27,10 +27,10 @@ public class WhatsAppPollingUiTests
     public void Sending_is_async_with_a_traditional_form_fallback_and_early_theme_bootstrap()
     {
         var root = FindRepositoryRoot();
-        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
-        var layout = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Views", "Shared", "_Layout.cshtml"));
-        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
-        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var layout = ReadText(Path.Combine(root, "Orofoods.Web", "Views", "Shared", "_Layout.cshtml"));
+        var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var styles = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
         var themeBootstrap = layout.IndexOf("savedCrmTheme", StringComparison.Ordinal);
         var firstStylesheet = layout.IndexOf("<link rel=\"stylesheet\"", StringComparison.Ordinal);
 
@@ -52,8 +52,8 @@ public class WhatsAppPollingUiTests
     public void Customer_actions_share_a_spaced_container_and_theme_controls_use_shared_tokens()
     {
         var root = FindRepositoryRoot();
-        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
-        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var styles = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
 
         Assert.Contains("whatsapp-customer-actions", view);
         Assert.Contains("whatsapp-unlink-customer", view);
@@ -110,7 +110,7 @@ public class WhatsAppPollingUiTests
     [Fact]
     public void Dark_theme_uses_a_slightly_lighter_inbound_message_surface_only()
     {
-        var styles = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var styles = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
         var lightTheme = ReadCssRule(styles, "html:has(.whatsapp-inbox-page)");
         var darkTheme = ReadCssRule(styles, "html[data-theme=\"dark\"]:has(.whatsapp-inbox-page)");
 
@@ -135,7 +135,7 @@ public class WhatsAppPollingUiTests
         int expectedSubmits,
         bool expectedPreventDefault)
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var handler = ExtractBetween(script, "    const handleComposerKeydown = event =>", "    textarea?.addEventListener('keydown', handleComposerKeydown);");
         var scenario = JsonSerializer.Serialize(new { text, shiftKey, isComposing, sendInFlightInitially, repeatEnter });
         const string harness = """
@@ -179,8 +179,8 @@ public class WhatsAppPollingUiTests
     public async Task Outbound_success_is_silent_preserves_errors_and_scrolls_after_render()
     {
         var root = FindRepositoryRoot();
-        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
-        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
         var submitHandler = ExtractBetween(script, "form.addEventListener('submit', async event =>", "    const schedule =");
         var successPath = ExtractBetween(submitHandler, "await synchronize();", "        } catch {");
 
@@ -229,7 +229,7 @@ public class WhatsAppPollingUiTests
         int expectedScrollCalls,
         bool expectedIndicatorHidden)
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var scrollLogic = ExtractBetween(script, "    const isNearBottom = () =>", "\n    scrollToBottom();\n");
         var updateMessages = ExtractBetween(script, "    const updateMessages = messages =>", "    const conversationElement = conversation =>");
         var scenario = JsonSerializer.Serialize(new { initiallyNearBottom });
@@ -276,7 +276,7 @@ public class WhatsAppPollingUiTests
     public void Chat_scroll_keeps_composer_in_its_own_row_and_reserves_bottom_space()
     {
         var root = FindRepositoryRoot();
-        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var styles = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
         const string threadSelector = "body:has(.whatsapp-inbox-page) .whatsapp-thread";
         const string messagesSelector = "body:has(.whatsapp-inbox-page) .whatsapp-messages";
         const string composerSelector = "body:has(.whatsapp-inbox-page) .whatsapp-compose";
@@ -304,7 +304,7 @@ public class WhatsAppPollingUiTests
     [Fact]
     public void Inbound_sound_is_opt_in_to_new_ids_and_batch_coalesced()
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
 
         Assert.Contains("localStorage", script);
         Assert.Contains("notificationSeenInboundIds", script);
@@ -318,7 +318,7 @@ public class WhatsAppPollingUiTests
     [Fact]
     public void Message_reconciliation_deduplicates_against_rendered_dom_and_isolates_render_failures()
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var reconcileStart = script.IndexOf("const updateMessages = messages =>", StringComparison.Ordinal);
         var reconcileEnd = script.IndexOf("const conversationElement =", reconcileStart, StringComparison.Ordinal);
         var renderMessageStart = script.IndexOf("const renderMessage = (article, message) =>", StringComparison.Ordinal);
@@ -350,8 +350,8 @@ public class WhatsAppPollingUiTests
         bool identified, string status, bool initialBadgePresent, int unreadCount)
     {
         var root = FindRepositoryRoot();
-        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
-        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
 
         Assert.Contains("var hasUnread = conversation.UnreadCount > 0;", view);
         Assert.Contains("@if (hasUnread)", view);
@@ -554,7 +554,7 @@ public class WhatsAppPollingUiTests
     [Fact]
     public void Per_message_reconciliation_diagnostic_contains_only_technical_error_fields()
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var reconcileStart = script.IndexOf("const updateMessages = messages =>", StringComparison.Ordinal);
         var reconcileEnd = script.IndexOf("const conversationElement =", reconcileStart, StringComparison.Ordinal);
         var reconcile = script[reconcileStart..reconcileEnd];
@@ -576,7 +576,7 @@ public class WhatsAppPollingUiTests
     [Fact]
     public void Customer_linking_uses_search_modal_instead_of_loading_a_permanent_select()
     {
-        var view = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var view = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
 
         Assert.Contains("whatsappCustomerDialog", view);
         Assert.Contains("CustomerSearch", view);
@@ -588,9 +588,9 @@ public class WhatsAppPollingUiTests
     public void Theme_and_conversation_search_are_additive_to_the_existing_whatsapp_page()
     {
         var root = FindRepositoryRoot();
-        var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
-        var script = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
-        var styles = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
+        var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var styles = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
 
         Assert.Contains("whatsapp-theme-toggle", view);
         Assert.Contains("orofoods.crm.theme", script);
@@ -611,9 +611,11 @@ public class WhatsAppPollingUiTests
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
     }
 
+    private static string ReadText(string path) => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
+
     private static string ReadSynchronizeFunction()
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var syncStart = script.IndexOf("const synchronize = async () =>", StringComparison.Ordinal);
         var syncEnd = script.IndexOf("form.addEventListener('submit'", syncStart, StringComparison.Ordinal);
         return script[syncStart..syncEnd];

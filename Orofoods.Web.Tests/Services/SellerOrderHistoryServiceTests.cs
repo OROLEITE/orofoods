@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Orders;
@@ -18,9 +19,9 @@ public class SellerOrderHistoryServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var fixture = await OrderFixture.CreateAsync(db);
         db.Orders.AddRange(
-            Order(fixture.Customer.Id, "ORO-001", DateTime.UtcNow.AddDays(-2), 100m),
-            Order(fixture.Customer.Id, "ORO-002", DateTime.UtcNow.AddDays(-1), 200m),
-            Order(fixture.OtherCustomer.Id, "ORO-003", DateTime.UtcNow, 300m));
+            Order(fixture.Customer.Id, fixture.User.Id, "ORO-001", DateTime.UtcNow.AddDays(-2), 100m),
+            Order(fixture.Customer.Id, fixture.User.Id, "ORO-002", DateTime.UtcNow.AddDays(-1), 200m),
+            Order(fixture.OtherCustomer.Id, fixture.User.Id, "ORO-003", DateTime.UtcNow, 300m));
         await db.SaveChangesAsync();
 
         var result = await fixture.Service.GetHistoryAsync(Seller(fixture.User.Id), fixture.Customer.Id);
@@ -33,10 +34,18 @@ public class SellerOrderHistoryServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var fixture = await OrderFixture.CreateAsync(db);
-        var own = Order(fixture.Customer.Id, "ORO-010", DateTime.UtcNow, 150m);
-        own.Items.Add(new OrderItem { ProductNameSnapshot = "Pão", SkuSnapshot = "PAO", Quantity = 2, UnitPrice = 75m, Subtotal = 150m });
+        var product = new Product
+        {
+            Sku = "HISTORY-ITEM",
+            Name = "Produto do pedido",
+            ProductCategory = new ProductCategory { Name = "Teste", Slug = "history-item" }
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var own = Order(fixture.Customer.Id, fixture.User.Id, "ORO-010", DateTime.UtcNow, 150m);
+        own.Items.Add(new OrderItem { ProductId = product.Id, ProductNameSnapshot = "Pão", SkuSnapshot = "PAO", Quantity = 2, UnitPrice = 75m, Subtotal = 150m });
         own.Payments.Add(new Payment { CustomerId = fixture.Customer.Id, PaymentMethod = "PIX", Method = PaymentMethodType.Pix, Amount = 150m, Status = PaymentStatus.Approved });
-        var other = Order(fixture.OtherCustomer.Id, "ORO-011", DateTime.UtcNow, 50m);
+        var other = Order(fixture.OtherCustomer.Id, fixture.User.Id, "ORO-011", DateTime.UtcNow, 50m);
         db.Orders.AddRange(own, other);
         await db.SaveChangesAsync();
 
@@ -55,7 +64,7 @@ public class SellerOrderHistoryServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var fixture = await OrderFixture.CreateAsync(db);
-        db.Orders.AddRange(Enumerable.Range(1, 25).Select(index => Order(fixture.Customer.Id, $"ORO-{index:000}", DateTime.UtcNow.AddMinutes(-index), index)));
+        db.Orders.AddRange(Enumerable.Range(1, 25).Select(index => Order(fixture.Customer.Id, fixture.User.Id, $"ORO-{index:000}", DateTime.UtcNow.AddMinutes(-index), index)));
         await db.SaveChangesAsync();
 
         var defaultPage = await fixture.Service.GetHistoryAsync(Seller(fixture.User.Id), fixture.Customer.Id);
@@ -73,7 +82,7 @@ public class SellerOrderHistoryServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var fixture = await OrderFixture.CreateAsync(db);
-        db.Orders.AddRange(Enumerable.Range(1, 12).Select(index => Order(fixture.Customer.Id, index % 2 == 0 ? $"PIX-{index:000}" : $"BOLETO-{index:000}", DateTime.UtcNow.AddMinutes(-index), index)));
+        db.Orders.AddRange(Enumerable.Range(1, 12).Select(index => Order(fixture.Customer.Id, fixture.User.Id, index % 2 == 0 ? $"PIX-{index:000}" : $"BOLETO-{index:000}", DateTime.UtcNow.AddMinutes(-index), index)));
         await db.SaveChangesAsync();
 
         var result = await fixture.Service.GetHistoryAsync(Seller(fixture.User.Id), fixture.Customer.Id, query: "BOLETO", page: 2, pageSize: 99);
@@ -85,9 +94,10 @@ public class SellerOrderHistoryServiceTests
         Assert.Equal(1, result.Page);
     }
 
-    private static Order Order(int customerId, string number, DateTime createdAt, decimal total) => new()
+    private static Order Order(int customerId, string createdByUserId, string number, DateTime createdAt, decimal total) => new()
     {
         CustomerId = customerId,
+        CreatedByUserId = createdByUserId,
         Number = number,
         CreatedAt = createdAt,
         ConfirmedAt = createdAt,
