@@ -182,7 +182,12 @@ html,body{max-width:100%;overflow-x:hidden}.container,.order-layout,.order-items
     --text-secondary: #475569;
     --action-primary: #2563EB;
     --action-primary-hover: #1D4ED8;
+    --action-primary-active: #1E40AF;
     --action-primary-soft: #EFF6FF;
+    --action-primary-foreground: #FFFFFF;
+    --action-primary-disabled-bg: #E2E8F0;
+    --action-primary-disabled-border: #CBD5E1;
+    --action-primary-disabled-foreground: #475569;
 }
 
 html:not([data-theme="dark"]),
@@ -208,25 +213,25 @@ html:not([data-theme="dark"]) .admin-authenticated :is(.summary-card, .report-ca
     color: var(--text-secondary);
 }
 
-html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold) {
+html:not([data-theme="dark"]) .btn-primary {
     border-color: var(--action-primary);
     background: var(--action-primary);
-    color: #FFFFFF;
+    color: var(--action-primary-foreground);
 }
 
-html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):hover,
-html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):active {
+html:not([data-theme="dark"]) .btn-primary:hover,
+html:not([data-theme="dark"]) .btn-primary:active {
     border-color: var(--action-primary-hover);
     background: var(--action-primary-hover);
-    color: #FFFFFF;
+    color: var(--action-primary-foreground);
 }
 
-html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):focus-visible {
+html:not([data-theme="dark"]) .btn-primary:focus-visible {
     outline: 3px solid color-mix(in srgb, var(--action-primary) 35%, transparent);
     outline-offset: 2px;
 }
 
-html:not([data-theme="dark"]) :is(.btn-primary, .btn-gold):disabled {
+html:not([data-theme="dark"]) .btn-primary:disabled {
     border-color: var(--action-primary);
     background: var(--action-primary);
     color: #FFFFFF;
