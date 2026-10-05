@@ -6,7 +6,7 @@ name: Build and deploy ASP.Net Core app to Azure Web App - app-orofoods-stg-01
 on:
   push:
     branches:
-      - chore/azure-staging-deployment
+      - main
   workflow_dispatch:
 
 jobs:
