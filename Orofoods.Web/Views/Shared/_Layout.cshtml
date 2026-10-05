@@ -5,6 +5,9 @@
     var isPortalExperience = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         .Contains("portal-authenticated", StringComparer.Ordinal);
+    var isPortalCustomerSelect = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Contains("portal-customer-select", StringComparer.Ordinal);
     var isSellerExperience = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         .Contains("seller-area-page", StringComparer.Ordinal);
@@ -53,10 +56,14 @@
         <link rel="stylesheet" href="~/css/customer-experience.css" asp-append-version="true" />
     }
     @await RenderSectionAsync("Head", required: false)
+    @if (isPortalExperience || isPortalCustomerSelect)
+    {
+        <link rel="stylesheet" href="~/css/portal-dark.css" asp-append-version="true" />
+    }
 </head>
 <body class="@bodyClass">
     @await Html.PartialAsync("_SiteHeader")
-    @if (!isCustomerExperience)
+    @if (!isCustomerExperience && !isPortalCustomerSelect)
     {
         <div class="page-context-bar"><div class="container"><a id="siteBackButton" class="site-back-button" href="/" data-fallback-url="/" aria-label="Voltar para a p&#225;gina anterior"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Voltar</span></a><span class="page-context-label">Navega&#231;&#227;o segura</span></div></div>
     }
