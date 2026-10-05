@@ -1,5 +1,6 @@
 @{
     var currentArea = ViewContext.RouteData.Values["area"]?.ToString();
+    var isAdminArea = string.Equals(currentArea, "Admin", StringComparison.OrdinalIgnoreCase);
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var isPortalExperience = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
@@ -17,7 +18,7 @@
     var layoutBodyHasMain = ViewData["LayoutBodyHasMain"] is true;
 }
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="@(isAdminArea ? "dark" : null)">
 <head>
     <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Orofoods - distribui&#231;&#227;o B2B para food service." /><title>@ViewData["Title"] | Orofoods</title>
