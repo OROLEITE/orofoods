@@ -5,6 +5,11 @@ namespace Orofoods.Web.Services.Payments;
 public interface IMercadoPagoPointTerminalDiscovery
 {
     Task<IReadOnlyList<MercadoPagoPointTerminal>> ListTerminalsAsync(CancellationToken cancellationToken = default);
+
+    Task<MercadoPagoPointTerminalModeChangeResult> SetTerminalOperatingModeAsync(
+        string terminalId,
+        string operatingMode,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record MercadoPagoPointTerminal(
@@ -18,3 +23,11 @@ public sealed record MercadoPagoPointTerminal(
     string? ExternalPosId,
     [property: JsonPropertyName("operating_mode")]
     string? OperatingMode);
+
+public sealed record MercadoPagoPointTerminalModeChangeResult(
+    [property: JsonPropertyName("terminal_id")]
+    string TerminalId,
+    [property: JsonPropertyName("previous_operating_mode")]
+    string PreviousOperatingMode,
+    [property: JsonPropertyName("operating_mode")]
+    string OperatingMode);

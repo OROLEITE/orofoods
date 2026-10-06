@@ -50,6 +50,41 @@ public sealed class PaymentTerminalsController(
         }
     }
 
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetMercadoPagoTerminalOperatingModeToPdv(CancellationToken cancellationToken = default)
+    {
+        if (!hostEnvironment.IsStaging()) return NotFound();
+
+        try
+        {
+            var result = await terminalDiscovery.SetTerminalOperatingModeAsync(
+                MercadoPagoPointTerminalDiscovery.AuthorizedStagingTerminalId,
+                "PDV",
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (PaymentGatewayException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update returned HTTP {StatusCode}.", (int)exception.StatusCode);
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível alterar o modo do terminal Mercado Pago." });
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update failed. ErrorType={ErrorType}", exception.GetType().Name);
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível alterar o modo do terminal Mercado Pago." });
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update timed out; no automatic retry was attempted.");
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new { message = "A alteração do modo do terminal excedeu o tempo limite. Verifique o estado antes de tentar novamente." });
+        }
+        catch (InvalidOperationException)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update precondition or configuration failed.");
+            return Conflict(new { message = "A alteração do modo do terminal não foi confirmada. Consulte o estado antes de qualquer nova tentativa." });
+        }
+    }
+
     public async Task<IActionResult> Edit(int? id)
     {
         if (id is null) return View(new PaymentTerminalEditViewModel());
