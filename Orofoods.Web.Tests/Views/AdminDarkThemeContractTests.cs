@@ -55,6 +55,7 @@ public class AdminDarkThemeContractTests
     {
         var navigationStyles = ReadStyles("admin-navigation.css");
         var headerStyles = ReadStyles("header.css");
+        var navigationLayout = File.ReadAllText(Path.Combine(WebProjectPath(), "Views", "Shared", "_AdminLayout.cshtml"));
 
         RequireScopedRule(navigationStyles, ".admin-sidebar", "background");
         RequireScopedRule(navigationStyles, ".admin-nav-link", "color");
@@ -74,6 +75,11 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(navigationStyles, ".admin-nav-group:focus-visible", "outline");
         RequireScopedValue(navigationStyles, ".admin-nav-section-title", "color", "#94A3B8");
         RequireScopedValue(navigationStyles, ".admin-nav-chevron", "color", "#94A3B8");
+        Assert.Contains(ReadRules(navigationStyles), rule => rule.Selector.EndsWith(".admin-sidebar > .admin-sidebar-header", StringComparison.Ordinal) &&
+            HasDeclaration(rule, "padding-inline", "42px") && HasDeclaration(rule, "text-align", "center"));
+        Assert.Contains(".admin-sidebar-collapsed .admin-sidebar-header", navigationStyles);
+        Assert.Contains("data-admin-sidebar-toggle", navigationLayout);
+        Assert.Contains("aria-label=\"Recolher menu lateral\"", navigationLayout);
         RequireScopedValue(headerStyles, ".site-header-modern .account-menu", "background", "#111827");
         RequireScopedValue(headerStyles, ".site-header-modern .account-menu", "border-color", "#334155");
         RequireScopedValue(headerStyles, ".site-header-modern .account-menu .dropdown-item", "color", "#E5E7EB");
@@ -206,11 +212,20 @@ public class AdminDarkThemeContractTests
     {
         var projectPath = WebProjectPath();
         var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var script = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "whatsapp-composer.js"));
+        var whatsappStyles = ReadStyles("whatsapp-composer.css");
 
-        // Losing the route guard, either valid stored value, or its application leaks the Admin default into CRM.
-        Assert.Matches(
-            "(?s)@if \\(currentArea == \\\"Admin\\\" && currentController == \\\"WhatsApp\\\" && currentAction == \\\"Index\\\"\\)\\s*\\{\\s*<script>.*?localStorage\\.getItem\\('orofoods\\.crm\\.theme'\\).*?if \\(savedCrmTheme === 'dark' \\|\\| savedCrmTheme === 'light'\\)\\s*\\{\\s*document\\.documentElement\\.dataset\\.theme = savedCrmTheme;.*?</script>",
-            layout);
+        Assert.Contains("data-theme=\"@(isAdminArea ? \"dark\" : null)\"", layout);
+        Assert.DoesNotContain("orofoods.crm.theme", layout);
+        Assert.DoesNotContain("whatsapp-theme-toggle", view);
+        Assert.DoesNotContain("whatsapp-theme-toggle", script);
+        Assert.DoesNotContain("orofoods.crm.theme", script);
+        Assert.Contains("whatsapp-sound-toggle", view);
+        Assert.Contains("soundToggle?.addEventListener", script);
+        Assert.Contains("Som desligado", script);
+        Assert.DoesNotContain("whatsapp-theme-toggle", whatsappStyles);
+        Assert.Contains("html[data-theme=\"dark\"] .whatsapp-inbox-page", whatsappStyles);
 
         foreach (var stylesheet in new[] { "admin-shell.css", "admin-navigation.css", "header.css", "admin-orders.css" })
         {
@@ -344,6 +359,13 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(styles, ".customer-list-page", ".customer-list-table .btn-gold:disabled", "background");
         Assert.DoesNotContain("!important", ReadStyles("admin-customer-actions.css"));
         RequireScopedRule(styles, ".customer-list-page", ".customer-list-table tbody td[data-label=\"Ação\"]", "--customer-action-border");
+        RequireScopedValue(styles, ".customer-list-page .customer-list-table tbody td[data-label=\"Ação\"] .btn.btn-gold", "background", "var(--action-primary, #2563EB)");
+        RequireScopedValue(styles, ".customer-list-page .customer-list-table tbody td[data-label=\"Ação\"] .btn.btn-gold", "color", "#F8FAFC");
+        RequireScopedValue(styles, ".customer-list-page .customer-list-table tbody td[data-label=\"Ação\"] .btn.btn-gold:hover", "background", "#1D4ED8");
+        RequireScopedValue(styles, ".customer-list-page .customer-list-table tbody td[data-label=\"Ação\"] .btn.btn-outline-dark", "background", "#111827");
+        RequireScopedValue(styles, ".customer-list-page .customer-list-table tbody td[data-label=\"Ação\"] .btn.btn-outline-dark", "color", "#CBD5E1");
+        RequireScopedValue(styles, ".customer-list-page .customer-list-table tbody td[data-label=\"Ação\"] .btn.btn-outline-dark:hover", "background", "#1E293B");
+        RequireScopedValue(styles, ".customer-list-page .customer-list-table tbody td[data-label=\"Ação\"] .btn.disabled", "color", "#94A3B8");
     }
 
     [Theory]
@@ -519,6 +541,12 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(products, ".admin-products-page", "background");
         RequireScopedRule(products, ".admin-products-page .admin-page-header h1", "color");
         RequireScopedRule(products, ".admin-products-page .admin-page-header p", "color");
+        RequireScopedValue(products, ".admin-products-page .admin-table-secondary", "color", "#CBD5E1");
+        RequireScopedValue(products, ".admin-products-page .admin-table-name small", "color", "#CBD5E1");
+        RequireScopedValue(products, ".admin-products-page a", "color", "#38BDF8");
+        RequireScopedValue(products, ".admin-products-page a:hover", "color", "#F8FAFC");
+        RequireScopedRule(products, ".admin-products-page a:focus-visible", "outline");
+        RequireScopedValue(products, ".admin-products-edit-page .admin-form-page .form-text", "color", "#CBD5E1");
         RequireScopedRule(products, ".admin-products-page .admin-table-card", "background");
         RequireScopedRule(products, ".admin-products-page .admin-products-table", "--bs-table-bg");
         RequireScopedRule(products, ".admin-products-page .admin-products-table > thead > tr > th", "background");
@@ -548,6 +576,8 @@ public class AdminDarkThemeContractTests
             RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control + "[readonly]", "background");
         }
         RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page .btn-outline-dark", "color");
+        RequireScopedValue(products, ".admin-products-edit-page .admin-form-page .form-control:disabled", "color", "#94A3B8");
+        RequireScopedValue(products, ".admin-products-edit-page .admin-form-page .btn:disabled", "color", "#94A3B8");
         RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page .text-danger", "color");
 
         var inventory = ReadStyles("admin-registrations.css");
