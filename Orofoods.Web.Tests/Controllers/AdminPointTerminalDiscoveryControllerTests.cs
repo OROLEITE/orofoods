@@ -1,0 +1,83 @@
+using System.Reflection;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
+using Orofoods.Web.Areas.Admin.Controllers;
+using Orofoods.Web.Data;
+using Orofoods.Web.Services.Payments;
+using Orofoods.Web.Tests.Infrastructure;
+
+namespace Orofoods.Web.Tests.Controllers;
+
+public sealed class AdminPointTerminalDiscoveryControllerTests
+{
+    [Fact]
+    public void Payment_terminals_controller_keeps_administrator_only_authorization_and_get_discovery_action()
+    {
+        var controllerType = typeof(PaymentTerminalsController);
+        var authorize = controllerType.GetCustomAttribute<AuthorizeAttribute>();
+        var action = controllerType.GetMethod("DiscoverMercadoPagoTerminals");
+
+        Assert.Equal("Administrador", authorize?.Roles);
+        Assert.NotNull(action);
+        Assert.NotNull(action!.GetCustomAttribute<HttpGetAttribute>());
+    }
+
+    [Fact]
+    public async Task Discovery_action_is_hidden_outside_staging_without_calling_provider()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery();
+        var controller = CreateController(db, discovery, "Test");
+
+        var result = await controller.DiscoverMercadoPagoTerminals();
+
+        Assert.IsType<NotFoundResult>(result);
+        Assert.Equal(0, discovery.Calls);
+    }
+
+    [Fact]
+    public async Task Staging_discovery_returns_only_the_terminal_allowlist()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery([
+            new MercadoPagoPointTerminal("NEWLAND_N950__SERIAL-01", "store-1", "21", "point-of-sale-1", "PDV")
+        ]);
+        var controller = CreateController(db, discovery, "Staging");
+
+        var result = Assert.IsType<OkObjectResult>(await controller.DiscoverMercadoPagoTerminals());
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
+        var terminal = Assert.Single(json.RootElement.EnumerateArray().ToArray());
+
+        Assert.Equal(new[] { "id", "store_id", "pos_id", "external_pos_id", "operating_mode" },
+            terminal.EnumerateObject().Select(property => property.Name).ToArray());
+        Assert.Equal("NEWLAND_N950__SERIAL-01", terminal.GetProperty("id").GetString());
+        Assert.DoesNotContain("accessToken", json.RootElement.GetRawText(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(1, discovery.Calls);
+    }
+
+    private static PaymentTerminalsController CreateController(ApplicationDbContext db, FakeDiscovery discovery, string environment) =>
+        new(db, new DriverPaymentTerminalService(db, TimeProvider.System), discovery, new TestHostEnvironment(environment),
+            NullLogger<PaymentTerminalsController>.Instance);
+
+    private sealed class FakeDiscovery(IReadOnlyList<MercadoPagoPointTerminal>? terminals = null) : IMercadoPagoPointTerminalDiscovery
+    {
+        public int Calls { get; private set; }
+
+        public Task<IReadOnlyList<MercadoPagoPointTerminal>> ListTerminalsAsync(CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            return Task.FromResult(terminals ?? (IReadOnlyList<MercadoPagoPointTerminal>)[]);
+        }
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "Orofoods.Web.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
+    }
+}

@@ -201,13 +201,39 @@ public sealed class MercadoPagoPointPaymentProviderTests
         Assert.Equal("UNKNOWN_POINT_STATUS", result.ErrorCode);
     }
 
-    [Fact]
-    public async Task Provider_refuses_real_environments_before_http()
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public async Task Provider_refuses_real_environments_before_http(string environmentName)
     {
         var handler = new RecordingHandler(CreatedOrderResponse);
-        var provider = CreateProvider(handler, environmentName: "Production");
+        var provider = CreateProvider(handler, environmentName: environmentName);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => provider.CreateTerminalPaymentAsync(TestRequest()));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Theory]
+    [InlineData("Create")]
+    [InlineData("Get")]
+    [InlineData("Cancel")]
+    public async Task Provider_blocks_all_point_payment_operations_in_staging(string operation)
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Staging");
+
+        async Task Act()
+        {
+            switch (operation)
+            {
+                case "Get": await provider.GetPaymentStatusAsync("ORDER-1"); break;
+                case "Cancel": await provider.CancelPendingPaymentAsync("ORDER-1"); break;
+                default: await provider.CreateTerminalPaymentAsync(TestRequest()); break;
+            }
+        }
+
+        await Assert.ThrowsAsync<InvalidOperationException>(Act);
 
         Assert.Empty(handler.Requests);
     }
