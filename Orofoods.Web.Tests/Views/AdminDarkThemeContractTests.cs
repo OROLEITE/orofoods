@@ -850,7 +850,15 @@ public class AdminDarkThemeContractTests
                 $"Admin dark selector requires a positive module/page scope: {rule.Selector}");
     }
 
-    private static string RuleIdentity(CssRule rule) => rule.Selector + "{" + rule.Declarations.Trim() + "}";
+    private static string RuleIdentity(CssRule rule)
+    {
+        var declarations = rule.Declarations
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        declarations = Regex.Replace(declarations, @"\s+", " ");
+        declarations = Regex.Replace(declarations, @"\s*([:;])\s*", "$1");
+        return rule.Selector + "{" + declarations.Trim() + "}";
+    }
 
     private static bool HasPermittedComponentScope(string selector, string stylesheet)
     {
