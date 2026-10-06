@@ -1,2 +1,178 @@
-.admin-authenticated .admin-priority-grid{gap:14px}.admin-authenticated .admin-priority-card{min-height:0;padding:16px 18px;border-radius:12px}.admin-authenticated .admin-priority-card>i{width:32px;height:32px;font-size:13px}.admin-authenticated .admin-priority-card small{margin-top:10px}.admin-authenticated .admin-priority-card strong{margin:3px 0 6px;font-size:27px;line-height:1.05}.admin-authenticated .admin-priority-card--accent{position:relative;border-color:#dfc889;background:#fff}.admin-authenticated .admin-priority-card--accent:before{content:"";position:absolute;top:0;right:0;left:0;height:3px;background:var(--gold)}.admin-authenticated .admin-priority-card--accent>i{background:#f6edd7;color:#80570e}.admin-authenticated .admin-priority-card--accent small,.admin-authenticated .admin-priority-card--accent span{color:#6b6250}.admin-authenticated .admin-priority-card--accent strong{color:#20241f}.admin-authenticated .admin-dashboard-split{gap:20px}.admin-authenticated .admin-commercial-metrics{gap:14px}.admin-authenticated .dashboard-kpi-card{display:flex;min-height:0;flex-direction:column;padding:16px 18px}.admin-authenticated .dashboard-kpi-card>i{margin-bottom:10px}.admin-authenticated .dashboard-kpi-card small{margin-top:0}.admin-authenticated .dashboard-kpi-value{margin:5px 0;font-size:clamp(1.45rem,1.7vw,1.9rem);line-height:1.05}.dashboard-kpi-trend{display:block;margin-bottom:6px;color:#6d705f;font-size:12px;font-weight:800}.dashboard-kpi-trend--neutral{color:#777b74;font-weight:700}.admin-authenticated .admin-commercial-metrics article>span:last-child{margin-top:auto}.admin-authenticated .admin-reports-link{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #d8ddd4;border-radius:7px;color:#5e4a1c;font-size:12px;font-weight:800;text-decoration:none}.admin-authenticated .admin-reports-link:hover,.admin-authenticated .admin-reports-link:focus-visible{border-color:#c7aa60;background:#f8f3e6;color:#47370f}.admin-authenticated .admin-shortcuts{padding:20px}.admin-authenticated .admin-shortcuts>a{padding:11px 0}@media(max-width:1000px){.admin-authenticated .admin-priority-grid{gap:12px}.admin-authenticated .admin-commercial-metrics{gap:12px}}@media(max-width:650px){.admin-authenticated .admin-priority-card{padding:16px}.admin-authenticated .dashboard-kpi-card{padding:16px}.admin-authenticated .admin-dashboard-section-head{gap:10px}}
-.admin-authenticated .admin-dashboard-commercial{min-width:0}.admin-authenticated .admin-dashboard-commercial .admin-commercial-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:1000px){.admin-authenticated .admin-dashboard-commercial .admin-commercial-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.admin-authenticated .admin-dashboard-commercial .admin-commercial-metrics{grid-template-columns:1fr}}
+.admin-authenticated .admin-priority-grid{gap:14px}
+.admin-authenticated .admin-priority-card{min-height:0;padding:16px 18px;border-radius:12px}
+.admin-authenticated .admin-priority-card>i{width:32px;height:32px;font-size:13px}
+.admin-authenticated .admin-priority-card small{margin-top:10px}
+.admin-authenticated .admin-priority-card strong{margin:3px 0 6px;font-size:27px;line-height:1.05}
+.admin-authenticated .admin-priority-card--accent{position:relative;border-color:#dfc889;background:#fff}
+.admin-authenticated .admin-priority-card--accent:before{content:"";position:absolute;top:0;right:0;left:0;height:3px;background:var(--gold)}
+.admin-authenticated .admin-priority-card--accent>i{background:#f6edd7;color:#80570e}
+.admin-authenticated .admin-priority-card--accent small,
+.admin-authenticated .admin-priority-card--accent span{color:#6b6250}
+.admin-authenticated .admin-priority-card--accent strong{color:#20241f}
+.admin-authenticated .admin-dashboard-split{gap:20px}
+.admin-authenticated .admin-commercial-metrics{gap:14px}
+.admin-authenticated .dashboard-kpi-card{display:flex;min-height:0;flex-direction:column;padding:16px 18px}
+.admin-authenticated .dashboard-kpi-card>i{margin-bottom:10px}
+.admin-authenticated .dashboard-kpi-card small{margin-top:0}
+.admin-authenticated .dashboard-kpi-value{margin:5px 0;font-size:clamp(1.45rem,1.7vw,1.9rem);line-height:1.05}
+.dashboard-kpi-trend{display:block;margin-bottom:6px;color:#6d705f;font-size:12px;font-weight:800}
+.dashboard-kpi-trend--neutral{color:#777b74;font-weight:700}
+.admin-authenticated .admin-commercial-metrics article>span:last-child{margin-top:auto}
+.admin-authenticated .admin-reports-link{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #d8ddd4;border-radius:7px;color:#5e4a1c;font-size:12px;font-weight:800;text-decoration:none}
+.admin-authenticated .admin-reports-link:hover,
+.admin-authenticated .admin-reports-link:focus-visible{border-color:#c7aa60;background:#f8f3e6;color:#47370f}
+.admin-authenticated .admin-shortcuts{padding:20px}
+.admin-authenticated .admin-shortcuts>a{padding:11px 0}
+
+@media(max-width:1000px){
+    .admin-authenticated .admin-priority-grid{gap:12px}
+    .admin-authenticated .admin-commercial-metrics{gap:12px}
+}
+
+@media(max-width:650px){
+    .admin-authenticated .admin-priority-card{padding:16px}
+    .admin-authenticated .dashboard-kpi-card{padding:16px}
+    .admin-authenticated .admin-dashboard-section-head{gap:10px}
+}
+
+.admin-authenticated .admin-dashboard-commercial{min-width:0}
+.admin-authenticated .admin-dashboard-commercial .admin-commercial-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+@media(max-width:1000px){
+    .admin-authenticated .admin-dashboard-commercial .admin-commercial-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:650px){
+    .admin-authenticated .admin-dashboard-commercial .admin-commercial-metrics{grid-template-columns:1fr}
+}
+
+
+/* ==========================================================
+   ADMIN DASHBOARD - DARK THEME
+   ========================================================== */
+
+html[data-theme="dark"] .admin-dashboard-page,
+html[data-theme="dark"] .admin-dashboard-content {
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] .admin-dashboard-section-head h2 {
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] .admin-dashboard-section-head > span,
+html[data-theme="dark"] .admin-priority-card small,
+html[data-theme="dark"] .admin-priority-card span,
+html[data-theme="dark"] .dashboard-kpi-card small,
+html[data-theme="dark"] .dashboard-kpi-card > span {
+    color: var(--admin-dark-muted);
+}
+
+/* Priority cards */
+
+html[data-theme="dark"] .admin-priority-card,
+html[data-theme="dark"] .admin-priority-card--accent {
+    background: var(--admin-dark-surface);
+    border-color: var(--admin-dark-border);
+    color: var(--admin-dark-text);
+    box-shadow: none;
+}
+
+html[data-theme="dark"] .admin-priority-card strong,
+html[data-theme="dark"] .admin-priority-card--accent strong {
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] .admin-priority-card > i,
+html[data-theme="dark"] .admin-priority-card--accent > i {
+    background: var(--admin-dark-surface-secondary);
+    color: #F59E0B;
+}
+
+/* Commercial KPI cards */
+
+html[data-theme="dark"] .dashboard-kpi-card {
+    background: var(--admin-dark-surface);
+    border-color: var(--admin-dark-border);
+    color: var(--admin-dark-text);
+    box-shadow: none;
+}
+
+html[data-theme="dark"] .dashboard-kpi-card > i {
+    background: var(--admin-dark-surface-secondary);
+    color: #F59E0B;
+}
+
+html[data-theme="dark"] .dashboard-kpi-value {
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] .dashboard-kpi-trend,
+html[data-theme="dark"] .dashboard-kpi-trend--neutral {
+    color: var(--admin-dark-muted);
+}
+
+/* Reports button */
+
+html[data-theme="dark"] .admin-reports-link {
+    background: var(--admin-dark-surface);
+    border-color: var(--admin-dark-border);
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] .admin-reports-link:hover,
+html[data-theme="dark"] .admin-reports-link:focus-visible {
+    background: var(--admin-dark-surface-secondary);
+    border-color: #475569;
+    color: #F8FAFC;
+}
+
+/* Recent orders */
+
+html[data-theme="dark"] .admin-recent-orders {
+    background: var(--admin-dark-surface);
+    border-color: var(--admin-dark-border);
+    color: var(--admin-dark-text);
+    box-shadow: none;
+}
+
+html[data-theme="dark"] .admin-orders-table {
+    --bs-table-bg: var(--admin-dark-surface);
+    --bs-table-color: var(--admin-dark-text);
+    --bs-table-border-color: var(--admin-dark-border);
+    --bs-table-hover-bg: var(--admin-dark-surface-secondary);
+    --bs-table-hover-color: #F8FAFC;
+}
+
+html[data-theme="dark"] .admin-orders-table th {
+    color: var(--admin-dark-muted);
+}
+
+html[data-theme="dark"] .admin-orders-table td,
+html[data-theme="dark"] .admin-orders-table strong {
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] .admin-orders-table a {
+    color: #38BDF8;
+}
+
+html[data-theme="dark"] .admin-order-status {
+    background: var(--admin-dark-surface-secondary);
+    border-color: var(--admin-dark-border);
+    color: var(--admin-dark-text);
+}
+
+/* Bootstrap outline button used by recent orders */
+
+html[data-theme="dark"] .admin-dashboard-page .btn-outline-dark {
+    background: transparent;
+    border-color: var(--admin-dark-border);
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] .admin-dashboard-page .btn-outline-dark:hover {
+    background: var(--admin-dark-surface-secondary);
+    border-color: #475569;
+    color: #F8FAFC;
+}
