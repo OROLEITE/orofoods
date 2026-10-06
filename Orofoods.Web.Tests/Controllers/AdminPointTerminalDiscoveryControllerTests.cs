@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orofoods.Web.Areas.Admin.Controllers;
@@ -23,6 +24,38 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
         Assert.Equal("Administrador", authorize?.Roles);
         Assert.NotNull(action);
         Assert.NotNull(action!.GetCustomAttribute<HttpGetAttribute>());
+    }
+
+    [Fact]
+    public async Task Mode_update_is_a_separate_admin_post_and_does_not_persist_terminal_data()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery();
+        var controller = CreateController(db, discovery, "Staging");
+        var action = typeof(PaymentTerminalsController).GetMethod("SetMercadoPagoTerminalOperatingModeToPdv");
+
+        var result = Assert.IsType<OkObjectResult>(await controller.SetMercadoPagoTerminalOperatingModeToPdv());
+
+        Assert.NotNull(action?.GetCustomAttribute<HttpPostAttribute>());
+        Assert.NotNull(action?.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", discovery.TerminalId);
+        Assert.Equal("PDV", discovery.OperatingMode);
+        Assert.Equal(1, discovery.ModeChangeCalls);
+        Assert.Equal(0, await db.PaymentTerminals.CountAsync());
+        Assert.NotNull(result.Value);
+    }
+
+    [Fact]
+    public async Task Mode_update_action_is_unavailable_outside_staging_without_calling_provider()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery();
+        var controller = CreateController(db, discovery, "Production");
+
+        var result = await controller.SetMercadoPagoTerminalOperatingModeToPdv();
+
+        Assert.IsType<NotFoundResult>(result);
+        Assert.Equal(0, discovery.ModeChangeCalls);
     }
 
     [Fact]
@@ -65,11 +98,25 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
     private sealed class FakeDiscovery(IReadOnlyList<MercadoPagoPointTerminal>? terminals = null) : IMercadoPagoPointTerminalDiscovery
     {
         public int Calls { get; private set; }
+        public int ModeChangeCalls { get; private set; }
+        public string? TerminalId { get; private set; }
+        public string? OperatingMode { get; private set; }
 
         public Task<IReadOnlyList<MercadoPagoPointTerminal>> ListTerminalsAsync(CancellationToken cancellationToken = default)
         {
             Calls++;
             return Task.FromResult(terminals ?? (IReadOnlyList<MercadoPagoPointTerminal>)[]);
+        }
+
+        public Task<MercadoPagoPointTerminalModeChangeResult> SetTerminalOperatingModeAsync(
+            string terminalId,
+            string operatingMode,
+            CancellationToken cancellationToken = default)
+        {
+            ModeChangeCalls++;
+            TerminalId = terminalId;
+            OperatingMode = operatingMode;
+            return Task.FromResult(new MercadoPagoPointTerminalModeChangeResult(terminalId, "STANDALONE", operatingMode));
         }
     }
 

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Services.Payments;
@@ -115,6 +116,109 @@ public sealed class MercadoPagoPointTerminalDiscoveryTests
         Assert.Equal(HttpMethod.Get, request.Method);
     }
 
+    [Fact]
+    public async Task SetTerminalOperatingModeAsync_preflights_patches_only_authorized_terminal_and_verifies_mode()
+    {
+        var handler = new SequenceHandler(
+            (HttpStatusCode.OK, TerminalList("STANDALONE")),
+            (HttpStatusCode.OK, "{\"terminals\":[{\"id\":\"NEWLAND_N950__N950NCD600484709\",\"operating_mode\":\"PDV\"}]}"),
+            (HttpStatusCode.OK, TerminalList("PDV")));
+        var sut = CreateService(handler);
+
+        var result = await sut.SetTerminalOperatingModeAsync("NEWLAND_N950__N950NCD600484709", "PDV");
+
+        Assert.Equal("STANDALONE", result.PreviousOperatingMode);
+        Assert.Equal("PDV", result.OperatingMode);
+        Assert.Equal(3, handler.Requests.Count);
+        Assert.Equal(HttpMethod.Get, handler.Requests[0].Method);
+        Assert.Equal("https://api.mercadopago.com/terminals/v1/list?limit=50&offset=0", handler.Requests[0].Uri.AbsoluteUri);
+        Assert.Equal(HttpMethod.Patch, handler.Requests[1].Method);
+        Assert.Equal("https://api.mercadopago.com/terminals/v1/setup", handler.Requests[1].Uri.AbsoluteUri);
+        Assert.Equal("application/json", handler.Requests[1].ContentType);
+        using (var body = JsonDocument.Parse(handler.Requests[1].Body!))
+        {
+            var terminals = body.RootElement.GetProperty("terminals");
+            var terminal = Assert.Single(terminals.EnumerateArray().ToArray());
+            Assert.Equal(new[] { "id", "operating_mode" }, terminal.EnumerateObject().Select(property => property.Name).ToArray());
+            Assert.Equal("NEWLAND_N950__N950NCD600484709", terminal.GetProperty("id").GetString());
+            Assert.Equal("PDV", terminal.GetProperty("operating_mode").GetString());
+        }
+        Assert.Equal(HttpMethod.Get, handler.Requests[2].Method);
+        Assert.DoesNotContain(handler.Requests, request => request.Uri.AbsolutePath.Contains("/v1/orders", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("NEWLAND_N950__OTHER", "PDV")]
+    [InlineData("NEWLAND_N950__N950NCD600484709", "STANDALONE")]
+    [InlineData("NEWLAND_N950__N950NCD600484709", "UNDEFINED")]
+    public async Task SetTerminalOperatingModeAsync_rejects_unapproved_terminal_or_mode_before_http(string terminalId, string mode)
+    {
+        var handler = new SequenceHandler();
+        var sut = CreateService(handler);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.SetTerminalOperatingModeAsync(terminalId, mode));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task SetTerminalOperatingModeAsync_does_not_patch_when_terminal_is_missing_or_not_standalone()
+    {
+        var missing = new SequenceHandler((HttpStatusCode.OK, "{\"data\":{\"terminals\":[]}}"));
+        var missingSut = CreateService(missing);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => missingSut.SetTerminalOperatingModeAsync("NEWLAND_N950__N950NCD600484709", "PDV"));
+        Assert.Single(missing.Requests);
+        Assert.Equal(HttpMethod.Get, missing.Requests[0].Method);
+
+        var alreadyConfigured = new SequenceHandler((HttpStatusCode.OK, TerminalList("PDV")));
+        var configuredSut = CreateService(alreadyConfigured);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => configuredSut.SetTerminalOperatingModeAsync("NEWLAND_N950__N950NCD600484709", "PDV"));
+        Assert.Single(alreadyConfigured.Requests);
+        Assert.Equal(HttpMethod.Get, alreadyConfigured.Requests[0].Method);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task SetTerminalOperatingModeAsync_does_not_retry_failed_patch(HttpStatusCode patchStatus)
+    {
+        var handler = new SequenceHandler(
+            (HttpStatusCode.OK, TerminalList("STANDALONE")),
+            (patchStatus, "provider error"));
+        var sut = CreateService(handler);
+
+        var exception = await Assert.ThrowsAsync<PaymentGatewayException>(
+            () => sut.SetTerminalOperatingModeAsync("NEWLAND_N950__N950NCD600484709", "PDV"));
+
+        Assert.Equal(patchStatus, exception.StatusCode);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.DoesNotContain(handler.Requests, request => request.Uri.AbsolutePath.Contains("/v1/orders", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task SetTerminalOperatingModeAsync_does_not_mutate_outside_staging()
+    {
+        var handler = new SequenceHandler();
+        var sut = CreateService(handler, "Production");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.SetTerminalOperatingModeAsync("NEWLAND_N950__N950NCD600484709", "PDV"));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task SetTerminalOperatingModeAsync_timeout_does_not_retry_or_verify_after_patch_timeout()
+    {
+        var handler = new PatchTimeoutHandler();
+        var sut = CreateService(handler);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => sut.SetTerminalOperatingModeAsync("NEWLAND_N950__N950NCD600484709", "PDV"));
+
+        Assert.Equal(new[] { HttpMethod.Get, HttpMethod.Patch }, handler.Methods);
+    }
+
     private static IMercadoPagoPointTerminalDiscovery CreateService(
         HttpMessageHandler handler,
         string environment = "Staging",
@@ -126,14 +230,17 @@ public sealed class MercadoPagoPointTerminalDiscoveryTests
         return new MercadoPagoPointTerminalDiscovery(client, options, host);
     }
 
+    private static string TerminalList(string operatingMode) =>
+        "{\"data\":{\"terminals\":[{\"id\":\"NEWLAND_N950__N950NCD600484709\",\"store_id\":\"88334226\",\"pos_id\":\"139110122\",\"operating_mode\":\"" + operatingMode + "\"}]}}";
+
     private sealed class RecordingHandler(HttpStatusCode status, string body) : HttpMessageHandler
     {
         public List<CapturedRequest> Requests { get; } = [];
 
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(new CapturedRequest(request.Method, request.RequestUri!, request.Headers.Authorization?.ToString()));
-            return new HttpResponseMessage(status) { Content = new StringContent(body) };
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body) });
         }
     }
 
@@ -152,7 +259,41 @@ public sealed class MercadoPagoPointTerminalDiscoveryTests
         }
     }
 
-    private sealed record CapturedRequest(HttpMethod Method, Uri Uri, string? Authorization);
+    private sealed class SequenceHandler(params (HttpStatusCode Status, string Body)[] responses) : HttpMessageHandler
+    {
+        private readonly Queue<(HttpStatusCode Status, string Body)> _responses = new(responses);
+        public List<CapturedRequest> Requests { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            Requests.Add(new CapturedRequest(request.Method, request.RequestUri!, request.Headers.Authorization?.ToString(),
+                body, request.Content?.Headers.ContentType?.MediaType));
+            var response = _responses.Dequeue();
+            return new HttpResponseMessage(response.Status) { Content = new StringContent(response.Body) };
+        }
+    }
+
+    private sealed class PatchTimeoutHandler : HttpMessageHandler
+    {
+        public List<HttpMethod> Methods { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Methods.Add(request.Method);
+            if (request.Method == HttpMethod.Patch)
+            {
+                return Task.FromException<HttpResponseMessage>(new TaskCanceledException("simulated timeout"));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(TerminalList("STANDALONE"))
+            });
+        }
+    }
+
+    private sealed record CapturedRequest(HttpMethod Method, Uri Uri, string? Authorization, string? Body = null, string? ContentType = null);
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
     {

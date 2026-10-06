@@ -141,6 +141,12 @@ public sealed class AdminPaymentTerminalManagementTests
     {
         public Task<IReadOnlyList<MercadoPagoPointTerminal>> ListTerminalsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<MercadoPagoPointTerminal>>([]);
+
+        public Task<MercadoPagoPointTerminalModeChangeResult> SetTerminalOperatingModeAsync(
+            string terminalId,
+            string operatingMode,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new MercadoPagoPointTerminalModeChangeResult(terminalId, "STANDALONE", operatingMode));
     }
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
