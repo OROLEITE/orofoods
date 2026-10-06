@@ -338,6 +338,7 @@ public sealed class PointPaymentOrchestrationServiceTests
     [Theory]
     [InlineData(false, "Test", "POINT_INTEGRATION_DISABLED")]
     [InlineData(true, "Production", "POINT_TEST_ENVIRONMENT_REQUIRED")]
+    [InlineData(true, "Staging", "POINT_TEST_ENVIRONMENT_REQUIRED")]
     public async Task StartChargeAsync_enforces_feature_and_test_environment(bool enabled, string environment, string errorCode)
     {
         await using var db = await TestDbContextFactory.CreateAsync();

@@ -1,6 +1,8 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Payments;
@@ -52,7 +54,8 @@ public sealed class AdminPaymentTerminalManagementTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var assignments = new DriverPaymentTerminalService(db, TimeProvider.System);
-        var controller = new PaymentTerminalsController(db, assignments);
+        var controller = new PaymentTerminalsController(db, assignments, new EmptyPointTerminalDiscovery(),
+            new TestHostEnvironment("Test"), NullLogger<PaymentTerminalsController>.Instance);
 
         var created = await controller.Edit(new PaymentTerminalEditViewModel
         {
@@ -133,4 +136,18 @@ public sealed class AdminPaymentTerminalManagementTests
     }
 
     private static string[] Names(Type type) => type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(x => x.Name).ToArray();
+
+    private sealed class EmptyPointTerminalDiscovery : IMercadoPagoPointTerminalDiscovery
+    {
+        public Task<IReadOnlyList<MercadoPagoPointTerminal>> ListTerminalsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MercadoPagoPointTerminal>>([]);
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "Orofoods.Web.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
+    }
 }

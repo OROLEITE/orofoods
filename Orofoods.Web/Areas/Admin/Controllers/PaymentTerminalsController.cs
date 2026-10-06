@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Payments;
@@ -11,9 +12,43 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Area("Admin"), Authorize(Roles = "Administrador")]
 public sealed class PaymentTerminalsController(
     ApplicationDbContext db,
-    IDriverPaymentTerminalService assignmentService) : Controller
+    IDriverPaymentTerminalService assignmentService,
+    IMercadoPagoPointTerminalDiscovery terminalDiscovery,
+    IHostEnvironment hostEnvironment,
+    ILogger<PaymentTerminalsController> logger) : Controller
 {
     public async Task<IActionResult> Index() => View(await db.PaymentTerminals.AsNoTracking().OrderBy(x => x.Provider).ThenBy(x => x.DeviceId).ToListAsync());
+
+    [HttpGet]
+    public async Task<IActionResult> DiscoverMercadoPagoTerminals(CancellationToken cancellationToken = default)
+    {
+        if (!hostEnvironment.IsStaging()) return NotFound();
+
+        try
+        {
+            return Ok(await terminalDiscovery.ListTerminalsAsync(cancellationToken));
+        }
+        catch (PaymentGatewayException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery returned HTTP {StatusCode}.", (int)exception.StatusCode);
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível consultar os terminais Mercado Pago." });
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery failed. ErrorType={ErrorType}", exception.GetType().Name);
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível consultar os terminais Mercado Pago." });
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery timed out.");
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new { message = "A consulta de terminais Mercado Pago excedeu o tempo limite." });
+        }
+        catch (InvalidOperationException)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery is not configured.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "A consulta de terminais Mercado Pago não está configurada." });
+        }
+    }
 
     public async Task<IActionResult> Edit(int? id)
     {

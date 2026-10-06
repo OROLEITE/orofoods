@@ -229,6 +229,11 @@ builder.Services.AddScoped<IPaymentApprovalHandler, NoOpPaymentApprovalHandler>(
 builder.Services.AddScoped<PaymentOrchestrationService>();
 builder.Services.AddScoped<IDriverPaymentTerminalService, DriverPaymentTerminalService>();
 builder.Services.AddScoped<IPaymentTerminalEligibilityService, PaymentTerminalEligibilityService>();
+builder.Services.AddHttpClient<IMercadoPagoPointTerminalDiscovery, MercadoPagoPointTerminalDiscovery>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<MercadoPagoPointOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.RequestTimeoutSeconds, 1, 60));
+});
 var mercadoPagoPointEnabled = builder.Configuration.GetValue<bool>(MercadoPagoPointOptions.ConfigurationKey);
 if (mercadoPagoPointEnabled && !builder.Environment.IsEnvironment("Test"))
 {
