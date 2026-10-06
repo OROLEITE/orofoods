@@ -454,3 +454,321 @@
         grid-column: 1 / -1;
     }
 }
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page {
+    background: #0F172A;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-page-header .eyebrow,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-page-header h1 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-page-header p {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table-card {
+    border-color: #334155;
+    background: #111827;
+    box-shadow: none;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table {
+    color: #E5E7EB;
+    --bs-table-bg: #111827;
+    --bs-table-color: #E5E7EB;
+    --bs-table-border-color: #334155;
+    --bs-table-hover-bg: #1E293B;
+    --bs-table-hover-color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table > thead > tr > th {
+    border-color: #334155;
+    background: #1E293B;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table > tbody > tr {
+    background: #111827;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table > tbody > tr:nth-child(even) {
+    --bs-table-accent-bg: #172033;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table > tbody > tr:hover {
+    --bs-table-accent-bg: #1E293B;
+    background: #1E293B;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table tbody td {
+    border-color: #334155;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table-secondary,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table tbody td::before {
+    color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-count-badge {
+    border-color: #065F46;
+    background: #064E3B;
+    color: #A7F3D0;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .form-control {
+    border-color: #475569;
+    background: #0F172A;
+    color: #E5E7EB;
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .form-control::placeholder {
+    color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .form-control:focus {
+    border-color: #38BDF8;
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .form-control[readonly] {
+    background: #1E293B;
+    color: #CBD5E1;
+    opacity: 1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-edit-action {
+    border-color: #475569;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-edit-action:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-edit-action:focus-visible {
+    border-color: #38BDF8;
+    background: #334155;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-edit-action:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .alert-danger {
+    border-color: #7F1D1D;
+    background: #450A0A;
+    color: #FECACA;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page {
+    background: #0F172A;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-page-header .eyebrow,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-page-header h1 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-page-header > div > p:last-child {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table-card {
+    border-color: #334155;
+    background: #111827;
+    box-shadow: none;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table {
+    color: #E5E7EB;
+    --bs-table-bg: #111827;
+    --bs-table-color: #E5E7EB;
+    --bs-table-border-color: #334155;
+    --bs-table-hover-bg: #1E293B;
+    --bs-table-hover-color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table > thead > tr > th {
+    border-color: #334155;
+    background: #1E293B;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table > tbody > tr {
+    background: #111827;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table > tbody > tr:nth-child(even) {
+    --bs-table-accent-bg: #172033;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table > tbody > tr:hover {
+    --bs-table-accent-bg: #1E293B;
+    background: #1E293B;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table tbody td {
+    border-color: #334155;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table-secondary,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table tbody td::before {
+    color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-table-name strong {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-count-badge {
+    border-color: #334155;
+    background: #1E293B;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .status-badge--active {
+    border-color: #065F46;
+    background: #064E3B;
+    color: #A7F3D0;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .status-badge--inactive {
+    border-color: #991B1B;
+    background: #7F1D1D;
+    color: #FECACA;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-edit-action,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-secondary-action {
+    border-color: #475569;
+    background: #1E293B;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-edit-action:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-edit-action:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-secondary-action:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-secondary-action:focus-visible {
+    border-color: #38BDF8;
+    background: #334155;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-edit-action:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-secondary-action:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-deactivate-action:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-page .admin-deactivate-action:focus-visible {
+    border-color: #F87171;
+    background: #450A0A;
+    color: #FECACA;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page {
+    background: #0F172A;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-hero,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-card {
+    border-color: #334155;
+    background: #111827;
+    box-shadow: none;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-hero .eyebrow,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-hero h1,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-card label {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-hero p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-hero > i,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-card label em,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-text {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-select {
+    border-color: #475569;
+    background-color: #0F172A;
+    color: #E5E7EB;
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-control::placeholder {
+    color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-select:focus {
+    border-color: #38BDF8;
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-select:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-control[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .form-select[readonly] {
+    border-color: #334155;
+    background-color: #1E293B;
+    color: #CBD5E1;
+    opacity: 1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-check {
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark {
+    border-color: #64748B;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:focus-visible {
+    border-color: #38BDF8;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .text-danger,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .validation-summary-errors {
+    color: #FCA5A5;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-price-items-page .admin-price-items-table .form-control {
+    border-color: #475569;
+    background: #0F172A;
+    color: #E5E7EB;
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-price-items-page .admin-price-items-table .form-control:focus {
+    border-color: #38BDF8;
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
+}

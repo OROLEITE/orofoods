@@ -12,3 +12,63 @@
 html[data-theme="dark"] .admin-shell{
     background:#0F172A;
 }
+
+/* Compact Admin footer; scoped specificity overrides the shared public footer. */
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer {
+    padding: 16px 0;
+    border-top: 1px solid #334155;
+    background: #0F172A;
+    color: #E5E7EB;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .site-footer-grid {
+    grid-template-columns: minmax(180px, 1fr) auto minmax(260px, 1.2fr);
+    gap: 18px;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-brand {
+    gap: 10px;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-logo {
+    width: 44px;
+    height: 44px;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-brand p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-legal p {
+    color: #CBD5E1;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-legal small {
+    margin-top: 4px;
+    color: #94A3B8;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-links a {
+    color: #38BDF8;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-links a:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-links a:focus-visible {
+    color: #F8FAFC;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-links a:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 4px;
+    border-radius: 2px;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-legal i {
+    color: #F59E0B;
+}
+@media (max-width: 700px) {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer {
+    padding: 14px 0;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .site-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    text-align: left;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-legal {
+    text-align: left;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-footer .footer-legal p {
+    justify-content: flex-start;
+}
+}

@@ -278,3 +278,5 @@ html:not([data-theme="dark"]) :is(.registration-card .form-control, .contact-for
     border-color: var(--action-primary);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-primary) 18%, transparent);
 }
+.customer-detail-tabs .nav-link{color:var(--customer-tab-link-color,#4d4e49)!important}
+@media(max-width:767px){.customer-list-table tbody td[data-label="Ação"]{border-top:1px solid var(--customer-action-border,#ece7dd)!important}}

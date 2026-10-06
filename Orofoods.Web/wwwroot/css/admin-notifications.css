@@ -1,0 +1,53 @@
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .section {
+    background: #0F172A;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .portal-top .eyebrow,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .portal-top h1 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .portal-top h1 small {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article {
+    border-color: #334155;
+    background: #111827;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article strong {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article p {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article small {
+    color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article.is-unread {
+    border-left-color: #F59E0B;
+    background: #172033;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article .btn-outline-dark {
+    border-color: #64748B;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article .btn-outline-dark:focus-visible {
+    border-color: #38BDF8;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article button:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}

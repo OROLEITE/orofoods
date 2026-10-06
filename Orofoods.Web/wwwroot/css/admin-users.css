@@ -11,13 +11,92 @@
     border-radius: 1rem;
 }
 
-[data-theme="dark"] .admin-users-page {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page {
     --users-bg: #0B1220;
     --users-surface: #111827;
     --users-text: #F8FAFC;
     --users-muted: #94A3B8;
     --users-border: #334155;
     --users-primary: #60A5FA;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-select {
+    color: var(--users-text);
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-filters {
+    border-color: var(--users-border);
+    background: var(--users-surface);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-select:focus {
+    border-color: #38BDF8;
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-select:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-control[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .form-select[readonly] {
+    background: #1E293B;
+    color: #CBD5E1;
+    opacity: 1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-table {
+    background: var(--users-surface);
+    --bs-table-bg: var(--users-surface);
+    --bs-table-color: var(--users-text);
+    --bs-table-border-color: var(--users-border);
+    --bs-table-hover-bg: #1E293B;
+    --bs-table-hover-color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-status.is-active {
+    background: #064E3B;
+    color: #A7F3D0;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-status.is-inactive {
+    background: #1E293B;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-actions summary:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 3px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-action-menu {
+    border-color: var(--users-border);
+    background: var(--users-surface);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-action-menu a:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-action-menu button:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: -2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-primary:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .admin-users-secondary:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .modal-content {
+    background: #111827;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .modal-header,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-users-page .modal-footer {
+    border-color: #334155;
 }
 
 .admin-users-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
