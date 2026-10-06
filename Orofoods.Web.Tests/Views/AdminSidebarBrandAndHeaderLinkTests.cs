@@ -64,6 +64,39 @@ public class AdminSidebarBrandAndHeaderLinkTests
         Assert.Contains(".site-header-modern .account-menu", header);
     }
 
+    [Fact]
+    public void WhatsAppAdminDarkTopNavigationOverridesLegacyColorOnlyInsideItsHeader()
+    {
+        var header = ReadWebFile("wwwroot", "css", "header.css");
+        var shared = ReadWebFile("wwwroot", "css", "site.css");
+        const string scope = "html[data-theme=\"dark\"] body.admin-authenticated:has(.whatsapp-inbox-page) .site-header-modern .main-nav .nav-link";
+        var normalRule = FindRule(header, scope);
+        var interactionSelector = scope + ":hover,\r\n" + scope + ":focus-visible,\r\n" + scope + ".active";
+        var interactionRule = FindRule(header, interactionSelector);
+
+        Assert.Matches(@"color:\s*#CBD5E1\s*!important", normalRule);
+        Assert.Matches(@"color:\s*#F8FAFC\s*!important", interactionRule);
+        Assert.Contains(".site-header-modern .main-nav .nav-link", scope);
+        Assert.Contains("html[data-theme=\"dark\"]", scope);
+        Assert.Contains("body.admin-authenticated", scope);
+        Assert.DoesNotContain(".whatsapp-inbox-page .nav-link", scope);
+        Assert.Contains("#4d4e49!important", shared);
+        Assert.DoesNotContain("html[data-theme=\"dark\"] body.admin-authenticated:has(.whatsapp-inbox-page) .whatsapp-inbox-page", header);
+    }
+
+    [Fact]
+    public void WhatsAppFailedStatusKeepsCompactLabelAndRendersEncodedDetailWithFallback()
+    {
+        var view = ReadWebFile("Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
+
+        Assert.Contains("Falha no envio", view);
+        Assert.Contains("whatsapp-failure-details", view);
+        Assert.Contains("Motivo não informado pela Meta.", view);
+        Assert.Contains("@message.ErrorCode", view);
+        Assert.Contains("message.ErrorMessage", view);
+        Assert.DoesNotContain("Html.Raw", view);
+    }
+
     private static string ReadWebFile(params string[] segments)
     {
         var webProject = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

@@ -930,7 +930,10 @@ public class AdminDarkThemeContractTests
     }
 
     private static bool IsScopedAdminDarkSelector(string selector) =>
-        selector.StartsWith($"{DarkThemeGate} {AdminBodyGate} ", StringComparison.Ordinal);
+        selector.StartsWith($"{DarkThemeGate} {AdminBodyGate} ", StringComparison.Ordinal) ||
+        Regex.IsMatch(selector,
+            @"^html\[data-theme=""dark""\] body\.admin-authenticated:has\(\.whatsapp-inbox-page\) \.site-header-modern \.main-nav \.nav-link(?:\.active|:hover|:focus-visible)?$",
+            RegexOptions.CultureInvariant);
 
     private static bool ContainsComponent(string selector, string component)
     {
