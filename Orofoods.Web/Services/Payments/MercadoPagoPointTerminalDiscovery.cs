@@ -13,6 +13,8 @@ public sealed class MercadoPagoPointTerminalDiscovery(
     IOptions<MercadoPagoPointOptions> options,
     IHostEnvironment hostEnvironment) : IMercadoPagoPointTerminalDiscovery
 {
+    public const string AuthorizedStagingTerminalId = "NEWLAND_N950__N950NCD600484709";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -62,6 +64,63 @@ public sealed class MercadoPagoPointTerminalDiscovery(
                 terminal.ExternalPosId,
                 terminal.OperatingMode))
             .ToArray() ?? [];
+    }
+
+    public async Task<MercadoPagoPointTerminalModeChangeResult> SetTerminalOperatingModeAsync(
+        string terminalId,
+        string operatingMode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!hostEnvironment.IsStaging())
+        {
+            throw new InvalidOperationException("A alteração do modo do terminal está disponível somente no Staging.");
+        }
+
+        if (!string.Equals(terminalId, AuthorizedStagingTerminalId, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Terminal não autorizado para esta operação.", nameof(terminalId));
+        }
+
+        if (!string.Equals(operatingMode, "PDV", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Somente o modo PDV está autorizado nesta operação.", nameof(operatingMode));
+        }
+
+        var before = await ListTerminalsAsync(cancellationToken);
+        var terminalBefore = before.SingleOrDefault(terminal => string.Equals(terminal.Id, terminalId, StringComparison.Ordinal));
+        if (terminalBefore is null || !string.Equals(terminalBefore.OperatingMode, "STANDALONE", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("O terminal autorizado não foi encontrado em modo STANDALONE; nenhuma alteração foi executada.");
+        }
+
+        var accessToken = options.Value.AccessToken;
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            new Uri("https://api.mercadopago.com/terminals/v1/setup"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Content = JsonContent.Create(new
+        {
+            terminals = new[]
+            {
+                new { id = terminalId, operating_mode = "PDV" }
+            }
+        });
+
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new PaymentGatewayException(response.StatusCode);
+        }
+
+        var after = await ListTerminalsAsync(cancellationToken);
+        var terminalAfter = after.SingleOrDefault(terminal => string.Equals(terminal.Id, terminalId, StringComparison.Ordinal));
+        if (terminalAfter is null || !string.Equals(terminalAfter.OperatingMode, "PDV", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("A API não confirmou o modo PDV no terminal autorizado.");
+        }
+
+        return new MercadoPagoPointTerminalModeChangeResult(terminalId, terminalBefore.OperatingMode!, terminalAfter.OperatingMode!);
     }
 
     private static string? ReadIdentifier(JsonElement value) => value.ValueKind switch
