@@ -149,6 +149,16 @@ html:not([data-theme="dark"]) .site-header-modern .main-nav .nav-link.active {
     color: #0F172A;
 }
 
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active {
+    color: #F8FAFC;
+}
+
 html:not([data-theme="dark"]) .site-header-modern :is(.navbar-toggler, .btn-outline-dark) {
     border-color: var(--border-subtle);
     color: #334155;
