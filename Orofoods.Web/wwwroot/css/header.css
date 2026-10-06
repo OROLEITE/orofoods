@@ -207,3 +207,36 @@ html:not([data-theme="dark"]) .site-header-modern :is(.account-trigger, .main-na
         border-color: var(--border-subtle);
     }
 }
+
+/* Admin account dropdown overrides Bootstrap and the shared light menu, including keyboard states. */
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu {
+    border-color: #334155;
+    background: #111827;
+    color: #E5E7EB;
+    box-shadow: 0 .75rem 2rem rgba(2, 6, 23, .35);
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .dropdown-item {
+    color: #E5E7EB;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .dropdown-item:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .dropdown-item:focus {
+    background: #1E293B;
+    color: #F8FAFC;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .dropdown-item:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: -2px;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu i {
+    color: #F59E0B;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .account-logout {
+    /* The shared logout uses !important; this scoped override keeps danger readable. */
+    color: #FCA5A5 !important;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .account-logout i {
+    color: #FCA5A5;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .dropdown-divider {
+    border-color: #334155;
+}
