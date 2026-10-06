@@ -17,7 +17,60 @@ public sealed class PaymentTerminalsController(
     IHostEnvironment hostEnvironment,
     ILogger<PaymentTerminalsController> logger) : Controller
 {
-    public async Task<IActionResult> Index() => View(await db.PaymentTerminals.AsNoTracking().OrderBy(x => x.Provider).ThenBy(x => x.DeviceId).ToListAsync());
+    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
+    {
+        var isStaging = hostEnvironment.IsStaging();
+        IReadOnlyList<MercadoPagoPointTerminal> mercadoPagoTerminals = [];
+        var discoveryFailed = false;
+
+        if (isStaging)
+        {
+            try
+            {
+                mercadoPagoTerminals = await terminalDiscovery.ListTerminalsAsync(cancellationToken);
+            }
+            catch (PaymentGatewayException exception)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery returned HTTP {StatusCode}.", (int)exception.StatusCode);
+                discoveryFailed = true;
+            }
+            catch (HttpRequestException exception)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery failed. ErrorType={ErrorType}", exception.GetType().Name);
+                discoveryFailed = true;
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery timed out.");
+                discoveryFailed = true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (InvalidOperationException)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery is not configured.");
+                discoveryFailed = true;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery failed. ErrorType={ErrorType}", exception.GetType().Name);
+                discoveryFailed = true;
+            }
+        }
+
+        var model = new PaymentTerminalIndexViewModel
+        {
+            ConfiguredTerminals = await db.PaymentTerminals.AsNoTracking()
+                .OrderBy(x => x.Provider).ThenBy(x => x.DeviceId).ToListAsync(cancellationToken),
+            MercadoPagoTerminals = mercadoPagoTerminals,
+            IsStaging = isStaging,
+            DiscoveryFailed = discoveryFailed
+        };
+
+        return View(model);
+    }
 
     [HttpGet]
     public async Task<IActionResult> DiscoverMercadoPagoTerminals(CancellationToken cancellationToken = default)
@@ -31,12 +84,12 @@ public sealed class PaymentTerminalsController(
         catch (PaymentGatewayException exception)
         {
             logger.LogWarning("Mercado Pago Point terminal discovery returned HTTP {StatusCode}.", (int)exception.StatusCode);
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível consultar os terminais Mercado Pago." });
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "N\u00E3o foi poss\u00EDvel consultar os terminais Mercado Pago." });
         }
         catch (HttpRequestException exception)
         {
             logger.LogWarning("Mercado Pago Point terminal discovery failed. ErrorType={ErrorType}", exception.GetType().Name);
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível consultar os terminais Mercado Pago." });
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "N\u00E3o foi poss\u00EDvel consultar os terminais Mercado Pago." });
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -46,7 +99,7 @@ public sealed class PaymentTerminalsController(
         catch (InvalidOperationException)
         {
             logger.LogWarning("Mercado Pago Point terminal discovery is not configured.");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "A consulta de terminais Mercado Pago não está configurada." });
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "A consulta de terminais Mercado Pago n\u00E3o est\u00E1 configurada." });
         }
     }
 
@@ -57,32 +110,48 @@ public sealed class PaymentTerminalsController(
 
         try
         {
-            var result = await terminalDiscovery.SetTerminalOperatingModeAsync(
+            await terminalDiscovery.SetTerminalOperatingModeAsync(
                 MercadoPagoPointTerminalDiscovery.AuthorizedStagingTerminalId,
                 "PDV",
                 cancellationToken);
-            return Ok(result);
+            TempData["MercadoPagoPointTerminalMessage"] = "Terminal configurado em modo PDV com sucesso.";
+            return RedirectToAction(nameof(Index));
         }
         catch (PaymentGatewayException exception)
         {
             logger.LogWarning("Mercado Pago Point terminal mode update returned HTTP {StatusCode}.", (int)exception.StatusCode);
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível alterar o modo do terminal Mercado Pago." });
+            return ModeUpdateFailed();
         }
         catch (HttpRequestException exception)
         {
             logger.LogWarning("Mercado Pago Point terminal mode update failed. ErrorType={ErrorType}", exception.GetType().Name);
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = "Não foi possível alterar o modo do terminal Mercado Pago." });
+            return ModeUpdateFailed();
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning("Mercado Pago Point terminal mode update timed out; no automatic retry was attempted.");
-            return StatusCode(StatusCodes.Status504GatewayTimeout, new { message = "A alteração do modo do terminal excedeu o tempo limite. Verifique o estado antes de tentar novamente." });
+            return ModeUpdateFailed();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (InvalidOperationException)
         {
             logger.LogWarning("Mercado Pago Point terminal mode update precondition or configuration failed.");
-            return Conflict(new { message = "A alteração do modo do terminal não foi confirmada. Consulte o estado antes de qualquer nova tentativa." });
+            return ModeUpdateFailed();
         }
+        catch (Exception exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update failed. ErrorType={ErrorType}", exception.GetType().Name);
+            return ModeUpdateFailed();
+        }
+    }
+
+    private IActionResult ModeUpdateFailed()
+    {
+        TempData["MercadoPagoPointTerminalMessage"] = "N\u00E3o foi poss\u00EDvel confirmar a configura\u00E7\u00E3o do terminal. Atualize a descoberta para conferir o estado atual antes de tentar novamente.";
+        return RedirectToAction(nameof(Index));
     }
 
     public async Task<IActionResult> Edit(int? id)
