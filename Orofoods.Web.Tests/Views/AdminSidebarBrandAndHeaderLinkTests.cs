@@ -38,7 +38,8 @@ public class AdminSidebarBrandAndHeaderLinkTests
         Assert.Contains("data-admin-sidebar-toggle", layout);
         Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.show,", styles);
         Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.collapsing", styles);
-        Assert.Contains(".admin-offcanvas .admin-sidebar-header {\r\n    display: none;", styles);
+        Assert.Contains(rules, rule => rule.Selector == ".admin-offcanvas .admin-sidebar-header" &&
+            rule.Declarations.Contains("display: none", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -78,7 +79,9 @@ public class AdminSidebarBrandAndHeaderLinkTests
 
     private static string FindRule(string styles, string selector)
     {
-        var match = Regex.Match(styles, Regex.Escape(selector) + @"\s*\{(?<declarations>[^{}]*)\}");
+        var normalizedSelector = Regex.Replace(selector.Trim(), @"\s+", " ");
+        var selectorPattern = Regex.Escape(normalizedSelector).Replace(@"\ ", @"\s+", StringComparison.Ordinal);
+        var match = Regex.Match(styles, selectorPattern + @"\s*\{(?<declarations>[^{}]*)\}");
         Assert.True(match.Success, $"Missing CSS rule for {selector}");
         return match.Groups["declarations"].Value;
     }
