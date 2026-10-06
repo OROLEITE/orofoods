@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,6 +10,7 @@ using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Data;
 using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Tests.Infrastructure;
+using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Tests.Controllers;
 
@@ -34,7 +36,7 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
         var controller = CreateController(db, discovery, "Staging");
         var action = typeof(PaymentTerminalsController).GetMethod("SetMercadoPagoTerminalOperatingModeToPdv");
 
-        var result = Assert.IsType<OkObjectResult>(await controller.SetMercadoPagoTerminalOperatingModeToPdv());
+        var result = Assert.IsType<RedirectToActionResult>(await controller.SetMercadoPagoTerminalOperatingModeToPdv());
 
         Assert.NotNull(action?.GetCustomAttribute<HttpPostAttribute>());
         Assert.NotNull(action?.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
@@ -42,7 +44,58 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
         Assert.Equal("PDV", discovery.OperatingMode);
         Assert.Equal(1, discovery.ModeChangeCalls);
         Assert.Equal(0, await db.PaymentTerminals.CountAsync());
-        Assert.NotNull(result.Value);
+        Assert.Equal(nameof(PaymentTerminalsController.Index), result.ActionName);
+        Assert.Equal("Terminal configurado em modo PDV com sucesso.", controller.TempData["MercadoPagoPointTerminalMessage"]);
+    }
+
+    [Fact]
+    public async Task Staging_index_discovers_terminals_without_persisting_them()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery([
+            new MercadoPagoPointTerminal("NEWLAND_N950__N950NCD600484709", "88334226", "139110122", null, "STANDALONE")
+        ]);
+        var controller = CreateController(db, discovery, "Staging");
+
+        var result = Assert.IsType<ViewResult>(await controller.Index());
+        var model = Assert.IsType<PaymentTerminalIndexViewModel>(result.Model);
+
+        Assert.True(model.IsStaging);
+        Assert.Single(model.MercadoPagoTerminals);
+        Assert.Equal("STANDALONE", model.MercadoPagoTerminals[0].OperatingMode);
+        Assert.Equal(1, discovery.Calls);
+        Assert.Equal(0, await db.PaymentTerminals.CountAsync());
+    }
+
+    [Fact]
+    public async Task Non_staging_index_does_not_discover_terminals()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery();
+        var controller = CreateController(db, discovery, "Production");
+
+        var result = Assert.IsType<ViewResult>(await controller.Index());
+        var model = Assert.IsType<PaymentTerminalIndexViewModel>(result.Model);
+
+        Assert.False(model.IsStaging);
+        Assert.Empty(model.MercadoPagoTerminals);
+        Assert.Equal(0, discovery.Calls);
+    }
+
+    [Fact]
+    public async Task Mode_update_failure_redirects_with_safe_message_and_does_not_retry()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery { ModeChangeException = new PaymentGatewayException(System.Net.HttpStatusCode.Forbidden) };
+        var controller = CreateController(db, discovery, "Staging");
+
+        var result = Assert.IsType<RedirectToActionResult>(await controller.SetMercadoPagoTerminalOperatingModeToPdv());
+
+        Assert.Equal(nameof(PaymentTerminalsController.Index), result.ActionName);
+        Assert.Equal(1, discovery.ModeChangeCalls);
+        Assert.Equal("Não foi possível confirmar a configuração do terminal. Atualize a descoberta para conferir o estado atual antes de tentar novamente.",
+            controller.TempData["MercadoPagoPointTerminalMessage"]);
+        Assert.Equal(0, await db.PaymentTerminals.CountAsync());
     }
 
     [Fact]
@@ -91,9 +144,13 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
         Assert.Equal(1, discovery.Calls);
     }
 
-    private static PaymentTerminalsController CreateController(ApplicationDbContext db, FakeDiscovery discovery, string environment) =>
-        new(db, new DriverPaymentTerminalService(db, TimeProvider.System), discovery, new TestHostEnvironment(environment),
-            NullLogger<PaymentTerminalsController>.Instance);
+    private static PaymentTerminalsController CreateController(ApplicationDbContext db, FakeDiscovery discovery, string environment)
+    {
+        var controller = new PaymentTerminalsController(db, new DriverPaymentTerminalService(db, TimeProvider.System), discovery,
+            new TestHostEnvironment(environment), NullLogger<PaymentTerminalsController>.Instance);
+        controller.TempData = new TempDataDictionary(new Microsoft.AspNetCore.Http.DefaultHttpContext(), new TestTempDataProvider());
+        return controller;
+    }
 
     private sealed class FakeDiscovery(IReadOnlyList<MercadoPagoPointTerminal>? terminals = null) : IMercadoPagoPointTerminalDiscovery
     {
@@ -101,6 +158,7 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
         public int ModeChangeCalls { get; private set; }
         public string? TerminalId { get; private set; }
         public string? OperatingMode { get; private set; }
+        public Exception? ModeChangeException { get; init; }
 
         public Task<IReadOnlyList<MercadoPagoPointTerminal>> ListTerminalsAsync(CancellationToken cancellationToken = default)
         {
@@ -116,6 +174,7 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
             ModeChangeCalls++;
             TerminalId = terminalId;
             OperatingMode = operatingMode;
+            if (ModeChangeException is not null) throw ModeChangeException;
             return Task.FromResult(new MercadoPagoPointTerminalModeChangeResult(terminalId, "STANDALONE", operatingMode));
         }
     }
@@ -126,5 +185,11 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
         public string ApplicationName { get; set; } = "Orofoods.Web.Tests";
         public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
+    }
+
+    private sealed class TestTempDataProvider : ITempDataProvider
+    {
+        public IDictionary<string, object> LoadTempData(Microsoft.AspNetCore.Http.HttpContext context) => new Dictionary<string, object>();
+        public void SaveTempData(Microsoft.AspNetCore.Http.HttpContext context, IDictionary<string, object> values) { }
     }
 }
