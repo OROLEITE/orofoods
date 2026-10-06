@@ -16,6 +16,17 @@ public class GlobalNavigationTests
     }
 
     [Fact]
+    public void Shared_layout_does_not_render_the_context_bar_in_admin()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var adminStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-shell.css"));
+
+        Assert.Contains("@if (!isCustomerExperience && !isPortalCustomerSelect && !isAdminArea)", layout);
+        Assert.DoesNotContain(".page-context-bar", adminStyles);
+    }
+
+    [Fact]
     public void Shared_layout_and_header_use_correct_portuguese_accentuation()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
