@@ -1,0 +1,87 @@
+using System.Text.RegularExpressions;
+
+namespace Orofoods.Web.Tests.Views;
+
+public class AdminSidebarBrandAndHeaderLinkTests
+{
+    [Fact]
+    public void AdminSidebarUsesVersionedLogoAndRetainsItWhenCollapsed()
+    {
+        var navigation = ReadWebFile("Views", "Shared", "_AdminNavigation.cshtml");
+        var styles = ReadWebFile("wwwroot", "css", "admin-navigation.css");
+        var shared = ReadWebFile("wwwroot", "css", "site.css");
+        var layout = ReadWebFile("Views", "Shared", "_AdminLayout.cshtml");
+        var rules = ReadRules(styles);
+        var sharedRules = ReadRules(shared);
+
+        Assert.Contains("class=\"admin-sidebar-logo\" src=\"~/images/logo-orofoods-transparent.png\" asp-append-version=\"true\" alt=\"Orofoods\"", navigation);
+        Assert.DoesNotContain("<small>OROFOODS</small>", navigation);
+        Assert.Contains("<h2>", navigation);
+        Assert.Contains("<span>", navigation);
+        Assert.Contains(sharedRules, rule => rule.Selector == ".admin-sidebar-header .admin-sidebar-logo" &&
+            rule.Declarations.Contains("width:82px", StringComparison.Ordinal) &&
+            rule.Declarations.Contains("height:auto", StringComparison.Ordinal) &&
+            rule.Declarations.Contains("object-fit:contain", StringComparison.Ordinal));
+        Assert.Contains(sharedRules, rule => rule.Selector == ".admin-sidebar-collapsed .admin-sidebar-header .admin-sidebar-logo" &&
+            rule.Declarations.Contains("width:34px", StringComparison.Ordinal) &&
+            rule.Declarations.Contains("height:auto", StringComparison.Ordinal) &&
+            rule.Declarations.Contains("margin:50px auto 0", StringComparison.Ordinal));
+        Assert.Contains(rules, rule => rule.Selector == "html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar > .admin-sidebar-header" &&
+            rule.Declarations.Contains("padding-inline: 0", StringComparison.Ordinal));
+        Assert.Contains(rules, rule => rule.Selector.Contains(".admin-sidebar-collapsed .admin-sidebar-header h2", StringComparison.Ordinal) &&
+            rule.Declarations.Contains("display: none", StringComparison.Ordinal));
+        Assert.DoesNotContain(sharedRules, rule => rule.Selector == ".admin-sidebar-collapsed .admin-sidebar-header .admin-sidebar-logo" &&
+            rule.Declarations.Contains("display: none", StringComparison.Ordinal));
+
+        Assert.Contains("--admin-sidebar-width: 264px", styles);
+        Assert.Contains("--admin-sidebar-collapsed-width: 80px", styles);
+        Assert.Contains("data-admin-sidebar-toggle", layout);
+        Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.show,", styles);
+        Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.collapsing", styles);
+        Assert.Contains(".admin-offcanvas .admin-sidebar-header {\r\n    display: none;", styles);
+    }
+
+    [Fact]
+    public void AdminDarkHeaderLinksHaveScopedColorsAndKeepPublicLightContracts()
+    {
+        var header = ReadWebFile("wwwroot", "css", "header.css");
+        var shared = ReadWebFile("wwwroot", "css", "site.css");
+        const string scope = "html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link";
+
+        var normalRule = FindRule(header, scope);
+        var interactionSelector = scope + ":hover,\r\n" + scope + ":focus-visible,\r\n" + scope + ".active";
+        var interactionRule = FindRule(header, interactionSelector);
+        Assert.Matches(@"color:\s*#CBD5E1", normalRule);
+        Assert.Matches(@"color:\s*#F8FAFC", interactionRule);
+        Assert.DoesNotContain("!important", normalRule + interactionRule, StringComparison.Ordinal);
+
+        Assert.Contains(".nav-link:where(:not(html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link)){color:#4d4e49!important", shared);
+        Assert.Contains("html:not([data-theme=\"dark\"]) .site-header-modern .main-nav .nav-link", header);
+        Assert.Contains("color: #1E293B;", header);
+        Assert.Contains("outline: 2px solid var(--nav-focus);", header);
+        Assert.Contains("@media(max-width:991.98px)", header);
+        Assert.Contains(".site-header-modern .account-menu", header);
+    }
+
+    private static string ReadWebFile(params string[] segments)
+    {
+        var webProject = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        return File.ReadAllText(Path.Combine(new[] { webProject }.Concat(segments).ToArray()));
+    }
+
+    private static IReadOnlyList<CssRule> ReadRules(string styles)
+    {
+        return Regex.Matches(styles, @"(?<selector>[^{}]+)\{(?<declarations>[^{}]*)\}")
+            .Select(match => new CssRule(match.Groups["selector"].Value.Trim(), match.Groups["declarations"].Value))
+            .ToArray();
+    }
+
+    private static string FindRule(string styles, string selector)
+    {
+        var match = Regex.Match(styles, Regex.Escape(selector) + @"\s*\{(?<declarations>[^{}]*)\}");
+        Assert.True(match.Success, $"Missing CSS rule for {selector}");
+        return match.Groups["declarations"].Value;
+    }
+
+    private sealed record CssRule(string Selector, string Declarations);
+}

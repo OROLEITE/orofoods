@@ -15,7 +15,7 @@
     string Active(string value) => controller == value ? "active" : string.Empty;
 }
 
-<div class="admin-sidebar-header"><small>OROFOODS</small><h2>Administração</h2><span>Operação interna</span></div>
+<div class="admin-sidebar-header"><img class="admin-sidebar-logo" src="~/images/logo-orofoods-transparent.png" asp-append-version="true" alt="Orofoods" /><h2>Administração</h2><span>Operação interna</span></div>
 <nav id="@prefix-admin-menu" class="admin-nav" aria-label="Seções administrativas">
     @if (isAdministrator)
     {
