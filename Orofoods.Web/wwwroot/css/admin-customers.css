@@ -186,3 +186,43 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel > header small{color:#CBD5E1}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel > header > span{color:#CBD5E1}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-gold {
+    border-color: var(--action-primary, #2563EB);
+    background: var(--action-primary, #2563EB);
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-gold:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-gold:focus-visible {
+    border-color: #1D4ED8;
+    background: #1D4ED8;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-outline-dark {
+    border-color: #334155;
+    background: #111827;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-outline-dark:focus-visible {
+    border-color: #475569;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.disabled {
+    border-color: #334155;
+    background: #1E293B;
+    color: #94A3B8;
+    opacity: 1;
+    cursor: not-allowed;
+}

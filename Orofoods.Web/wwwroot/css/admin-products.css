@@ -88,7 +88,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-table-secondary,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-table-name small {
-    color: #94A3B8;
+    color: #CBD5E1;
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-product-thumb {
@@ -137,6 +137,28 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     border-color: #64748B;
     background: #1E293B;
     color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page a:not(.btn),
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page a:not(.btn) {
+    color: #38BDF8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page a:not(.btn):hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page a:not(.btn):focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page a:not(.btn):hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page a:not(.btn):focus-visible {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page a:not(.btn):focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page a:not(.btn):focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-text {
+    color: #CBD5E1;
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-deactivate-action:hover,
@@ -212,7 +234,13 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-control:disabled,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-select:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-select:disabled {
+    border-color: #334155;
+    background-color: #1E293B;
+    color: #94A3B8;
+    opacity: 1;
+}
+
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-control[readonly],
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-select[readonly] {
     border-color: #334155;
@@ -247,4 +275,15 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .text-danger,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .validation-summary-errors {
     color: #FCA5A5;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-secondary-action:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-secondary-action.disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn.disabled {
+    border-color: #334155;
+    background: #1E293B;
+    color: #94A3B8;
+    opacity: 1;
+    cursor: not-allowed;
 }

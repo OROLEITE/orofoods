@@ -1567,34 +1567,8 @@ body:has(.whatsapp-inbox-page) .page-context-bar {
     align-items: center;
     gap: 10px;
 }
-.whatsapp-theme-toggle {
-    display: inline-flex;
-    min-height: 36px;
-    align-items: center;
-    gap: 8px;
-    padding: 0 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-}
-.whatsapp-theme-toggle:hover {
-    border-color: var(--border-color-strong);
-    background: var(--bg-surface-secondary);
-    color: var(--text-primary);
-}
-.whatsapp-theme-toggle:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--primary) 35%, transparent);
-    outline-offset: 2px;
-}
 @media (max-width: 767.98px) {
     .whatsapp-heading-actions { gap: 6px; }
-    .whatsapp-theme-toggle { min-height: 34px; padding: 0 8px; font-size: 11px; }
-    .whatsapp-theme-toggle span { display: none; }
 }
 
 
@@ -2154,7 +2128,7 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-actions :is(a, button):focus-v
     outline-offset: 2px;
 }
 
-body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle, .whatsapp-channel-badge) {
+body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-sound-toggle, .whatsapp-channel-badge) {
     display: inline-flex;
     min-height: 36px;
     align-items: center;
@@ -2170,11 +2144,11 @@ body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-to
     font-weight: 600;
 }
 
-body:has(.whatsapp-inbox-page) .whatsapp-header-actions :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle) {
+body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle {
     cursor: pointer;
 }
 
-body:has(.whatsapp-inbox-page) .whatsapp-header-actions :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle):hover {
+body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle:hover {
     border-color: var(--crm-accent);
     background: var(--crm-surface);
 }
@@ -2226,12 +2200,12 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-panel {
 }
 
 @media (max-width: 767.98px) {
-    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle, .whatsapp-channel-badge) {
+    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-sound-toggle, .whatsapp-channel-badge) {
         min-width: 36px;
         padding-inline: 8px;
     }
 
-    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle, .whatsapp-channel-badge) span {
+    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-sound-toggle, .whatsapp-channel-badge) span {
         display: none;
     }
 }
