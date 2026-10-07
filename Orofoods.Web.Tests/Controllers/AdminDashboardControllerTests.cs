@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
@@ -16,6 +17,14 @@ namespace Orofoods.Web.Tests.Controllers;
 
 public class AdminDashboardControllerTests
 {
+    [Fact]
+    public void Dashboard_controller_has_an_unambiguous_mvc_activation_constructor()
+    {
+        var factory = ActivatorUtilities.CreateFactory(typeof(DashboardController), Type.EmptyTypes);
+
+        Assert.NotNull(factory);
+    }
+
     [Fact]
     public async Task Index_counts_failed_integrations_and_low_stock_products()
     {
@@ -38,7 +47,7 @@ public class AdminDashboardControllerTests
             new WmcExportAudit { OrderId = 1, Succeeded = false, Error = "Codigo WMC ausente", ExportedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db).Index();
+        var result = await CreateController(db).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(1, model.FailedIntegrations);
@@ -62,7 +71,7 @@ public class AdminDashboardControllerTests
             new Order { Customer = customer, CreatedByUser = user, Number = "ORO-CANCELLED", Total = 500m, CreatedAt = monthStart.AddDays(1), Status = OrderStatus.Cancelled });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db).Index();
+        var result = await CreateController(db).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(200m, model.MonthRevenue);
@@ -78,7 +87,7 @@ public class AdminDashboardControllerTests
         db.AddRange(customer, user, new Order { Customer = customer, CreatedByUser = user, Number = "ORO-CURRENT", Total = 200m, CreatedAt = DateTime.UtcNow, Status = OrderStatus.Received });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db).Index();
+        var result = await CreateController(db).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Null(model.MonthRevenueChangePercent);
@@ -114,7 +123,7 @@ public class AdminDashboardControllerTests
             new OrderStatusHistory { OrderId = olderDeliveredOrder.Id, Status = OrderStatus.Delivered, ChangedAt = today.AddDays(-1).AddHours(18) });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db, new FixedTimeProvider(now)).Index();
+        var result = await CreateController(db, new FixedTimeProvider(now)).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(8, model.OrdersTodayTotal);
@@ -137,7 +146,7 @@ public class AdminDashboardControllerTests
             new Order { Customer = customer, CreatedByUser = user, Number = "ORO-SP-TOMORROW", CreatedAt = new DateTime(2026, 8, 10, 3, 0, 0, DateTimeKind.Utc), Status = OrderStatus.Received });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db, new FixedTimeProvider(new DateTimeOffset(2026, 8, 10, 0, 30, 0, TimeSpan.Zero))).Index();
+        var result = await CreateController(db, new FixedTimeProvider(new DateTimeOffset(2026, 8, 10, 0, 30, 0, TimeSpan.Zero))).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(1, model.OrdersTodayTotal);
@@ -162,7 +171,7 @@ public class AdminDashboardControllerTests
             new OrderStatusHistory { OrderId = atEnd.Id, Status = OrderStatus.Delivered, ChangedAt = new DateTime(2026, 8, 11, 3, 0, 0, DateTimeKind.Utc) });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db, new FixedTimeProvider(new DateTimeOffset(2026, 8, 10, 3, 0, 0, TimeSpan.Zero))).Index();
+        var result = await CreateController(db, new FixedTimeProvider(new DateTimeOffset(2026, 8, 10, 3, 0, 0, TimeSpan.Zero))).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(2, model.OrdersTodayTotal);
@@ -185,7 +194,7 @@ public class AdminDashboardControllerTests
             new WhatsAppMessage { ConversationId = conversation.Id, Direction = WhatsAppMessageDirection.Outbound, Type = WhatsAppMessageType.Text, Status = WhatsAppMessageStatus.Delivered, DeliveredAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db).Index();
+        var result = await CreateController(db).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(1, model.ActiveMercadoPagoPointTerminals);
@@ -197,7 +206,7 @@ public class AdminDashboardControllerTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
 
-        var result = await new DashboardController(db).Index();
+        var result = await CreateController(db).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(0, model.OrdersTodayTotal);
@@ -230,7 +239,7 @@ public class AdminDashboardControllerTests
             WmcSyncEntityResult.Empty);
         await coordinator.RunExclusivelyAsync(() => Task.FromResult(lastRun));
 
-        var result = await new DashboardController(db, new FixedTimeProvider(now), coordinator).Index();
+        var result = await CreateController(db, new FixedTimeProvider(now), coordinator).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.True(model.WmcSyncHasRun);
@@ -266,11 +275,19 @@ public class AdminDashboardControllerTests
         db.AddRange(customer, user, older, newer);
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db).Index();
+        var result = await CreateController(db).Index();
         var model = Assert.IsType<AdminDashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
 
         Assert.Equal(new[] { "ORO-RECENT-NEWER", "ORO-RECENT-OLDER" }, model.RecentOrders.Select(order => order.Number));
         Assert.All(model.RecentOrders, order => Assert.Equal("Cliente Real", order.Customer?.TradeName));
+    }
+
+    private static DashboardController CreateController(
+        Orofoods.Web.Data.ApplicationDbContext db,
+        TimeProvider? timeProvider = null,
+        WmcSyncCoordinator? wmcSyncCoordinator = null)
+    {
+        return new DashboardController(db, timeProvider ?? TimeProvider.System, wmcSyncCoordinator ?? new WmcSyncCoordinator());
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
