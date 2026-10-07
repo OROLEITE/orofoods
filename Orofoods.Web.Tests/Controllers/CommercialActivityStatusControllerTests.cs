@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Models.Commercial;
@@ -21,18 +22,36 @@ namespace Orofoods.Web.Tests.Controllers;
 public class CommercialActivityStatusControllerTests
 {
     [Fact]
-    public async Task Existing_status_action_persists_an_allowed_kanban_status()
+    public async Task Existing_status_action_persists_status_transitions_used_by_the_kanban_query()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var (customer, activity) = await SeedActivityAsync(db);
         var controller = CreateController(db);
 
-        var result = await InvokeStatusActionAsync(controller, activity.Id, customer.Id, (int)CommercialActivityStatus.InProgress, asJson: true);
+        var inProgressResult = await InvokeStatusActionAsync(controller, activity.Id, customer.Id, (int)CommercialActivityStatus.InProgress, asJson: true);
 
-        Assert.IsType<JsonResult>(result);
+        Assert.IsType<JsonResult>(inProgressResult);
         await db.Entry(activity).ReloadAsync();
         Assert.Equal(CommercialActivityStatus.InProgress, activity.Status);
         Assert.Null(activity.CompletedAt);
+
+        var kanbanActivities = await LoadKanbanActivitiesAsync(db, customer.Id);
+        Assert.Single(kanbanActivities);
+        Assert.Equal(CommercialActivityStatus.InProgress, kanbanActivities[0].Status);
+        Assert.DoesNotContain(kanbanActivities, x => x.Status == CommercialActivityStatus.Scheduled);
+
+        var completedResult = await InvokeStatusActionAsync(controller, activity.Id, customer.Id, (int)CommercialActivityStatus.Completed, asJson: true);
+
+        Assert.IsType<JsonResult>(completedResult);
+        await db.Entry(activity).ReloadAsync();
+        Assert.Equal(CommercialActivityStatus.Completed, activity.Status);
+        Assert.NotNull(activity.CompletedAt);
+
+        kanbanActivities = await LoadKanbanActivitiesAsync(db, customer.Id);
+        Assert.Single(kanbanActivities);
+        Assert.Equal(CommercialActivityStatus.Completed, kanbanActivities[0].Status);
+        Assert.DoesNotContain(kanbanActivities, x => x.Status == CommercialActivityStatus.Scheduled);
+        Assert.DoesNotContain(kanbanActivities, x => x.Status == CommercialActivityStatus.InProgress);
     }
 
     [Theory]
@@ -127,6 +146,16 @@ public class CommercialActivityStatusControllerTests
         db.CommercialActivities.Add(activity);
         await db.SaveChangesAsync();
         return (customer, activity);
+    }
+
+    private static Task<List<CommercialActivity>> LoadKanbanActivitiesAsync(Orofoods.Web.Data.ApplicationDbContext db, int customerId)
+    {
+        var referenceDate = DateTime.Today;
+        return db.CommercialActivities
+            .AsNoTracking()
+            .Where(x => x.CustomerId == customerId && x.ScheduledAt >= referenceDate && x.ScheduledAt < referenceDate.AddDays(1))
+            .OrderBy(x => x.ScheduledAt)
+            .ToListAsync();
     }
 
     private static CustomersController CreateController(Orofoods.Web.Data.ApplicationDbContext db, ClaimsPrincipal? user = null)

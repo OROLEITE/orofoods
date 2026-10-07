@@ -1,0 +1,39 @@
+.admin-authenticated .admin-dashboard-page .admin-priority-card {
+    min-height: 112px;
+    padding: 12px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card small {
+    margin-top: 7px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card strong {
+    margin: 2px 0 4px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card--danger {
+    position: relative;
+    border-color: #995A55;
+    box-shadow: inset 3px 0 0 #A45149;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card--danger > i {
+    background: #F8ECEB;
+    color: #A45149;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-dashboard-page .admin-priority-card--danger {
+    border-color: #8B4A45;
+    box-shadow: inset 3px 0 0 #BF625A;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-dashboard-page .admin-priority-card--danger > i {
+    background: #3A2528;
+    color: #FCA5A5;
+}
+
+@media (max-width: 650px) {
+    .admin-authenticated .admin-dashboard-page .admin-priority-card {
+        min-height: 0;
+    }
+}

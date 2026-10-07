@@ -58,6 +58,31 @@ public class CommercialKanbanViewTests
     }
 
     [Fact]
+    public void Kanban_cards_keep_compact_hierarchy_and_truncate_long_text_without_changing_drag_endpoint()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Commercial", "Index.cshtml"));
+        var script = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "commercial-kanban.js"));
+        var css = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "commercial-kanban-cards.css"));
+        var cardStart = view.IndexOf("class=\"commercial-activity-card", StringComparison.Ordinal);
+        var cardEnd = view.IndexOf("</a>", cardStart, StringComparison.Ordinal);
+        var cardMarkup = view[cardStart..cardEnd];
+
+        Assert.Contains("commercial-activity-meta", cardMarkup);
+        Assert.Contains("commercial-activity-customer", cardMarkup);
+        Assert.Contains("commercial-activity-subject", cardMarkup);
+        Assert.Contains("commercial-activity-person", cardMarkup);
+        Assert.Contains("commercial-activity-action", cardMarkup);
+        Assert.Contains("title=\"Atendimento: @(activity.AssignedUser?.Email", cardMarkup);
+        AssertRuleHas(css, ".commercial-dashboard-page .commercial-activity-card .commercial-activity-customer", "-webkit-line-clamp", "2");
+        AssertRuleHas(css, ".commercial-dashboard-page .commercial-activity-card .commercial-activity-subject", "-webkit-line-clamp", "2");
+        AssertRuleHas(css, ".commercial-dashboard-page .commercial-activity-card .commercial-activity-person", "text-overflow", "ellipsis");
+        Assert.Contains("statusForm.action", script);
+        Assert.Contains("asp-action=\"CompleteActivity\"", view);
+        Assert.Contains("commercial-kanban.js", view);
+    }
+
+    [Fact]
     public void Commercial_empty_states_and_attention_panel_keep_content_driven_compact_spacing()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

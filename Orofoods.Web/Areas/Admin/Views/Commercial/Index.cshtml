@@ -40,7 +40,18 @@
                         <div class="commercial-kanban-cards" data-kanban-cards>
                             @foreach (var activity in Model.Activities.Where(x => x.Status == status))
                             {
-                                <a class="commercial-activity-card @(activity.IsPriority ? "is-priority" : "")" data-activity-id="@activity.Id" data-customer-id="@activity.CustomerId" data-current-status="@((int)activity.Status)" draggable="false" asp-area="Admin" asp-controller="Customers" asp-action="Details" asp-route-id="@activity.CustomerId"><small>@activity.ScheduledAt.ToString("HH:mm") · @TypeLabel(activity.Type)</small><strong>@activity.Customer.TradeName</strong><span>@activity.Title</span><footer><span>Vendedor: @(activity.SalesRepresentative?.Name ?? "Sem vendedor")<br />Atendimento: @(activity.AssignedUser?.Email ?? "Não atribuído")</span><i class="fa-solid @(activity.Type == CommercialActivityType.WhatsApp ? "fa-whatsapp" : activity.Type == CommercialActivityType.Visit ? "fa-location-dot" : "fa-phone")"></i></footer></a>
+                                <a class="commercial-activity-card @(activity.IsPriority ? "is-priority" : "")" data-activity-id="@activity.Id" data-customer-id="@activity.CustomerId" data-current-status="@((int)activity.Status)" draggable="false" asp-area="Admin" asp-controller="Customers" asp-action="Details" asp-route-id="@activity.CustomerId">
+                                    <small class="commercial-activity-meta">@activity.ScheduledAt.ToString("HH:mm") · @TypeLabel(activity.Type)</small>
+                                    <strong class="commercial-activity-customer" title="@activity.Customer.TradeName">@activity.Customer.TradeName</strong>
+                                    <span class="commercial-activity-subject" title="@activity.Title">@activity.Title</span>
+                                    <footer class="commercial-activity-footer">
+                                        <span class="commercial-activity-people">
+                                            <span class="commercial-activity-person" title="Vendedor: @(activity.SalesRepresentative?.Name ?? "Sem vendedor")"><span>Vendedor:</span> @(activity.SalesRepresentative?.Name ?? "Sem vendedor")</span>
+                                            <span class="commercial-activity-person" title="Atendimento: @(activity.AssignedUser?.Email ?? "Não atribuído")"><span>Atendimento:</span> @(activity.AssignedUser?.Email ?? "Não atribuído")</span>
+                                        </span>
+                                        <span class="commercial-activity-action" aria-hidden="true"><i class="fa-solid @(activity.Type == CommercialActivityType.WhatsApp ? "fa-whatsapp" : activity.Type == CommercialActivityType.Visit ? "fa-location-dot" : "fa-phone")"></i></span>
+                                    </footer>
+                                </a>
                             }
                             @if (!Model.Activities.Any(x => x.Status == status)) { <p class="commercial-empty-column" data-kanban-empty>Nenhum atendimento</p> }
                         </div>
