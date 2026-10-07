@@ -1,12 +1,95 @@
 @model Orofoods.Web.ViewModels.AdminDashboardViewModel
 @using Orofoods.Web.Models
+@using Orofoods.Web.Models.Orders
 @* Administra&#231;&#227;o Orofoods *@
 @{ ViewData["Title"] = "Administra&ccedil;&atilde;o Orofoods"; }
 <section class="admin-dashboard-page">
     <header class="admin-dashboard-hero"><div class="container"><div><div class="eyebrow light"><span></span> Gest&atilde;o interna</div><h1>Central de controle<br />Orofoods</h1><p>Priorize cadastros, pedidos, estoque e integra&ccedil;&otilde;es em uma &uacute;nica vis&atilde;o.</p></div><aside><small>RESUMO DO DIA</small><strong>@Model.OrdersToday pedidos</strong><span>@Model.PendingOrders aguardando tratamento</span></aside></div></header>
     <div class="container admin-dashboard-content">
         <section><header class="admin-dashboard-section-head"><div><p class="eyebrow"><span></span> Prioridades</p><h2>O que exige aten&ccedil;&atilde;o agora</h2></div><span>Atualiza conforme as opera&ccedil;&otilde;es s&atilde;o registradas.</span></header><div class="admin-priority-grid"><a asp-controller="Customers" class="admin-priority-card @(Model.PendingCustomers == 0 ? "" : "admin-priority-card--accent")"><i class="fa-solid fa-user-clock"></i><small>Cadastros pendentes</small><strong>@Model.PendingCustomers</strong><span>Revisar e liberar acesso <i class="fa-solid fa-arrow-right"></i></span></a><a asp-controller="Orders" class="admin-priority-card @(Model.PendingOrders == 0 ? "" : "admin-priority-card--accent")"><i class="fa-solid fa-box-open"></i><small>Pedidos pendentes</small><strong>@Model.PendingOrders</strong><span>Conferir separa&ccedil;&atilde;o e entrega <i class="fa-solid fa-arrow-right"></i></span></a><a asp-controller="Inventory" class="admin-priority-card @(Model.LowStockProducts == 0 ? "" : "admin-priority-card--accent")"><i class="fa-solid fa-triangle-exclamation"></i><small>Estoque cr&iacute;tico</small><strong>@Model.LowStockProducts</strong><span>Ajustar saldo dispon&iacute;vel <i class="fa-solid fa-arrow-right"></i></span></a><a asp-controller="Integrations" asp-route-status="Failed" class="admin-priority-card @(Model.FailedIntegrations + Model.FailedWmcExports == 0 ? "" : "admin-priority-card--accent")"><i class="fa-solid fa-arrows-rotate"></i><small>Falhas de integra&ccedil;&atilde;o</small><strong>@(Model.FailedIntegrations + Model.FailedWmcExports)</strong><span>Consultar fila do ERP <i class="fa-solid fa-arrow-right"></i></span></a></div></section>
-        <section class="admin-dashboard-commercial"><header class="admin-dashboard-section-head"><div><p class="eyebrow"><span></span> Vis&atilde;o comercial</p><h2>Resultado e base ativa</h2></div><a class="admin-reports-link" asp-controller="Reports">Abrir relat&oacute;rios <i class="fa-solid fa-arrow-up-right-from-square"></i></a></header><div class="admin-commercial-metrics"><article class="dashboard-kpi-card"><i class="fa-solid fa-chart-line"></i><small>Faturamento do m&ecirc;s</small><strong class="dashboard-kpi-value">@Model.MonthRevenue.ToString("C")</strong>@if (Model.MonthRevenueChangePercent is decimal revenueChange) { <span class="dashboard-kpi-trend">@(revenueChange >= 0 ? "↑" : "↓") @Math.Abs(revenueChange).ToString("N1")% vs. m&ecirc;s anterior</span> } else { <span class="dashboard-kpi-trend dashboard-kpi-trend--neutral">Sem base no m&ecirc;s anterior</span> }<span>Pedidos n&atilde;o cancelados</span></article><article class="dashboard-kpi-card"><i class="fa-solid fa-receipt"></i><small>T&iacute;quete m&eacute;dio</small><strong class="dashboard-kpi-value">@Model.AverageTicket.ToString("C")</strong><span>Base hist&oacute;rica de pedidos</span></article><article class="dashboard-kpi-card"><i class="fa-solid fa-building"></i><small>Clientes ativos</small><strong class="dashboard-kpi-value">@Model.ActiveCustomers</strong><span>Empresas com acesso liberado</span></article></div></section>
+        <section class="admin-operation-section" aria-labelledby="admin-operation-title">
+            <header class="admin-dashboard-section-head">
+                <div><p class="eyebrow"><span></span> Opera&ccedil;&atilde;o</p><h2 id="admin-operation-title">Opera&ccedil;&atilde;o de hoje</h2><p class="admin-operation-subtitle">Acompanhe o fluxo dos pedidos do dia.</p></div>
+            </header>
+            <ol class="admin-operation-flow" aria-label="Fluxo atual dos pedidos de hoje">
+                <li class="admin-operation-step"><small>Recebidos</small><strong>@Model.OrdersTodayReceived</strong><span>@OrderStatus.Received.ToDisplayName()</span></li>
+                <li class="admin-operation-step"><small>Em an&aacute;lise / separa&ccedil;&atilde;o</small><strong>@Model.OrdersTodayInAnalysisOrSeparation</strong><span>@OrderStatus.UnderReview.ToDisplayName() &middot; @OrderStatus.Approved.ToDisplayName() &middot; @OrderStatus.Picking.ToDisplayName()</span></li>
+                <li class="admin-operation-step"><small>Prontos / em entrega</small><strong>@Model.OrdersTodayReadyOrInDelivery</strong><span>@OrderStatus.Invoiced.ToDisplayName() &middot; @OrderStatus.OutForDelivery.ToDisplayName()</span></li>
+                <li class="admin-operation-step"><small>Entregues</small><strong>@Model.OrdersTodayDelivered</strong><span>@OrderStatus.Delivered.ToDisplayName()</span></li>
+            </ol>
+            <div class="admin-operation-metrics" aria-label="Resumo da opera&ccedil;&atilde;o de hoje">
+                <article><small>Total de pedidos de hoje</small><strong>@Model.OrdersTodayTotal</strong></article>
+                <article><small>Aguardando a&ccedil;&atilde;o</small><strong>@Model.OrdersTodayAwaitingAction</strong></article>
+                <article><small>Entregues hoje</small><strong>@Model.OrdersDeliveredToday</strong></article>
+            </div>
+        </section>
+        <section class="admin-dashboard-commercial"><header class="admin-dashboard-section-head"><div><p class="eyebrow"><span></span> Vis&atilde;o comercial</p><h2>Resultado do m&ecirc;s</h2></div><a class="admin-reports-link" asp-controller="Reports">Abrir relat&oacute;rios <i class="fa-solid fa-arrow-up-right-from-square"></i></a></header><div class="admin-commercial-metrics"><article class="dashboard-kpi-card"><i class="fa-solid fa-chart-line"></i><small>Faturamento do m&ecirc;s</small><strong class="dashboard-kpi-value">@Model.MonthRevenue.ToString("C")</strong>@if (Model.MonthRevenueChangePercent is decimal revenueChange) { <span class="dashboard-kpi-trend">@(revenueChange >= 0 ? "↑" : "↓") @Math.Abs(revenueChange).ToString("N1")% vs. m&ecirc;s anterior</span> } else { <span class="dashboard-kpi-trend dashboard-kpi-trend--neutral">Sem base no m&ecirc;s anterior</span> }<span>Pedidos n&atilde;o cancelados</span></article><article class="dashboard-kpi-card"><i class="fa-solid fa-receipt"></i><small>T&iacute;quete m&eacute;dio</small><strong class="dashboard-kpi-value">@Model.AverageTicket.ToString("C")</strong><span>Base hist&oacute;rica de pedidos</span></article><article class="dashboard-kpi-card"><i class="fa-solid fa-building"></i><small>Clientes ativos</small><strong class="dashboard-kpi-value">@Model.ActiveCustomers</strong><span>Empresas com acesso liberado</span></article></div></section>
+        <section class="admin-recent-orders admin-dashboard-integrations" aria-labelledby="admin-dashboard-integrations-title">
+            <header class="admin-dashboard-section-head"><div><p class="eyebrow"><span></span> Monitoramento interno</p><h2 id="admin-dashboard-integrations-title">Integra&ccedil;&otilde;es</h2></div></header>
+            <div class="admin-dashboard-integrations-grid">
+                <article class="admin-dashboard-integration-card">
+                    <header><i class="fa-solid fa-network-wired" aria-hidden="true"></i><h3>WMC</h3></header>
+                    @if (Model.WmcSyncIsRunning)
+                    {
+                        <span class="admin-dashboard-integration-status">Sincroniza&ccedil;&atilde;o em andamento</span>
+                    }
+                    else if (!Model.WmcSyncHasRun)
+                    {
+                        <span class="admin-dashboard-integration-status admin-dashboard-integration-status--unmonitored">Sem execu&ccedil;&atilde;o registrada nesta inst&acirc;ncia</span>
+                    }
+                    else if (Model.WmcSyncHasFailed)
+                    {
+                        <span class="admin-dashboard-integration-status admin-dashboard-integration-status--attention">Falha registrada na &uacute;ltima sincroniza&ccedil;&atilde;o</span>
+                    }
+                    else
+                    {
+                        <span class="admin-dashboard-integration-status">&Uacute;ltima sincroniza&ccedil;&atilde;o conclu&iacute;da</span>
+                    }
+                    <p>Estado do sincronizador WMC nesta inst&acirc;ncia; o Dashboard n&atilde;o inicia sincroniza&ccedil;&otilde;es.</p>
+                    <nav aria-label="A&ccedil;&otilde;es WMC"><a asp-controller="Integrations" asp-action="Wmc">Ver estado WMC</a></nav>
+                </article>
+                <article class="admin-dashboard-integration-card">
+                    <header><i class="fa-solid fa-credit-card" aria-hidden="true"></i><h3>Mercado Pago Point</h3></header>
+                    @if (Model.ActiveMercadoPagoPointTerminals > 0)
+                    {
+                        @if (Model.ActiveMercadoPagoPointTerminals == 1)
+                        {
+                            <span class="admin-dashboard-integration-status">1 terminal ativo cadastrado</span>
+                        }
+                        else
+                        {
+                            <span class="admin-dashboard-integration-status">@Model.ActiveMercadoPagoPointTerminals terminais ativos cadastrados</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="admin-dashboard-integration-status admin-dashboard-integration-status--unmonitored">Nenhum terminal ativo cadastrado</span>
+                    }
+                    <p>Disponibilidade da conex&atilde;o n&atilde;o monitorada pelo Dashboard.</p>
+                    <nav aria-label="A&ccedil;&otilde;es Mercado Pago Point"><a asp-controller="DriverPaymentTerminalAssignments" asp-action="Index">Ver associa&ccedil;&otilde;es</a></nav>
+                </article>
+                <article class="admin-dashboard-integration-card">
+                    <header><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><h3>WhatsApp</h3></header>
+                    @if (Model.FailedWhatsAppMessages > 0)
+                    {
+                        @if (Model.FailedWhatsAppMessages == 1)
+                        {
+                            <span class="admin-dashboard-integration-status admin-dashboard-integration-status--attention">1 mensagem marcada como falha</span>
+                        }
+                        else
+                        {
+                            <span class="admin-dashboard-integration-status admin-dashboard-integration-status--attention">@Model.FailedWhatsAppMessages mensagens marcadas como falha</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="admin-dashboard-integration-status admin-dashboard-integration-status--unmonitored">N&atilde;o monitorado</span>
+                    }
+                    <p>O estado das mensagens n&atilde;o confirma a disponibilidade atual da conex&atilde;o.</p>
+                    <nav aria-label="A&ccedil;&otilde;es WhatsApp"><a asp-controller="WhatsApp" asp-action="Index">Abrir caixa de entrada</a></nav>
+                </article>
+            </div>
+        </section>
         <section class="admin-recent-orders"><header class="admin-dashboard-section-head"><div><p class="eyebrow"><span></span> Acompanhamento</p><h2>Pedidos recentes</h2></div><a class="btn btn-outline-dark" asp-controller="Orders">Todos os pedidos <i class="fa-solid fa-arrow-right"></i></a></header>@if (!Model.RecentOrders.Any()) { <div class="empty-state"><h3>Nenhum pedido registrado.</h3></div> } else { <div class="table-responsive"><table class="table admin-orders-table align-middle"><thead><tr><th>Pedido</th><th>Cliente</th><th>Situa&ccedil;&atilde;o</th><th>Total</th><th>Registrado em</th><th></th></tr></thead><tbody>@foreach (var order in Model.RecentOrders) { <tr><td><strong>@order.Number</strong></td><td>@order.Customer?.TradeName</td><td><span class="admin-order-status">@order.Status.ToDisplayName()</span></td><td><strong>@order.Total.ToString("C")</strong></td><td>@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td class="text-end"><a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" aria-label="Abrir @order.Number"><i class="fa-solid fa-arrow-right"></i></a></td></tr> }</tbody></table></div> }</section>
     </div>
 </section>
