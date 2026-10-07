@@ -283,7 +283,7 @@ public sealed class MercadoPagoPointPaymentProviderTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => provider.CreateTerminalPaymentAsync(TestRequest()));
 
-        Assert.Contains("Credenciais de teste", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Credenciais Mercado Pago Point", exception.Message, StringComparison.Ordinal);
         Assert.Empty(handler.Requests);
     }
 
@@ -455,3 +455,4 @@ public sealed class MercadoPagoPointPaymentProviderTests
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 }
+
