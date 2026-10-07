@@ -57,6 +57,10 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     text-align: center;
 }
 
+.admin-sidebar-header small {
+    color: var(--admin-sidebar-accent);
+}
+
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar > .admin-sidebar-header {
     padding-inline: 0;
 }

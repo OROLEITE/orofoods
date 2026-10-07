@@ -255,3 +255,56 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     outline: 2px solid #38BDF8;
     outline-offset: 2px;
 }
+
+.admin-authenticated .admin-integrations-page .erp-filter-submit {
+    min-width: 148px;
+    min-height: 42px;
+    border-color: #CBD5E1;
+    background: #FFFFFF;
+    color: #475569;
+}
+
+.admin-authenticated .admin-integrations-page .erp-filter-submit:hover,
+.admin-authenticated .admin-integrations-page .erp-filter-submit:focus-visible {
+    border-color: #94A3B8;
+    background: #F8FAFC;
+    color: #334155;
+}
+
+.admin-authenticated .admin-integrations-page .erp-filter-submit:focus-visible {
+    outline: 3px solid rgba(71, 85, 105, .2);
+    outline-offset: 2px;
+}
+
+.admin-authenticated .admin-integrations-page .erp-filter-submit:disabled {
+    border-color: #CBD5E1;
+    background: #E2E8F0;
+    color: #475569;
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-filter-submit {
+    border-color: #475569;
+    background: #1E293B;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-filter-submit:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-filter-submit:focus-visible {
+    border-color: #64748B;
+    background: #334155;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-filter-submit:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-filter-submit:disabled {
+    border-color: #334155;
+    background: #1E293B;
+    color: #94A3B8;
+    cursor: not-allowed;
+}

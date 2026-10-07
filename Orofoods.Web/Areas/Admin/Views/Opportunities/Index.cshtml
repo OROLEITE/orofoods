@@ -1,4 +1,77 @@
 @model IReadOnlyList<Orofoods.Web.Models.Commercial.CrmOpportunity>
-@{ ViewData["Title"] = "Oportunidades"; }
-<section class="section"><div class="container"><div class="portal-top"><div><div class="eyebrow"><span></span> CRM comercial</div><h1>Oportunidades</h1></div><a class="btn btn-gold" asp-action="Create" asp-route-customerId="@(Context.Request.Query["customerId"])">Nova oportunidade</a></div><div class="customer-opportunity-list mt-4">@foreach (var opportunity in Model) { <article><div><strong>@opportunity.Customer.TradeName</strong><small>@opportunity.Title · @opportunity.Type</small></div><span>@opportunity.Stage</span><strong>@(opportunity.EstimatedValue?.ToString("C") ?? "-")</strong><form asp-action="ChangeStage" method="post"><input type="hidden" name="id" value="@opportunity.Id" /><select name="stage"><option value="@opportunity.Stage">@opportunity.Stage</option><option value="Won">Ganha</option><option value="Lost">Perdida</option></select><button class="btn btn-sm btn-outline-dark">Atualizar</button></form></article> }</div></div></section>
-`n@section Head { <link rel="stylesheet" href="~/css/admin-opportunities.css" asp-append-version="true" /> }
+@{
+    ViewData["Title"] = "Oportunidades";
+
+    string OpportunityTypeLabel(Orofoods.Web.Models.Commercial.CrmOpportunityType type) => type switch
+    {
+        Orofoods.Web.Models.Commercial.CrmOpportunityType.Repurchase => "Recompra",
+        Orofoods.Web.Models.Commercial.CrmOpportunityType.NewProduct => "Novo produto",
+        Orofoods.Web.Models.Commercial.CrmOpportunityType.CrossSell => "Venda adicional",
+        Orofoods.Web.Models.Commercial.CrmOpportunityType.CustomerRecovery => "Recuperação de cliente",
+        Orofoods.Web.Models.Commercial.CrmOpportunityType.Proposal => "Proposta comercial",
+        Orofoods.Web.Models.Commercial.CrmOpportunityType.Other => "Outra",
+        _ => "Outra"
+    };
+
+    string OpportunityStageLabel(Orofoods.Web.Models.Commercial.CrmOpportunityStage stage) => stage switch
+    {
+        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Open => "Aberta",
+        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Contacted => "Em contato",
+        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Proposal => "Proposta",
+        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Negotiation => "Em negociação",
+        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Won => "Ganha",
+        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Lost => "Perdida",
+        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Cancelled => "Cancelada",
+        _ => "Aberta"
+    };
+}
+
+<section class="section admin-opportunities-page">
+    <div class="container">
+        <div class="portal-top">
+            <div>
+                <div class="eyebrow"><span></span> CRM comercial</div>
+                <h1>Oportunidades</h1>
+            </div>
+            <a class="btn admin-primary-action" asp-action="Create" asp-route-customerId="@(Context.Request.Query["customerId"])">Nova oportunidade</a>
+        </div>
+
+        <div class="customer-opportunity-list mt-4">
+            @if (Model.Count == 0)
+            {
+                <div class="admin-empty-state" role="status">
+                    <i class="fa-solid fa-lightbulb" aria-hidden="true"></i>
+                    <h2>Nenhuma oportunidade encontrada</h2>
+                    <p>Ainda não existem oportunidades para os filtros selecionados.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var opportunity in Model)
+                {
+                    <article>
+                        <div>
+                            <strong>@opportunity.Customer.TradeName</strong>
+                            <small>@opportunity.Title &middot; @OpportunityTypeLabel(opportunity.Type)</small>
+                        </div>
+                        <span>@OpportunityStageLabel(opportunity.Stage)</span>
+                        <strong>@(opportunity.EstimatedValue?.ToString("C") ?? "-")</strong>
+                        <form asp-action="ChangeStage" method="post">
+                            <input type="hidden" name="id" value="@opportunity.Id" />
+                            <select name="stage">
+                                <option value="@opportunity.Stage">@OpportunityStageLabel(opportunity.Stage)</option>
+                                <option value="Won">Ganha</option>
+                                <option value="Lost">Perdida</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-dark">Atualizar</button>
+                        </form>
+                    </article>
+                }
+            }
+        </div>
+    </div>
+</section>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/admin-opportunities.css" asp-append-version="true" />
+}
