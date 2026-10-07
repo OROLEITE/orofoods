@@ -3,6 +3,15 @@ namespace Orofoods.Web.Tests.Views;
 public class AdminDashboardThemeTests
 {
     [Fact]
+    public void Dashboard_hero_uses_singular_order_label_only_for_one_order()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Dashboard", "Index.cshtml"));
+
+        Assert.Contains("@Model.OrdersToday @(Model.OrdersToday == 1 ? \"pedido\" : \"pedidos\")", view);
+    }
+
+    [Fact]
     public void Dark_admin_dashboard_sets_a_dark_canvas_and_compact_responsive_hero()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

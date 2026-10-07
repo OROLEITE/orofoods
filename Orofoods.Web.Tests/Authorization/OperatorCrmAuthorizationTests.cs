@@ -71,6 +71,34 @@ public class OperatorCrmAuthorizationTests
     }
 
     [Fact]
+    public async Task Explicit_customer_navigation_loads_old_conversation_without_marking_it_read()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var conversations = Enumerable.Range(0, 51)
+            .Select(index => new WhatsAppConversation
+            {
+                PhoneNumber = $"551199999{index:0000}",
+                LastMessageAt = DateTime.UtcNow.AddMinutes(index),
+                UnreadCount = index == 0 ? 4 : 0
+            })
+            .ToList();
+        db.WhatsAppConversations.AddRange(conversations);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, "operator-id", "Operador");
+        var method = typeof(WhatsAppController).GetMethod(nameof(WhatsAppController.Index));
+        Assert.NotNull(method);
+        Assert.Contains(method!.GetParameters(), parameter => parameter.Name == "markAsRead");
+        Assert.Contains(method.GetParameters(), parameter => parameter.Name == "selectConversation");
+
+        var resultTask = (Task<IActionResult>)method.Invoke(controller, [conversations[0].Id, CancellationToken.None, false, true, null])!;
+        var result = Assert.IsType<ViewResult>(await resultTask);
+        var model = Assert.IsType<WhatsAppInboxViewModel>(result.Model);
+
+        Assert.Equal(conversations[0].Id, model.Selected?.Id);
+        Assert.Equal(4, await db.WhatsAppConversations.Where(x => x.Id == conversations[0].Id).Select(x => x.UnreadCount).SingleAsync());
+    }
+
+    [Fact]
     public async Task Operator_updates_expose_shared_messages_and_media()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

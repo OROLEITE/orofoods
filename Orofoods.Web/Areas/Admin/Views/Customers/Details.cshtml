@@ -15,13 +15,50 @@
             <div><p class="eyebrow"><span></span> Cliente B2B</p><h1>@Model.Customer.TradeName</h1><p>@Model.Customer.LegalName <span>&bull;</span> @Model.Customer.Cnpj</p></div>
             <div><span class="customer-commercial-status"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> @(Model.Customer.Status == CustomerStatus.Approved ? "Ativo" : Model.Customer.Status == CustomerStatus.Pending ? "Pendente" : Model.Customer.Status == CustomerStatus.Blocked ? "Bloqueado" : "Inativo")</span><a asp-action="Edit" asp-route-id="@Model.Customer.Id" class="btn btn-outline-dark"><i class="fa-solid fa-gear" aria-hidden="true"></i> Configurar</a><a asp-action="NewOrder" asp-route-id="@Model.Customer.Id" class="btn btn-gold"><i class="fa-solid fa-cart-plus" aria-hidden="true"></i> Novo pedido</a></div>
         </header>
-        <div class="customer-commercial-actions"><a href="tel:@Model.Customer.Phone" class="btn btn-outline-dark"><i class="fa-solid fa-phone" aria-hidden="true"></i> Ligar</a><a href="https://wa.me/@string.Concat(Model.Customer.WhatsApp.Where(char.IsDigit))" class="btn btn-whatsapp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</a><a asp-controller="Commercial" asp-action="Create" asp-route-customerId="@Model.Customer.Id" class="btn btn-gold"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i> Nova atividade</a></div>
+        <div class="customer-commercial-actions"><a href="tel:@Model.Customer.Phone" class="btn btn-outline-dark"><i class="fa-solid fa-phone" aria-hidden="true"></i> Ligar</a>@if (Model.WhatsAppConversationId is not null) { <a asp-controller="WhatsApp" asp-action="Index" asp-route-id="@Model.WhatsAppConversationId" asp-route-customerId="@Model.Customer.Id" asp-route-markAsRead="false" class="btn btn-whatsapp" title="Abrir conversa no CRM"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</a> } else if (Model.HasValidWhatsAppPhone) { <a asp-controller="WhatsApp" asp-action="Index" asp-route-markAsRead="false" asp-route-selectConversation="false" asp-route-customerId="@Model.Customer.Id" class="btn btn-whatsapp" title="Abrir WhatsApp CRM"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</a> } else { <span class="btn btn-whatsapp disabled" aria-disabled="true" title="Cliente sem telefone WhatsApp válido"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</span> }<a asp-controller="Commercial" asp-action="Create" asp-route-customerId="@Model.Customer.Id" class="btn btn-gold"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i> Nova atividade</a></div>
         <div class="customer-commercial-metrics"><article><small>ÚLTIMA COMPRA</small><strong>@(Model.LastPurchaseAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? "Nenhuma")</strong></article><article><small>PEDIDOS</small><strong>@Model.OrderCount</strong></article><article><small>TOTAL COMPRADO</small><strong>@Model.TotalPurchased.ToString("C")</strong></article><article><small>TÍQUETE MÉDIO</small><strong>@Model.AverageTicket.ToString("C")</strong></article></div>
         @if (Model.Attention is not null)
         {
             <section class="customer-commercial-attention"><div><p class="eyebrow"><span></span> Atenção comercial</p><h2>@Model.Attention.Situation</h2></div><dl><div><dt>Última compra</dt><dd>@(Model.Attention.LastPurchaseAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? "Nenhuma")</dd></div><div><dt>Dias sem comprar</dt><dd>@(Model.Attention.DaysSinceLastPurchase?.ToString() ?? "Sem histórico")</dd></div><div><dt>Média de recompra</dt><dd>@(Model.Attention.AveragePurchaseIntervalDays is null ? "Histórico insuficiente" : $"{Model.Attention.AveragePurchaseIntervalDays} dias")</dd></div><div><dt>Prioridade</dt><dd>@Model.Attention.Priority</dd></div></dl></section>
         }
-        <section class="customer-opportunities-panel"><header><div><p class="eyebrow"><span></span> Pipeline</p><h2>Oportunidades</h2></div><a class="btn btn-gold btn-sm" asp-area="Admin" asp-controller="Opportunities" asp-action="Create" asp-route-customerId="@Model.Customer.Id">Nova oportunidade</a></header>@if (!Model.Opportunities.Any()) { <p class="customer-commercial-empty">Nenhuma oportunidade cadastrada.</p> } else { <div class="customer-opportunity-list">@foreach (var opportunity in Model.Opportunities) { <article><div><strong>@opportunity.Title</strong><small>@opportunity.Type.ToDisplayName() · @opportunity.Stage</small></div><span>@(opportunity.EstimatedValue?.ToString("C") ?? "Valor não informado")</span><form asp-area="Admin" asp-controller="Opportunities" asp-action="ChangeStage" method="post"><input type="hidden" name="id" value="@opportunity.Id" /><select name="stage" aria-label="Etapa de @opportunity.Title"><option value="@opportunity.Stage">@opportunity.Stage</option><option value="Won">Ganha</option><option value="Lost">Perdida</option></select><button class="btn btn-sm btn-outline-dark">Salvar</button></form></article> }</div>}</section>
+        <section class="customer-opportunities-panel">
+            <header><div><p class="eyebrow"><span></span> Pipeline</p><h2>Oportunidades</h2></div><a class="btn btn-gold btn-sm" asp-area="Admin" asp-controller="Opportunities" asp-action="Create" asp-route-customerId="@Model.Customer.Id">Nova oportunidade</a></header>
+            @if (!Model.Opportunities.Any())
+            {
+                <p class="customer-commercial-empty">Nenhuma oportunidade cadastrada.</p>
+            }
+            else
+            {
+                <div class="customer-opportunity-list">
+                    @foreach (var opportunity in Model.Opportunities)
+                    {
+                        <article class="customer-opportunity-card">
+                            <div class="customer-opportunity-card__main">
+                                <div class="customer-opportunity-card__header">
+                                    <div>
+                                        <strong class="customer-opportunity-card__title">@opportunity.Title</strong>
+                                        <small class="customer-opportunity-card__type">@opportunity.Type.ToDisplayName()</small>
+                                    </div>
+                                    <strong class="customer-opportunity-card__value">@(opportunity.EstimatedValue?.ToString("C") ?? "Valor não informado")</strong>
+                                </div>
+                            </div>
+                            <div class="customer-opportunity-card__controls">
+                                <span class="customer-opportunity-card__status">@opportunity.Stage.ToDisplayName()</span>
+                                <form class="customer-opportunity-stage-form" asp-area="Admin" asp-controller="Opportunities" asp-action="ChangeStage" method="post">
+                                    <input type="hidden" name="id" value="@opportunity.Id" />
+                                    <select name="stage" aria-label="Etapa de @opportunity.Title">
+                                        <option value="@opportunity.Stage">@opportunity.Stage.ToDisplayName()</option>
+                                        <option value="Won">Ganha</option>
+                                        <option value="Lost">Perdida</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-dark">Salvar</button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
 
         <div class="customer-detail-tabs-shell">
             <nav class="nav nav-tabs customer-detail-tabs" role="tablist" aria-label="Detalhes do cliente">

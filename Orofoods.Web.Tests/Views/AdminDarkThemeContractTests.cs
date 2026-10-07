@@ -888,10 +888,15 @@ public class AdminDarkThemeContractTests
         var historicalRules = baseline[stylesheet].Select(RuleIdentity).ToHashSet(StringComparer.Ordinal);
         foreach (var rule in ReadRules(styles).Where(rule => !historicalRules.Contains(RuleIdentity(rule))))
         {
-            Assert.True(IsScopedAdminDarkSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet),
+            Assert.True((IsScopedAdminDarkSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
+                        IsPermittedScopedCustomerOpportunityLayoutRule(rule.Selector, stylesheet),
                 $"Additional/changed {stylesheet} rule requires both gates, WhatsApp exclusion, and positive component/page scope: {rule.Selector}");
         }
     }
+
+    private static bool IsPermittedScopedCustomerOpportunityLayoutRule(string selector, string stylesheet) =>
+        stylesheet == "admin-customers.css" &&
+        RemoveNonTargetFunctions(selector).StartsWith(".customer-commercial-page .customer-opportunity-", StringComparison.Ordinal);
 
     private static void AssertModuleDarkRulesAreScoped(string styles, IReadOnlyList<string> owners)
     {

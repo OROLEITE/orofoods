@@ -1,3 +1,98 @@
+.admin-opportunities-page .customer-opportunity-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 24px !important;
+}
+
+.admin-opportunities-page .admin-opportunity-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1px solid #e5ded2;
+    border-radius: 12px;
+    background: #fff;
+    color: #252b24;
+}
+
+.admin-opportunities-page .admin-opportunity-card__main,
+.admin-opportunities-page .admin-opportunity-card__header > div {
+    min-width: 0;
+}
+
+.admin-opportunities-page .admin-opportunity-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.admin-opportunities-page .admin-opportunity-card__customer {
+    display: block;
+    color: #252b24;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.admin-opportunities-page .admin-opportunity-card__title {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.admin-opportunities-page .admin-opportunity-card__value {
+    flex: 0 0 auto;
+    color: #80570e;
+    font-size: 18px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.admin-opportunities-page .admin-opportunity-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.admin-opportunities-page .admin-opportunity-card__type,
+.admin-opportunities-page .admin-opportunity-card__status {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #d8d2c7;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.admin-opportunities-page .admin-opportunity-card__type {
+    background: #f5f1e8;
+    color: #64748b;
+}
+
+.admin-opportunities-page .admin-opportunity-card__status {
+    background: #edf7f1;
+    color: #166534;
+}
+
+.admin-opportunities-page .admin-opportunity-stage-form {
+    display: grid;
+    grid-template-columns: minmax(145px, 190px) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.admin-opportunities-page .admin-opportunity-stage-form select {
+    width: 100%;
+}
+
+.admin-opportunities-page .admin-opportunity-empty-action {
+    margin-top: 4px;
+}
+
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .section {
     background: #0F172A;
     color: #E5E7EB;
@@ -20,6 +115,26 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-opportunity-list article small {
     color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-opportunities-page .admin-opportunity-card__title {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-opportunities-page .admin-opportunity-card__value {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-opportunities-page .admin-opportunity-card__type {
+    border-color: #475569;
+    background: #1E293B;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-opportunities-page .admin-opportunity-card__status {
+    border-color: #334155;
+    background: #0F172A;
+    color: #E5E7EB;
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-opportunity-list article select {
@@ -153,7 +268,44 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 }
 
 @media (max-width: 575.98px) {
+    .admin-opportunities-page .admin-opportunity-card {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 13px 14px;
+    }
+
+    .admin-opportunities-page .admin-opportunity-card__header {
+        gap: 10px;
+    }
+
+    .admin-opportunities-page .admin-opportunity-stage-form {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .admin-opportunities-page .admin-opportunity-empty-action {
+        width: 100%;
+    }
+
     .admin-opportunities-page .admin-empty-state {
         padding: 26px 18px;
+    }
+}
+
+@media (max-width: 400px) {
+    .admin-opportunities-page .admin-opportunity-card__header {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .admin-opportunities-page .admin-opportunity-card__value {
+        justify-self: start;
+    }
+
+    .admin-opportunities-page .admin-opportunity-stage-form {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-opportunities-page .admin-opportunity-stage-form .btn {
+        width: 100%;
     }
 }
