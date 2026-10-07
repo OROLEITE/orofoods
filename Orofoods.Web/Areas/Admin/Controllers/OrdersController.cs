@@ -84,7 +84,7 @@ public class OrdersController(
                         : activeCardPayment?.Gateway == "MercadoPagoPoint"
                             ? null
                             : pointAssignments.Count == 0
-                                ? "Nenhum motorista ativo com o terminal NEWLAND_N950__N950NCD600484709 associado. Cadastre ou reative o vínculo antes de cobrar."
+                                ? "Nenhum motorista ativo com um terminal Point autorizado neste ambiente associado. Cadastre ou reative o vínculo antes de cobrar."
                                 : null;
         ViewBag.PointAuditEvents = cardOnDeliveryPayments(order).Count == 0
             ? []
@@ -189,10 +189,13 @@ public class OrdersController(
             && string.Equals(pointOptions.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase);
         var stagingEnvironmentAllowed = hostEnvironment.IsEnvironment("Staging")
             && pointOptions.Value.StagingRealEnabled;
+        var productionEnvironmentAllowed = hostEnvironment.IsProduction()
+            && string.Equals(pointOptions.Value.Environment, "Production", StringComparison.OrdinalIgnoreCase)
+            && pointOptions.Value.ProductionEnabled;
 
         return pointOptions.Value.Enabled
             && paymentOptions.Value.CardOnDeliveryEnabled
-            && (testEnvironmentAllowed || stagingEnvironmentAllowed);
+            && (testEnvironmentAllowed || stagingEnvironmentAllowed || productionEnvironmentAllowed);
     }
 
     [HttpPost, ValidateAntiForgeryToken]

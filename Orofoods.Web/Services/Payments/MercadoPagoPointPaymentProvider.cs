@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Orofoods.Web.Services.Payments;
 
-/// <summary>Mercado Pago Point Orders API client, restricted to Test or explicitly enabled Staging.</summary>
+/// <summary>Mercado Pago Point Orders API client, restricted to explicitly enabled environments and terminals.</summary>
 public sealed class MercadoPagoPointPaymentProvider(
     HttpClient httpClient,
     IOptions<MercadoPagoPointOptions> options,
@@ -141,17 +141,20 @@ public sealed class MercadoPagoPointPaymentProvider(
             && string.Equals(options.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase);
         var stagingEnvironmentAllowed = hostEnvironment.IsEnvironment("Staging")
             && options.Value.StagingRealEnabled;
-        if (!testEnvironmentAllowed && !stagingEnvironmentAllowed)
+        var productionEnvironmentAllowed = hostEnvironment.IsProduction()
+            && string.Equals(options.Value.Environment, "Production", StringComparison.OrdinalIgnoreCase)
+            && options.Value.ProductionEnabled;
+        if (!testEnvironmentAllowed && !stagingEnvironmentAllowed && !productionEnvironmentAllowed)
         {
-            throw new InvalidOperationException("Point só aceita chamadas em Test ou em Staging com a flag de teste real habilitada.");
+            throw new InvalidOperationException("Point está desabilitado neste ambiente.");
         }
         if (string.IsNullOrWhiteSpace(options.Value.AccessToken))
         {
             throw new InvalidOperationException("Credenciais Mercado Pago Point não configuradas.");
         }
-        if (deviceId is not null && !string.Equals(deviceId, AuthorizedStagingTerminalId, StringComparison.Ordinal))
+        if (deviceId is not null && !options.Value.IsDeviceIdAuthorized(hostEnvironment.EnvironmentName, deviceId))
         {
-            throw new InvalidOperationException("Esta fase aceita somente o terminal Point autorizado.");
+            throw new InvalidOperationException("O terminal Point não está autorizado para este ambiente.");
         }
         if (string.IsNullOrWhiteSpace(options.Value.PoiType) || options.Value.PoiType.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '_'))
         {

@@ -22,7 +22,6 @@ public sealed class PointPaymentOrchestrationService(
     IPointPaymentOrderConcurrencyLock orderConcurrencyLock) : IPointPaymentOrchestrationService
 {
     private const string PointGateway = "MercadoPagoPoint";
-    private const string AuthorizedTerminalId = MercadoPagoPointPaymentProvider.AuthorizedStagingTerminalId;
     private static readonly PaymentStatus[] ActiveStatuses =
     [PaymentStatus.Pending, PaymentStatus.Processing, PaymentStatus.ActionRequired];
 
@@ -86,7 +85,7 @@ public sealed class PointPaymentOrchestrationService(
                     .SingleOrDefaultAsync(x => x.Id == assignmentId, cancellationToken);
                 if (selectedAssignment is null || !terminalEligibility.CanBeUsedForPointPayment(selectedAssignment)
                     || selectedAssignment.PaymentTerminal?.Provider != PaymentTerminalProvider.MercadoPago
-                    || !string.Equals(selectedAssignment.PaymentTerminal.DeviceId, AuthorizedTerminalId, StringComparison.Ordinal))
+                    || !pointOptions.Value.IsDeviceIdAuthorized(hostEnvironment.EnvironmentName, selectedAssignment.PaymentTerminal.DeviceId))
                 {
                     return PointPaymentOperationResult.Failure("POINT_ASSIGNMENT_INVALID", "Selecione um motorista ativo com o terminal Point autorizado.");
                 }
@@ -273,15 +272,20 @@ public sealed class PointPaymentOrchestrationService(
         }
     }
 
-    public async Task<IReadOnlyList<DriverPaymentTerminalAssignment>> GetEligibleAssignmentsAsync(CancellationToken cancellationToken = default) =>
-        await db.DriverPaymentTerminalAssignments.AsNoTracking()
+    public async Task<IReadOnlyList<DriverPaymentTerminalAssignment>> GetEligibleAssignmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var authorizedDeviceIds = pointOptions.Value.GetAuthorizedDeviceIds(hostEnvironment.EnvironmentName).ToArray();
+        if (authorizedDeviceIds.Length == 0) return [];
+
+        return await db.DriverPaymentTerminalAssignments.AsNoTracking()
             .Include(x => x.Driver)
             .Include(x => x.PaymentTerminal)
             .Where(x => x.EndedAt == null && x.Driver!.IsActive && x.PaymentTerminal!.IsActive
                 && x.PaymentTerminal.Provider == PaymentTerminalProvider.MercadoPago
-                && x.PaymentTerminal.DeviceId == AuthorizedTerminalId)
+                && authorizedDeviceIds.Contains(x.PaymentTerminal.DeviceId!))
             .OrderBy(x => x.Driver!.Name)
             .ToListAsync(cancellationToken);
+    }
 
     private PointPaymentOperationResult? ValidateEnabledEnvironment()
     {
@@ -293,13 +297,16 @@ public sealed class PointPaymentOrchestrationService(
             && string.Equals(pointOptions.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase);
         var stagingEnvironmentAllowed = hostEnvironment.IsEnvironment("Staging")
             && pointOptions.Value.StagingRealEnabled;
-        if (!testEnvironmentAllowed && !stagingEnvironmentAllowed)
+        var productionEnvironmentAllowed = hostEnvironment.IsProduction()
+            && string.Equals(pointOptions.Value.Environment, "Production", StringComparison.OrdinalIgnoreCase)
+            && pointOptions.Value.ProductionEnabled;
+        if (!testEnvironmentAllowed && !stagingEnvironmentAllowed && !productionEnvironmentAllowed)
         {
-            return PointPaymentOperationResult.Failure("POINT_TEST_ENVIRONMENT_REQUIRED", "A cobrança Point só está disponível em Test ou em Staging com a flag de teste real habilitada.");
+            return PointPaymentOperationResult.Failure("POINT_ENVIRONMENT_NOT_AUTHORIZED", "A cobrança Point está desabilitada neste ambiente.");
         }
         if (string.IsNullOrWhiteSpace(pointOptions.Value.AccessToken))
         {
-            return PointPaymentOperationResult.Failure("POINT_TEST_CREDENTIALS_REQUIRED", "As credenciais de teste Point não estão configuradas.");
+            return PointPaymentOperationResult.Failure("POINT_CREDENTIALS_REQUIRED", "As credenciais Mercado Pago Point não estão configuradas.");
         }
         if (string.IsNullOrWhiteSpace(pointOptions.Value.PoiType)
             || pointOptions.Value.PoiType.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '_'))

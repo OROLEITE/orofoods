@@ -182,14 +182,28 @@ builder.Services.AddScoped<CustomerRegistrationService>();
 builder.Services.Configure<PaymentEligibilityOptions>(builder.Configuration.GetSection(PaymentEligibilityOptions.SectionName));
 var mercadoPagoPointEnabled = builder.Configuration.GetValue<bool>(MercadoPagoPointOptions.ConfigurationKey);
 var pointStagingRealEnabled = builder.Configuration.GetValue<bool>("Payments:MercadoPagoPointStagingRealEnabled");
+var pointProductionEnabled = builder.Configuration.GetValue<bool>("Payments:MercadoPagoPointProductionEnabled");
 var isStagingEnvironment = builder.Environment.IsEnvironment("Staging");
+var isProductionEnvironment = builder.Environment.IsProduction();
 if (pointStagingRealEnabled && !isStagingEnvironment)
 {
     throw new InvalidOperationException("A flag de Point real de Staging só pode ser habilitada no ambiente Staging.");
 }
+if (pointProductionEnabled && !isProductionEnvironment)
+{
+    throw new InvalidOperationException("A flag de Point de Produção só pode ser habilitada no ambiente Production.");
+}
+var pointEnvironmentAllowed = builder.Environment.IsEnvironment("Test")
+    || (isStagingEnvironment && pointStagingRealEnabled)
+    || (isProductionEnvironment && pointProductionEnabled);
+if (mercadoPagoPointEnabled && !pointEnvironmentAllowed)
+{
+    throw new InvalidOperationException("Mercado Pago Point está habilitado fora de um ambiente autorizado.");
+}
 var cardOnDeliveryEnabled = builder.Configuration.GetValue<bool>("Payments:CardOnDeliveryEnabled")
     && (builder.Environment.IsEnvironment("Test")
-        || (isStagingEnvironment && pointStagingRealEnabled && mercadoPagoPointEnabled));
+        || (isStagingEnvironment && pointStagingRealEnabled && mercadoPagoPointEnabled)
+        || (isProductionEnvironment && pointProductionEnabled && mercadoPagoPointEnabled));
 builder.Services.PostConfigure<PaymentEligibilityOptions>(options =>
     options.CardOnDeliveryEnabled = cardOnDeliveryEnabled);
 builder.Services.AddScoped<IPaymentEligibilityService, PaymentEligibilityService>();
@@ -251,18 +265,17 @@ builder.Services.AddHttpClient<IPointStagingOneRealTestClient, MercadoPagoPointS
     client.BaseAddress = options.BaseAddress;
     client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.RequestTimeoutSeconds, 1, 60));
 });
-if (mercadoPagoPointEnabled
-    && !builder.Environment.IsEnvironment("Test")
-    && !(isStagingEnvironment && pointStagingRealEnabled))
-{
-    throw new InvalidOperationException("Mercado Pago Point só pode ser habilitado em Test ou em Staging com a flag de teste real habilitada.");
-}
 builder.Services.AddOptions<MercadoPagoPointOptions>()
     .Bind(builder.Configuration.GetSection(MercadoPagoPointOptions.SectionName))
     .Configure(options =>
     {
         options.Enabled = mercadoPagoPointEnabled;
         options.StagingRealEnabled = pointStagingRealEnabled;
+        options.ProductionEnabled = pointProductionEnabled;
+        if (string.IsNullOrWhiteSpace(options.Environment))
+        {
+            options.Environment = builder.Environment.EnvironmentName;
+        }
     });
 if (mercadoPagoPointEnabled)
 {

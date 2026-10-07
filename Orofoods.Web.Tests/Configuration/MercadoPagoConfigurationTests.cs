@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Orofoods.Web.Tests.Configuration;
 
 public class MercadoPagoConfigurationTests
@@ -22,6 +24,31 @@ public class MercadoPagoConfigurationTests
         var options = new Orofoods.Web.Services.Payments.MercadoPagoOptions();
 
         Assert.Equal(new Uri("https://api.mercadopago.com/"), options.BaseAddress);
+    }
+
+    [Fact]
+    public void Point_production_flag_and_terminal_allowlists_default_closed()
+    {
+        var options = new Orofoods.Web.Services.Payments.MercadoPagoPointOptions();
+
+        Assert.False(options.ProductionEnabled);
+        Assert.Empty(options.AuthorizedDeviceIdsByEnvironment);
+    }
+
+    [Fact]
+    public void Production_point_flag_defaults_false_and_startup_requires_the_production_environment_gate()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        using var settings = JsonDocument.Parse(File.ReadAllText(Path.Combine(projectPath, "appsettings.json")));
+        var payments = settings.RootElement.GetProperty("Payments");
+        Assert.False(payments.GetProperty("MercadoPagoPointProductionEnabled").GetBoolean());
+        Assert.False(payments.GetProperty("MercadoPagoPointEnabled").GetBoolean());
+        Assert.False(payments.GetProperty("CardOnDeliveryEnabled").GetBoolean());
+
+        var program = File.ReadAllText(Path.Combine(projectPath, "Program.cs"));
+        Assert.Contains("Payments:MercadoPagoPointProductionEnabled", program, StringComparison.Ordinal);
+        Assert.Contains("isProductionEnvironment && pointProductionEnabled && mercadoPagoPointEnabled", program, StringComparison.Ordinal);
+        Assert.Contains("options.ProductionEnabled = pointProductionEnabled", program, StringComparison.Ordinal);
     }
 
     [Fact]
