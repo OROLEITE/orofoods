@@ -60,6 +60,7 @@ public sealed class DisabledPointPaymentProviderTests
 
         Assert.False(payments.GetProperty("CardOnDeliveryEnabled").GetBoolean());
         Assert.False(payments.GetProperty("MercadoPagoPointEnabled").GetBoolean());
+        Assert.False(payments.GetProperty("MercadoPagoPointStagingRealEnabled").GetBoolean());
         Assert.False(options.Enabled);
     }
 }

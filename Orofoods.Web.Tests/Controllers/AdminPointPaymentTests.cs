@@ -84,7 +84,37 @@ public sealed class AdminPointPaymentTests
         Assert.Null(result.ViewName);
     }
 
-    private static OrdersController CreateController(ApplicationDbContext db, FakePointService point, bool enabled, string environment = "Test")
+    [Fact]
+    public async Task Staging_admin_details_exposes_point_only_when_real_staging_flag_is_enabled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await SeedCardOrderAsync(db);
+        var point = new FakePointService();
+
+        var disabledController = CreateController(db, point, enabled: true, environment: "Staging");
+        await disabledController.Details(order.Id);
+        Assert.False(Assert.IsType<bool>(disabledController.ViewBag.PointPaymentEnabled));
+        await disabledController.StartPointCharge(order.Id, 17, Guid.NewGuid().ToString("N"));
+        Assert.Equal(0, point.StartCalls);
+
+        var enabledController = CreateController(db, point, enabled: true, environment: "Staging", stagingRealEnabled: true);
+        await enabledController.Details(order.Id);
+        Assert.True(Assert.IsType<bool>(enabledController.ViewBag.PointPaymentEnabled));
+
+        var viewRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        var view = File.ReadAllText(Path.Combine(viewRoot, "Orofoods.Web", "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        Assert.Contains("asp-action=\"StartPointCharge\" method=\"post\"", view, StringComparison.Ordinal);
+        Assert.Contains("@assignment.Driver?.Name", view, StringComparison.Ordinal);
+        Assert.Contains("@assignment.PaymentTerminal?.DeviceId", view, StringComparison.Ordinal);
+        Assert.Contains("COBRAR NA MAQUININHA", view, StringComparison.Ordinal);
+    }
+
+    private static OrdersController CreateController(
+        ApplicationDbContext db,
+        FakePointService point,
+        bool enabled,
+        string environment = "Test",
+        bool stagingRealEnabled = false)
     {
         var paymentOptions = Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = true });
         var service = new AdminOrderService(db, TimeProvider.System, new OrderReservationService(db), new PaymentEligibilityService(db, paymentOptions), new PaymentService(db, paymentOptions, new PendingBoletoProvider()));
@@ -93,7 +123,7 @@ public sealed class AdminPointPaymentTests
             service,
             integrationService: null!,
             point,
-            Options.Create(new MercadoPagoPointOptions { Enabled = enabled, Environment = environment, AccessToken = "fake" }),
+            Options.Create(new MercadoPagoPointOptions { Enabled = enabled, Environment = environment, StagingRealEnabled = stagingRealEnabled, AccessToken = "fake" }),
             paymentOptions,
             new TestHostEnvironment(environment));
         var context = new DefaultHttpContext();

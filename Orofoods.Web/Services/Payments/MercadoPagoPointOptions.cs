@@ -6,6 +6,7 @@ public sealed class MercadoPagoPointOptions
     public const string SectionName = "MercadoPagoPoint";
 
     public bool Enabled { get; set; }
+    public bool StagingRealEnabled { get; set; }
     public string Environment { get; set; } = "";
     public string AccessToken { get; set; } = "";
     public string WebhookSecret { get; set; } = "";
