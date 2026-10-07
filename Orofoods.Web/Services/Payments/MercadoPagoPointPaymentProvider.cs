@@ -8,13 +8,13 @@ using Microsoft.Extensions.Options;
 
 namespace Orofoods.Web.Services.Payments;
 
-/// <summary>Mercado Pago Point Orders API client. This provider is restricted to the Test host environment.</summary>
+/// <summary>Mercado Pago Point Orders API client, restricted to Test or explicitly enabled Staging.</summary>
 public sealed class MercadoPagoPointPaymentProvider(
     HttpClient httpClient,
     IOptions<MercadoPagoPointOptions> options,
     IHostEnvironment hostEnvironment) : IPointPaymentProvider
 {
-    private const string VirtualDeviceId = "SBX0000001";
+    public const string AuthorizedStagingTerminalId = "NEWLAND_N950__N950NCD600484709";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -24,7 +24,7 @@ public sealed class MercadoPagoPointPaymentProvider(
 
     public async Task<PointPaymentResult> CreateTerminalPaymentAsync(PointPaymentRequest request, CancellationToken cancellationToken = default)
     {
-        EnsureTestConfiguration(request.DeviceId);
+        EnsureAllowedConfiguration(request.DeviceId);
         if (request.OrderId <= 0 || request.PaymentId <= 0 || request.AssignmentId <= 0 || request.Amount <= 0m ||
             string.IsNullOrWhiteSpace(request.IdempotencyKey))
         {
@@ -39,7 +39,7 @@ public sealed class MercadoPagoPointPaymentProvider(
                 new MercadoPagoPointPaymentRequest(request.Amount.ToString("0.00", CultureInfo.InvariantCulture))
             ]),
             new MercadoPagoPointConfigRequest(
-                new MercadoPagoPointTerminalConfigRequest($"{options.Value.PoiType}__{VirtualDeviceId}")));
+                new MercadoPagoPointTerminalConfigRequest(request.DeviceId)));
 
         var order = await SendAsync<MercadoPagoPointOrderResponse>(
             HttpMethod.Post, "v1/orders", payload, request.IdempotencyKey, cancellationToken);
@@ -48,7 +48,7 @@ public sealed class MercadoPagoPointPaymentProvider(
 
     public async Task<PointPaymentResult> GetPaymentStatusAsync(string externalPaymentId, CancellationToken cancellationToken = default)
     {
-        EnsureTestConfiguration();
+        EnsureAllowedConfiguration();
         if (string.IsNullOrWhiteSpace(externalPaymentId))
         {
             throw new InvalidOperationException("A referência da cobrança Point é inválida.");
@@ -61,7 +61,7 @@ public sealed class MercadoPagoPointPaymentProvider(
 
     public async Task<PointPaymentResult> CancelPendingPaymentAsync(string externalPaymentId, CancellationToken cancellationToken = default)
     {
-        EnsureTestConfiguration();
+        EnsureAllowedConfiguration();
         if (string.IsNullOrWhiteSpace(externalPaymentId))
         {
             throw new InvalidOperationException("A referência da cobrança Point é inválida.");
@@ -131,23 +131,27 @@ public sealed class MercadoPagoPointPaymentProvider(
         return response;
     }
 
-    private void EnsureTestConfiguration(string? deviceId = null)
+    private void EnsureAllowedConfiguration(string? deviceId = null)
     {
         if (!options.Value.Enabled)
         {
             throw new InvalidOperationException("A integração Mercado Pago Point está desabilitada.");
         }
-        if (!hostEnvironment.IsEnvironment("Test") || !string.Equals(options.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase))
+        var testEnvironmentAllowed = hostEnvironment.IsEnvironment("Test")
+            && string.Equals(options.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase);
+        var stagingEnvironmentAllowed = hostEnvironment.IsEnvironment("Staging")
+            && options.Value.StagingRealEnabled;
+        if (!testEnvironmentAllowed && !stagingEnvironmentAllowed)
         {
-            throw new InvalidOperationException("A integração Mercado Pago Point aceita chamadas somente em ambiente Test.");
+            throw new InvalidOperationException("Point só aceita chamadas em Test ou em Staging com a flag de teste real habilitada.");
         }
         if (string.IsNullOrWhiteSpace(options.Value.AccessToken))
         {
-            throw new InvalidOperationException("Credenciais de teste Mercado Pago Point não configuradas.");
+            throw new InvalidOperationException("Credenciais Mercado Pago Point não configuradas.");
         }
-        if (!string.IsNullOrWhiteSpace(deviceId) && !string.Equals(deviceId, VirtualDeviceId, StringComparison.Ordinal))
+        if (deviceId is not null && !string.Equals(deviceId, AuthorizedStagingTerminalId, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Esta fase aceita somente o dispositivo virtual de teste Mercado Pago Point.");
+            throw new InvalidOperationException("Esta fase aceita somente o terminal Point autorizado.");
         }
         if (string.IsNullOrWhiteSpace(options.Value.PoiType) || options.Value.PoiType.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '_'))
         {

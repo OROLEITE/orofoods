@@ -22,7 +22,7 @@ public sealed class PointPaymentOrchestrationService(
     IPointPaymentOrderConcurrencyLock orderConcurrencyLock) : IPointPaymentOrchestrationService
 {
     private const string PointGateway = "MercadoPagoPoint";
-    private const string VirtualDeviceId = "SBX0000001";
+    private const string AuthorizedTerminalId = MercadoPagoPointPaymentProvider.AuthorizedStagingTerminalId;
     private static readonly PaymentStatus[] ActiveStatuses =
     [PaymentStatus.Pending, PaymentStatus.Processing, PaymentStatus.ActionRequired];
 
@@ -86,9 +86,9 @@ public sealed class PointPaymentOrchestrationService(
                     .SingleOrDefaultAsync(x => x.Id == assignmentId, cancellationToken);
                 if (selectedAssignment is null || !terminalEligibility.CanBeUsedForPointPayment(selectedAssignment)
                     || selectedAssignment.PaymentTerminal?.Provider != PaymentTerminalProvider.MercadoPago
-                    || !string.Equals(selectedAssignment.PaymentTerminal.DeviceId, VirtualDeviceId, StringComparison.Ordinal))
+                    || !string.Equals(selectedAssignment.PaymentTerminal.DeviceId, AuthorizedTerminalId, StringComparison.Ordinal))
                 {
-                    return PointPaymentOperationResult.Failure("POINT_ASSIGNMENT_INVALID", "Selecione um motorista e terminal de teste ativos.");
+                    return PointPaymentOperationResult.Failure("POINT_ASSIGNMENT_INVALID", "Selecione um motorista ativo com o terminal Point autorizado.");
                 }
                 assignment = selectedAssignment;
 
@@ -168,7 +168,7 @@ public sealed class PointPaymentOrchestrationService(
                     payment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
                     await db.SaveChangesAsync(cancellationToken);
                     await AddAuditEventAsync(payment, assignment.Id, adminUserId, statusBeforeStart, payment.Status,
-                        "POINT_CHARGE_REQUESTED", "Cobrança solicitada no terminal de teste.", cancellationToken);
+                        "POINT_CHARGE_REQUESTED", "Cobrança solicitada no terminal autorizado.", cancellationToken);
                     shouldCreateOrder = payment.GatewayOrderId is null;
                 }
                 await transaction.CommitAsync(cancellationToken);
@@ -237,12 +237,12 @@ public sealed class PointPaymentOrchestrationService(
         }
         catch (Exception exception) when (exception is PaymentGatewayException or HttpRequestException or TimeoutException)
         {
-            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_GATEWAY_UNAVAILABLE", "Não foi possível consultar o status no terminal virtual.", cancellationToken);
+            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_GATEWAY_UNAVAILABLE", "Não foi possível consultar o status no terminal Point.", cancellationToken);
             return PointPaymentOperationResult.Failure("POINT_GATEWAY_UNAVAILABLE", "Não foi possível consultar o status no Mercado Pago.", payment);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_GATEWAY_UNAVAILABLE", "A consulta ao terminal virtual expirou.", cancellationToken);
+            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_GATEWAY_UNAVAILABLE", "A consulta ao terminal Point expirou.", cancellationToken);
             return PointPaymentOperationResult.Failure("POINT_GATEWAY_UNAVAILABLE", "A consulta do status no Mercado Pago expirou.", payment);
         }
     }
@@ -263,12 +263,12 @@ public sealed class PointPaymentOrchestrationService(
         }
         catch (Exception exception) when (exception is PaymentGatewayException or HttpRequestException or TimeoutException)
         {
-            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_CANCEL_REQUEST_FAILED", "Não foi possível confirmar o cancelamento no terminal virtual.", cancellationToken);
+            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_CANCEL_REQUEST_FAILED", "Não foi possível confirmar o cancelamento no terminal Point.", cancellationToken);
             return PointPaymentOperationResult.Failure("POINT_GATEWAY_UNAVAILABLE", "Não foi possível solicitar o cancelamento no Mercado Pago.", payment);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_CANCEL_REQUEST_FAILED", "A solicitação de cancelamento expirou no terminal virtual.", cancellationToken);
+            await RecordSanitizedFailureAsync(payment, adminUserId, "POINT_CANCEL_REQUEST_FAILED", "A solicitação de cancelamento expirou no terminal Point.", cancellationToken);
             return PointPaymentOperationResult.Failure("POINT_GATEWAY_UNAVAILABLE", "A solicitação de cancelamento expirou.", payment);
         }
     }
@@ -279,7 +279,7 @@ public sealed class PointPaymentOrchestrationService(
             .Include(x => x.PaymentTerminal)
             .Where(x => x.EndedAt == null && x.Driver!.IsActive && x.PaymentTerminal!.IsActive
                 && x.PaymentTerminal.Provider == PaymentTerminalProvider.MercadoPago
-                && x.PaymentTerminal.DeviceId == VirtualDeviceId)
+                && x.PaymentTerminal.DeviceId == AuthorizedTerminalId)
             .OrderBy(x => x.Driver!.Name)
             .ToListAsync(cancellationToken);
 
@@ -289,9 +289,13 @@ public sealed class PointPaymentOrchestrationService(
         {
             return PointPaymentOperationResult.Failure("POINT_INTEGRATION_DISABLED", "A cobrança Point está desabilitada.");
         }
-        if (!hostEnvironment.IsEnvironment("Test") || !string.Equals(pointOptions.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase))
+        var testEnvironmentAllowed = hostEnvironment.IsEnvironment("Test")
+            && string.Equals(pointOptions.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase);
+        var stagingEnvironmentAllowed = hostEnvironment.IsEnvironment("Staging")
+            && pointOptions.Value.StagingRealEnabled;
+        if (!testEnvironmentAllowed && !stagingEnvironmentAllowed)
         {
-            return PointPaymentOperationResult.Failure("POINT_TEST_ENVIRONMENT_REQUIRED", "A cobrança Point só está disponível no ambiente Test.");
+            return PointPaymentOperationResult.Failure("POINT_TEST_ENVIRONMENT_REQUIRED", "A cobrança Point só está disponível em Test ou em Staging com a flag de teste real habilitada.");
         }
         if (string.IsNullOrWhiteSpace(pointOptions.Value.AccessToken))
         {
@@ -300,7 +304,7 @@ public sealed class PointPaymentOrchestrationService(
         if (string.IsNullOrWhiteSpace(pointOptions.Value.PoiType)
             || pointOptions.Value.PoiType.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '_'))
         {
-            return PointPaymentOperationResult.Failure("POINT_TEST_TERMINAL_CONFIGURATION_INVALID", "A configuração do terminal virtual está inválida.");
+            return PointPaymentOperationResult.Failure("POINT_TEST_TERMINAL_CONFIGURATION_INVALID", "A configuração do terminal Point está inválida.");
         }
         return null;
     }
@@ -415,7 +419,7 @@ public sealed class PointPaymentOrchestrationService(
         if (previousStatus != payment.Status)
         {
             await AddAuditEventAsync(payment, payment.DriverPaymentTerminalAssignmentId, adminUserId, previousStatus, payment.Status,
-                "POINT_STATUS_RECONCILED", "Status de pagamento conciliado com o terminal virtual.", cancellationToken);
+                "POINT_STATUS_RECONCILED", "Status de pagamento conciliado com o terminal Point.", cancellationToken);
         }
         else if ((gatewayOrderIdWasMissing && payment.GatewayOrderId is not null)
             || (gatewayPaymentIdWasMissing && payment.GatewayPaymentId is not null))

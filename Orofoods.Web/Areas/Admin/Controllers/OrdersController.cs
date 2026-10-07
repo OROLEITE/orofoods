@@ -84,7 +84,7 @@ public class OrdersController(
                         : activeCardPayment?.Gateway == "MercadoPagoPoint"
                             ? null
                             : pointAssignments.Count == 0
-                                ? "Nenhum motorista ativo com o terminal virtual SBX0000001 associado. Cadastre ou reative o vínculo antes de cobrar."
+                                ? "Nenhum motorista ativo com o terminal NEWLAND_N950__N950NCD600484709 associado. Cadastre ou reative o vínculo antes de cobrar."
                                 : null;
         ViewBag.PointAuditEvents = cardOnDeliveryPayments(order).Count == 0
             ? []
@@ -103,7 +103,7 @@ public class OrdersController(
             return RedirectToAction(nameof(Details), new { id });
         }
         var result = await pointPaymentService.StartChargeAsync(id, assignmentId, requestKey, cancellationToken, User.FindFirstValue(ClaimTypes.NameIdentifier));
-        if (result.Succeeded) TempData["PointPaymentMessage"] = "Cobrança enviada ao terminal virtual. O status será atualizado automaticamente.";
+        if (result.Succeeded) TempData["PointPaymentMessage"] = "Cobrança enviada ao terminal Point autorizado. O status será atualizado automaticamente.";
         else TempData["PointPaymentError"] = result.ErrorMessage ?? "Não foi possível iniciar a cobrança.";
         return RedirectToAction(nameof(Details), new { id });
     }
@@ -183,10 +183,17 @@ public class OrdersController(
     private static IReadOnlyList<Orofoods.Web.Models.Payments.Payment> cardOnDeliveryPayments(Order order) => order.Payments
         .Where(payment => payment.Method == Orofoods.Web.Models.Payments.PaymentMethodType.CardOnDelivery).ToList();
 
-    private bool IsPointEnabled() => pointOptions.Value.Enabled
-        && paymentOptions.Value.CardOnDeliveryEnabled
-        && hostEnvironment.IsEnvironment("Test")
-        && string.Equals(pointOptions.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase);
+    private bool IsPointEnabled()
+    {
+        var testEnvironmentAllowed = hostEnvironment.IsEnvironment("Test")
+            && string.Equals(pointOptions.Value.Environment, "Test", StringComparison.OrdinalIgnoreCase);
+        var stagingEnvironmentAllowed = hostEnvironment.IsEnvironment("Staging")
+            && pointOptions.Value.StagingRealEnabled;
+
+        return pointOptions.Value.Enabled
+            && paymentOptions.Value.CardOnDeliveryEnabled
+            && (testEnvironmentAllowed || stagingEnvironmentAllowed);
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(int id, OrderStatus status)
