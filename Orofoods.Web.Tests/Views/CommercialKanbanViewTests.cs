@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Orofoods.Web.Tests.Views;
 
 public class CommercialKanbanViewTests
@@ -53,5 +55,47 @@ public class CommercialKanbanViewTests
         Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card.is-dragging", css);
         Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column.is-drop-target", css);
         Assert.DoesNotContain("whatsapp", script, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Commercial_empty_states_and_attention_panel_keep_content_driven_compact_spacing()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var css = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "commercial.css"));
+        const string scope = ".commercial-dashboard-page ";
+
+        AssertRuleHas(css, scope + ".commercial-routine-list--overview>.commercial-empty-column:only-child", "margin", "0");
+        AssertRuleHas(css, scope + ".commercial-routine-list--overview>.commercial-empty-column:only-child", "padding", "12px 4px 14px");
+        AssertRuleHas(css, scope + ".commercial-agenda-panel>.commercial-empty-column:last-child", "margin", "0");
+        AssertRuleHas(css, scope + ".commercial-agenda-panel>.commercial-empty-column:last-child", "padding", "12px 4px 4px");
+        AssertRuleHas(css, scope + ".commercial-attention-panel", "padding", "16px 18px");
+        AssertRuleHas(css, scope + ".commercial-attention-panel .commercial-panel-heading", "margin-bottom", "12px");
+        AssertRuleHas(css, scope + ".commercial-attention-grid", "gap", "8px");
+        AssertRuleHas(css, scope + ".commercial-attention-card", "padding", "12px 14px");
+        AssertRuleHas(css, scope + ".commercial-attention-panel>.commercial-routine-list>.commercial-empty-column:only-child", "padding", "12px 4px 0");
+
+        foreach (var selector in new[]
+                 {
+                     scope + ".commercial-routine-list--overview>.commercial-empty-column:only-child",
+                     scope + ".commercial-agenda-panel>.commercial-empty-column:last-child",
+                     scope + ".commercial-attention-panel>.commercial-routine-list>.commercial-empty-column:only-child"
+                 })
+        {
+            var declarations = RuleDeclarations(css, selector);
+            Assert.DoesNotMatch(@"(?:^|;)\s*(?:height|max-height|min-height)\s*:", declarations);
+        }
+    }
+
+    private static void AssertRuleHas(string css, string selector, string property, string value)
+    {
+        var declarations = RuleDeclarations(css, selector);
+        Assert.Matches($@"(?:^|;)\s*{Regex.Escape(property)}\s*:\s*{Regex.Escape(value)}\s*(?:;|$)", declarations);
+    }
+
+    private static string RuleDeclarations(string css, string selector)
+    {
+        var match = Regex.Match(css, Regex.Escape(selector) + @"\s*\{(?<declarations>[^}]*)\}");
+        Assert.True(match.Success, $"Missing CSS rule for {selector}.");
+        return match.Groups["declarations"].Value;
     }
 }

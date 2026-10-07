@@ -2819,6 +2819,34 @@
                            {
                                "Selector":  ".portal-mobile-nav a:last-child",
                                "Declarations":  "grid-column:1/-1"
+                            },
+                            {
+                                "Selector":  ".commercial-dashboard-page .commercial-routine-list--overview\u003e.commercial-empty-column:only-child",
+                                "Declarations":  "margin:0;padding:12px 4px 14px"
+                            },
+                            {
+                                "Selector":  ".commercial-dashboard-page .commercial-agenda-panel\u003e.commercial-empty-column:last-child",
+                                "Declarations":  "margin:0;padding:12px 4px 4px"
+                            },
+                            {
+                                "Selector":  ".commercial-dashboard-page .commercial-attention-panel",
+                                "Declarations":  "padding:16px 18px"
+                            },
+                            {
+                                "Selector":  ".commercial-dashboard-page .commercial-attention-panel .commercial-panel-heading",
+                                "Declarations":  "margin-bottom:12px"
+                            },
+                            {
+                                "Selector":  ".commercial-dashboard-page .commercial-attention-grid",
+                                "Declarations":  "gap:8px"
+                            },
+                            {
+                                "Selector":  ".commercial-dashboard-page .commercial-attention-card",
+                                "Declarations":  "padding:12px 14px"
+                            },
+                            {
+                                "Selector":  ".commercial-dashboard-page .commercial-attention-panel\u003e.commercial-routine-list\u003e.commercial-empty-column:only-child",
+                                "Declarations":  "margin:0;padding:12px 4px 0"
                            }
                        ],
     "admin-customers.css":  [
