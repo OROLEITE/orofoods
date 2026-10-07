@@ -4,7 +4,7 @@
 }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <div><h1>Terminais de pagamento</h1><p>Cadastro interno. Esta tela não realiza cobranças.</p></div>
+    <div><h1>Terminais de pagamento</h1><p>Cadastro interno. O teste Point de R$ 1,00 só aparece quando habilitado em Staging.</p></div>
     <a class="btn btn-primary" asp-action="Edit">Novo terminal</a>
 </div>
 
@@ -48,6 +48,12 @@
                                 @if (isAuthorizedTerminal && terminal.OperatingMode == "PDV")
                                 {
                                     <span class="badge text-bg-success">Terminal em modo PDV</span>
+                                    @if (Model.PointStagingOneRealTestEnabled && !Model.StagingOneRealTestAttemptStarted && string.IsNullOrWhiteSpace(Model.StagingOneRealTestOrderId))
+                                    {
+                                        <form asp-area="Admin" asp-action="StartStagingOneRealPointTest" method="post" asp-antiforgery="true" class="mt-2" onsubmit="return confirm('Enviar uma única cobrança real de R$ 1,00 para o terminal NEWLAND_N950__N950NCD600484709?');">
+                                            <button class="btn btn-sm btn-warning" type="submit">Enviar teste de R$ 1,00</button>
+                                        </form>
+                                    }
                                 }
                                 else if (isAuthorizedTerminal && terminal.OperatingMode == "STANDALONE" && User.IsInRole("Administrador"))
                                 {
@@ -65,6 +71,31 @@
                         </tbody>
                     </table>
                 </div>
+            }
+            @if (Model.PointStagingOneRealTestEnabled)
+            {
+                @if (Model.StagingOneRealTestAttemptStarted && string.IsNullOrWhiteSpace(Model.StagingOneRealTestMessage))
+                {
+                    <div class="alert alert-info mt-3" role="status">A tentativa única já foi iniciada. Não envie novamente; consulte o status pelo order_id.</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.StagingOneRealTestMessage))
+                {
+                    <div class="alert alert-info mt-3" role="status">
+                        @if (!string.IsNullOrWhiteSpace(Model.StagingOneRealTestOrderId))
+                        {
+                            <div><strong>order_id:</strong> @Model.StagingOneRealTestOrderId</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.StagingOneRealTestStatus))
+                        {
+                            <div><strong>status:</strong> @Model.StagingOneRealTestStatus</div>
+                        }
+                        <div>@Model.StagingOneRealTestMessage</div>
+                    </div>
+                }
+                <form asp-area="Admin" asp-action="RefreshStagingOneRealPointTestStatus" method="get" class="row g-2 mt-2">
+                    <div class="col-auto"><label class="visually-hidden" for="stagingPointTestOrderId">order_id</label><input class="form-control form-control-sm" id="stagingPointTestOrderId" name="orderId" value="@Model.StagingOneRealTestOrderId" maxlength="100" placeholder="order_id" /></div>
+                    <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" type="submit">Consultar status</button></div>
+                </form>
             }
         </div>
     </section>

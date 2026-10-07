@@ -234,6 +234,15 @@ builder.Services.AddHttpClient<IMercadoPagoPointTerminalDiscovery, MercadoPagoPo
     var options = sp.GetRequiredService<IOptions<MercadoPagoPointOptions>>().Value;
     client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.RequestTimeoutSeconds, 1, 60));
 });
+var pointStagingOneRealTestEnabled = builder.Configuration.GetValue<bool>(PointStagingOneRealTestOptions.ConfigurationKey);
+builder.Services.Configure<PointStagingOneRealTestOptions>(options => options.Enabled = pointStagingOneRealTestEnabled);
+builder.Services.AddSingleton<PointStagingOneRealTestAttemptGate>();
+builder.Services.AddHttpClient<IPointStagingOneRealTestClient, MercadoPagoPointStagingOneRealTestClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<MercadoPagoPointOptions>>().Value;
+    client.BaseAddress = options.BaseAddress;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.RequestTimeoutSeconds, 1, 60));
+});
 var mercadoPagoPointEnabled = builder.Configuration.GetValue<bool>(MercadoPagoPointOptions.ConfigurationKey);
 if (mercadoPagoPointEnabled && !builder.Environment.IsEnvironment("Test"))
 {

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Data;
 using Orofoods.Web.Services.Payments;
@@ -99,6 +100,74 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
     }
 
     [Fact]
+    public void One_real_test_start_is_administrator_post_with_antiforgery_and_status_is_read_only_get()
+    {
+        var controllerType = typeof(PaymentTerminalsController);
+        var authorize = controllerType.GetCustomAttribute<AuthorizeAttribute>();
+        var start = controllerType.GetMethod("StartStagingOneRealPointTest");
+        var status = controllerType.GetMethod("RefreshStagingOneRealPointTestStatus");
+
+        Assert.Equal("Administrador", authorize?.Roles);
+        Assert.NotNull(start?.GetCustomAttribute<HttpPostAttribute>());
+        Assert.NotNull(start?.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+        Assert.Single(start!.GetParameters());
+        Assert.Equal(typeof(CancellationToken), start.GetParameters()[0].ParameterType);
+        Assert.NotNull(status?.GetCustomAttribute<HttpGetAttribute>());
+        Assert.Null(status?.GetCustomAttribute<HttpPostAttribute>());
+    }
+
+    [Fact]
+    public async Task One_real_test_post_is_only_available_when_staging_flag_is_enabled_and_does_not_persist()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var discovery = new FakeDiscovery();
+        var client = new FakeOneRealTestClient();
+        var disabledController = CreateController(db, discovery, "Staging", client, enabled: false);
+
+        Assert.IsType<NotFoundResult>(await disabledController.StartStagingOneRealPointTest());
+        Assert.Equal(0, client.StartCalls);
+
+        var controller = CreateController(db, discovery, "Staging", client, enabled: true);
+        var result = Assert.IsType<RedirectToActionResult>(await controller.StartStagingOneRealPointTest());
+
+        Assert.Equal(nameof(PaymentTerminalsController.Index), result.ActionName);
+        Assert.Equal(1, client.StartCalls);
+        Assert.Equal(0, await db.Orders.CountAsync());
+        Assert.Equal(0, await db.Payments.CountAsync());
+        Assert.Equal("ORDER-TEST-1", controller.TempData["StagingOneRealTestOrderId"]);
+        Assert.Equal("created", controller.TempData["StagingOneRealTestStatus"]);
+        Assert.Equal("Order enviada ao terminal; confira a maquininha.", controller.TempData["StagingOneRealTestMessage"]);
+    }
+
+    [Fact]
+    public async Task One_real_test_post_is_unavailable_outside_staging_without_client_call()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var client = new FakeOneRealTestClient();
+        var controller = CreateController(db, new FakeDiscovery(), "Production", client, enabled: true);
+
+        Assert.IsType<NotFoundResult>(await controller.StartStagingOneRealPointTest());
+        Assert.Equal(0, client.StartCalls);
+    }
+
+    [Fact]
+    public async Task One_real_test_status_get_is_read_only_and_uses_the_supplied_order_id()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var client = new FakeOneRealTestClient();
+        var controller = CreateController(db, new FakeDiscovery(), "Staging", client, enabled: true);
+
+        var result = Assert.IsType<RedirectToActionResult>(await controller.RefreshStagingOneRealPointTestStatus("ORDER-TEST-1"));
+
+        Assert.Equal(nameof(PaymentTerminalsController.Index), result.ActionName);
+        Assert.Equal("ORDER-TEST-1", client.LastOrderId);
+        Assert.Equal(1, client.StatusCalls);
+        Assert.Equal(0, client.StartCalls);
+        Assert.Equal(0, await db.Orders.CountAsync());
+        Assert.Equal(0, await db.Payments.CountAsync());
+    }
+
+    [Fact]
     public async Task Mode_update_action_is_unavailable_outside_staging_without_calling_provider()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -144,12 +213,39 @@ public sealed class AdminPointTerminalDiscoveryControllerTests
         Assert.Equal(1, discovery.Calls);
     }
 
-    private static PaymentTerminalsController CreateController(ApplicationDbContext db, FakeDiscovery discovery, string environment)
+    private static PaymentTerminalsController CreateController(
+        ApplicationDbContext db,
+        FakeDiscovery discovery,
+        string environment,
+        FakeOneRealTestClient? testClient = null,
+        bool enabled = false)
     {
         var controller = new PaymentTerminalsController(db, new DriverPaymentTerminalService(db, TimeProvider.System), discovery,
+            testClient ?? new FakeOneRealTestClient(), Options.Create(new PointStagingOneRealTestOptions { Enabled = enabled }),
             new TestHostEnvironment(environment), NullLogger<PaymentTerminalsController>.Instance);
         controller.TempData = new TempDataDictionary(new Microsoft.AspNetCore.Http.DefaultHttpContext(), new TestTempDataProvider());
         return controller;
+    }
+
+    private sealed class FakeOneRealTestClient : IPointStagingOneRealTestClient
+    {
+        public int StartCalls { get; private set; }
+        public int StatusCalls { get; private set; }
+        public string? LastOrderId { get; private set; }
+        public bool AttemptStarted => StartCalls > 0;
+
+        public Task<PointStagingOneRealTestResult> StartAsync(CancellationToken cancellationToken = default)
+        {
+            StartCalls++;
+            return Task.FromResult(new PointStagingOneRealTestResult("ORDER-TEST-1", "created", "Order enviada ao terminal; confira a maquininha.", true));
+        }
+
+        public Task<PointStagingOneRealTestResult> GetStatusAsync(string orderId, CancellationToken cancellationToken = default)
+        {
+            StatusCalls++;
+            LastOrderId = orderId;
+            return Task.FromResult(new PointStagingOneRealTestResult(orderId, "at_terminal", "Status consultado no Mercado Pago.", true));
+        }
     }
 
     private sealed class FakeDiscovery(IReadOnlyList<MercadoPagoPointTerminal>? terminals = null) : IMercadoPagoPointTerminalDiscovery
