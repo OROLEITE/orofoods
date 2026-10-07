@@ -421,7 +421,7 @@ public sealed class PointPaymentOrchestrationServiceTests
     [Theory]
     [InlineData(false, "Test", "POINT_INTEGRATION_DISABLED")]
     [InlineData(true, "Production", "POINT_ENVIRONMENT_NOT_AUTHORIZED")]
-    [InlineData(true, "Staging", "POINT_TEST_ENVIRONMENT_REQUIRED")]
+    [InlineData(true, "Staging", "POINT_ENVIRONMENT_NOT_AUTHORIZED")]
     public async Task StartChargeAsync_enforces_feature_and_test_environment(bool enabled, string environment, string errorCode)
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -447,7 +447,7 @@ public sealed class PointPaymentOrchestrationServiceTests
         var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
 
         Assert.False(result.Succeeded);
-        Assert.Equal("POINT_TEST_CREDENTIALS_REQUIRED", result.ErrorCode);
+        Assert.Equal("POINT_CREDENTIALS_REQUIRED", result.ErrorCode);
         Assert.Equal(0, provider.CreateCalls);
     }
 
@@ -988,3 +988,4 @@ public sealed class PointPaymentOrchestrationServiceTests
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 }
+
