@@ -19,14 +19,6 @@ public class DashboardController(ApplicationDbContext db, TimeProvider timeProvi
 {
     private static readonly TimeZoneInfo SaoPauloTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
-    public DashboardController(ApplicationDbContext db) : this(db, TimeProvider.System, new WmcSyncCoordinator())
-    {
-    }
-
-    public DashboardController(ApplicationDbContext db, TimeProvider timeProvider) : this(db, timeProvider, new WmcSyncCoordinator())
-    {
-    }
-
     public async Task<IActionResult> Index()
     {
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
