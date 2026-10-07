@@ -123,3 +123,11 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card.is-dragging{opacity:.58;transform:scale(.99);cursor:grabbing;box-shadow:0 12px 24px rgba(15,23,42,.18)}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column.is-drop-target{outline:2px dashed #64748B;outline-offset:-2px}
+
+.commercial-dashboard-page .commercial-routine-list--overview>.commercial-empty-column:only-child{margin:0;padding:12px 4px 14px}
+.commercial-dashboard-page .commercial-agenda-panel>.commercial-empty-column:last-child{margin:0;padding:12px 4px 4px}
+.commercial-dashboard-page .commercial-attention-panel{padding:16px 18px}
+.commercial-dashboard-page .commercial-attention-panel .commercial-panel-heading{margin-bottom:12px}
+.commercial-dashboard-page .commercial-attention-grid{gap:8px}
+.commercial-dashboard-page .commercial-attention-card{padding:12px 14px}
+.commercial-dashboard-page .commercial-attention-panel>.commercial-routine-list>.commercial-empty-column:only-child{margin:0;padding:12px 4px 0}
