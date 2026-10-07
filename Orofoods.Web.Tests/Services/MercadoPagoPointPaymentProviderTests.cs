@@ -60,6 +60,34 @@ public sealed class MercadoPagoPointPaymentProviderTests
     }
 
     [Fact]
+    public async Task CreatePointOrder_allows_production_with_production_flag_and_allowlisted_terminal()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Production", productionEnabled: true,
+            authorizedProductionDeviceId: "NEWLAND_N950__N950NCD600484709");
+
+        var result = await provider.CreateTerminalPaymentAsync(TestRequest());
+
+        Assert.Equal("ORD-POINT-1", ReadProperty<string>(result, "GatewayOrderId"));
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("attempt-point-1", request.IdempotencyKey);
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", JsonDocument.Parse(request.Body!).RootElement
+            .GetProperty("config").GetProperty("point").GetProperty("terminal_id").GetString());
+    }
+
+    [Fact]
+    public async Task CreatePointOrder_rejects_production_terminal_outside_allowlist_before_http()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Production", productionEnabled: true,
+            authorizedProductionDeviceId: "ANOTHER-TERMINAL");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => provider.CreateTerminalPaymentAsync(TestRequest()));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task CreatePointOrder_rejects_staging_when_the_explicit_real_point_flag_is_disabled()
     {
         var handler = new RecordingHandler(CreatedOrderResponse);
@@ -288,7 +316,7 @@ public sealed class MercadoPagoPointPaymentProviderTests
     }
 
     [Fact]
-    public async Task Test_provider_refuses_non_virtual_device_before_http()
+    public async Task Test_provider_refuses_device_outside_environment_allowlist_before_http()
     {
         var handler = new RecordingHandler(CreatedOrderResponse);
         var provider = CreateProvider(handler);
@@ -360,13 +388,25 @@ public sealed class MercadoPagoPointPaymentProviderTests
         HttpMessageHandler handler,
         string environmentName = "Test",
         string accessToken = "test-access-token",
-        bool stagingRealEnabled = false)
+        bool stagingRealEnabled = false,
+        bool productionEnabled = false,
+        string? authorizedProductionDeviceId = null)
     {
         var providerType = typeof(IPointPaymentProvider).Assembly.GetType("Orofoods.Web.Services.Payments.MercadoPagoPointPaymentProvider");
         Assert.NotNull(providerType);
         var options = new MercadoPagoPointOptions { Enabled = true };
         SetOption(options, "Environment", environmentName);
         SetOption(options, "StagingRealEnabled", stagingRealEnabled);
+        SetOption(options, "ProductionEnabled", productionEnabled);
+        options.AuthorizedDeviceIdsByEnvironment = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Test"] = ["NEWLAND_N950__N950NCD600484709"],
+            ["Staging"] = ["NEWLAND_N950__N950NCD600484709"]
+        };
+        if (authorizedProductionDeviceId is not null)
+        {
+            options.AuthorizedDeviceIdsByEnvironment["Production"] = [authorizedProductionDeviceId];
+        }
         SetOption(options, "AccessToken", accessToken);
         SetOption(options, "PoiType", "NEWLAND_N950");
         SetOption(options, "BaseAddress", new Uri("https://api.mercadopago.com/"));

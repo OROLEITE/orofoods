@@ -227,6 +227,41 @@ public sealed class PointPaymentOrchestrationServiceTests
     }
 
     [Fact]
+    public async Task StartChargeAsync_allows_production_only_with_all_flags_and_allowlisted_terminal()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider, environmentName: "Production", productionEnabled: true);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(seed.Order.Total, Assert.Single(provider.Requests).Amount);
+        Assert.Equal(result.Payment!.IdempotencyKey, provider.Requests[0].IdempotencyKey);
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", provider.Requests[0].DeviceId);
+    }
+
+    [Theory]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    public async Task StartChargeAsync_blocks_production_when_any_required_flag_is_false(
+        bool pointEnabled, bool productionEnabled, bool cardOnDeliveryEnabled)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider, pointEnabled: pointEnabled, environmentName: "Production",
+            productionEnabled: productionEnabled, cardOnDeliveryEnabled: cardOnDeliveryEnabled);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, provider.CreateCalls);
+    }
+
+    [Fact]
     public async Task StartChargeAsync_rejects_a_different_terminal_before_provider_call()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -385,7 +420,7 @@ public sealed class PointPaymentOrchestrationServiceTests
 
     [Theory]
     [InlineData(false, "Test", "POINT_INTEGRATION_DISABLED")]
-    [InlineData(true, "Production", "POINT_TEST_ENVIRONMENT_REQUIRED")]
+    [InlineData(true, "Production", "POINT_ENVIRONMENT_NOT_AUTHORIZED")]
     [InlineData(true, "Staging", "POINT_TEST_ENVIRONMENT_REQUIRED")]
     public async Task StartChargeAsync_enforces_feature_and_test_environment(bool enabled, string environment, string errorCode)
     {
@@ -713,6 +748,8 @@ public sealed class PointPaymentOrchestrationServiceTests
         bool pointEnabled = true,
         string environmentName = "Test",
         bool stagingRealEnabled = false,
+        bool productionEnabled = false,
+        bool cardOnDeliveryEnabled = true,
         bool tokenConfigured = true,
         RecordingApprovalHandler? approval = null,
         IPointPaymentOrderConcurrencyLock? orderLock = null,
@@ -720,8 +757,21 @@ public sealed class PointPaymentOrchestrationServiceTests
         db,
         provider,
         new PaymentTerminalEligibilityService(),
-        Options.Create(new MercadoPagoPointOptions { Enabled = pointEnabled, Environment = environmentName, StagingRealEnabled = stagingRealEnabled, AccessToken = tokenConfigured ? "fake-test-token" : "" }),
-        Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = true }),
+        Options.Create(new MercadoPagoPointOptions
+        {
+            Enabled = pointEnabled,
+            Environment = environmentName,
+            StagingRealEnabled = stagingRealEnabled,
+            ProductionEnabled = productionEnabled,
+            AuthorizedDeviceIdsByEnvironment = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Test"] = ["NEWLAND_N950__N950NCD600484709"],
+                ["Staging"] = ["NEWLAND_N950__N950NCD600484709"],
+                ["Production"] = ["NEWLAND_N950__N950NCD600484709"]
+            },
+            AccessToken = tokenConfigured ? "fake-test-token" : ""
+        }),
+        Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled }),
         new TestHostEnvironment(environmentName),
         approval ?? new RecordingApprovalHandler(),
         TimeProvider.System,
