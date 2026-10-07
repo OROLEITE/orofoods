@@ -229,6 +229,11 @@ html:not([data-theme="dark"]) .site-header-modern :is(.account-trigger, .main-na
     }
 }
 
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .navbar {
+    min-height: 64px;
+    padding-block: .35rem;
+}
+
 /* Admin account dropdown overrides Bootstrap and the shared light menu, including keyboard states. */
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu {
     border-color: #334155;

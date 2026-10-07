@@ -9,6 +9,7 @@ public class AdminSidebarBrandAndHeaderLinkTests
     {
         var navigation = ReadWebFile("Views", "Shared", "_AdminNavigation.cshtml");
         var styles = ReadWebFile("wwwroot", "css", "admin-navigation.css");
+        var shellStyles = ReadWebFile("wwwroot", "css", "admin-shell.css");
         var shared = ReadWebFile("wwwroot", "css", "site.css");
         var layout = ReadWebFile("Views", "Shared", "_AdminLayout.cshtml");
         var rules = ReadRules(styles);
@@ -35,6 +36,13 @@ public class AdminSidebarBrandAndHeaderLinkTests
 
         Assert.Contains("--admin-sidebar-width: 264px", styles);
         Assert.Contains("--admin-sidebar-collapsed-width: 80px", styles);
+        Assert.Contains("--admin-sidebar-width: 248px", shellStyles);
+        Assert.Contains("--admin-header-height: 64px", shellStyles);
+        Assert.Contains("--admin-header-height: 64px", styles);
+        Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page))", styles);
+        Assert.DoesNotContain("body.admin-authenticated:has(.whatsapp-inbox-page)", styles);
+        Assert.Contains("width: 72px", styles);
+        Assert.Contains("margin: 8px auto 0", styles);
         Assert.Contains("data-admin-sidebar-toggle", layout);
         Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.show,", styles);
         Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.collapsing", styles);

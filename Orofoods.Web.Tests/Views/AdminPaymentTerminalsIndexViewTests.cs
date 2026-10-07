@@ -10,6 +10,7 @@ public sealed class AdminPaymentTerminalsIndexViewTests
         var view = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Areas", "Admin", "Views", "PaymentTerminals", "Index.cshtml"));
 
         Assert.Contains("Terminais Mercado Pago", view, StringComparison.Ordinal);
+        Assert.Contains("admin-mp-terminal-discovery-card", view, StringComparison.Ordinal);
         Assert.Contains("Model.IsStaging && User.IsInRole(\"Administrador\")", view, StringComparison.Ordinal);
         Assert.Contains("User.IsInRole(\"Administrador\")", view, StringComparison.Ordinal);
         Assert.Contains("MercadoPagoPointTerminalDiscovery.AuthorizedStagingTerminalId", view, StringComparison.Ordinal);

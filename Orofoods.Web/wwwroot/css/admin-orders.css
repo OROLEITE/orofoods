@@ -184,6 +184,26 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     background: #B91C1C;
     color: #F8FAFC;
 }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .btn-primary {
+    border-color: #2563EB;
+    background: #2563EB;
+    color: #F8FAFC;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .btn-primary:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .btn-primary:focus-visible {
+    border-color: #1D4ED8;
+    background: #1D4ED8;
+    color: #F8FAFC;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .btn-primary:active {
+    border-color: #1E40AF;
+    background: #1E40AF;
+    color: #F8FAFC;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .btn-primary:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .page-link {
     border-color: var(--admin-dark-border);
     background: var(--admin-dark-surface);
@@ -208,4 +228,27 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .btn:focus-visible {
     outline: 2px solid #38BDF8;
     outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .form-select {
+    flex: 1 1 280px;
+    max-width: 360px;
+    min-height: 40px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .btn-primary,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-wmc-form .btn {
+    min-height: 40px;
+}
+
+@media(max-width:575.98px) {
+    html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .form-select {
+        flex-basis: 100%;
+        max-width: none;
+        width: 100%;
+    }
+
+    html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-status-form .btn-primary {
+        width: 100%;
+    }
 }

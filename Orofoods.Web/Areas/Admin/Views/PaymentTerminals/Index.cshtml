@@ -16,7 +16,7 @@
 
 @if (Model.IsStaging && User.IsInRole("Administrador"))
 {
-    <section class="card mb-4" aria-labelledby="mercado-pago-terminals-title">
+    <section class="card mb-4 admin-mp-terminal-discovery-card" aria-labelledby="mercado-pago-terminals-title">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h2 class="h5 mb-0" id="mercado-pago-terminals-title">Terminais Mercado Pago</h2>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Atualizar descoberta</a>

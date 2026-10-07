@@ -418,3 +418,48 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     border-color: #334155;
     background: #111827;
 }
+
+/* Compact dark Admin navigation; the WhatsApp inbox keeps the historical frame. */
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar {
+    --admin-sidebar-width: 248px;
+    --admin-header-height: 64px;
+    top: var(--admin-header-height);
+    height: calc(100vh - var(--admin-header-height));
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-header {
+    min-height: 68px;
+    padding-top: 0;
+    padding-bottom: 8px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-header .admin-sidebar-logo {
+    width: 72px;
+    height: auto;
+    margin: 0 auto 3px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-collapsed .admin-sidebar-header .admin-sidebar-logo {
+    width: 34px;
+    height: auto;
+    margin: 8px auto 0;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group {
+    min-height: 40px;
+    padding-block: 7px;
+    gap: 8px;
+    font-size: 14px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group span > i {
+    font-size: 17px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link--nested {
+    min-height: 36px;
+    padding-block: 6px;
+    font-size: 13px;
+}

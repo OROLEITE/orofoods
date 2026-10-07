@@ -13,12 +13,41 @@ public class AdminDashboardThemeTests
         Assert.Contains("html[data-theme=\"dark\"] .admin-dashboard-page", dashboardStyles);
         Assert.Contains("background-color:#0F172A;", dashboardStyles);
         Assert.Contains("html[data-theme=\"dark\"] .admin-dashboard-hero .container", dashboardStyles);
-        Assert.Contains("min-height:280px;", dashboardStyles);
-        Assert.Contains("border-radius:14px;", dashboardStyles);
+        Assert.Contains("min-height: 168px;", dashboardStyles);
+        Assert.DoesNotContain("min-height:280px;", dashboardStyles);
+        Assert.Contains("border-radius: 14px", dashboardStyles);
         Assert.Contains("linear-gradient", dashboardStyles);
         Assert.Contains("@media (max-width: 767px)", dashboardStyles);
         Assert.Contains("flex-direction:column;", dashboardStyles);
         Assert.Contains("html[data-theme=\"dark\"] .admin-priority-card:hover", dashboardStyles);
         Assert.Contains("html[data-theme=\"dark\"] .admin-dashboard-page .admin-orders-table thead th", dashboardStyles);
+    }
+
+    [Fact]
+    public void Dashboard_priority_cards_reuse_the_existing_accent_for_nonzero_counts()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Dashboard", "Index.cshtml"));
+        var dashboardStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard.css"));
+
+        Assert.Contains("Model.PendingCustomers == 0 ? \"\" : \"admin-priority-card--accent\"", view);
+        Assert.Contains("Model.PendingOrders == 0 ? \"\" : \"admin-priority-card--accent\"", view);
+        Assert.Contains("Model.LowStockProducts == 0 ? \"\" : \"admin-priority-card--accent\"", view);
+        Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"\" : \"admin-priority-card--accent\"", view);
+        Assert.DoesNotContain("admin-priority-card--critical", view + dashboardStyles);
+    }
+
+    [Fact]
+    public void Dashboard_cards_share_compact_geometry_and_scoped_theme_tokens()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var dashboardStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard.css"));
+
+        Assert.Matches(@"\.admin-authenticated \.admin-dashboard-page \.admin-priority-card,\s*\.admin-authenticated \.admin-dashboard-page \.dashboard-kpi-card,\s*\.admin-authenticated \.admin-dashboard-page \.admin-recent-orders\s*\{(?=[^}]*border-radius:\s*14px)(?=[^}]*padding:\s*14px)(?=[^}]*border:\s*1px solid)", dashboardStyles);
+        Assert.Contains("--dashboard-card-bg: var(--admin-dark-surface)", dashboardStyles);
+        Assert.Contains("font-size: 21px", dashboardStyles);
+        Assert.Contains("letter-spacing: -.4px", dashboardStyles);
+        Assert.Contains("@media (max-width: 1000px)", dashboardStyles);
+        Assert.Contains("@media (max-width: 650px)", dashboardStyles);
     }
 }
