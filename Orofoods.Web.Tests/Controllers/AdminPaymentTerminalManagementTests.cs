@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Payments;
@@ -54,7 +56,10 @@ public sealed class AdminPaymentTerminalManagementTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var assignments = new DriverPaymentTerminalService(db, TimeProvider.System);
-        var controller = new PaymentTerminalsController(db, assignments, new EmptyPointTerminalDiscovery(),
+        var stagingTestClient = new Mock<IPointStagingOneRealTestClient>();
+        stagingTestClient.SetupGet(client => client.AttemptStarted).Returns(false);
+        var controller = new PaymentTerminalsController(db, assignments, new EmptyPointTerminalDiscovery(), stagingTestClient.Object,
+            Options.Create(new PointStagingOneRealTestOptions { Enabled = false }),
             new TestHostEnvironment("Test"), NullLogger<PaymentTerminalsController>.Instance);
 
         var created = await controller.Edit(new PaymentTerminalEditViewModel
