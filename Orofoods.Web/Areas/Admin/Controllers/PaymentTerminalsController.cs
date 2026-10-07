@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Payments;
@@ -14,6 +15,8 @@ public sealed class PaymentTerminalsController(
     ApplicationDbContext db,
     IDriverPaymentTerminalService assignmentService,
     IMercadoPagoPointTerminalDiscovery terminalDiscovery,
+    IPointStagingOneRealTestClient stagingOneRealTestClient,
+    IOptions<PointStagingOneRealTestOptions> stagingOneRealTestOptions,
     IHostEnvironment hostEnvironment,
     ILogger<PaymentTerminalsController> logger) : Controller
 {
@@ -66,10 +69,33 @@ public sealed class PaymentTerminalsController(
                 .OrderBy(x => x.Provider).ThenBy(x => x.DeviceId).ToListAsync(cancellationToken),
             MercadoPagoTerminals = mercadoPagoTerminals,
             IsStaging = isStaging,
-            DiscoveryFailed = discoveryFailed
+            DiscoveryFailed = discoveryFailed,
+            PointStagingOneRealTestEnabled = isStaging && stagingOneRealTestOptions.Value.Enabled,
+            StagingOneRealTestAttemptStarted = isStaging && stagingOneRealTestOptions.Value.Enabled && stagingOneRealTestClient.AttemptStarted,
+            StagingOneRealTestOrderId = TempData["StagingOneRealTestOrderId"] as string,
+            StagingOneRealTestStatus = TempData["StagingOneRealTestStatus"] as string,
+            StagingOneRealTestMessage = TempData["StagingOneRealTestMessage"] as string
         };
 
         return View(model);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> StartStagingOneRealPointTest(CancellationToken cancellationToken = default)
+    {
+        if (!IsStagingOneRealPointTestEnabled()) return NotFound();
+
+        SetStagingOneRealTestResult(await stagingOneRealTestClient.StartAsync(cancellationToken));
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RefreshStagingOneRealPointTestStatus(string orderId, CancellationToken cancellationToken = default)
+    {
+        if (!IsStagingOneRealPointTestEnabled()) return NotFound();
+
+        SetStagingOneRealTestResult(await stagingOneRealTestClient.GetStatusAsync(orderId, cancellationToken));
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet]
@@ -152,6 +178,16 @@ public sealed class PaymentTerminalsController(
     {
         TempData["MercadoPagoPointTerminalMessage"] = "N\u00E3o foi poss\u00EDvel confirmar a configura\u00E7\u00E3o do terminal. Atualize a descoberta para conferir o estado atual antes de tentar novamente.";
         return RedirectToAction(nameof(Index));
+    }
+
+    private bool IsStagingOneRealPointTestEnabled() =>
+        hostEnvironment.IsStaging() && stagingOneRealTestOptions.Value.Enabled;
+
+    private void SetStagingOneRealTestResult(PointStagingOneRealTestResult result)
+    {
+        TempData["StagingOneRealTestOrderId"] = result.OrderId;
+        TempData["StagingOneRealTestStatus"] = result.Status;
+        TempData["StagingOneRealTestMessage"] = result.Message;
     }
 
     public async Task<IActionResult> Edit(int? id)

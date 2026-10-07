@@ -33,6 +33,11 @@ public sealed class PaymentTerminalIndexViewModel
     public IReadOnlyList<MercadoPagoPointTerminal> MercadoPagoTerminals { get; init; } = [];
     public bool IsStaging { get; init; }
     public bool DiscoveryFailed { get; init; }
+    public bool PointStagingOneRealTestEnabled { get; init; }
+    public bool StagingOneRealTestAttemptStarted { get; init; }
+    public string? StagingOneRealTestOrderId { get; init; }
+    public string? StagingOneRealTestStatus { get; init; }
+    public string? StagingOneRealTestMessage { get; init; }
 }
 
 public sealed class DriverPaymentTerminalAssignmentCreateViewModel

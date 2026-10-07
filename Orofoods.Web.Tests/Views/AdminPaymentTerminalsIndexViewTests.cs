@@ -34,4 +34,30 @@ public sealed class AdminPaymentTerminalsIndexViewTests
         Assert.DoesNotContain("api.mercadopago.com", view, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("/v1/orders", view, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Staging_one_real_point_test_is_fixed_admin_only_and_shows_only_safe_order_fields()
+    {
+        var view = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Areas", "Admin", "Views", "PaymentTerminals", "Index.cshtml"));
+
+        Assert.Contains("PointStagingOneRealTestEnabled", view, StringComparison.Ordinal);
+        Assert.Contains("StagingOneRealTestAttemptStarted", view, StringComparison.Ordinal);
+        Assert.Contains("Enviar teste de R$ 1,00", view, StringComparison.Ordinal);
+        Assert.Contains("StartStagingOneRealPointTest", view, StringComparison.Ordinal);
+        Assert.Contains("RefreshStagingOneRealPointTestStatus", view, StringComparison.Ordinal);
+        Assert.Contains("StagingOneRealTestOrderId", view, StringComparison.Ordinal);
+        Assert.Contains("StagingOneRealTestStatus", view, StringComparison.Ordinal);
+        Assert.Contains("StagingOneRealTestMessage", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("terminal_id", view, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("X-Idempotency-Key", view, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("name=\"amount\"", view, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Staging_one_real_point_test_flag_defaults_to_false()
+    {
+        var appSettings = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "appsettings.json"));
+
+        Assert.Contains("\"PointStagingOneRealTestEnabled\": false", appSettings, StringComparison.Ordinal);
+    }
 }
