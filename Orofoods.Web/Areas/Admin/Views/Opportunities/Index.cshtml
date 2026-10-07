@@ -3,17 +3,6 @@
 @{
     ViewData["Title"] = "Oportunidades";
 
-    string OpportunityStageLabel(Orofoods.Web.Models.Commercial.CrmOpportunityStage stage) => stage switch
-    {
-        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Open => "Aberta",
-        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Contacted => "Em contato",
-        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Proposal => "Proposta",
-        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Negotiation => "Em negociação",
-        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Won => "Ganha",
-        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Lost => "Perdida",
-        Orofoods.Web.Models.Commercial.CrmOpportunityStage.Cancelled => "Cancelada",
-        _ => "Aberta"
-    };
 }
 
 <section class="section admin-opportunities-page">
@@ -32,6 +21,7 @@
                 <div class="admin-empty-state" role="status">
                     <i class="fa-solid fa-lightbulb" aria-hidden="true"></i>
                     <h2>Nenhuma oportunidade encontrada</h2>
+                    <a class="btn admin-primary-action admin-opportunity-empty-action" asp-action="Create" asp-route-customerId="@(Context.Request.Query["customerId"])">Nova oportunidade</a>
                     <p>Ainda não existem oportunidades para os filtros selecionados.</p>
                 </div>
             }
@@ -39,17 +29,25 @@
             {
                 @foreach (var opportunity in Model)
                 {
-                    <article>
-                        <div>
-                            <strong>@opportunity.Customer.TradeName</strong>
-                            <small>@opportunity.Title &middot; @opportunity.Type.ToDisplayName()</small>
+                    <article class="admin-opportunity-card">
+                        <div class="admin-opportunity-card__main">
+                            <div class="admin-opportunity-card__header">
+                                <div>
+                                    <strong class="admin-opportunity-card__customer">@opportunity.Customer.TradeName</strong>
+                                    <p class="admin-opportunity-card__title">@opportunity.Title</p>
+                                </div>
+                                <strong class="admin-opportunity-card__value">@(opportunity.EstimatedValue?.ToString("C") ?? "-")</strong>
+                            </div>
+                            <div class="admin-opportunity-card__meta">
+                                <span class="admin-opportunity-card__type">@opportunity.Type.ToDisplayName()</span>
+                                <span class="admin-opportunity-card__status">@opportunity.Stage.ToDisplayName()</span>
+                            </div>
                         </div>
-                        <span>@OpportunityStageLabel(opportunity.Stage)</span>
-                        <strong>@(opportunity.EstimatedValue?.ToString("C") ?? "-")</strong>
-                        <form asp-action="ChangeStage" method="post">
+                        <form class="admin-opportunity-stage-form" asp-action="ChangeStage" method="post">
                             <input type="hidden" name="id" value="@opportunity.Id" />
-                            <select name="stage">
-                                <option value="@opportunity.Stage">@OpportunityStageLabel(opportunity.Stage)</option>
+                            <label class="visually-hidden" for="opportunity-stage-@opportunity.Id">Status de @opportunity.Customer.TradeName</label>
+                            <select id="opportunity-stage-@opportunity.Id" name="stage">
+                                <option value="@opportunity.Stage">@opportunity.Stage.ToDisplayName()</option>
                                 <option value="Won">Ganha</option>
                                 <option value="Lost">Perdida</option>
                             </select>

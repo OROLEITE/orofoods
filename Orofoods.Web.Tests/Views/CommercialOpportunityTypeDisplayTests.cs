@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Orofoods.Web.Models.Commercial;
 
 namespace Orofoods.Web.Tests.Views;
@@ -45,5 +46,29 @@ public class CommercialOpportunityTypeDisplayTests
         Assert.Equal(
             new[] { 0, 1, 2, 3, 4, 5 },
             Enum.GetValues<CrmOpportunityType>().Select(type => (int)type));
+    }
+
+    [Fact]
+    public void Opportunity_list_uses_compact_cards_with_grouped_status_actions_and_natural_height()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Opportunities", "Index.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-opportunities.css"));
+
+        Assert.Contains("class=\"admin-opportunity-card\"", view);
+        Assert.Contains("class=\"admin-opportunity-card__value\"", view);
+        Assert.Contains("class=\"admin-opportunity-stage-form\"", view);
+        Assert.Contains("admin-opportunity-empty-action", view);
+        Assert.Contains("asp-action=\"ChangeStage\"", view);
+        Assert.Contains(".admin-opportunities-page .admin-opportunity-card", styles);
+        Assert.Contains(".admin-opportunities-page .admin-opportunity-card__value", styles);
+
+        var cardRule = Regex.Match(
+            styles,
+            @"\.admin-opportunities-page \.admin-opportunity-card\s*\{(?<body>[^}]*)\}",
+            RegexOptions.Singleline);
+
+        Assert.True(cardRule.Success);
+        Assert.DoesNotMatch(@"\b(?:height|min-height|max-height)\s*:", cardRule.Groups["body"].Value);
     }
 }

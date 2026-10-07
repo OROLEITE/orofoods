@@ -31,6 +31,22 @@ public static class CrmOpportunityTypeDisplayExtensions
 }
 
 public enum CrmOpportunityStage { Open, Contacted, Proposal, Negotiation, Won, Lost, Cancelled }
+
+public static class CrmOpportunityStageDisplayExtensions
+{
+    public static string ToDisplayName(this CrmOpportunityStage stage) => stage switch
+    {
+        CrmOpportunityStage.Open => "Aberta",
+        CrmOpportunityStage.Contacted => "Em contato",
+        CrmOpportunityStage.Proposal => "Proposta",
+        CrmOpportunityStage.Negotiation => "Em negocia\u00e7\u00e3o",
+        CrmOpportunityStage.Won => "Ganha",
+        CrmOpportunityStage.Lost => "Perdida",
+        CrmOpportunityStage.Cancelled => "Cancelada",
+        _ => stage.ToString()
+    };
+}
+
 public enum CrmOpportunitySource { Manual, RepurchaseAlert, NoPurchaseAlert, FirstContact, OrderFollowUp }
 public enum CrmOpportunityEventType { Created, StageChanged, ProposalSent, Won, Lost, OrderRelated }
 
