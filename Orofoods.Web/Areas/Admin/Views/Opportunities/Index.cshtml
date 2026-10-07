@@ -1,17 +1,7 @@
 @model IReadOnlyList<Orofoods.Web.Models.Commercial.CrmOpportunity>
+@using Orofoods.Web.Models.Commercial
 @{
     ViewData["Title"] = "Oportunidades";
-
-    string OpportunityTypeLabel(Orofoods.Web.Models.Commercial.CrmOpportunityType type) => type switch
-    {
-        Orofoods.Web.Models.Commercial.CrmOpportunityType.Repurchase => "Recompra",
-        Orofoods.Web.Models.Commercial.CrmOpportunityType.NewProduct => "Novo produto",
-        Orofoods.Web.Models.Commercial.CrmOpportunityType.CrossSell => "Venda adicional",
-        Orofoods.Web.Models.Commercial.CrmOpportunityType.CustomerRecovery => "Recuperação de cliente",
-        Orofoods.Web.Models.Commercial.CrmOpportunityType.Proposal => "Proposta comercial",
-        Orofoods.Web.Models.Commercial.CrmOpportunityType.Other => "Outra",
-        _ => "Outra"
-    };
 
     string OpportunityStageLabel(Orofoods.Web.Models.Commercial.CrmOpportunityStage stage) => stage switch
     {
@@ -52,7 +42,7 @@
                     <article>
                         <div>
                             <strong>@opportunity.Customer.TradeName</strong>
-                            <small>@opportunity.Title &middot; @OpportunityTypeLabel(opportunity.Type)</small>
+                            <small>@opportunity.Title &middot; @opportunity.Type.ToDisplayName()</small>
                         </div>
                         <span>@OpportunityStageLabel(opportunity.Stage)</span>
                         <strong>@(opportunity.EstimatedValue?.ToString("C") ?? "-")</strong>

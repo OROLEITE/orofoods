@@ -193,8 +193,6 @@ html[data-theme="dark"] .admin-orders-table a:focus-visible{
 html[data-theme="dark"] .admin-priority-card:hover{
     border-color:#475569;
     background:#1E293B;
-    box-shadow:0 12px 28px #02061766;
-    color:#F8FAFC;
 }
 
 html[data-theme="dark"] .admin-dashboard-page .admin-orders-table thead th{

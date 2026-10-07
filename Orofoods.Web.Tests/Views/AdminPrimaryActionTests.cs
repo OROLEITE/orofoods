@@ -112,20 +112,13 @@ public class AdminPrimaryActionTests
         var opportunities = ReadView("Opportunities", "Index.cshtml");
         Assert.Contains("Nenhuma oportunidade encontrada", opportunities);
         Assert.Contains("Ainda não existem oportunidades para os filtros selecionados.", opportunities);
-        Assert.Contains("Venda adicional", opportunities);
         Assert.Contains("Aberta", opportunities);
         Assert.Contains("Negotiation => \"Em negociação\"", opportunities);
-        Assert.Contains("Repurchase => \"Recompra\"", opportunities);
-        Assert.Contains("NewProduct => \"Novo produto\"", opportunities);
-        Assert.Contains("CustomerRecovery => \"Recuperação de cliente\"", opportunities);
-        Assert.Contains("Proposal => \"Proposta comercial\"", opportunities);
-        Assert.Contains("Other => \"Outra\"", opportunities);
+        Assert.Contains("@opportunity.Type.ToDisplayName()", opportunities);
         Assert.Contains("Contacted => \"Em contato\"", opportunities);
-        Assert.Contains("Proposal => \"Proposta\"", opportunities);
         Assert.Contains("Won => \"Ganha\"", opportunities);
         Assert.Contains("Lost => \"Perdida\"", opportunities);
         Assert.Contains("Cancelled => \"Cancelada\"", opportunities);
-        Assert.DoesNotContain("@opportunity.Type", opportunities);
         Assert.DoesNotContain(">@opportunity.Stage<", opportunities);
 
         var notifications = ReadView("Notifications", "Index.cshtml");

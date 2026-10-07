@@ -33,7 +33,7 @@ public class AdminDashboardThemeTests
         Assert.Contains("Model.PendingCustomers == 0 ? \"\" : \"admin-priority-card--accent\"", view);
         Assert.Contains("Model.PendingOrders == 0 ? \"\" : \"admin-priority-card--accent\"", view);
         Assert.Contains("Model.LowStockProducts == 0 ? \"\" : \"admin-priority-card--accent\"", view);
-        Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"\" : \"admin-priority-card--accent\"", view);
+        Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"\" : \"admin-priority-card--danger\"", view);
         Assert.DoesNotContain("admin-priority-card--critical", view + dashboardStyles);
     }
 

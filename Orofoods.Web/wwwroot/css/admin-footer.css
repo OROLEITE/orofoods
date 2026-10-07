@@ -1,0 +1,50 @@
+body.admin-authenticated > .site-footer {
+    padding: 8px 0;
+    border-top: 1px solid #343B33;
+}
+
+body.admin-authenticated > .site-footer .site-footer-grid {
+    align-items: center;
+    gap: 16px;
+}
+
+body.admin-authenticated > .site-footer .footer-logo {
+    width: 42px;
+    height: 42px;
+}
+
+body.admin-authenticated > .site-footer .footer-legal small {
+    margin-top: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) > .site-footer {
+    padding: 8px 0;
+    border-top-color: #334155;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) > .site-footer .site-footer-grid {
+    gap: 16px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) > .site-footer .footer-logo {
+    width: 42px;
+    height: 42px;
+}
+
+@media (max-width: 700px) {
+    body.admin-authenticated > .site-footer {
+        padding: 8px 0;
+    }
+
+    body.admin-authenticated > .site-footer .site-footer-grid {
+        display: grid !important;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        text-align: left;
+    }
+
+    html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) > .site-footer .site-footer-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
