@@ -258,8 +258,18 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CompleteActivity(int id, int customerId)
+    public async Task<IActionResult> CompleteActivity(int id, int customerId, int? status = null, bool asJson = false)
     {
+        var targetStatus = status.HasValue && Enum.IsDefined((CommercialActivityStatus)status.Value)
+            ? (CommercialActivityStatus)status.Value
+            : status.HasValue
+                ? (CommercialActivityStatus?)null
+                : CommercialActivityStatus.Completed;
+        if (targetStatus is null || targetStatus is not CommercialActivityStatus.Scheduled and not CommercialActivityStatus.InProgress and not CommercialActivityStatus.Completed)
+        {
+            return BadRequest(new { success = false, message = "Status inválido para o Kanban." });
+        }
+
         var scope = await accessService.GetScopeAsync(User);
         if (!await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope).AnyAsync(x => x.Id == customerId))
         {
@@ -271,9 +281,20 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             return NotFound();
         }
 
-        activity.Status = CommercialActivityStatus.Completed;
-        activity.CompletedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        if (activity.Status != targetStatus.Value)
+        {
+            activity.Status = targetStatus.Value;
+            activity.CompletedAt = targetStatus == CommercialActivityStatus.Completed
+                ? activity.CompletedAt ?? DateTime.UtcNow
+                : null;
+            await db.SaveChangesAsync();
+        }
+
+        if (asJson)
+        {
+            return Json(new { success = true, status = (int)activity.Status });
+        }
+
         return RedirectToAction(nameof(Details), new { id = customerId });
     }
 
