@@ -50,4 +50,32 @@ public class AdminDashboardThemeTests
         Assert.Contains("@media (max-width: 1000px)", dashboardStyles);
         Assert.Contains("@media (max-width: 650px)", dashboardStyles);
     }
+
+    [Fact]
+    public void Dashboard_operation_section_uses_existing_status_labels_and_compact_responsive_grids()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Dashboard", "Index.cshtml"));
+        var dashboardStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard.css"));
+
+        var prioritiesIndex = view.IndexOf("O que exige aten&ccedil;&atilde;o agora", StringComparison.Ordinal);
+        var operationIndex = view.IndexOf("Opera&ccedil;&atilde;o de hoje", StringComparison.Ordinal);
+        var commercialIndex = view.IndexOf("Resultado do m&ecirc;s", StringComparison.Ordinal);
+
+        Assert.True(prioritiesIndex >= 0 && prioritiesIndex < operationIndex && operationIndex < commercialIndex);
+        Assert.Contains("Acompanhe o fluxo dos pedidos do dia.", view);
+        Assert.Contains("OrderStatus.UnderReview.ToDisplayName()", view);
+        Assert.Contains("OrderStatus.Approved.ToDisplayName()", view);
+        Assert.Contains("OrderStatus.Picking.ToDisplayName()", view);
+        Assert.Contains("OrderStatus.Invoiced.ToDisplayName()", view);
+        Assert.Contains("OrderStatus.OutForDelivery.ToDisplayName()", view);
+        Assert.Contains("OrderStatus.Delivered.ToDisplayName()", view);
+        Assert.Contains("Entregues hoje", view);
+        Assert.Contains("OrdersTodayTotal", view);
+        Assert.Contains("OrdersTodayAwaitingAction", view);
+        Assert.Contains("OrdersDeliveredToday", view);
+        Assert.Contains("grid-template-columns: repeat(4, minmax(0, 1fr))", dashboardStyles);
+        Assert.Contains("@media (max-width: 1000px)", dashboardStyles);
+        Assert.Contains("@media (max-width: 650px)", dashboardStyles);
+    }
 }
