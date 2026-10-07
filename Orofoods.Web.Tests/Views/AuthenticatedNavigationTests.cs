@@ -59,12 +59,11 @@ public class AuthenticatedNavigationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
         var headerStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "header.css"));
-        var navigationStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
 
         Assert.Contains("class=\"account-name\"", header);
         Assert.Contains("class=\"account-context\"", header);
-        Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .navbar", navigationStyles);
-        Assert.Contains("min-height: 64px", navigationStyles);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .navbar", headerStyles);
+        Assert.Contains("min-height: 64px", headerStyles);
         Assert.Contains(".account-name,.account-context{display:block;max-width", headerStyles);
         Assert.Contains("overflow:hidden;text-overflow:ellipsis;white-space:nowrap", headerStyles);
     }
