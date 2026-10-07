@@ -267,6 +267,24 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     outline-offset: 2px;
 }
 
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn-outline-dark {
+    border-color: #64748B;
+    background: transparent;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn-outline-dark:focus-visible {
+    border-color: #38BDF8;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn-outline-dark:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn-outline-danger {
     border-color: #F87171;
     color: #FCA5A5;

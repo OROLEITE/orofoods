@@ -81,7 +81,7 @@
         {
             <section class="card mt-3 mb-4" aria-labelledby="point-charge-title">
                 <div class="card-body">
-                    <h2 id="point-charge-title" class="h5">Cobrança no terminal de teste</h2>
+                    <h2 id="point-charge-title" class="h5">Cobrança no terminal Point</h2>
                     @if (cardOnDeliveryPayment?.Gateway == "MercadoPagoPoint")
                     {
                         <p data-point-payment-status="@cardOnDeliveryPayment.Status.ToString().ToLowerInvariant()" data-point-payment-label="@paymentStatusLabel">
@@ -115,7 +115,7 @@
                                     <input type="hidden" name="id" value="@Model.Id" />
                                     <input type="hidden" name="assignmentId" value="@retryAssignment.Id" />
                                     <input type="hidden" name="requestKey" value="@ViewBag.PointRequestKey" />
-                                    <button class="btn btn-outline-dark">Reenviar tentativa segura</button>
+                                <button class="btn btn-outline-dark" type="submit">Reenviar tentativa segura</button>
                                 </form>
                             }
                             else
@@ -132,13 +132,13 @@
                             <input type="hidden" name="requestKey" value="@ViewBag.PointRequestKey" />
                             <label for="point-assignment" class="visually-hidden">Motorista e terminal</label>
                             <select id="point-assignment" name="assignmentId" class="form-select" required>
-                                <option value="">Selecione motorista e terminal de teste</option>
+                                <option value="">Selecione motorista e terminal associado</option>
                                 @foreach (var assignment in pointAssignments)
                                 {
                                     <option value="@assignment.Id">@assignment.Driver?.Name — @assignment.PaymentTerminal?.DeviceId</option>
                                 }
                             </select>
-                            <button class="btn btn-gold">COBRAR NA MAQUININHA</button>
+                            <button class="btn btn-gold" type="submit">COBRAR NA MAQUININHA</button>
                         </form>
                     }
                     else if (!paymentApproved && !pointAttemptActive && pointChargeBlockReason is not null)

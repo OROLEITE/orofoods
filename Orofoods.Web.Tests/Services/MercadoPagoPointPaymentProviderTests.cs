@@ -26,12 +26,76 @@ public sealed class MercadoPagoPointPaymentProviderTests
         Assert.Equal("point", json.RootElement.GetProperty("type").GetString());
         Assert.Equal("oro-order-42-attempt-20", json.RootElement.GetProperty("external_reference").GetString());
         Assert.Equal("125.50", json.RootElement.GetProperty("transactions").GetProperty("payments")[0].GetProperty("amount").GetString());
-        Assert.Equal("NEWLAND_N950__SBX0000001", json.RootElement.GetProperty("config").GetProperty("point").GetProperty("terminal_id").GetString());
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", json.RootElement.GetProperty("config").GetProperty("point").GetProperty("terminal_id").GetString());
         Assert.DoesNotContain("store_id", request.Body!, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("pos_id", request.Body!, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("ORD-POINT-1", ReadProperty<string>(result, "GatewayOrderId"));
         Assert.Equal("PAY-POINT-1", ReadProperty<string>(result, "GatewayPaymentId"));
         Assert.Equal(PaymentStatus.Pending, result.PaymentStatus);
+    }
+
+    [Fact]
+    public async Task CreatePointOrder_rejects_a_terminal_other_than_the_authorized_physical_device()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => provider.CreateTerminalPaymentAsync(
+            TestRequest() with { DeviceId = "NEWLAND_N950__OTHER" }));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task CreatePointOrder_allows_staging_only_when_the_explicit_real_point_flag_is_enabled()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Staging", stagingRealEnabled: true);
+
+        var result = await provider.CreateTerminalPaymentAsync(TestRequest());
+
+        Assert.Equal("ORD-POINT-1", ReadProperty<string>(result, "GatewayOrderId"));
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", JsonDocument.Parse(Assert.Single(handler.Requests).Body!).RootElement
+            .GetProperty("config").GetProperty("point").GetProperty("terminal_id").GetString());
+    }
+
+    [Fact]
+    public async Task CreatePointOrder_allows_production_with_production_flag_and_allowlisted_terminal()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Production", productionEnabled: true,
+            authorizedProductionDeviceId: "NEWLAND_N950__N950NCD600484709");
+
+        var result = await provider.CreateTerminalPaymentAsync(TestRequest());
+
+        Assert.Equal("ORD-POINT-1", ReadProperty<string>(result, "GatewayOrderId"));
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("attempt-point-1", request.IdempotencyKey);
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", JsonDocument.Parse(request.Body!).RootElement
+            .GetProperty("config").GetProperty("point").GetProperty("terminal_id").GetString());
+    }
+
+    [Fact]
+    public async Task CreatePointOrder_rejects_production_terminal_outside_allowlist_before_http()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Production", productionEnabled: true,
+            authorizedProductionDeviceId: "ANOTHER-TERMINAL");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => provider.CreateTerminalPaymentAsync(TestRequest()));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task CreatePointOrder_rejects_staging_when_the_explicit_real_point_flag_is_disabled()
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Staging");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => provider.CreateTerminalPaymentAsync(TestRequest()));
+
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
@@ -201,13 +265,39 @@ public sealed class MercadoPagoPointPaymentProviderTests
         Assert.Equal("UNKNOWN_POINT_STATUS", result.ErrorCode);
     }
 
-    [Fact]
-    public async Task Provider_refuses_real_environments_before_http()
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public async Task Provider_refuses_real_environments_before_http(string environmentName)
     {
         var handler = new RecordingHandler(CreatedOrderResponse);
-        var provider = CreateProvider(handler, environmentName: "Production");
+        var provider = CreateProvider(handler, environmentName: environmentName);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => provider.CreateTerminalPaymentAsync(TestRequest()));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Theory]
+    [InlineData("Create")]
+    [InlineData("Get")]
+    [InlineData("Cancel")]
+    public async Task Provider_blocks_all_point_payment_operations_in_staging(string operation)
+    {
+        var handler = new RecordingHandler(CreatedOrderResponse);
+        var provider = CreateProvider(handler, environmentName: "Staging");
+
+        async Task Act()
+        {
+            switch (operation)
+            {
+                case "Get": await provider.GetPaymentStatusAsync("ORDER-1"); break;
+                case "Cancel": await provider.CancelPendingPaymentAsync("ORDER-1"); break;
+                default: await provider.CreateTerminalPaymentAsync(TestRequest()); break;
+            }
+        }
+
+        await Assert.ThrowsAsync<InvalidOperationException>(Act);
 
         Assert.Empty(handler.Requests);
     }
@@ -221,12 +311,12 @@ public sealed class MercadoPagoPointPaymentProviderTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => provider.CreateTerminalPaymentAsync(TestRequest()));
 
-        Assert.Contains("Credenciais de teste", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Credenciais Mercado Pago Point", exception.Message, StringComparison.Ordinal);
         Assert.Empty(handler.Requests);
     }
 
     [Fact]
-    public async Task Test_provider_refuses_non_virtual_device_before_http()
+    public async Task Test_provider_refuses_device_outside_environment_allowlist_before_http()
     {
         var handler = new RecordingHandler(CreatedOrderResponse);
         var provider = CreateProvider(handler);
@@ -297,12 +387,26 @@ public sealed class MercadoPagoPointPaymentProviderTests
     private static IPointPaymentProvider CreateProvider(
         HttpMessageHandler handler,
         string environmentName = "Test",
-        string accessToken = "test-access-token")
+        string accessToken = "test-access-token",
+        bool stagingRealEnabled = false,
+        bool productionEnabled = false,
+        string? authorizedProductionDeviceId = null)
     {
         var providerType = typeof(IPointPaymentProvider).Assembly.GetType("Orofoods.Web.Services.Payments.MercadoPagoPointPaymentProvider");
         Assert.NotNull(providerType);
         var options = new MercadoPagoPointOptions { Enabled = true };
-        SetOption(options, "Environment", "Test");
+        SetOption(options, "Environment", environmentName);
+        SetOption(options, "StagingRealEnabled", stagingRealEnabled);
+        SetOption(options, "ProductionEnabled", productionEnabled);
+        options.AuthorizedDeviceIdsByEnvironment = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Test"] = ["NEWLAND_N950__N950NCD600484709"],
+            ["Staging"] = ["NEWLAND_N950__N950NCD600484709"]
+        };
+        if (authorizedProductionDeviceId is not null)
+        {
+            options.AuthorizedDeviceIdsByEnvironment["Production"] = [authorizedProductionDeviceId];
+        }
         SetOption(options, "AccessToken", accessToken);
         SetOption(options, "PoiType", "NEWLAND_N950");
         SetOption(options, "BaseAddress", new Uri("https://api.mercadopago.com/"));
@@ -323,7 +427,7 @@ public sealed class MercadoPagoPointPaymentProviderTests
         PaymentId: 20,
         AssignmentId: 30,
         Amount: 125.50m,
-        DeviceId: "SBX0000001",
+        DeviceId: "NEWLAND_N950__N950NCD600484709",
         StoreId: "store-local-only",
         PosId: "pos-local-only",
         IdempotencyKey: "attempt-point-1");
@@ -391,3 +495,4 @@ public sealed class MercadoPagoPointPaymentProviderTests
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 }
+

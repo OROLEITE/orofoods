@@ -185,6 +185,56 @@ public sealed class ProductImageStorageTests
         Assert.Contains("Storage:Provider=AzureBlob", exception.Message);
     }
 
+    [Theory]
+    [InlineData("not-a-uri")]
+    [InlineData("ftp://storofoodsstg01.blob.core.windows.net")]
+    [InlineData("https://storofoodsstg01.blob.core.windows.net/?token=secret")]
+    public void AzureProvider_rejects_invalid_service_uri_clearly(string serviceUri)
+    {
+        var options = new StorageOptions
+        {
+            Provider = "AzureBlob",
+            AzureBlob = new AzureBlobStorageOptions
+            {
+                ServiceUri = serviceUri,
+                ContainerName = "product-images"
+            }
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new AzureBlobProductImageStorage(options));
+
+        Assert.Contains("Storage:AzureBlob:ServiceUri", exception.Message);
+    }
+
+    [Fact]
+    public void AzureProvider_construction_does_not_call_remote_container_operations()
+    {
+        var options = new StorageOptions
+        {
+            Provider = "AzureBlob",
+            AzureBlob = new AzureBlobStorageOptions
+            {
+                ServiceUri = "https://storofoodsstg01.blob.core.windows.net",
+                ContainerName = "product-images"
+            }
+        };
+        var blob = new FakeBlobClient(new Uri("https://storofoodsstg01.blob.core.windows.net/product-images/image.jpg"));
+        var container = new FakeBlobContainerClient(blob);
+
+        Uri? configuredContainerUri = null;
+        var storage = new AzureBlobProductImageStorage(options, uri =>
+        {
+            configuredContainerUri = uri;
+            return container;
+        });
+
+        Assert.NotNull(storage);
+        Assert.Equal("https://storofoodsstg01.blob.core.windows.net/product-images", configuredContainerUri?.ToString());
+        Assert.False(container.GetBlobClientCalled);
+        Assert.False(blob.UploadCalled);
+        Assert.False(blob.DeleteCalled);
+    }
+
     [Fact]
     public async Task AzureProvider_uploads_with_content_type_and_returns_blob_uri()
     {
@@ -291,14 +341,13 @@ public sealed class ProductImageStorageTests
             GetBlobClientCalled = true;
             return blob;
         }
-
-        public void EnsurePrivate() => throw new InvalidOperationException("Test client must not initialize a remote container.");
     }
 
     private sealed class FakeBlobClient(Uri uri, ProductImageReadResult? readResult = null) : AzureBlobProductImageStorage.IAzureBlobClient
     {
         public Uri Uri { get; } = uri;
         public BlobUploadOptions? UploadOptions { get; private set; }
+        public bool UploadCalled => UploadOptions is not null;
         public bool DeleteCalled { get; private set; }
 
         public Task<ProductImageReadResult?> OpenReadAsync(CancellationToken cancellationToken)

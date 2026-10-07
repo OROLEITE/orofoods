@@ -576,6 +576,7 @@ public class AdminDarkThemeContractTests
             RequireScopedRule(products, ".admin-products-edit-page", control + "[readonly]", "background");
         }
         RequireScopedRule(products, ".admin-products-edit-page", ".admin-secondary-action", "color");
+        RequireScopedRule(products, ".admin-products-edit-page", ".btn-outline-dark", "color");
         RequireScopedValue(products, ".admin-products-edit-page .form-control:disabled", "color", "#94A3B8");
         RequireScopedValue(products, ".admin-products-edit-page .btn:disabled", "color", "#94A3B8");
         RequireScopedRule(products, ".admin-products-edit-page", ".text-danger", "color");
@@ -939,7 +940,10 @@ public class AdminDarkThemeContractTests
     }
 
     private static bool IsScopedAdminDarkSelector(string selector) =>
-        selector.StartsWith($"{DarkThemeGate} {AdminBodyGate} ", StringComparison.Ordinal);
+        selector.StartsWith($"{DarkThemeGate} {AdminBodyGate} ", StringComparison.Ordinal) ||
+        Regex.IsMatch(selector,
+            @"^html\[data-theme=""dark""\] body\.admin-authenticated:has\(\.whatsapp-inbox-page\) \.site-header-modern \.main-nav \.nav-link(?:\.active|:hover|:focus-visible)?$",
+            RegexOptions.CultureInvariant);
 
     private static bool ContainsComponent(string selector, string component)
     {

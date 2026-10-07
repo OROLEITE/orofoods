@@ -61,6 +61,10 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: var(--admin-sidebar-accent);
 }
 
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar > .admin-sidebar-header {
+    padding-inline: 0;
+}
+
 .admin-sidebar-header h2 {
     margin: 6px 0 2px;
     font-size: 20px;
@@ -244,12 +248,6 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     min-height: 56px;
     padding: 4px 0 12px;
     text-align: center;
-}
-
-.admin-sidebar-collapsed .admin-sidebar-header small {
-    display: block;
-    padding-top: 38px;
-    font-size: 8px;
 }
 
 .admin-sidebar-collapsed .admin-sidebar-header h2,
