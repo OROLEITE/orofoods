@@ -546,7 +546,7 @@ public class AdminDarkThemeContractTests
         RequireScopedValue(products, ".admin-products-page a", "color", "#38BDF8");
         RequireScopedValue(products, ".admin-products-page a:hover", "color", "#F8FAFC");
         RequireScopedRule(products, ".admin-products-page a:focus-visible", "outline");
-        RequireScopedValue(products, ".admin-products-edit-page .admin-form-page .form-text", "color", "#CBD5E1");
+        RequireScopedValue(products, ".admin-products-edit-page .form-text", "color", "#CBD5E1");
         RequireScopedRule(products, ".admin-products-page .admin-table-card", "background");
         RequireScopedRule(products, ".admin-products-page .admin-products-table", "--bs-table-bg");
         RequireScopedRule(products, ".admin-products-page .admin-products-table > thead > tr > th", "background");
@@ -560,25 +560,29 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(products, ".admin-products-page .catalog-tools input[name=\"q\"]:focus", "outline");
         RequireScopedRule(products, ".admin-products-page .admin-secondary-action:hover", "background");
         RequireScopedRule(products, ".admin-products-page .admin-secondary-action:focus-visible", "outline");
-        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page", "background");
-        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page .admin-form-hero", "background");
-        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page .admin-form-card", "background");
-        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page .admin-image-manager", "background");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-products-edit-page", "background");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-hero", "background");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-card", "background");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-image-manager", "background");
         foreach (var control in new[] { ".form-control", ".form-select" })
         {
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control, "background");
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control, "color");
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control, "border-color");
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control, "color-scheme");
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control + ":focus", "outline");
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control + ":disabled", "background");
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control + ":disabled", "color");
-            RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page " + control + "[readonly]", "background");
+            RequireScopedRule(products, ".admin-products-edit-page", control, "background");
+            RequireScopedRule(products, ".admin-products-edit-page", control, "color");
+            RequireScopedRule(products, ".admin-products-edit-page", control, "border-color");
+            RequireScopedRule(products, ".admin-products-edit-page", control, "color-scheme");
+            RequireScopedRule(products, ".admin-products-edit-page", control + ":focus", "outline");
+            RequireScopedRule(products, ".admin-products-edit-page", control + ":disabled", "background");
+            RequireScopedRule(products, ".admin-products-edit-page", control + ":disabled", "color");
+            RequireScopedRule(products, ".admin-products-edit-page", control + "[readonly]", "background");
         }
-        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page .btn-outline-dark", "color");
-        RequireScopedValue(products, ".admin-products-edit-page .admin-form-page .form-control:disabled", "color", "#94A3B8");
-        RequireScopedValue(products, ".admin-products-edit-page .admin-form-page .btn:disabled", "color", "#94A3B8");
-        RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-page .text-danger", "color");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-secondary-action", "color");
+        RequireScopedValue(products, ".admin-products-edit-page .form-control:disabled", "color", "#94A3B8");
+        RequireScopedValue(products, ".admin-products-edit-page .btn:disabled", "color", "#94A3B8");
+        RequireScopedRule(products, ".admin-products-edit-page", ".text-danger", "color");
+
+        var productEdit = File.ReadAllText(Path.Combine(WebProjectPath(), "Areas", "Admin", "Views", "Products", "Edit.cshtml"));
+        Assert.Contains("admin-form-page admin-products-edit-page admin-registration-form-page", productEdit);
+        Assert.DoesNotContain(".admin-products-edit-page .admin-form-page", products);
 
         var inventory = ReadStyles("admin-registrations.css");
         RequireScopedRule(inventory, ".admin-inventory-page", "background");
@@ -675,8 +679,8 @@ public class AdminDarkThemeContractTests
             ["admin-drivers.css"] = [".page-header", ".table-responsive", "form", "h1", "p", ".btn-outline-secondary", ".btn-outline-danger", ".text-danger", ".validation-summary-errors", ".alert-warning"],
             ["admin-driver-payment-terminal-assignments.css"] = [".page-header", ".table-responsive", "form", "h1", ".btn-outline-secondary", ".btn-outline-danger", ".text-danger", ".validation-summary-errors"],
             ["admin-payment-terminals.css"] = [".page-header", ".table-responsive", "form", "h1", ".btn-outline-secondary", ".btn-outline-danger", ".text-danger", ".validation-summary-errors"],
-            ["admin-notifications.css"] = [".section", ".portal-top", ".notification-list"],
-            ["admin-opportunities.css"] = [".section", ".portal-top", ".customer-opportunity-list", ".admin-opportunity-create", ".btn-outline-dark"]
+            ["admin-notifications.css"] = [".section", ".portal-top", ".notification-list", ".admin-notifications-page"],
+            ["admin-opportunities.css"] = [".section", ".portal-top", ".customer-opportunity-list", ".admin-opportunity-create", ".btn-outline-dark", ".admin-opportunities-page"]
         };
         foreach (var (stylesheet, owners) in modules)
         {
@@ -718,11 +722,15 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(notifications, ".notification-list article.is-unread", "border-left-color");
         RequireScopedRule(notifications, ".notification-list article p", "color");
         RequireScopedRule(notifications, ".notification-list article button:focus-visible", "outline");
+        RequireScopedRule(notifications, ".admin-notifications-page", ".admin-empty-state", "background");
+        RequireScopedRule(notifications, ".admin-notifications-page .admin-empty-state", "h2", "color");
 
         var opportunities = ReadStyles("admin-opportunities.css");
         RequireScopedRule(opportunities, ".portal-top h1", "color");
         RequireScopedRule(opportunities, ".customer-opportunity-list article", "background");
         RequireScopedRule(opportunities, ".customer-opportunity-list article select", "background");
+        RequireScopedRule(opportunities, ".admin-opportunities-page", ".admin-empty-state", "background");
+        RequireScopedRule(opportunities, ".admin-opportunities-page .admin-empty-state", "h2", "color");
         RequireScopedRule(opportunities, ".admin-opportunity-create .admin-form-card", "background");
         RequireScopedRule(opportunities, ".admin-opportunity-create .form-control:focus", "outline");
         RequireScopedRule(opportunities, ".admin-opportunity-create .form-select:disabled", "color");
@@ -814,6 +822,7 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(integrations, ".admin-integrations-page .erp-filter-grid label", "color");
         RequireScopedRule(integrations, ".admin-integrations-page .erp-filter-grid .form-control", "background");
         RequireScopedRule(integrations, ".admin-integrations-page .erp-filter-grid .form-select:focus", "outline");
+        RequireScopedRule(integrations, ".admin-integrations-page .erp-filter-submit:focus-visible", "outline");
         RequireScopedRule(integrations, ".admin-integrations-page .erp-filter-grid .form-control:disabled", "color");
         RequireScopedRule(integrations, ".admin-integrations-page .erp-filter-grid .form-control[readonly]", "background");
         RequireScopedRule(integrations, ".admin-integrations-page .erp-table-card", "background");

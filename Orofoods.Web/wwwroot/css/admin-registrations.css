@@ -737,19 +737,23 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: #E5E7EB;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .admin-secondary-action {
     border-color: #64748B;
     color: #E5E7EB;
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:hover,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:focus-visible {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .admin-secondary-action:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .admin-secondary-action:focus-visible {
     border-color: #38BDF8;
     background: #1E293B;
     color: #F8FAFC;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:focus-visible {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .btn-outline-dark:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-registration-form-page .admin-form-actions .admin-secondary-action:focus-visible {
     outline: 2px solid #38BDF8;
     outline-offset: 2px;
 }

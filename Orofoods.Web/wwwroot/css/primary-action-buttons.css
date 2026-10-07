@@ -82,7 +82,6 @@ html[data-theme="dark"] .btn-primary:is(:disabled, .disabled) {
 .admin-users-filter-actions .admin-users-primary,
 .customer-list-tools .admin-primary-action,
 .orders-filter-grid .admin-primary-action,
-.erp-filter-grid .admin-primary-action,
 .catalog-tools .admin-primary-action,
 .commercial-calendar-filters .btn-primary,
 html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary {
@@ -97,8 +96,6 @@ html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary {
 .customer-list-tools .admin-primary-action:active,
 .orders-filter-grid .admin-primary-action:hover,
 .orders-filter-grid .admin-primary-action:active,
-.erp-filter-grid .admin-primary-action:hover,
-.erp-filter-grid .admin-primary-action:active,
 .catalog-tools .admin-primary-action:hover,
 .catalog-tools .admin-primary-action:active,
 .commercial-calendar-filters .btn-primary:hover,
@@ -113,7 +110,6 @@ html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary:active {
 .admin-users-filter-actions .admin-users-primary:focus-visible,
 .customer-list-tools .admin-primary-action:focus-visible,
 .orders-filter-grid .admin-primary-action:focus-visible,
-.erp-filter-grid .admin-primary-action:focus-visible,
 .catalog-tools .admin-primary-action:focus-visible,
 .commercial-calendar-filters .btn-primary:focus-visible,
 html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary:focus-visible {

@@ -72,7 +72,9 @@ public class AdminPrimaryActionTests
         var styles = File.ReadAllText(Path.Combine(WebProjectPath, "wwwroot", "css", "primary-action-buttons.css"));
         Assert.Contains(".customer-list-tools .admin-primary-action", styles);
         Assert.Contains(".orders-filter-grid .admin-primary-action", styles);
-        Assert.Contains(".erp-filter-grid .admin-primary-action", styles);
+        var registrationStyles = File.ReadAllText(Path.Combine(WebProjectPath, "wwwroot", "css", "admin-registrations.css"));
+        Assert.Contains(".admin-secondary-action", registrationStyles);
+        Assert.Contains("class=\"btn admin-secondary-action erp-filter-submit\"", ReadView("Integrations", "Index.cshtml"));
         Assert.Contains(".commercial-calendar-filters .btn-primary", styles);
         Assert.Contains("html:not([data-theme=\"dark\"]) .commercial-calendar-filters .btn-primary", styles);
         Assert.Contains(".order-details-status-form .btn-primary", styles);
@@ -80,6 +82,69 @@ public class AdminPrimaryActionTests
         Assert.Contains("class=\"btn btn-danger\"", ReadView("Users", "Index.cshtml"));
         Assert.Contains("btn-outline-danger", ReadView("Drivers", "Index.cshtml"));
         Assert.Contains("class=\"btn admin-primary-action\"", ReadView("Integrations", "Wmc.cshtml"));
+    }
+
+    [Fact]
+    public void Targeted_edit_forms_use_shared_actions_and_terminal_form_structure()
+    {
+        Assert.Contains("class=\"btn admin-secondary-action\"", ReadView("Products", "Edit.cshtml"));
+        Assert.Contains("class=\"btn admin-primary-action\"", ReadView("Products", "Edit.cshtml"));
+        Assert.Contains("class=\"btn admin-secondary-action\"", ReadView("SalesRepresentatives", "Edit.cshtml"));
+        Assert.Contains("class=\"btn admin-primary-action\"", ReadView("SalesRepresentatives", "Edit.cshtml"));
+        Assert.Contains("class=\"btn admin-secondary-action\"", ReadView("Categories", "Edit.cshtml"));
+        Assert.Contains("class=\"btn admin-secondary-action\"", ReadView("PriceTables", "Edit.cshtml"));
+        Assert.Contains("class=\"btn admin-secondary-action\"", ReadView("PaymentTerms", "Edit.cshtml"));
+
+        var terminal = ReadView("PaymentTerminals", "Edit.cshtml");
+        Assert.Contains("admin-form-page admin-registration-form-page", terminal);
+        Assert.Contains("admin-form-card", terminal);
+        Assert.Contains("admin-form-actions", terminal);
+        Assert.Contains("admin-check", terminal);
+        Assert.Contains("admin-primary-action", terminal);
+        Assert.Contains("admin-secondary-action", terminal);
+        Assert.DoesNotContain("btn-primary", terminal);
+        Assert.DoesNotContain("btn-outline-secondary", terminal);
+    }
+
+    [Fact]
+    public void Opportunities_and_notifications_render_empty_states_and_friendly_labels()
+    {
+        var opportunities = ReadView("Opportunities", "Index.cshtml");
+        Assert.Contains("Nenhuma oportunidade encontrada", opportunities);
+        Assert.Contains("Ainda não existem oportunidades para os filtros selecionados.", opportunities);
+        Assert.Contains("Venda adicional", opportunities);
+        Assert.Contains("Aberta", opportunities);
+        Assert.Contains("Negotiation => \"Em negociação\"", opportunities);
+        Assert.Contains("Repurchase => \"Recompra\"", opportunities);
+        Assert.Contains("NewProduct => \"Novo produto\"", opportunities);
+        Assert.Contains("CustomerRecovery => \"Recuperação de cliente\"", opportunities);
+        Assert.Contains("Proposal => \"Proposta comercial\"", opportunities);
+        Assert.Contains("Other => \"Outra\"", opportunities);
+        Assert.Contains("Contacted => \"Em contato\"", opportunities);
+        Assert.Contains("Proposal => \"Proposta\"", opportunities);
+        Assert.Contains("Won => \"Ganha\"", opportunities);
+        Assert.Contains("Lost => \"Perdida\"", opportunities);
+        Assert.Contains("Cancelled => \"Cancelada\"", opportunities);
+        Assert.DoesNotContain("@opportunity.Type", opportunities);
+        Assert.DoesNotContain(">@opportunity.Stage<", opportunities);
+
+        var notifications = ReadView("Notifications", "Index.cshtml");
+        Assert.Contains("Nenhuma notifica&ccedil;&atilde;o", notifications);
+        Assert.Contains("N&atilde;o h&aacute; notifica&ccedil;&otilde;es para exibir no momento.", notifications);
+    }
+
+    [Fact]
+    public void Registration_form_icons_use_available_semantic_font_awesome_classes()
+    {
+        var priceTables = ReadView("PriceTables", "Edit.cshtml");
+        var paymentTerms = ReadView("PaymentTerms", "Edit.cshtml");
+        var fontAwesome = File.ReadAllText(Path.Combine(WebProjectPath, "wwwroot", "lib", "fontawesome", "css", "all.min.css"));
+
+        Assert.Contains("fa-table-list", priceTables);
+        Assert.Contains(".fa-table-list", fontAwesome);
+        Assert.Contains("fa-calendar-days", paymentTerms);
+        Assert.Contains(".fa-calendar-days", fontAwesome);
+        Assert.Contains("fa-user-tie", ReadView("SalesRepresentatives", "Edit.cshtml"));
     }
 
     [Fact]

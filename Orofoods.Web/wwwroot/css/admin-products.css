@@ -157,7 +157,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     outline-offset: 2px;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-text {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-text {
     color: #CBD5E1;
 }
 
@@ -168,119 +168,119 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: #FECACA;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page {
     background: #0F172A;
     color: #E5E7EB;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-hero,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-card {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-hero,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-card {
     border-color: #334155;
     background: #111827;
     box-shadow: none;
     color: #E5E7EB;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-hero .eyebrow,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-hero h1,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-card label {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-hero .eyebrow,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-hero h1,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-card label {
     color: #F8FAFC;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-hero p,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-hero > i,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-form-card label em {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-hero p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-hero > i,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-card label em {
     color: #CBD5E1;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-image-manager {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-image-manager {
     border-color: #334155;
     background: #1E293B;
     color: #E5E7EB;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-image-manager h2,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-image-manager .eyebrow {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-image-manager h2,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-image-manager .eyebrow {
     color: #F8FAFC;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-image-grid article {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-image-grid article {
     border-color: #334155;
     background: #111827;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .admin-image-grid article small {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-image-grid article small {
     color: #CBD5E1;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-control,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-select {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-select {
     border-color: #475569;
     background-color: #0F172A;
     color: #E5E7EB;
     color-scheme: dark;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-control::placeholder {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-control::placeholder {
     color: #94A3B8;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-control:focus,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-select:focus {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-select:focus {
     border-color: #38BDF8;
     outline: 2px solid #38BDF8;
     outline-offset: 2px;
     box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-control:disabled,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-select:disabled {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-select:disabled {
     border-color: #334155;
     background-color: #1E293B;
     color: #94A3B8;
     opacity: 1;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-control[readonly],
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .form-select[readonly] {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-control[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .form-select[readonly] {
     border-color: #334155;
     background-color: #1E293B;
     color: #CBD5E1;
     opacity: 1;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn-outline-dark {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-secondary-action {
     border-color: #64748B;
     background: transparent;
     color: #E5E7EB;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn-outline-dark:hover,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn-outline-dark:focus-visible {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-secondary-action:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-secondary-action:focus-visible {
     border-color: #38BDF8;
     background: #1E293B;
     color: #F8FAFC;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn-outline-dark:focus-visible {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-secondary-action:focus-visible {
     outline: 2px solid #38BDF8;
     outline-offset: 2px;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn-outline-danger {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn-outline-danger {
     border-color: #F87171;
     color: #FCA5A5;
 }
 
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .text-danger,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .validation-summary-errors {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .text-danger,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .validation-summary-errors {
     color: #FCA5A5;
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-secondary-action:disabled,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-secondary-action.disabled,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn:disabled,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-page .btn.disabled {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .btn.disabled {
     border-color: #334155;
     background: #1E293B;
     color: #94A3B8;
