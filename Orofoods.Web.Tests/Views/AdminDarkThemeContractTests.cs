@@ -197,7 +197,9 @@ public class AdminDarkThemeContractTests
             Assert.Contains(hook, detail);
         foreach (var action in new[] { "UpdateStatus", "ReprocessIntegration", "PollPointCharge", "RefreshPointCharge", "CancelPointCharge", "StartPointCharge" })
             Assert.Contains($"asp-action=\"{action}\" method=\"post\"", detail);
-        Assert.Contains("<button class=\"btn btn-gold\">Atualizar status</button>", detail);
+        Assert.Contains("class=\"order-details-status-form d-flex flex-wrap align-items-center gap-2 mb-3\"", detail);
+        Assert.Contains("<button class=\"btn btn-primary\">Atualizar status</button>", detail);
+        Assert.Contains("order-details-wmc-form mb-3", detail);
         Assert.DoesNotContain("class=\"modal", list + detail);
         var styles = ReadStyles("admin-orders.css");
         Assert.Contains("@media(max-width:767px)", styles);
@@ -564,6 +566,9 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-hero", "background");
         RequireScopedRule(products, ".admin-products-edit-page", ".admin-form-card", "background");
         RequireScopedRule(products, ".admin-products-edit-page", ".admin-image-manager", "background");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-image-manager", "padding");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-image-manager input[type=\"file\"]::file-selector-button", "background");
+        RequireScopedRule(products, ".admin-products-edit-page", ".admin-image-manager .admin-primary-action:hover", "background");
         foreach (var control in new[] { ".form-control", ".form-select" })
         {
             RequireScopedRule(products, ".admin-products-edit-page", control, "background");
@@ -606,7 +611,8 @@ public class AdminDarkThemeContractTests
         AssertModuleDarkRulesAreScoped(products, new[] { ".admin-products-page", ".admin-products-edit-page" });
         AssertModuleDarkRulesAreScoped(inventory, new[] { ".admin-registration-page", ".admin-registration-form-page", ".admin-price-items-page", ".admin-inventory-page" });
         foreach (var stylesheet in new[] { "admin-products.css", "admin-registrations.css" })
-            Assert.DoesNotContain(ReadRules(ReadStyles(stylesheet)).Where(rule => IsScopedAdminDarkSelector(rule.Selector)), rule =>
+            Assert.DoesNotContain(ReadRules(ReadStyles(stylesheet)).Where(rule => IsScopedAdminDarkSelector(rule.Selector) &&
+                !(stylesheet == "admin-products.css" && ContainsComponent(rule.Selector, ".admin-products-edit-page") && ContainsComponent(rule.Selector, ".admin-image-manager"))), rule =>
                 Regex.IsMatch(rule.Declarations, @"(?:^|;)\s*(?:display|grid-template-columns|width|min-width|height|min-height|padding|margin|position)\s*:"));
     }
 
@@ -679,7 +685,7 @@ public class AdminDarkThemeContractTests
         {
             ["admin-drivers.css"] = [".page-header", ".table-responsive", "form", "h1", "p", ".btn-outline-secondary", ".btn-outline-danger", ".text-danger", ".validation-summary-errors", ".alert-warning"],
             ["admin-driver-payment-terminal-assignments.css"] = [".page-header", ".table-responsive", "form", "h1", ".btn-outline-secondary", ".btn-outline-danger", ".text-danger", ".validation-summary-errors"],
-            ["admin-payment-terminals.css"] = [".page-header", ".table-responsive", "form", "h1", ".btn-outline-secondary", ".btn-outline-danger", ".text-danger", ".validation-summary-errors"],
+            ["admin-payment-terminals.css"] = [".page-header", ".table-responsive", "form", "h1", ".btn-outline-secondary", ".btn-outline-danger", ".text-danger", ".validation-summary-errors", ".admin-mp-terminal-discovery-card"],
             ["admin-notifications.css"] = [".section", ".portal-top", ".notification-list", ".admin-notifications-page"],
             ["admin-opportunities.css"] = [".section", ".portal-top", ".customer-opportunity-list", ".admin-opportunity-create", ".btn-outline-dark", ".admin-opportunities-page"]
         };
@@ -716,6 +722,10 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(terminals, ".table-responsive table tbody td", "color");
         RequireScopedRule(terminals, "form .form-control", "background");
         RequireScopedRule(terminals, ".btn-outline-danger", "color");
+        RequireScopedRule(terminals, ".admin-mp-terminal-discovery-card", "background");
+        RequireScopedRule(terminals, ".admin-mp-terminal-discovery-card .card-header", "background");
+        RequireScopedRule(terminals, ".admin-mp-terminal-discovery-card .table-responsive table", "--bs-table-bg");
+        RequireScopedRule(terminals, ".admin-mp-terminal-discovery-card .btn-outline-secondary:focus-visible", "outline");
 
         var notifications = ReadStyles("admin-notifications.css");
         RequireScopedRule(notifications, ".portal-top h1", "color");

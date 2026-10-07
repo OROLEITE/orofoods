@@ -33,8 +33,13 @@ public class AdminSidebarBrandAndHeaderLinkTests
         Assert.DoesNotContain(sharedRules, rule => rule.Selector == ".admin-sidebar-collapsed .admin-sidebar-header .admin-sidebar-logo" &&
             rule.Declarations.Contains("display: none", StringComparison.Ordinal));
 
-        Assert.Contains("--admin-sidebar-width: 264px", styles);
+        Assert.Contains("--admin-sidebar-width: 248px", styles);
         Assert.Contains("--admin-sidebar-collapsed-width: 80px", styles);
+        Assert.Contains("--admin-header-height: 64px", styles);
+        Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page))", styles);
+        Assert.Contains("body.admin-authenticated:has(.whatsapp-inbox-page)", styles);
+        Assert.Contains("width: 72px", styles);
+        Assert.Contains("margin: 8px auto 0", styles);
         Assert.Contains("data-admin-sidebar-toggle", layout);
         Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.show,", styles);
         Assert.Contains(".admin-sidebar-collapsed .admin-nav-submenu.collapsing", styles);

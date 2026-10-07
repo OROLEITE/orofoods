@@ -1,6 +1,7 @@
 :root {
-    --admin-sidebar-width: 264px;
+    --admin-sidebar-width: 248px;
     --admin-sidebar-collapsed-width: 80px;
+    --admin-header-height: 72px;
     --admin-sidebar-bg: var(--nav-sidebar-bg);
     --admin-sidebar-text: var(--nav-text-active);
     --admin-sidebar-muted: var(--nav-text);
@@ -15,7 +16,7 @@
 }
 
 .admin-authenticated {
-    padding-top: 72px;
+    padding-top: var(--admin-header-height);
 }
 
 .admin-shell {
@@ -25,11 +26,11 @@
 .admin-sidebar {
     position: fixed;
     z-index: 1020;
-    top: 72px;
+    top: var(--admin-header-height);
     bottom: 0;
     left: 0;
     width: var(--admin-sidebar-width);
-    height: calc(100vh - 72px);
+    height: calc(100vh - var(--admin-header-height));
     min-height: 0;
     max-height: none;
     padding: 18px 12px 16px;
@@ -417,4 +418,66 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-nav-submenu.collapsing {
     border-color: #334155;
     background: #111827;
+}
+
+/* Compact Admin shell geometry; the WhatsApp inbox keeps its current frame. */
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) {
+    --admin-sidebar-width: 248px;
+    --admin-sidebar-collapsed-width: 80px;
+    --admin-header-height: 64px;
+    padding-top: var(--admin-header-height);
+}
+
+body.admin-authenticated:has(.whatsapp-inbox-page) {
+    --admin-sidebar-width: 264px;
+    --admin-sidebar-collapsed-width: 80px;
+    --admin-header-height: 72px;
+    padding-top: var(--admin-header-height);
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .navbar {
+    min-height: 64px;
+    padding-block: .35rem;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar {
+    top: var(--admin-header-height);
+    height: calc(100vh - var(--admin-header-height));
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-header {
+    min-height: 68px;
+    padding-top: 0;
+    padding-bottom: 8px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-header .admin-sidebar-logo {
+    width: 72px;
+    height: auto;
+    margin: 0 auto 3px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-collapsed .admin-sidebar-header .admin-sidebar-logo {
+    width: 34px;
+    height: auto;
+    margin: 8px auto 0;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link,
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group {
+    min-height: 40px;
+    padding-block: 7px;
+    gap: 8px;
+    font-size: 14px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i,
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group span > i {
+    font-size: 17px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link--nested {
+    min-height: 36px;
+    padding-block: 6px;
+    font-size: 13px;
 }

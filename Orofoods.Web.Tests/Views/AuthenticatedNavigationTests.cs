@@ -54,6 +54,22 @@ public class AuthenticatedNavigationTests
     }
 
     [Fact]
+    public void Site_header_keeps_name_and_context_visible_in_the_compact_admin_header()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
+        var headerStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "header.css"));
+        var navigationStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
+
+        Assert.Contains("class=\"account-name\"", header);
+        Assert.Contains("class=\"account-context\"", header);
+        Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .navbar", navigationStyles);
+        Assert.Contains("min-height: 64px", navigationStyles);
+        Assert.Contains(".account-name,.account-context{display:block;max-width", headerStyles);
+        Assert.Contains("overflow:hidden;text-overflow:ellipsis;white-space:nowrap", headerStyles);
+    }
+
+    [Fact]
     public void Site_header_routes_the_account_panel_by_role_and_keeps_customer_context_separate()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

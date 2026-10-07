@@ -20,7 +20,7 @@ html[data-theme="dark"] .admin-dashboard-hero{
 }
 
 html[data-theme="dark"] .admin-dashboard-hero .container{
-    min-height:280px;
+    min-height:168px;
     padding:28px clamp(24px,3vw,40px);
 }
 
@@ -201,4 +201,357 @@ html[data-theme="dark"] .admin-dashboard-page .admin-orders-table thead th{
     border-color:var(--admin-dark-border);
     background:var(--admin-dark-surface-secondary);
     color:var(--admin-dark-muted);
+}
+
+/* The dashboard owns its page geometry and shared card language. */
+.admin-authenticated .admin-dashboard-page {
+    --dashboard-card-bg: #FFFFFF;
+    --dashboard-card-border: #E4DFD3;
+    --dashboard-card-text: #30342E;
+    --dashboard-card-muted: #6B716C;
+    --dashboard-card-radius: 14px;
+    --dashboard-card-padding: 14px;
+    min-height: 0;
+    padding-bottom: 24px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero {
+    margin: 0 0 18px;
+    border-radius: 14px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero .container {
+    min-height: 168px;
+    padding: 16px clamp(20px, 2.2vw, 30px);
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero .eyebrow {
+    margin: 0 0 6px;
+    font-size: 10px;
+    letter-spacing: .8px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero h1 {
+    margin: 0 0 8px;
+    font-size: clamp(24px, 2.2vw, 30px);
+    line-height: 1.08;
+    letter-spacing: -1px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero p {
+    max-width: 500px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero aside {
+    flex: 0 0 200px;
+    max-width: 220px;
+    padding: 12px 14px;
+    border-radius: 10px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero aside small {
+    font-size: 9px;
+    letter-spacing: .8px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-hero aside strong {
+    margin: 6px 0 3px;
+    font-size: 18px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-content {
+    display: grid;
+    gap: 20px;
+    padding-top: 0;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-section-head {
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-section-head .eyebrow {
+    margin: 0 0 4px;
+    font-size: 10px;
+    letter-spacing: .8px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-section-head h2 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.2;
+    letter-spacing: -.4px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-dashboard-section-head > span {
+    max-width: 260px;
+    font-size: 11px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card,
+.admin-authenticated .admin-dashboard-page .dashboard-kpi-card,
+.admin-authenticated .admin-dashboard-page .admin-recent-orders {
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: 14px;
+    background: var(--dashboard-card-bg);
+    color: var(--dashboard-card-text);
+    padding: 14px;
+    box-shadow: none;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card {
+    display: flex;
+    min-height: 132px;
+    flex-direction: column;
+    text-decoration: none;
+    transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card > i,
+.admin-authenticated .admin-dashboard-page .dashboard-kpi-card > i {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin: 0 0 7px;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card small,
+.admin-authenticated .admin-dashboard-page .dashboard-kpi-card small {
+    margin-top: 0;
+    color: var(--dashboard-card-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card strong {
+    margin: 3px 0 5px;
+    color: var(--dashboard-card-text);
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -.5px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card span {
+    margin-top: auto;
+    color: var(--dashboard-card-muted);
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card--accent {
+    position: relative;
+    border-color: #D8B45A;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card--accent::before {
+    top: 0;
+    right: 10px;
+    left: 10px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card:hover {
+    transform: translateY(-2px);
+    border-color: #94A3B8;
+    background: #F8FAFC;
+    color: var(--dashboard-card-text);
+}
+
+.admin-authenticated .admin-dashboard-page .admin-commercial-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-authenticated .admin-dashboard-page .dashboard-kpi-card {
+    display: flex;
+    min-height: 132px;
+    flex-direction: column;
+}
+
+.admin-authenticated .admin-dashboard-page .dashboard-kpi-card > i {
+    margin-bottom: 7px;
+}
+
+.admin-authenticated .admin-dashboard-page .dashboard-kpi-value {
+    margin: 4px 0;
+    color: var(--dashboard-card-text);
+    font-size: clamp(1.3rem, 1.55vw, 1.7rem);
+    line-height: 1.08;
+    letter-spacing: -.5px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-commercial-metrics article > span:last-child {
+    margin-top: auto;
+    color: var(--dashboard-card-muted);
+    font-size: 11px;
+}
+
+.admin-authenticated .admin-dashboard-page .dashboard-kpi-trend {
+    margin-bottom: 2px;
+    color: var(--dashboard-card-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-recent-orders {
+    min-width: 0;
+    padding: 14px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-recent-orders .admin-dashboard-section-head {
+    margin-bottom: 10px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-recent-orders .admin-orders-table {
+    border: 0;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-orders-table thead th {
+    padding: 10px 12px;
+    font-size: 10px;
+    letter-spacing: .3px;
+    text-transform: none;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-orders-table tbody td {
+    padding: 10px 12px;
+    font-size: 12px;
+}
+
+.admin-authenticated .admin-dashboard-page .admin-priority-card:focus-visible,
+.admin-authenticated .admin-dashboard-page .admin-orders-table a:focus-visible {
+    outline: 2px solid #0284C7;
+    outline-offset: 3px;
+}
+
+html[data-theme="dark"] .admin-dashboard-page {
+    --dashboard-card-bg: var(--admin-dark-surface);
+    --dashboard-card-border: var(--admin-dark-border);
+    --dashboard-card-text: var(--admin-dark-text);
+    --dashboard-card-muted: var(--admin-dark-muted);
+    min-height: 0;
+    padding-bottom: 24px;
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-dashboard-hero {
+    border-radius: 14px;
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-dashboard-hero .container {
+    min-height: 168px;
+    padding: 16px clamp(20px, 2.2vw, 30px);
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-priority-card,
+html[data-theme="dark"] .admin-dashboard-page .dashboard-kpi-card,
+html[data-theme="dark"] .admin-dashboard-page .admin-recent-orders {
+    border-color: var(--dashboard-card-border);
+    background: var(--dashboard-card-bg);
+    color: var(--dashboard-card-text);
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-priority-card:hover {
+    border-color: #475569;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-priority-card strong,
+html[data-theme="dark"] .admin-dashboard-page .dashboard-kpi-value {
+    color: var(--dashboard-card-text);
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-priority-card > i,
+html[data-theme="dark"] .admin-dashboard-page .dashboard-kpi-card > i {
+    background: var(--admin-dark-surface-secondary);
+    color: #F59E0B;
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-priority-card--accent {
+    border-color: #B98B2F;
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-priority-card--accent::before {
+    background: #F59E0B;
+}
+
+html[data-theme="dark"] .admin-dashboard-page .admin-priority-card:focus-visible,
+html[data-theme="dark"] .admin-dashboard-page .admin-orders-table a:focus-visible {
+    outline-color: #38BDF8;
+}
+
+@media (max-width: 1000px) {
+    .admin-authenticated .admin-dashboard-page .admin-priority-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-commercial-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    .admin-authenticated .admin-dashboard-page .admin-dashboard-hero .container {
+        min-height: 0;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+        padding: 18px;
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-dashboard-hero h1 {
+        font-size: 26px;
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-dashboard-hero aside {
+        flex: initial;
+        width: 100%;
+        max-width: none;
+        padding: 11px 12px;
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-dashboard-content {
+        gap: 16px;
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-dashboard-section-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-dashboard-section-head h2 {
+        font-size: 19px;
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-dashboard-section-head > span {
+        margin: 0;
+    }
+}
+
+@media (max-width: 650px) {
+    .admin-authenticated .admin-dashboard-page .admin-priority-grid,
+    .admin-authenticated .admin-dashboard-page .admin-commercial-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-authenticated .admin-dashboard-page .admin-priority-card,
+    .admin-authenticated .admin-dashboard-page .dashboard-kpi-card {
+        min-height: 0;
+    }
 }
