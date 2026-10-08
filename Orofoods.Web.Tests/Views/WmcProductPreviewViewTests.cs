@@ -8,6 +8,7 @@ public sealed class WmcProductPreviewViewTests
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
         var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
 
         Assert.Contains("Authorize(Roles = \"Administrador\")", controller, StringComparison.Ordinal);
         Assert.Contains("public async Task<IActionResult> WmcPreview", controller, StringComparison.Ordinal);
@@ -37,5 +38,8 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("@product.Status", view, StringComparison.Ordinal);
         Assert.Contains("Todos", view, StringComparison.Ordinal);
         Assert.Contains("wmc-page-header", view, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page{padding-top:28px}", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-page-header{margin-bottom:8px}", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-brand-grid{display:grid;grid-template-columns:repeat(2", css, StringComparison.Ordinal);
     }
 }
