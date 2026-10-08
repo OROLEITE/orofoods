@@ -47,6 +47,12 @@
     {
         <link rel="stylesheet" href="~/css/admin-customer-details.css" asp-append-version="true" />
     }
+    @if (ViewContext.RouteData.Values["area"]?.ToString() == "Admin" &&
+         ViewContext.RouteData.Values["controller"]?.ToString() == "Customers" &&
+         ViewContext.RouteData.Values["action"]?.ToString() == "NewOrder")
+    {
+        <link rel="stylesheet" href="~/css/admin-customer-new-order.css" asp-append-version="true" />
+    }
     @await RenderSectionAsync("Head", required: false)
     <link rel="stylesheet" href="~/css/primary-action-buttons.css" asp-append-version="true" />
 }

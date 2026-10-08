@@ -1,0 +1,132 @@
+.orders-index-compact > .container {
+    max-width: 1480px;
+}
+
+.orders-index-compact .admin-page-header {
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.orders-index-compact .admin-page-header h1 {
+    margin: 3px 0;
+    font-size: clamp(28px, 2.5vw, 36px);
+    letter-spacing: -1.2px;
+}
+
+.orders-index-compact .admin-page-header p {
+    font-size: 13px;
+}
+
+.orders-index-compact .orders-filter-card {
+    padding: 13px 16px;
+    margin-bottom: 12px;
+}
+
+.orders-index-compact .orders-filter-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(200px, .8fr) auto;
+    gap: 10px;
+}
+
+.orders-index-compact .orders-filter-grid label {
+    margin-bottom: 4px;
+    font-size: 10px;
+}
+
+.orders-index-compact .orders-filter-grid .form-control,
+.orders-index-compact .orders-filter-grid .form-select {
+    min-height: 38px;
+    font-size: 13px;
+}
+
+.orders-index-compact .orders-filter-submit {
+    min-width: 112px;
+    min-height: 38px;
+    padding: 7px 13px;
+}
+
+.orders-index-compact .orders-list-meta {
+    gap: 12px;
+    margin-top: 9px;
+    font-size: 11px;
+}
+
+.orders-index-compact .orders-table thead th {
+    padding: 10px 12px;
+    font-size: 9px;
+}
+
+.orders-index-compact .orders-table tbody td {
+    padding: 9px 12px;
+    font-size: 12px;
+}
+
+.orders-index-compact .orders-customer {
+    max-width: 320px;
+}
+
+.orders-index-compact .order-status-badge {
+    padding: .28rem .5rem;
+    font-size: 10px;
+}
+
+.orders-index-compact .btn-order-open {
+    padding: 5px 9px;
+    font-size: 11px;
+}
+
+.orders-index-compact .orders-pagination {
+    margin-top: 12px;
+}
+
+@media (max-width: 960px) {
+    .orders-index-compact .orders-filter-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(180px, .8fr);
+    }
+
+    .orders-index-compact .orders-filter-grid > .orders-filter-submit {
+        grid-column: 2;
+        justify-self: end;
+    }
+}
+
+@media (max-width: 767px) {
+    .orders-index-compact .admin-page-header {
+        margin-bottom: 10px;
+    }
+
+    .orders-index-compact .orders-filter-card {
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .orders-index-compact .orders-filter-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .orders-index-compact .orders-filter-grid > .orders-filter-submit {
+        grid-column: auto;
+        justify-self: stretch;
+    }
+
+    .orders-index-compact .orders-list-meta {
+        margin-top: 8px;
+    }
+
+    .orders-index-compact .orders-table tbody {
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .orders-index-compact .orders-table tbody tr {
+        gap: 7px;
+        padding: 12px;
+    }
+
+    .orders-index-compact .orders-table tbody td {
+        font-size: 12px;
+    }
+
+    .orders-index-compact .orders-pagination .pagination {
+        flex-wrap: wrap;
+    }
+}

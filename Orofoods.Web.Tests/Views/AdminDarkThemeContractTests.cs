@@ -201,10 +201,14 @@ public class AdminDarkThemeContractTests
     {
         var list = ReadOrderView("Index");
         var detail = ReadOrderView("Details");
+        var listStyles = File.ReadAllText(Path.Combine(WebProjectPath(), "wwwroot", "css", "admin-orders-list.css"));
         Assert.Contains("<div class=\"table-responsive\"><table class=\"table orders-table\">", list);
+        Assert.Contains("admin-orders-page orders-index-compact", list);
+        Assert.Contains("~/css/admin-orders-list.css", list);
         Assert.Contains("data-label=\"Ação\"", list);
         Assert.Contains("class=\"btn btn-sm btn-order-open\" asp-action=\"Details\" asp-route-id=\"@order.Id\"", list);
         Assert.Contains("admin-primary-action orders-filter-submit", list);
+        Assert.Contains("class=\"orders-pagination\"", list);
         Assert.Contains("order.Status.ToString().ToLowerInvariant()", list);
         Assert.Contains("order-status-badge--@statusClass", list);
         Assert.Contains("id=\"orderQuery\"", list);
@@ -219,6 +223,12 @@ public class AdminDarkThemeContractTests
         Assert.Contains("@Model.IntegrationError", detail);
         Assert.DoesNotContain("class=\"modal", list + detail);
         var styles = ReadStyles("admin-orders.css");
+        Assert.Contains(".orders-index-compact .orders-filter-card", listStyles);
+        Assert.Contains("padding: 13px 16px", listStyles);
+        Assert.Contains(".orders-index-compact .orders-table tbody td", listStyles);
+        Assert.Contains("padding: 9px 12px", listStyles);
+        Assert.Contains("@media (max-width: 960px)", listStyles);
+        Assert.Contains("@media (max-width: 767px)", listStyles);
         Assert.Contains("@media(max-width:767px)", styles);
         Assert.Contains("content:attr(data-label)", styles);
         Assert.Contains(".orders-table tbody td[data-label=\"Ação\"] .btn{width:100%}", styles);
@@ -530,6 +540,21 @@ public class AdminDarkThemeContractTests
             Assert.DoesNotContain(ReadRules(ReadStyles(stylesheet)).Where(rule => IsScopedAdminDarkSelector(rule.Selector)), rule =>
                 Regex.IsMatch(rule.Declarations, @"(?:^|;)\s*(?:display|grid-template-columns|width|min-width|height|min-height|padding|margin|position)\s*:"));
         PublicFooterRulesRemainInSiteStylesheet();
+    }
+
+    [Fact]
+    public void CustomersNewOrderUsesScopedCompactLayoutStylesheet()
+    {
+        var layout = File.ReadAllText(Path.Combine(WebProjectPath(), "Views", "Shared", "_AdminLayout.cshtml"));
+        Assert.Contains("admin-customer-new-order.css", layout);
+        var markup = File.ReadAllText(Path.Combine(WebProjectPath(), "Areas", "Admin", "Views", "Customers", "NewOrder.cshtml"));
+        Assert.Contains("assisted-order-search", markup);
+        Assert.Contains("assisted-product-info", markup);
+        Assert.DoesNotContain("btn-gold assisted-add-product", markup);
+        var css = ReadStyles("admin-customer-new-order.css");
+        Assert.Contains(".assisted-order-page .assisted-order-search", css);
+        Assert.Contains("position: sticky", css);
+        Assert.Contains("minmax(320px, 27%)", css);
     }
 
     [Fact]
