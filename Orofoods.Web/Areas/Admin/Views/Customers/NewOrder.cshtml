@@ -1,6 +1,6 @@
-@model Orofoods.Web.ViewModels.AssistedOrderViewModel
+﻿@model Orofoods.Web.ViewModels.AssistedOrderViewModel
 @{ ViewData["Title"] = "Novo pedido"; }
-<section class="section assisted-order-page"><div class="container">
+<section class="section assisted-order-page admin-customer-new-order"><div class="container">
     <div class="portal-top assisted-order-header"><div><div class="eyebrow"><span></span> CRM comercial</div><h1>Novo pedido</h1><p>Cliente: <strong>@Model.CustomerName</strong> · Vendedor responsável: <strong>@Model.SalesRepresentativeName</strong> · <small>Atendido por: @User.Identity?.Name</small></p></div><a class="btn btn-sm btn-outline-dark" asp-action="Details" asp-route-id="@Model.CustomerId">Voltar ao cliente</a></div>
     <form method="get" class="catalog-tools assisted-order-search"><input type="hidden" name="id" value="@Model.CustomerId" /><input name="q" value="@Model.Query" placeholder="Código, nome ou marca" /><button class="btn admin-primary-action">Buscar</button></form>
     <form asp-action="NewOrder" method="post" class="assisted-order-form"><input type="hidden" asp-for="CustomerId" /><input type="hidden" asp-for="AttemptKey" /><div asp-validation-summary="All" class="text-danger"></div>
