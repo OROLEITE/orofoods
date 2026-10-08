@@ -11,6 +11,57 @@ public sealed class WmcProductPreviewService(ApplicationDbContext db, IWmcProduc
         try
         {
             var rows = await productReader.GetAllByBrandAsync(brandCode, cancellationToken);
+            return await BuildPreviewAsync(rows, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return ErrorResult();
+        }
+    }
+
+    public async Task<WmcProductPreviewBatchResult> PreviewByBrandsAsync(
+        IReadOnlyCollection<short> brandCodes,
+        CancellationToken cancellationToken = default)
+    {
+        if (brandCodes.Count == 0)
+        {
+            return new WmcProductPreviewBatchResult(await PreviewAsync(null, cancellationToken), []);
+        }
+
+        var selectedCodes = brandCodes.Distinct().ToArray();
+        var rowsByBrand = new Dictionary<short, IReadOnlyList<WmcProductRecord>>();
+        try
+        {
+            foreach (var brandCode in selectedCodes)
+            {
+                rowsByBrand[brandCode] = await productReader.GetAllByBrandAsync(brandCode, cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return new WmcProductPreviewBatchResult(ErrorResult(), []);
+        }
+
+        var allRows = rowsByBrand.Values.SelectMany(rows => rows).ToList();
+        var summary = await BuildPreviewAsync(allRows, cancellationToken);
+        var previews = new List<WmcBrandPreviewResult>(selectedCodes.Length);
+        foreach (var brandCode in selectedCodes)
+        {
+            previews.Add(new WmcBrandPreviewResult(
+                brandCode,
+                string.Empty,
+                await BuildPreviewAsync(rowsByBrand[brandCode], cancellationToken)));
+        }
+
+        return new WmcProductPreviewBatchResult(summary, previews);
+    }
+
+    private async Task<WmcProductPreviewResult> BuildPreviewAsync(
+        IReadOnlyList<WmcProductRecord> rows,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
             var products = await db.Products.AsNoTracking().ToListAsync(cancellationToken);
             var localCodes = products
                 .Where(product => !string.IsNullOrWhiteSpace(product.WmcCode))
@@ -94,7 +145,38 @@ public sealed class WmcProductPreviewService(ApplicationDbContext db, IWmcProduc
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return new WmcProductPreviewResult(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Não foi possível consultar a prévia WMC.");
+            return ErrorResult();
         }
     }
+
+    private static WmcProductPreviewResult Combine(IEnumerable<WmcProductPreviewResult> previews)
+    {
+        var values = previews.ToList();
+        if (values.Count == 0)
+        {
+            return new WmcProductPreviewResult(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+
+        return new WmcProductPreviewResult(
+            values.Sum(item => item.ProductsRead),
+            values.Sum(item => item.NewProducts),
+            values.Sum(item => item.ExistingProducts),
+            values.Sum(item => item.ActiveProducts),
+            values.Sum(item => item.InactiveProducts),
+            values.Sum(item => item.UnknownSituations),
+            values.Sum(item => item.InvalidCodes),
+            values.Sum(item => item.DuplicateCodes),
+            values.Sum(item => item.StockProblems),
+            values.Sum(item => item.ProjectedAvailableProducts),
+            values.Sum(item => item.ProjectedBlockedProducts),
+            values.Sum(item => item.ActiveEligibleProducts),
+            values.Sum(item => item.InactiveIgnoredProducts),
+            values.Sum(item => item.InvalidSituations),
+            values.Sum(item => item.NewActiveProducts),
+            values.Sum(item => item.ExistingActiveProducts),
+            values.FirstOrDefault(item => item.ErrorMessage is not null)?.ErrorMessage);
+    }
+
+    private static WmcProductPreviewResult ErrorResult() =>
+        new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Não foi possível consultar a prévia WMC.");
 }
