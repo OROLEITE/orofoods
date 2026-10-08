@@ -30,7 +30,14 @@ public sealed record WmcPreviewPageModel(
 public sealed record WmcBrandPreviewResult(
     short Code,
     string Description,
-    WmcProductPreviewResult Preview);
+    WmcProductPreviewResult Preview,
+    IReadOnlyList<WmcProductPreviewItem> Products);
+
+public sealed record WmcProductPreviewItem(
+    string WmcCode,
+    string Description,
+    decimal? Stock,
+    string Status);
 
 public sealed record WmcProductPreviewBatchResult(
     WmcProductPreviewResult Summary,

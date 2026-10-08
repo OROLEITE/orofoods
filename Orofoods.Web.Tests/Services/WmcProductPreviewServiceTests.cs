@@ -96,6 +96,31 @@ public sealed class WmcProductPreviewServiceTests
         Assert.DoesNotContain(reader.BrandCalls, code => code == 1);
     }
 
+    [Fact]
+    public async Task Preview_returns_active_product_details_with_new_existing_and_conflict_states()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Teste", Slug = "teste" });
+        await db.SaveChangesAsync();
+        db.Products.Add(new Product { WmcCode = "EXISTING", Sku = "SKU", Name = "Existente", ProductCategoryId = 1 });
+        await db.SaveChangesAsync();
+        var reader = new FakeProductReader(
+        [
+            new WmcProductRecord("NEW", "Novo", "A", "CX", null, 3, CodMarca: "5"),
+            new WmcProductRecord("EXISTING", "Existente", "A", "CX", null, 2, CodMarca: "5"),
+            new WmcProductRecord("DUP", "Conflito 1", "A", "CX", null, 1, CodMarca: "5"),
+            new WmcProductRecord(" dup ", "Conflito 2", "A", "CX", null, 1, CodMarca: "5")
+        ]);
+
+        var result = await new WmcProductPreviewService(db, reader).PreviewByBrandsAsync([5]);
+        var products = Assert.Single(result.ByBrand).Products;
+
+        Assert.Equal(4, products.Count);
+        Assert.Contains(products, item => item.WmcCode == "NEW" && item.Status == "Novo" && item.Stock == 3);
+        Assert.Contains(products, item => item.WmcCode == "EXISTING" && item.Status == "Existente");
+        Assert.Equal(2, products.Count(item => item.Status == "Conflito"));
+    }
+
     private sealed class FakeProductReader(IReadOnlyList<WmcProductRecord> rows) : IWmcProductReader
     {
         public short? LastBrandCode { get; private set; }

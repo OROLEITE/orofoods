@@ -11,7 +11,7 @@ public sealed class WmcBrandReader(IWmcFirebirdReader reader) : IWmcBrandReader
 {
     public Task<IReadOnlyList<WmcBrandRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
         reader.QueryAsync(
-            "SELECT m.CODMARCA, m.DESCRICAO, COUNT(p.CODPRODUTO), SUM(CASE WHEN p.SITUACAO = 'A' THEN 1 ELSE 0 END) FROM MARCAS m LEFT JOIN PRODUTOS p ON p.CODMARCA = m.CODMARCA GROUP BY m.CODMARCA, m.DESCRICAO ORDER BY m.DESCRICAO",
+            "SELECT m.CODMARCA, m.DESCRICAO, COUNT(p.CODPRODUTO), SUM(CASE WHEN p.SITUACAO = 'A' THEN 1 ELSE 0 END) FROM MARCAS m LEFT JOIN PRODUTOS p ON p.CODMARCA = m.CODMARCA GROUP BY m.CODMARCA, m.DESCRICAO HAVING SUM(CASE WHEN p.SITUACAO = 'A' THEN 1 ELSE 0 END) > 0 ORDER BY m.DESCRICAO",
             Map,
             cancellationToken: cancellationToken);
 

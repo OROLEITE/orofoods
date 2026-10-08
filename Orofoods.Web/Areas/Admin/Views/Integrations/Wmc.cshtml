@@ -63,9 +63,9 @@
                 @Html.AntiForgeryToken()
                 <div class="wmc-brand-toolbar">
                     <label class="form-label" for="wmcBrandSearch">Pesquisar marca</label>
-                    <input class="form-control" id="wmcBrandSearch" type="search" placeholder="Código ou descrição" autocomplete="off" />
-                    <button class="btn btn-outline-secondary" type="button" id="wmcSelectFiltered">Selecionar todas as marcas filtradas</button>
-                    <button class="btn btn-outline-secondary" type="button" id="wmcClearSelection">Limpar seleção</button>
+                    <input class="form-control" id="wmcBrandSearch" type="search" placeholder="CÃ³digo ou descriÃ§Ã£o" autocomplete="off" />
+                    <button class="btn btn-outline-secondary wmc-selection-action" type="button" id="wmcSelectFiltered"><span aria-hidden="true">✓</span> Selecionar filtradas</button>
+                    <button class="btn btn-outline-secondary wmc-selection-action" type="button" id="wmcClearSelection"><span aria-hidden="true">×</span> Limpar seleção</button>
                 </div>
                 <div class="wmc-brand-grid" id="wmcBrandGrid" role="group" aria-label="Marcas WMC">
                     @foreach (var brand in Model.Brands)
@@ -79,7 +79,7 @@
                         </label>
                     }
                 </div>
-                <button type="submit" class="btn admin-primary-action">Simular importa&ccedil;&atilde;o</button>
+                <div class="wmc-preview-submit"><span id="wmcSelectionCount" aria-live="polite">0 marcas selecionadas</span><button type="submit" class="btn btn-primary">Simular importa&ccedil;&atilde;o</button></div>
             </form>
 
             @if (Model.Preview is not null)
@@ -88,29 +88,27 @@
                 {
                     <div class="alert alert-warning" role="alert">@Model.Preview.ErrorMessage</div>
                 }
-                <div class="table-responsive mt-4">
-                    <table class="table align-middle">
-                        <thead><tr><th>M&eacute;trica</th><th>Total</th></tr></thead>
-                        <tbody>
-                            <tr><td>Produtos lidos</td><td>@Model.Preview.ProductsRead</td></tr>
-                            <tr><td>Novos</td><td>@Model.Preview.NewProducts</td></tr>
-                            <tr><td>Existentes</td><td>@Model.Preview.ExistingProducts</td></tr>
-                            <tr><td>Ativos</td><td>@Model.Preview.ActiveProducts</td></tr>
-                            <tr><td>Inativos</td><td>@Model.Preview.InactiveProducts</td></tr>
-                            <tr><td>Situa&ccedil;&otilde;es desconhecidas</td><td>@Model.Preview.UnknownSituations</td></tr>
-                            <tr><td>Ativos eleg&iacute;veis para importa&ccedil;&atilde;o</td><td>@Model.Preview.ActiveEligibleProducts</td></tr>
-                            <tr><td>Inativos ignorados</td><td>@Model.Preview.InactiveIgnoredProducts</td></tr>
-                            <tr><td>Situa&ccedil;&otilde;es inv&aacute;lidas/desconhecidas</td><td>@Model.Preview.InvalidSituations</td></tr>
-                            <tr><td>Novos ativos</td><td>@Model.Preview.NewActiveProducts</td></tr>
-                            <tr><td>Existentes ativos</td><td>@Model.Preview.ExistingActiveProducts</td></tr>
-                            <tr><td>C&oacute;digos inv&aacute;lidos</td><td>@Model.Preview.InvalidCodes</td></tr>
-                            <tr><td>C&oacute;digos duplicados</td><td>@Model.Preview.DuplicateCodes</td></tr>
-                            <tr><td>Problemas de estoque</td><td>@Model.Preview.StockProblems</td></tr>
-                            <tr><td>Disponibilidade projetada</td><td>@Model.Preview.ProjectedAvailableProducts</td></tr>
-                            <tr><td>Bloqueados projetados</td><td>@Model.Preview.ProjectedBlockedProducts</td></tr>
-                        </tbody>
-                    </table>
+                <div class="wmc-preview-cards" aria-label="Resumo da simulaÃ§Ã£o">
+                    <article class="wmc-preview-card"><span>Novos ativos</span><strong>@Model.Preview.NewActiveProducts</strong></article>
+                    <article class="wmc-preview-card"><span>Existentes</span><strong>@Model.Preview.ExistingActiveProducts</strong></article>
+                    <article class="wmc-preview-card"><span>Ignorados</span><strong>@Model.Preview.InactiveIgnoredProducts</strong></article>
+                    <article class="wmc-preview-card"><span>Conflitos</span><strong>@(Model.Preview.DuplicateCodes + Model.Preview.InvalidCodes + Model.Preview.InvalidSituations + Model.Preview.StockProblems)</strong></article>
                 </div>
+                <details class="wmc-preview-details">
+                    <summary>Detalhes da simula&ccedil;&atilde;o</summary>
+                    <dl>
+                        <div><dt>Produtos lidos</dt><dd>@Model.Preview.ProductsRead</dd></div>
+                        <div><dt>Ativos elegÃ­veis</dt><dd>@Model.Preview.ActiveEligibleProducts</dd></div>
+                        <div><dt>Ativos</dt><dd>@Model.Preview.ActiveProducts</dd></div>
+                        <div><dt>Inativos</dt><dd>@Model.Preview.InactiveProducts</dd></div>
+                        <div><dt>SituaÃ§Ãµes desconhecidas</dt><dd>@Model.Preview.UnknownSituations</dd></div>
+                        <div><dt>CÃ³digos invÃ¡lidos</dt><dd>@Model.Preview.InvalidCodes</dd></div>
+                        <div><dt>CÃ³digos duplicados</dt><dd>@Model.Preview.DuplicateCodes</dd></div>
+                        <div><dt>Problemas de estoque</dt><dd>@Model.Preview.StockProblems</dd></div>
+                        <div><dt>DisponÃ­veis projetados</dt><dd>@Model.Preview.ProjectedAvailableProducts</dd></div>
+                        <div><dt>Bloqueados projetados</dt><dd>@Model.Preview.ProjectedBlockedProducts</dd></div>
+                    </dl>
+                </details>
                 <p class="text-muted">A pr&eacute;via preserva pre&ccedil;os, fotos, categorias comerciais, publica&ccedil;&atilde;o e reservas locais.</p>
                 @if (Model.BrandPreviews.Count > 0)
                 {
@@ -123,6 +121,22 @@
                                 <span>@brandPreview.Preview.NewProducts novos</span>
                                 <span>@brandPreview.Preview.ExistingProducts existentes</span>
                                 <span>@brandPreview.Preview.InactiveIgnoredProducts ignorados</span>
+                                <div class="wmc-product-grid table-responsive">
+                                    <table class="wmc-product-table">
+                                        <thead><tr><th>CÃ³digo WMC</th><th>DescriÃ§Ã£o</th><th>Estoque</th><th>SituaÃ§Ã£o</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var product in brandPreview.Products)
+                                            {
+                                                <tr>
+                                                    <td>@product.WmcCode</td>
+                                                    <td>@product.Description</td>
+                                                    <td>@(product.Stock?.ToString("0.###") ?? "N/D")</td>
+                                                    <td><span class="wmc-product-status wmc-product-status--@product.Status.ToLowerInvariant()">@product.Status</span></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
                             </article>
                         }
                     </div>
@@ -137,12 +151,22 @@
         const search = document.getElementById('wmcBrandSearch');
         const rows = [...document.querySelectorAll('.wmc-brand-row')];
         const visibleRows = () => rows.filter(row => row.hidden !== true);
+        const checkboxes = () => rows.map(row => row.querySelector('input'));
+        const updateCount = () => {
+            const count = checkboxes().filter(input => input.checked).length;
+            const label = document.getElementById('wmcSelectionCount');
+            if (label) label.textContent = `${count} marca${count === 1 ? '' : 's'} selecionada${count === 1 ? '' : 's'}`;
+            const clear = document.getElementById('wmcClearSelection');
+            if (clear) clear.disabled = count === 0;
+        };
         const updateRows = () => {
             const term = (search?.value ?? '').trim().toLocaleLowerCase();
             rows.forEach(row => row.hidden = term.length > 0 && !(row.dataset.brandSearch ?? '').toLocaleLowerCase().includes(term));
         };
         search?.addEventListener('input', updateRows);
-        document.getElementById('wmcSelectFiltered')?.addEventListener('click', () => visibleRows().forEach(row => row.querySelector('input').checked = true));
-        document.getElementById('wmcClearSelection')?.addEventListener('click', () => rows.forEach(row => row.querySelector('input').checked = false));
+        rows.forEach(row => row.querySelector('input')?.addEventListener('change', updateCount));
+        document.getElementById('wmcSelectFiltered')?.addEventListener('click', () => { visibleRows().forEach(row => row.querySelector('input').checked = true); updateCount(); });
+        document.getElementById('wmcClearSelection')?.addEventListener('click', () => { rows.forEach(row => row.querySelector('input').checked = false); updateCount(); });
+        updateCount();
     })();
 </script>

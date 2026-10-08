@@ -11,7 +11,7 @@ public sealed class WmcProductPreviewService(ApplicationDbContext db, IWmcProduc
         try
         {
             var rows = await productReader.GetAllByBrandAsync(brandCode, cancellationToken);
-            return await BuildPreviewAsync(rows, cancellationToken);
+            return (await BuildPreviewDetailsAsync(rows, cancellationToken)).Preview;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -43,20 +43,22 @@ public sealed class WmcProductPreviewService(ApplicationDbContext db, IWmcProduc
         }
 
         var allRows = rowsByBrand.Values.SelectMany(rows => rows).ToList();
-        var summary = await BuildPreviewAsync(allRows, cancellationToken);
+        var summary = (await BuildPreviewDetailsAsync(allRows, cancellationToken)).Preview;
         var previews = new List<WmcBrandPreviewResult>(selectedCodes.Length);
         foreach (var brandCode in selectedCodes)
         {
+            var details = await BuildPreviewDetailsAsync(rowsByBrand[brandCode], cancellationToken);
             previews.Add(new WmcBrandPreviewResult(
                 brandCode,
                 string.Empty,
-                await BuildPreviewAsync(rowsByBrand[brandCode], cancellationToken)));
+                details.Preview,
+                details.Products));
         }
 
         return new WmcProductPreviewBatchResult(summary, previews);
     }
 
-    private async Task<WmcProductPreviewResult> BuildPreviewAsync(
+    private async Task<PreviewDetails> BuildPreviewDetailsAsync(
         IReadOnlyList<WmcProductRecord> rows,
         CancellationToken cancellationToken)
     {
@@ -125,7 +127,7 @@ public sealed class WmcProductPreviewService(ApplicationDbContext db, IWmcProduc
             var existingProducts = activeValidRows.Count - newProducts;
             var blocked = rows.Count - projectedAvailable;
 
-            return new WmcProductPreviewResult(
+            var preview = new WmcProductPreviewResult(
                 rows.Count,
                 newProducts,
                 existingProducts,
@@ -142,12 +144,29 @@ public sealed class WmcProductPreviewService(ApplicationDbContext db, IWmcProduc
                 unknown,
                 newProducts,
                 existingProducts);
+            var productItems = activeValidRows
+                .Select(row => new WmcProductPreviewItem(
+                    WmcProductRules.NormalizeCode(row.CodProduto),
+                    row.Produto,
+                    row.EstoqueAtual,
+                    duplicateCodes.Contains(WmcProductRules.NormalizeCode(row.CodProduto))
+                        ? "Conflito"
+                        : localCodes.Contains(WmcProductRules.NormalizeCode(row.CodProduto))
+                            ? "Existente"
+                            : "Novo"))
+                .ToList();
+
+            return new PreviewDetails(preview, productItems);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ErrorResult();
+            return new PreviewDetails(ErrorResult(), []);
         }
     }
+
+    private sealed record PreviewDetails(
+        WmcProductPreviewResult Preview,
+        IReadOnlyList<WmcProductPreviewItem> Products);
 
     private static WmcProductPreviewResult Combine(IEnumerable<WmcProductPreviewResult> previews)
     {
