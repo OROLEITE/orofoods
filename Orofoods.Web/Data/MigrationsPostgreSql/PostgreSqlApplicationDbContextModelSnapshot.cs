@@ -255,9 +255,11 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasColumnType("character varying(20)");
 
                     b.Property<decimal?>("WmcPackageQuantity")
+                        .HasPrecision(12, 3)
                         .HasColumnType("numeric");
 
                     b.Property<decimal?>("WmcConversionQuantity")
+                        .HasPrecision(12, 3)
                         .HasColumnType("numeric");
 
                     b.Property<bool>("IsFeatured")
