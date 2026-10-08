@@ -129,13 +129,22 @@
 }
 
 .customer-commercial-page .customer-opportunity-card__controls {
-    grid-template-columns: auto minmax(0, 170px) auto;
+    grid-template-columns: minmax(0, 150px) auto;
     gap: 7px;
 }
 
 .customer-commercial-page .customer-opportunity-stage-form select,
 .customer-commercial-page .customer-opportunity-stage-form .btn {
     min-height: 36px;
+}
+
+.customer-commercial-page .customer-opportunity-stage-form select {
+    padding-right: 28px;
+}
+
+.customer-commercial-page .customer-opportunity-stage-form .btn {
+    padding-right: 11px;
+    padding-left: 11px;
 }
 
 .customer-commercial-page .customer-detail-tabs-shell {
@@ -185,6 +194,15 @@
     .customer-commercial-page .customer-detail-grid {
         grid-template-columns: 1fr;
     }
+
+    .customer-commercial-page .customer-opportunity-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .customer-commercial-page .customer-opportunity-card__controls {
+        grid-template-columns: minmax(0, 180px) auto;
+        justify-content: start;
+    }
 }
 
 @media (max-width: 600px) {
@@ -231,13 +249,16 @@
     }
 
     .customer-commercial-page .customer-opportunity-card__controls {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) auto;
     }
 
     .customer-commercial-page .customer-opportunity-stage-form {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 7px;
+        display: contents;
+    }
+
+    .customer-commercial-page .customer-opportunity-stage-form select {
+        min-width: 0;
+        width: 100%;
     }
 
     .customer-commercial-page #overview .customer-detail-panel {

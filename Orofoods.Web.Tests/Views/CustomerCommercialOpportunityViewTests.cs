@@ -20,6 +20,29 @@ public class CustomerCommercialOpportunityViewTests
         Assert.Contains("Model.WhatsAppPhoneNumber is string whatsappPhoneNumber", view);
         Assert.Contains("target=\"_blank\" rel=\"noopener noreferrer\"", view);
         Assert.Contains("Cliente sem telefone WhatsApp válido", view);
+        Assert.Contains("Model.PhoneNumberForCall is string phoneNumberForCall", view);
+        Assert.Contains("href=\"tel:@phoneNumberForCall\"", view);
+        Assert.Contains("aria-disabled=\"true\" title=\"Cliente sem telefone válido\"", view);
+    }
+
+    [Theory]
+    [InlineData("(19) 99876-5432", "(19) 99876-5432")]
+    [InlineData("", null)]
+    [InlineData("0000000000", null)]
+    [InlineData("987654321", null)]
+    public void Customer_call_action_only_exposes_valid_normalizable_phone_numbers(
+        string phone,
+        string? expected)
+    {
+        var viewModel = new Orofoods.Web.ViewModels.CustomerCommercialViewModel
+        {
+            Customer = new Orofoods.Web.Models.Customers.Customer
+            {
+                Phone = phone
+            }
+        };
+
+        Assert.Equal(expected, viewModel.PhoneNumberForCall);
     }
 
     [Fact]
@@ -78,8 +101,16 @@ public class CustomerCommercialOpportunityViewTests
         Assert.Contains("<option value=\"@opportunity.Stage\">@opportunity.Stage.ToDisplayName()</option>", view);
         Assert.Contains("<option value=\"Won\">Ganha</option>", view);
         Assert.Contains("<option value=\"Lost\">Perdida</option>", view);
+        Assert.Contains("name=\"stage\"", view);
+        Assert.Contains("asp-action=\"ChangeStage\" method=\"post\"", view);
+        Assert.Contains(">Salvar</button>", view);
+        Assert.DoesNotContain("customer-opportunity-card__status", view);
         Assert.Contains(".customer-commercial-page .customer-opportunity-card", styles);
         Assert.Contains("@media(max-width:900px)", styles);
+
+        var pageStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-customer-details.css"));
+        Assert.Contains("grid-template-columns: minmax(0, 150px) auto", pageStyles);
+        Assert.Contains(".customer-commercial-page .customer-opportunity-stage-form select", pageStyles);
 
         var cardRule = Regex.Match(
             styles,
