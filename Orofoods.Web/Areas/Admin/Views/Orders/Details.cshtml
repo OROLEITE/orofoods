@@ -16,6 +16,7 @@
         or Orofoods.Web.Models.Payments.PaymentStatus.Processing
         or Orofoods.Web.Models.Payments.PaymentStatus.ActionRequired;
     var pointAuditEvents = ViewBag.PointAuditEvents as IReadOnlyList<Orofoods.Web.Models.Payments.PointPaymentAuditEvent> ?? [];
+    var paymentAssignment = cardOnDeliveryPayment?.DriverPaymentTerminalAssignment;
     var paymentStatusLabel = cardOnDeliveryPayment?.Status switch
     {
         Orofoods.Web.Models.Payments.PaymentStatus.Approved or Orofoods.Web.Models.Payments.PaymentStatus.Paid => "Pagamento aprovado",
@@ -32,16 +33,16 @@
 
 <section class="section admin-order-details-page">
     <div class="container">
-        <div class="portal-top">
+        <div class="portal-top order-details-header">
             <div><small>@Model.Customer?.TradeName</small><h1>@Model.Number</h1></div>
             <a asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
         </div>
 
-        <div class="commercial-bar">
-            <div><small>STATUS</small><strong>@Model.Status.ToDisplayName()</strong></div>
-            <div><small>INTEGRA&#199;&#195;O ERP</small><strong>@Model.IntegrationStatus.ToDisplayName()</strong></div>
-            <div><small>ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
-            <div><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div>
+        <div class="commercial-bar order-details-summary">
+            <div class="order-details-summary-item"><small>STATUS</small><strong><span class="order-detail-chip">@Model.Status.ToDisplayName()</span></strong></div>
+            <div class="order-details-summary-item"><small>INTEGRA&#199;&#195;O ERP</small><strong>@Model.IntegrationStatus.ToDisplayName()</strong></div>
+            <div class="order-details-summary-item"><small>ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
+            <div class="order-details-summary-item order-details-summary-item--total"><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div>
         </div>
         @if (TempData["OrderStatusError"] is string statusError)
         {
@@ -55,31 +56,29 @@
         {
             <div class="alert alert-success mt-3" role="status">@pointMessage</div>
         }
+        <div class="order-details-layout">
         @if (cardOnDelivery)
         {
-            <div class="alert alert-info mt-3" data-payment-status="@(paymentApproved ? "approved" : "pending")">
-                <strong>Forma de pagamento:</strong> Cartão na entrega<br />
-                <strong>Status do pagamento:</strong> @paymentStatusLabel
-            </div>
-            @if (cardOnDeliveryPayment is not null)
-            {
-                var assignment = cardOnDeliveryPayment.DriverPaymentTerminalAssignment;
-                <dl class="row mt-3 mb-0" data-card-on-delivery-details>
-                    <dt class="col-sm-3">Motorista da cobrança</dt><dd class="col-sm-9">@(assignment?.Driver?.Name ?? "Não associado")</dd>
-                    <dt class="col-sm-3">Terminal</dt><dd class="col-sm-9">@(assignment?.PaymentTerminal?.DeviceId ?? "Não associado")</dd>
-                    <dt class="col-sm-3">Última tentativa Point</dt><dd class="col-sm-9">@(cardOnDeliveryPayment.Gateway == "MercadoPagoPoint" ? paymentStatusLabel : "Ainda não iniciada")</dd>
-                    @if (!string.IsNullOrWhiteSpace(cardOnDeliveryPayment.GatewayOrderId))
-                    {
-                        <dt class="col-sm-3">External Order ID</dt><dd class="col-sm-9"><code>@cardOnDeliveryPayment.GatewayOrderId</code></dd>
-                    }
-                    <dt class="col-sm-3">Última atualização</dt><dd class="col-sm-9"><time>@cardOnDeliveryPayment.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</time></dd>
+            <section class="order-payment-card" data-payment-status="@(paymentApproved ? "approved" : "pending")" aria-labelledby="order-payment-title">
+                <header class="order-detail-section-heading">
+                    <div><small>PAGAMENTO</small><h2 id="order-payment-title">Cartão na entrega</h2></div>
+                    <span class="order-payment-status @(paymentApproved ? "order-payment-status--approved" : "order-payment-status--pending")">@paymentStatusLabel</span>
+                </header>
+                <dl class="order-payment-details" data-card-on-delivery-details>
+                    <div><dt>Forma de pagamento</dt><dd>Cartão na entrega</dd></div>
+                    <div><dt>Status do pagamento</dt><dd>@paymentStatusLabel</dd></div>
+                    <div><dt>Motorista da cobrança</dt><dd>@(paymentAssignment?.Driver?.Name ?? "Não associado")</dd></div>
+                    <div><dt>Terminal</dt><dd>@(paymentAssignment?.PaymentTerminal?.DeviceId ?? "Não associado")</dd></div>
+                    <div><dt>Última tentativa Point</dt><dd>@(cardOnDeliveryPayment?.Gateway == "MercadoPagoPoint" ? paymentStatusLabel : "Ainda não iniciada")</dd></div>
+                    <div><dt>External Order ID</dt><dd><code>@(cardOnDeliveryPayment?.GatewayOrderId ?? "Não informado")</code></dd></div>
+                    <div><dt>Última atualização</dt><dd>@if (cardOnDeliveryPayment is null) { <span>Sem tentativa</span> } else { <time>@cardOnDeliveryPayment.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</time> }</dd></div>
                 </dl>
-            }
+            </section>
         }
 
         @if (pointPaymentEnabled)
         {
-            <section class="card mt-3 mb-4" aria-labelledby="point-charge-title">
+            <section class="card order-point-charge-card" aria-labelledby="point-charge-title">
                 <div class="card-body">
                     <h2 id="point-charge-title" class="h5">Cobrança no terminal Point</h2>
                     @if (cardOnDeliveryPayment?.Gateway == "MercadoPagoPoint")
@@ -152,102 +151,106 @@
 
         @if (pointAuditEvents.Count > 0)
         {
-            <section class="mt-4" aria-labelledby="point-audit-title">
-                <h2 id="point-audit-title" class="h5">Auditoria da cobrança Point</h2>
-                <ol class="list-group list-group-flush">
+            <section class="order-detail-section order-point-audit" aria-labelledby="point-audit-title">
+                <header class="order-detail-section-heading"><div><small>RASTREABILIDADE</small><h2 id="point-audit-title">Auditoria da cobrança Point</h2></div></header>
+                <ol class="order-point-audit-list">
                     @foreach (var audit in pointAuditEvents)
                     {
-                        <li class="list-group-item px-0">
-                            <strong>@audit.ResultSummary</strong>
-                            <span class="d-block">@audit.PreviousStatus?.ToDisplayName() → @audit.NewStatus.ToDisplayName() · tentativa @audit.AttemptNumber · @(audit.AdminUser?.Email ?? "Sistema")</span>
-                            @if (!string.IsNullOrWhiteSpace(audit.ExternalOrderId)) { <small class="d-block">Order: @audit.ExternalOrderId</small> }
-                            <time>@audit.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</time>
+                        <li class="order-point-audit-entry">
+                            <div class="order-point-audit-main"><strong>@audit.ResultSummary</strong><span class="order-point-audit-transition">@audit.PreviousStatus?.ToDisplayName() → @audit.NewStatus.ToDisplayName()</span></div>
+                            <div class="order-point-audit-meta"><span>tentativa @audit.AttemptNumber</span><span>@(audit.AdminUser?.Email ?? "Sistema")</span>@if (!string.IsNullOrWhiteSpace(audit.ExternalOrderId)) { <code>Order: @audit.ExternalOrderId</code> }<time>@audit.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</time></div>
                         </li>
                     }
                 </ol>
             </section>
         }
 
-        <form asp-action="UpdateStatus" method="post" class="order-details-status-form d-flex flex-wrap align-items-center gap-2 mb-3">
-            <input type="hidden" name="id" value="@Model.Id" />
-            <select name="status" class="form-select">
-                @foreach (var status in Enum.GetValues<OrderStatus>())
-                {
-                    if (status == OrderStatus.Delivered && cardOnDelivery && !paymentApproved)
+        <section class="order-actions-card" aria-labelledby="order-actions-title">
+            <header class="order-detail-section-heading"><div><small>OPERAÇÃO</small><h2 id="order-actions-title">Ações do pedido</h2></div></header>
+            <div class="order-actions-grid">
+                <form asp-action="UpdateStatus" method="post" class="order-details-status-form">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <label for="order-status">Status do pedido</label>
+                    <div class="order-action-controls">
+                        <select id="order-status" name="status" class="form-select">
+                            @foreach (var status in Enum.GetValues<OrderStatus>())
+                            {
+                                if (status == OrderStatus.Delivered && cardOnDelivery && !paymentApproved)
+                                {
+                                    <option value="@status" selected="@(status == Model.Status)" disabled>@status.ToDisplayName()</option>
+                                }
+                                else
+                                {
+                                    <option value="@status" selected="@(status == Model.Status)">@status.ToDisplayName()</option>
+                                }
+                            }
+                        </select>
+                        <button class="btn btn-primary">Atualizar status</button>
+                    </div>
+                </form>
+                <form asp-action="ReprocessIntegration" method="post" class="order-details-wmc-form">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <label>Integração ERP</label>
+                    <button class="btn btn-outline-dark">Reprocessar integra&#231;&#227;o</button>
+                    @if (!string.IsNullOrWhiteSpace(Model.IntegrationError))
                     {
-                        <option value="@status" selected="@(status == Model.Status)" disabled>@status.ToDisplayName()</option>
+                        <small class="order-action-feedback text-danger">@Model.IntegrationError</small>
                     }
-                    else
+                </form>
+            </div>
+            @if (cardOnDelivery && !paymentApproved)
+            {
+                <p class="alert alert-warning order-action-warning" data-delivered-payment-guard>Pagamento na entrega ainda não foi aprovado.</p>
+            }
+        </section>
+
+        <div class="order-history-grid">
+            <section class="order-detail-section" aria-labelledby="order-status-history-title">
+                <header class="order-detail-section-heading"><div><small>RASTREABILIDADE</small><h2 id="order-status-history-title">Hist&oacute;rico de status</h2></div></header>
+                <ol class="list-group order-history-list">
+                    @foreach (var entry in Model.StatusHistory.OrderByDescending(x => x.ChangedAt))
                     {
-                        <option value="@status" selected="@(status == Model.Status)">@status.ToDisplayName()</option>
+                        <li class="list-group-item order-history-entry"><div><strong>@entry.Status.ToDisplayName()</strong><small>@(entry.ChangedByUser?.Email ?? "Sistema")</small></div><time>@entry.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time></li>
                     }
-                }
-            </select>
-            <button class="btn btn-primary">Atualizar status</button>
-        </form>
-        @if (cardOnDelivery && !paymentApproved)
-        {
-            <p class="alert alert-warning mb-3" data-delivered-payment-guard>Pagamento na entrega ainda não foi aprovado.</p>
-        }
+                </ol>
+            </section>
 
-        <form asp-action="ReprocessIntegration" method="post" class="order-details-wmc-form mb-3">
-            <input type="hidden" name="id" value="@Model.Id" />
-            <button class="btn btn-outline-dark">Reprocessar integra&#231;&#227;o</button>
-            @if (!string.IsNullOrWhiteSpace(Model.IntegrationError))
-            {
-                <small class="d-block text-danger mt-2">@Model.IntegrationError</small>
-            }
-        </form>
-
-        <h2 class="mt-4">Hist&oacute;rico de status</h2>
-        <ol class="list-group list-group-numbered mb-4">
-            @foreach (var entry in Model.StatusHistory.OrderByDescending(x => x.ChangedAt))
-            {
-                <li class="list-group-item d-flex justify-content-between align-items-start">
-                    <div><strong>@entry.Status.ToDisplayName()</strong><br /><small>@(entry.ChangedByUser?.Email ?? "Sistema")</small></div>
-                    <time>@entry.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
-                </li>
-            }
-        </ol>
-
-        <h2 class="mt-4">Hist&oacute;rico de exporta&#231;&otilde;es WMC</h2>
-        @if (!Model.WmcExportAudits.Any())
-        {
-            <p class="text-muted mb-4">Nenhuma exporta&#231;&#227;o WMC registrada para este pedido.</p>
-        }
-        else
-        {
-            <ol class="list-group list-group-numbered mb-4">
-                @foreach (var entry in Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt))
+            <section class="order-detail-section" aria-labelledby="order-wmc-history-title">
+                <header class="order-detail-section-heading"><div><small>INTEGRAÇÃO ERP</small><h2 id="order-wmc-history-title">Hist&oacute;rico de exporta&#231;&otilde;es WMC</h2></div></header>
+                @if (!Model.WmcExportAudits.Any())
                 {
-                    <li class="list-group-item d-flex justify-content-between align-items-start">
-                        <div>
-                            <strong>@(entry.Succeeded ? "Arquivo gerado" : "Falha na exportação")</strong>
-                            @if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail))
-                            {
-                                <small class="d-block">@entry.ExportedByEmail</small>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(entry.FileName))
-                            {
-                                <small class="d-block">@entry.FileName</small>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(entry.Error))
-                            {
-                                <small class="d-block text-danger">@entry.Error</small>
-                            }
-                        </div>
-                        <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
-                    </li>
+                    <p class="order-empty-state text-muted"><i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>Nenhuma exporta&#231;&#227;o WMC registrada para este pedido.</span></p>
                 }
-            </ol>
-        }
+                else
+                {
+                    <ol class="list-group order-history-list">
+                        @foreach (var entry in Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt))
+                        {
+                            <li class="list-group-item order-history-entry">
+                                <div><strong>@(entry.Succeeded ? "Arquivo gerado" : "Falha na exportação")</strong>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
+                                <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+                            </li>
+                        }
+                    </ol>
+                }
+            </section>
+        </div>
 
-        <div class="order-items">
-            @foreach (var item in Model.Items)
-            {
-                <div class="order-row"><div><small>@item.SkuSnapshot</small><h3>@item.ProductNameSnapshot</h3></div><span>@item.Quantity x @item.UnitPrice.ToString("C")</span><strong>@item.Subtotal.ToString("C")</strong></div>
-            }
+        <section class="order-detail-section order-items-section" aria-labelledby="order-items-title">
+            <header class="order-detail-section-heading"><div><small>COMPOSIÇÃO</small><h2 id="order-items-title">Itens do pedido</h2></div></header>
+            <div class="order-items">
+                <div class="order-items-heading" aria-hidden="true"><span>SKU / produto</span><span>Quantidade</span><span>Preço unitário</span><span>Total</span></div>
+                @foreach (var item in Model.Items)
+                {
+                    <div class="order-row"><div class="order-item-product"><small>@item.SkuSnapshot</small><h3>@item.ProductNameSnapshot</h3></div><span data-label="Quantidade">@item.Quantity</span><span data-label="Preço unitário">@item.UnitPrice.ToString("C")</span><strong data-label="Total">@item.Subtotal.ToString("C")</strong></div>
+                }
+            </div>
+        </section>
         </div>
     </div>
 </section>
 <script src="~/js/admin-point-payment.js" asp-append-version="true" defer></script>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/admin-order-details.css" asp-append-version="true" />
+}

@@ -219,8 +219,8 @@ html[data-theme="dark"] .admin-dashboard-page .admin-orders-table thead th{
 }
 
 .admin-authenticated .admin-dashboard-page .admin-dashboard-hero .container {
-    min-height: 168px;
-    padding: 16px clamp(20px, 2.2vw, 30px);
+    min-height: 128px;
+    padding: 12px clamp(20px, 2.2vw, 30px);
 }
 
 .admin-authenticated .admin-dashboard-page .admin-dashboard-hero .eyebrow {
@@ -326,8 +326,9 @@ html[data-theme="dark"] .admin-dashboard-page .admin-orders-table thead th{
 
 .admin-authenticated .admin-dashboard-page .admin-operation-step {
     display: flex;
-    min-height: 98px;
+    min-height: 88px;
     flex-direction: column;
+    padding: 10px 14px;
 }
 
 .admin-authenticated .admin-dashboard-page .admin-operation-step small,
@@ -541,7 +542,7 @@ html[data-theme="dark"] .admin-dashboard-page {
     --dashboard-card-bg: var(--admin-dark-surface);
     --dashboard-card-border: var(--admin-dark-border);
     --dashboard-card-text: var(--admin-dark-text);
-    --dashboard-card-muted: var(--admin-dark-muted);
+    --dashboard-card-muted: #A8B6C9;
     min-height: 0;
     padding-bottom: 24px;
 }
@@ -551,8 +552,8 @@ html[data-theme="dark"] .admin-dashboard-page .admin-dashboard-hero {
 }
 
 html[data-theme="dark"] .admin-dashboard-page .admin-dashboard-hero .container {
-    min-height: 168px;
-    padding: 16px clamp(20px, 2.2vw, 30px);
+    min-height: 128px;
+    padding: 12px clamp(20px, 2.2vw, 30px);
 }
 
 html[data-theme="dark"] .admin-dashboard-page .admin-priority-card,
@@ -613,8 +614,8 @@ html[data-theme="dark"] .admin-dashboard-page .admin-orders-table a:focus-visibl
         min-height: 0;
         align-items: flex-start;
         flex-direction: column;
-        gap: 12px;
-        padding: 18px;
+        gap: 10px;
+        padding: 14px;
     }
 
     .admin-authenticated .admin-dashboard-page .admin-dashboard-hero h1 {

@@ -165,6 +165,22 @@ public class AdminDarkThemeContractTests
         AssertAdminDarkRulesExcludeWhatsApp(styles, "admin-orders.css");
     }
 
+    [Fact]
+    public void AdminOrderDetailsStylesKeepDarkRulesGatedAndScopedToTheOrderPage()
+    {
+        var styles = ReadStyles("admin-order-details.css");
+        var darkRules = ReadRules(styles)
+            .Where(rule => rule.Selector.Contains("data-theme=\"dark\"", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.NotEmpty(darkRules);
+        Assert.All(darkRules, rule =>
+            Assert.True(
+                IsScopedAdminDarkSelector(rule.Selector) &&
+                HasPermittedComponentScope(rule.Selector, "admin-order-details.css"),
+                $"Dark order-detail styles must be gated and page-scoped: {rule.Selector}"));
+    }
+
     [Theory]
     [InlineData(".admin-orders-page", ".form-control")]
     [InlineData(".admin-orders-page", ".form-select")]
@@ -197,9 +213,10 @@ public class AdminDarkThemeContractTests
             Assert.Contains(hook, detail);
         foreach (var action in new[] { "UpdateStatus", "ReprocessIntegration", "PollPointCharge", "RefreshPointCharge", "CancelPointCharge", "StartPointCharge" })
             Assert.Contains($"asp-action=\"{action}\" method=\"post\"", detail);
-        Assert.Contains("class=\"order-details-status-form d-flex flex-wrap align-items-center gap-2 mb-3\"", detail);
+        Assert.Contains("class=\"order-details-status-form\"", detail);
         Assert.Contains("<button class=\"btn btn-primary\">Atualizar status</button>", detail);
-        Assert.Contains("order-details-wmc-form mb-3", detail);
+        Assert.Contains("class=\"order-details-wmc-form\"", detail);
+        Assert.Contains("@Model.IntegrationError", detail);
         Assert.DoesNotContain("class=\"modal", list + detail);
         var styles = ReadStyles("admin-orders.css");
         Assert.Contains("@media(max-width:767px)", styles);
@@ -924,6 +941,7 @@ public class AdminDarkThemeContractTests
             "commercial.css" => new[] { ".commercial-dashboard-page", ".commercial-calendar-page", ".commercial-form-page" }.Any(component => ContainsComponent(target, component)),
             "admin-customers.css" => new[] { ".customer-list-page", ".customer-commercial-page", ".customer-approval-page", ".assisted-order-page" }.Any(component => ContainsComponent(target, component)),
             "admin-orders.css" => ContainsComponent(target, ".admin-orders-page") || ContainsComponent(target, ".admin-order-details-page"),
+            "admin-order-details.css" => ContainsComponent(target, ".admin-order-details-page"),
             "admin-products.css" => ContainsComponent(target, ".admin-products-page") || ContainsComponent(target, ".admin-products-edit-page"),
             "admin-registrations.css" => ContainsComponent(target, ".admin-inventory-page"),
             "header.css" => Regex.IsMatch(target, @"\.(?:site-header-modern|account-[a-z-]+|global-notification-[a-z-]+)(?![a-zA-Z0-9_-])"),
