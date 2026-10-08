@@ -79,6 +79,9 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("grid-template-columns: minmax(0, 520px) minmax(0, 360px);", styles);
         Assert.Contains("max-width: 280px;", styles);
         Assert.Contains("width: min(100%, 1080px);", styles);
+        Assert.Contains("width: min(88%, 1200px);", styles);
+        Assert.Matches(@"\.admin-authenticated \.admin-order-details-page \.order-point-audit-main\s*\{\s*align-items:\s*flex-start;\s*flex-direction:\s*column;", styles);
+        Assert.Contains("width: 100%;", styles);
         Assert.Contains("grid-template-columns: minmax(0, 1.7fr) minmax(90px, .55fr) minmax(130px, .8fr) minmax(120px, .75fr);", styles);
         Assert.Contains("admin-order-details.css", File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml")));
     }
