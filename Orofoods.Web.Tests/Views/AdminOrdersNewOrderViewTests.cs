@@ -10,6 +10,7 @@ public class AdminOrdersNewOrderViewTests
 
         Assert.Contains("Novo pedido", ordersView);
         Assert.Contains("asp-controller=\"Customers\"", ordersView);
+        Assert.Contains("asp-route-context=\"new-order\"", ordersView);
         Assert.Contains("class=\"btn admin-primary-action", ordersView);
     }
 
@@ -23,5 +24,10 @@ public class AdminOrdersNewOrderViewTests
         Assert.Contains("asp-action=\"NewOrder\"", customersView);
         Assert.Contains("asp-route-id=\"@customer.Id\"", customersView);
         Assert.Contains("class=\"btn btn-sm admin-primary-action\"", customersView);
+        Assert.Contains("context", customersView);
+        Assert.Contains("Selecionar cliente para novo pedido", customersView);
+        Assert.Contains("Escolha o cliente para iniciar o pedido assistido.", customersView);
+        Assert.Contains("Voltar para pedidos", customersView);
+        Assert.Contains("Clientes B2B", customersView);
     }
 }
