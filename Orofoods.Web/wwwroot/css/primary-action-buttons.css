@@ -1,0 +1,236 @@
+.btn-primary {
+    --bs-btn-color: var(--action-primary-foreground);
+    --bs-btn-bg: var(--action-primary);
+    --bs-btn-border-color: var(--action-primary);
+    --bs-btn-hover-color: var(--action-primary-foreground);
+    --bs-btn-hover-bg: var(--action-primary-hover);
+    --bs-btn-hover-border-color: var(--action-primary-hover);
+    --bs-btn-active-color: var(--action-primary-foreground);
+    --bs-btn-active-bg: var(--action-primary-active);
+    --bs-btn-active-border-color: var(--action-primary-active);
+    --bs-btn-focus-shadow-rgb: 37, 99, 235;
+    --bs-btn-disabled-color: var(--action-primary-disabled-foreground);
+    --bs-btn-disabled-bg: var(--action-primary-disabled-bg);
+    --bs-btn-disabled-border-color: var(--action-primary-disabled-border);
+}
+
+.admin-users-primary {
+    border: 1px solid var(--action-primary);
+    background: var(--action-primary);
+    color: var(--action-primary-foreground);
+}
+
+.admin-users-primary:hover {
+    border-color: var(--action-primary-hover);
+    background: var(--action-primary-hover);
+    color: var(--action-primary-foreground);
+}
+
+.admin-users-primary:active {
+    border-color: var(--action-primary-active);
+    background: var(--action-primary-active);
+    color: var(--action-primary-foreground);
+}
+
+html:not([data-theme="dark"]) .btn-primary:active {
+    border-color: var(--action-primary-active);
+    background: var(--action-primary-active);
+    color: var(--action-primary-foreground);
+}
+
+html[data-theme="dark"] .btn-primary:active {
+    border-color: var(--action-primary-active);
+    background: var(--action-primary-active);
+    color: var(--action-primary-foreground);
+}
+
+.btn-primary:focus-visible,
+.admin-users-primary:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, .25);
+    outline-offset: 2px;
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled,
+.admin-users-primary:disabled,
+.admin-users-primary.disabled {
+    border-color: var(--action-primary-disabled-border);
+    background: var(--action-primary-disabled-bg);
+    color: var(--action-primary-disabled-foreground);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+html:not([data-theme="dark"]) .btn-primary:is(:disabled, .disabled),
+html[data-theme="dark"] .btn-primary:is(:disabled, .disabled) {
+    border-color: var(--action-primary-disabled-border);
+    background: var(--action-primary-disabled-bg);
+    color: var(--action-primary-disabled-foreground);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.btn-primary > i,
+.btn-primary > svg,
+.admin-primary-action > i,
+.admin-primary-action > svg,
+.admin-users-primary > i,
+.admin-users-primary > svg {
+    color: inherit;
+}
+
+.admin-users-filter-actions .admin-users-primary,
+.customer-list-tools .admin-primary-action,
+.orders-filter-grid .admin-primary-action,
+.catalog-tools .admin-primary-action,
+.commercial-calendar-filters .btn-primary,
+html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary {
+    border-color: #CBD5E1;
+    background: #FFFFFF;
+    color: #475569;
+}
+
+.admin-users-filter-actions .admin-users-primary:hover,
+.admin-users-filter-actions .admin-users-primary:active,
+.customer-list-tools .admin-primary-action:hover,
+.customer-list-tools .admin-primary-action:active,
+.orders-filter-grid .admin-primary-action:hover,
+.orders-filter-grid .admin-primary-action:active,
+.catalog-tools .admin-primary-action:hover,
+.catalog-tools .admin-primary-action:active,
+.commercial-calendar-filters .btn-primary:hover,
+html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary:hover,
+.commercial-calendar-filters .btn-primary:active,
+html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary:active {
+    border-color: #94A3B8;
+    background: #F8FAFC;
+    color: #334155;
+}
+
+.admin-users-filter-actions .admin-users-primary:focus-visible,
+.customer-list-tools .admin-primary-action:focus-visible,
+.orders-filter-grid .admin-primary-action:focus-visible,
+.catalog-tools .admin-primary-action:focus-visible,
+.commercial-calendar-filters .btn-primary:focus-visible,
+html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary:focus-visible {
+    outline: 3px solid rgba(71, 85, 105, .2);
+    outline-offset: 2px;
+}
+
+.admin-authenticated .order-details-status-form .btn-primary {
+    border-color: #CBD5E1;
+    background: #FFFFFF;
+    color: #475569;
+}
+
+.admin-authenticated .order-details-status-form .btn-primary:hover {
+    border-color: #94A3B8;
+    background: #F8FAFC;
+    color: #334155;
+}
+
+.admin-authenticated .order-details-status-form .btn-primary:active {
+    border-color: #64748B;
+    background: #E2E8F0;
+    color: #334155;
+}
+
+.admin-authenticated .order-details-status-form .btn-primary:focus-visible {
+    outline: 3px solid rgba(71, 85, 105, .2);
+    outline-offset: 2px;
+}
+
+.admin-authenticated .commercial-dashboard-hero > .btn-gold,
+.admin-authenticated .commercial-calendar-hero > .btn-gold,
+.admin-authenticated .customer-commercial-page a.btn-gold,
+.admin-authenticated .customer-opportunities-panel > header .btn-gold,
+.admin-authenticated .portal-top:has(+ .customer-opportunity-list) > .btn-gold,
+.admin-authenticated .commercial-form-page .registration-actions > .btn-gold,
+.admin-authenticated .admin-registration-form-page:has(input[name="Id"][value="0"]) .admin-primary-action,
+.admin-authenticated .admin-form-page:has(input[name="Id"][value="0"]) .admin-form-actions > .btn-gold,
+.admin-authenticated .admin-opportunity-create .registration-actions > .btn-gold,
+.admin-authenticated a.admin-primary-action,
+.admin-authenticated .assisted-order-page #assisted-submit {
+    border-color: var(--action-primary);
+    background: var(--action-primary);
+    color: var(--action-primary-foreground);
+}
+
+.admin-authenticated .commercial-dashboard-hero > .btn-gold:hover,
+.admin-authenticated .commercial-calendar-hero > .btn-gold:hover,
+.admin-authenticated .customer-commercial-page a.btn-gold:hover,
+.admin-authenticated .customer-opportunities-panel > header .btn-gold:hover,
+.admin-authenticated .portal-top:has(+ .customer-opportunity-list) > .btn-gold:hover,
+.admin-authenticated .commercial-form-page .registration-actions > .btn-gold:hover,
+.admin-authenticated .admin-registration-form-page:has(input[name="Id"][value="0"]) .admin-primary-action:hover,
+.admin-authenticated .admin-form-page:has(input[name="Id"][value="0"]) .admin-form-actions > .btn-gold:hover,
+.admin-authenticated .admin-opportunity-create .registration-actions > .btn-gold:hover,
+.admin-authenticated a.admin-primary-action:hover,
+.admin-authenticated .assisted-order-page #assisted-submit:hover {
+    border-color: var(--action-primary-hover);
+    background: var(--action-primary-hover);
+    color: var(--action-primary-foreground);
+}
+
+.admin-authenticated .commercial-dashboard-hero > .btn-gold:active,
+.admin-authenticated .commercial-calendar-hero > .btn-gold:active,
+.admin-authenticated .customer-commercial-page a.btn-gold:active,
+.admin-authenticated .customer-opportunities-panel > header .btn-gold:active,
+.admin-authenticated .portal-top:has(+ .customer-opportunity-list) > .btn-gold:active,
+.admin-authenticated .commercial-form-page .registration-actions > .btn-gold:active,
+.admin-authenticated .admin-registration-form-page:has(input[name="Id"][value="0"]) .admin-primary-action:active,
+.admin-authenticated .admin-form-page:has(input[name="Id"][value="0"]) .admin-form-actions > .btn-gold:active,
+.admin-authenticated .admin-opportunity-create .registration-actions > .btn-gold:active,
+.admin-authenticated a.admin-primary-action:active,
+.admin-authenticated .assisted-order-page #assisted-submit:active {
+    border-color: var(--action-primary-active);
+    background: var(--action-primary-active);
+    color: var(--action-primary-foreground);
+}
+
+.admin-authenticated .commercial-dashboard-hero > .btn-gold:focus-visible,
+.admin-authenticated .commercial-calendar-hero > .btn-gold:focus-visible,
+.admin-authenticated .customer-commercial-page a.btn-gold:focus-visible,
+.admin-authenticated .customer-opportunities-panel > header .btn-gold:focus-visible,
+.admin-authenticated .portal-top:has(+ .customer-opportunity-list) > .btn-gold:focus-visible,
+.admin-authenticated .commercial-form-page .registration-actions > .btn-gold:focus-visible,
+.admin-authenticated .admin-registration-form-page:has(input[name="Id"][value="0"]) .admin-primary-action:focus-visible,
+.admin-authenticated .admin-form-page:has(input[name="Id"][value="0"]) .admin-form-actions > .btn-gold:focus-visible,
+.admin-authenticated .admin-opportunity-create .registration-actions > .btn-gold:focus-visible,
+.admin-authenticated a.admin-primary-action:focus-visible,
+.admin-authenticated .assisted-order-page #assisted-submit:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, .25);
+    outline-offset: 2px;
+}
+
+.admin-authenticated .commercial-dashboard-hero > .btn-gold:disabled,
+.admin-authenticated .commercial-calendar-hero > .btn-gold:disabled,
+.admin-authenticated .customer-commercial-page a.btn-gold:disabled,
+.admin-authenticated .customer-opportunities-panel > header .btn-gold:disabled,
+.admin-authenticated .portal-top:has(+ .customer-opportunity-list) > .btn-gold:disabled,
+.admin-authenticated .commercial-form-page .registration-actions > .btn-gold:disabled,
+.admin-authenticated .admin-registration-form-page:has(input[name="Id"][value="0"]) .admin-primary-action:disabled,
+.admin-authenticated .admin-form-page:has(input[name="Id"][value="0"]) .admin-form-actions > .btn-gold:disabled,
+.admin-authenticated .admin-opportunity-create .registration-actions > .btn-gold:disabled,
+.admin-authenticated a.admin-primary-action:disabled,
+.admin-authenticated .assisted-order-page #assisted-submit:disabled {
+    border-color: var(--action-primary-disabled-border);
+    background: var(--action-primary-disabled-bg);
+    color: var(--action-primary-disabled-foreground);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.admin-authenticated .commercial-dashboard-hero > .btn-gold > i,
+.admin-authenticated .commercial-calendar-hero > .btn-gold > i,
+.admin-authenticated .customer-commercial-page a.btn-gold > i,
+.admin-authenticated .customer-opportunities-panel > header .btn-gold > i,
+.admin-authenticated .portal-top:has(+ .customer-opportunity-list) > .btn-gold > i,
+.admin-authenticated .commercial-form-page .registration-actions > .btn-gold > i,
+.admin-authenticated .admin-registration-form-page:has(input[name="Id"][value="0"]) .admin-primary-action > i,
+.admin-authenticated .admin-form-page:has(input[name="Id"][value="0"]) .admin-form-actions > .btn-gold > i,
+.admin-authenticated .admin-opportunity-create .registration-actions > .btn-gold > i,
+.admin-authenticated a.admin-primary-action > i,
+.admin-authenticated .assisted-order-page #assisted-submit > i {
+    color: inherit;
+}

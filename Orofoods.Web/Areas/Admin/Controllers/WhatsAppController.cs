@@ -19,7 +19,12 @@ public class WhatsAppController(
     IWhatsAppBusinessGateway gateway,
     IWhatsAppMediaStorage? mediaStorage = null) : Controller
 {
-    public async Task<IActionResult> Index(long? id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        long? id,
+        CancellationToken cancellationToken,
+        bool markAsRead = true,
+        bool selectConversation = true,
+        int? customerId = null)
     {
         var scope = await accessService.GetScopeAsync(User, cancellationToken);
         var customerIds = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope).Select(x => x.Id);
@@ -32,8 +37,56 @@ public class WhatsAppController(
         }
 
         var conversations = await conversationsQuery.OrderByDescending(x => x.LastMessageAt).Take(50).ToListAsync(cancellationToken);
-        var selected = id.HasValue ? conversations.FirstOrDefault(x => x.Id == id) : conversations.FirstOrDefault();
-        if (selected is not null && selected.UnreadCount > 0 && await accessService.CanAccessConversationAsync(User, selected.Id, cancellationToken))
+        WhatsAppConversation? selected = null;
+        if (id.HasValue)
+        {
+            selected = conversations.FirstOrDefault(x => x.Id == id.Value);
+            if (selected is null)
+            {
+                selected = await conversationsQuery.SingleOrDefaultAsync(x => x.Id == id.Value, cancellationToken);
+                if (selected is null && customerId.HasValue)
+                {
+                    var scopedCustomer = await accessService
+                        .ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+                        .Where(customer => customer.Id == customerId.Value)
+                        .Select(customer => new { customer.Id, customer.WhatsApp, customer.Phone })
+                        .SingleOrDefaultAsync(cancellationToken);
+                    if (scopedCustomer is not null)
+                    {
+                        var normalizedPhones = new[]
+                        {
+                            WhatsAppConversationService.TryNormalizePhone(scopedCustomer.WhatsApp),
+                            WhatsAppConversationService.TryNormalizePhone(scopedCustomer.Phone)
+                        }
+                        .Where(value => value is not null)
+                        .Select(value => value!)
+                        .Distinct(StringComparer.Ordinal)
+                        .ToHashSet(StringComparer.Ordinal);
+                        if (normalizedPhones.Count > 0)
+                        {
+                            selected = await db.WhatsAppConversations
+                                .AsNoTracking()
+                                .Where(conversation => conversation.Id == id.Value &&
+                                    (conversation.CustomerId == scopedCustomer.Id ||
+                                     (conversation.CustomerId == null && normalizedPhones.Contains(conversation.PhoneNumber))))
+                                .Include(conversation => conversation.Customer)
+                                .Include(conversation => conversation.AssignedUser)
+                                .SingleOrDefaultAsync(cancellationToken);
+                        }
+                    }
+                }
+                if (selected is not null)
+                {
+                    conversations.Add(selected);
+                }
+            }
+        }
+        else if (selectConversation)
+        {
+            selected = conversations.FirstOrDefault();
+        }
+
+        if (markAsRead && selected is not null && selected.UnreadCount > 0 && await accessService.CanAccessConversationAsync(User, selected.Id, cancellationToken))
         {
             var trackedConversation = await db.WhatsAppConversations.SingleAsync(x => x.Id == selected.Id, cancellationToken);
             trackedConversation.UnreadCount = 0;

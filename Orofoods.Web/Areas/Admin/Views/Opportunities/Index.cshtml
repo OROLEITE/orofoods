@@ -1,3 +1,65 @@
 @model IReadOnlyList<Orofoods.Web.Models.Commercial.CrmOpportunity>
-@{ ViewData["Title"] = "Oportunidades"; }
-<section class="section"><div class="container"><div class="portal-top"><div><div class="eyebrow"><span></span> CRM comercial</div><h1>Oportunidades</h1></div><a class="btn btn-gold" asp-action="Create" asp-route-customerId="@(Context.Request.Query["customerId"])">Nova oportunidade</a></div><div class="customer-opportunity-list mt-4">@foreach (var opportunity in Model) { <article><div><strong>@opportunity.Customer.TradeName</strong><small>@opportunity.Title · @opportunity.Type</small></div><span>@opportunity.Stage</span><strong>@(opportunity.EstimatedValue?.ToString("C") ?? "-")</strong><form asp-action="ChangeStage" method="post"><input type="hidden" name="id" value="@opportunity.Id" /><select name="stage"><option value="@opportunity.Stage">@opportunity.Stage</option><option value="Won">Ganha</option><option value="Lost">Perdida</option></select><button class="btn btn-sm btn-outline-dark">Atualizar</button></form></article> }</div></div></section>
+@using Orofoods.Web.Models.Commercial
+@{
+    ViewData["Title"] = "Oportunidades";
+
+}
+
+<section class="section admin-opportunities-page">
+    <div class="container">
+        <div class="portal-top">
+            <div>
+                <div class="eyebrow"><span></span> CRM comercial</div>
+                <h1>Oportunidades</h1>
+            </div>
+            <a class="btn admin-primary-action" asp-action="Create" asp-route-customerId="@(Context.Request.Query["customerId"])">Nova oportunidade</a>
+        </div>
+
+        <div class="customer-opportunity-list mt-4">
+            @if (Model.Count == 0)
+            {
+                <div class="admin-empty-state" role="status">
+                    <i class="fa-solid fa-lightbulb" aria-hidden="true"></i>
+                    <h2>Nenhuma oportunidade encontrada</h2>
+                    <a class="btn admin-primary-action admin-opportunity-empty-action" asp-action="Create" asp-route-customerId="@(Context.Request.Query["customerId"])">Nova oportunidade</a>
+                    <p>Ainda não existem oportunidades para os filtros selecionados.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var opportunity in Model)
+                {
+                    <article class="admin-opportunity-card">
+                        <div class="admin-opportunity-card__main">
+                            <div class="admin-opportunity-card__header">
+                                <div>
+                                    <strong class="admin-opportunity-card__customer">@opportunity.Customer.TradeName</strong>
+                                    <p class="admin-opportunity-card__title">@opportunity.Title</p>
+                                </div>
+                                <strong class="admin-opportunity-card__value">@(opportunity.EstimatedValue?.ToString("C") ?? "-")</strong>
+                            </div>
+                            <div class="admin-opportunity-card__meta">
+                                <span class="admin-opportunity-card__type">@opportunity.Type.ToDisplayName()</span>
+                                <span class="admin-opportunity-card__status">@opportunity.Stage.ToDisplayName()</span>
+                            </div>
+                        </div>
+                        <form class="admin-opportunity-stage-form" asp-action="ChangeStage" method="post">
+                            <input type="hidden" name="id" value="@opportunity.Id" />
+                            <label class="visually-hidden" for="opportunity-stage-@opportunity.Id">Status de @opportunity.Customer.TradeName</label>
+                            <select id="opportunity-stage-@opportunity.Id" name="stage">
+                                <option value="@opportunity.Stage">@opportunity.Stage.ToDisplayName()</option>
+                                <option value="Won">Ganha</option>
+                                <option value="Lost">Perdida</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-dark">Atualizar</button>
+                        </form>
+                    </article>
+                }
+            }
+        </div>
+    </div>
+</section>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/admin-opportunities.css" asp-append-version="true" />
+}

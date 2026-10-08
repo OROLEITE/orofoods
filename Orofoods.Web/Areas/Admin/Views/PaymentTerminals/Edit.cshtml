@@ -3,16 +3,37 @@
     ViewData["Title"] = Model.Id == 0 ? "Novo terminal" : "Editar terminal";
 }
 
-<h1>@ViewData["Title"]</h1>
-<p>Os identificadores são metadados operacionais. Não informe tokens ou credenciais.</p>
-<form asp-action="Edit" method="post">
-    <input asp-for="Id" type="hidden" />
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-    <div class="mb-3"><label asp-for="Provider" class="form-label">Provedor</label><select asp-for="Provider" class="form-select"><option value="0">Mercado Pago</option></select></div>
-    <div class="mb-3"><label asp-for="DeviceId" class="form-label">Device ID</label><input asp-for="DeviceId" class="form-control" autocomplete="off" /><span asp-validation-for="DeviceId" class="text-danger"></span></div>
-    <div class="mb-3"><label asp-for="StoreId" class="form-label">Store ID</label><input asp-for="StoreId" class="form-control" autocomplete="off" /></div>
-    <div class="mb-3"><label asp-for="PosId" class="form-label">POS ID</label><input asp-for="PosId" class="form-control" autocomplete="off" /></div>
-    <div class="form-check mb-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Ativo</label></div>
-    <button class="btn btn-primary" type="submit">Salvar</button>
-    <a class="btn btn-outline-secondary" asp-action="Index">Voltar</a>
-</form>
+<section class="admin-form-page admin-registration-form-page">
+    <div class="container admin-form-container">
+        <nav class="customer-approval-breadcrumb" aria-label="Navegação estrutural">
+            <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Administra&ccedil;&atilde;o</a>
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            <a asp-action="Index">Terminais de pagamento</a>
+        </nav>
+
+        <header class="admin-form-hero">
+            <div>
+                <div class="eyebrow"><span></span> Opera&ccedil;&atilde;o</div>
+                <h1>@ViewData["Title"]</h1>
+                <p>Os identificadores s&atilde;o metadados operacionais. N&atilde;o informe tokens ou credenciais.</p>
+            </div>
+            <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
+        </header>
+
+        <form asp-action="Edit" method="post" class="admin-form-card row g-3">
+            <input asp-for="Id" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="col-md-6"><label asp-for="Provider">Provedor</label><select asp-for="Provider" class="form-select"><option value="0">Mercado Pago</option></select></div>
+            <div class="col-md-6"><label asp-for="DeviceId">Device ID</label><input asp-for="DeviceId" class="form-control" autocomplete="off" /><span asp-validation-for="DeviceId" class="text-danger"></span></div>
+            <div class="col-md-6"><label asp-for="StoreId">Store ID</label><input asp-for="StoreId" class="form-control" autocomplete="off" /></div>
+            <div class="col-md-6"><label asp-for="PosId">POS ID</label><input asp-for="PosId" class="form-control" autocomplete="off" /></div>
+            <div class="col-12 admin-check"><label><input asp-for="IsActive" /> Ativo</label></div>
+            <footer class="col-12 admin-form-actions">
+                <a class="btn admin-secondary-action" asp-action="Index">Voltar</a>
+                <button class="btn admin-primary-action" type="submit">Salvar</button>
+            </footer>
+        </form>
+    </div>
+</section>
+
+@section Head { <link rel="stylesheet" href="~/css/admin-payment-terminals.css" asp-append-version="true" /> }

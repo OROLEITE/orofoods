@@ -25,4 +25,109 @@
 @media(max-width:900px){.whatsapp-inbox{grid-template-columns:220px minmax(0,1fr)}.whatsapp-customer-panel{display:none}}
 @media(max-width:600px){.whatsapp-inbox{display:block;min-height:0}.whatsapp-conversations{border-right:0;border-bottom:1px solid var(--line);max-height:220px;overflow:auto}.whatsapp-thread{min-height:520px}.whatsapp-compose{grid-template-columns:1fr}.whatsapp-compose .btn{width:100%}}
 .global-notification-menu{position:relative;pointer-events:auto}.global-notification-trigger{position:relative;display:grid;place-items:center;width:40px;height:40px;border:1px solid #d9ded5;border-radius:50%;background:#fff;color:#60665d;cursor:pointer;list-style:none;box-shadow:0 5px 18px #272b2512}.global-notification-trigger::-webkit-details-marker{display:none}.global-notification-trigger:focus-visible{outline:3px solid #d9a22a;outline-offset:3px}.global-notification-trigger i{font-size:15px}.global-notification-badge{position:absolute;top:-5px;right:-5px;display:grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border:2px solid #fff;border-radius:999px;background:#b94d3d;color:#fff;font-size:9px;font-weight:800}.global-notification-panel{position:absolute;top:48px;right:0;width:340px;max-width:calc(100vw - 32px);background:#fff;border:1px solid #e1e5de;border-radius:10px;box-shadow:0 18px 45px #20251e24;overflow:hidden}.global-notification-panel>header,.global-notification-panel>footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid #edf0eb}.global-notification-panel>header strong{font:700 15px Manrope}.global-notification-panel a{color:#80600f;font-size:11px;font-weight:800;text-decoration:none}.global-notification-items{display:grid;max-height:330px;overflow-y:auto}.global-notification-item{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;padding:12px 15px;border-bottom:1px solid #f0f2ef;color:#343831;text-decoration:none}.global-notification-item:hover{background:#fafbf8;color:#343831}.global-notification-item:focus-visible{outline:2px solid #d9a22a;outline-offset:-2px}.global-notification-item>i{margin-top:3px;color:#9b9f97;font-size:12px}.global-notification-item.is-unread{background:#fffaf0}.global-notification-item.is-unread>i{color:#c78917}.global-notification-item strong,.global-notification-item small,.global-notification-item time{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.global-notification-item strong{font-size:12px}.global-notification-item small{margin-top:3px;color:#6e746c;font-size:11px}.global-notification-item time{margin-top:5px;color:#9a9f97;font-size:10px}.global-notification-panel>footer{border-top:1px solid #edf0eb;border-bottom:0;justify-content:center}.global-notification-empty{margin:0;padding:25px 15px;color:#777d75;font-size:12px;text-align:center}@media(max-width:600px){.global-notification-panel{right:-4px;width:calc(100vw - 32px)}.global-notification-trigger{width:38px;height:38px}}
-@media(max-width:520px){.portal-mobile-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;overflow:visible;margin-bottom:18px;padding-bottom:0}.portal-mobile-nav a{justify-content:center;min-width:0;padding:9px 8px;font-size:10px}.portal-mobile-nav a:last-child{grid-column:1/-1}}
+@media(max-width:520px){.portal-mobile-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;overflow:visible;margin-bottom:18px;padding-bottom:0}.portal-mobile-nav a{justify-content:center;min-width:0;padding:9px 8px;font-size:10px}.portal-mobile-nav a:last-child{grid-column:1/-1}}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page{background:#0F172A;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-metric-grid article,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-routine-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-priority-legend,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-attention-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-agenda-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .commercial-form-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-filters,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-toolbar{border-color:#334155;background:#111827;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-attention-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-day,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event{border-color:#334155;background:#1E293B;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column>header strong{background:#334155;color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-grid{border-color:#334155;background:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-day>header{border-color:#334155;background:#111827}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-day.is-today>header{background:#1E293B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-dashboard-hero p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-metric-grid small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-metric-grid span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-panel-heading>span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-routine-item small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-routine-item strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-routine-item span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-priority-legend>div,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-attention-card small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column>header,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-agenda-item span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-empty-column,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-hero p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-filters label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-day>header span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event time,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-empty,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .portal-top small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-check-label{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-routine-item,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-agenda-item{border-color:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-attention-card:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-toolbar>a:not(.btn):hover{background:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-attention-card--urgent strong{color:#FCA5A5}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event.event-whatsapp{border-color:#047857;background:#12352C;color:#6EE7B7}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event.event-visit{border-color:#7C3AED;background:#31204F;color:#C4B5FD}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event.event-return{border-color:#854D0E;background:#422F12;color:#FCD34D}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event.event-order{border-color:#B91C1C;background:#451A1A;color:#FCA5A5}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-toolbar>a:not(.btn){color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-event:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-attention-card:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .btn:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .btn:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .btn:focus-visible{outline:2px solid #38BDF8;outline-offset:2px}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .btn-outline-dark{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .btn-outline-dark:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .btn-outline-dark:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .btn-outline-dark:disabled{background:#1E293B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .text-danger{color:#FCA5A5!important}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-select,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-filters select{border-color:#334155;background-color:#1E293B;color:#E5E7EB;color-scheme:dark}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-control::placeholder{color:#94A3B8;opacity:1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-select:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-check-input:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-filters select:focus{border-color:#38BDF8;outline:2px solid #38BDF8;outline-offset:2px;box-shadow:none}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-select:disabled{background:#111827;color:#94A3B8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-check-input{border-color:#64748B;background-color:#1E293B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-check-input:checked{border-color:#38BDF8;background-color:#38BDF8}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column > header strong{background:#334155;color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-day > header{border-color:#334155;background:#111827;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-day.is-today > header{background:#1E293B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-filters select:disabled{background:#111827;color:#94A3B8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-filters select[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-control[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-form-page .form-select[readonly]{background:#111827}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-panel-heading > span{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-day > header span{color:#CBD5E1}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-priority-legend > div{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-calendar-page .commercial-calendar-toolbar > a:not(.btn):hover{background:#334155;color:#F8FAFC}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.commercial-calendar-page .commercial-calendar-toolbar > a:not(.btn):hover){background:#334155;color:#F8FAFC}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column{border:1px solid transparent;transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column.is-drop-target{border-color:#64748B;background:#334155;box-shadow:inset 0 0 0 1px #64748B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card.is-status-updating{opacity:.6}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-feedback:not([hidden]){border:1px solid #334155;border-radius:8px;background:#1E293B;color:#CBD5E1;font-size:11px;line-height:1.4}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-feedback.is-error{border-color:#64748B;color:#FCA5A5}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card.is-dragging{opacity:.58;transform:scale(.99);cursor:grabbing;box-shadow:0 12px 24px rgba(15,23,42,.18)}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-kanban-column.is-drop-target{outline:2px dashed #64748B;outline-offset:-2px}
+
+.commercial-dashboard-page .commercial-routine-list--overview>.commercial-empty-column:only-child{margin:0;padding:12px 4px 14px}
+.commercial-dashboard-page .commercial-agenda-panel>.commercial-empty-column:last-child{margin:0;padding:12px 4px 4px}
+.commercial-dashboard-page .commercial-attention-panel{padding:16px 18px}
+.commercial-dashboard-page .commercial-attention-panel .commercial-panel-heading{margin-bottom:12px}
+.commercial-dashboard-page .commercial-attention-grid{gap:8px}
+.commercial-dashboard-page .commercial-attention-card{padding:12px 14px}
+.commercial-dashboard-page .commercial-attention-panel>.commercial-routine-list>.commercial-empty-column:only-child{margin:0;padding:12px 4px 0}

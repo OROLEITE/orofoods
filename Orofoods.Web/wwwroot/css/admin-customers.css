@@ -1,1 +1,360 @@
-.admin-authenticated .customer-list-page{padding:0 0 48px;background:transparent}.admin-authenticated .customer-list-container{max-width:none}.admin-authenticated .customer-approval-breadcrumb{display:none}.admin-authenticated .customer-list-hero{align-items:center;gap:24px;margin:0 0 20px;padding:0;border:0;background:transparent}.admin-authenticated .customer-list-hero h1{margin:5px 0;font-size:clamp(32px,3vw,46px);letter-spacing:-1.8px}.admin-authenticated .customer-list-hero p{margin:0;color:var(--muted);font-size:14px}.admin-authenticated .customer-list-pending{min-width:190px;padding:12px 14px;border-radius:10px;background:#f8f2e4;border-color:#e6d4a7}.admin-authenticated .customer-list-pending>i{width:30px;height:30px;font-size:12px}.admin-authenticated .customer-list-pending strong{font-size:12px}.customer-list-tools{display:grid;grid-template-columns:minmax(300px,1.4fr) minmax(220px,.9fr) auto;gap:12px;align-items:end;margin-bottom:18px;padding:16px 18px;border:1px solid #141f1814;border-radius:14px;background:#fff;box-shadow:0 8px 22px #141f1f0a}.customer-list-tools label{display:block;margin-bottom:6px;color:#646961;font-size:11px;font-weight:800}.customer-list-tools .form-control,.customer-list-tools .form-select{min-height:42px;border-color:#d9ddd4}.customer-search{position:relative}.customer-search>i{position:absolute;z-index:1;top:50%;left:13px;color:#7e847b;font-size:12px;transform:translateY(-50%)}.customer-search .form-control{padding-left:34px}.customer-filter-submit{min-width:148px;min-height:42px}.admin-authenticated .customer-list-panel{border:1px solid #141f1814;border-radius:14px;box-shadow:0 8px 24px #141f1f0a;overflow:hidden}.admin-authenticated .customer-list-panel>header{padding:14px 18px;background:#fff}.admin-authenticated .customer-list-panel>header h2{margin:3px 0 0;font-size:18px}.admin-authenticated .customer-list-panel>header>span{font-size:12px}.admin-authenticated .customer-list-table{margin:0;background:#fff}.admin-authenticated .customer-list-table thead th{padding:13px 16px;background:#20251f;color:#fff;border:0;font-size:10px;letter-spacing:.7px}.admin-authenticated .customer-list-table thead a{color:inherit;text-decoration:none}.admin-authenticated .customer-list-table tbody td{padding:12px 16px;border-color:#edf0eb;font-size:13px;vertical-align:middle}.admin-authenticated .customer-list-table tbody tr:hover{background:#faf9f5}.admin-authenticated .customer-list-table tbody td:first-child strong{font-size:13px}.admin-authenticated .customer-list-table tbody td:first-child small{margin-top:2px}.admin-authenticated .customer-list-table tbody td[data-label="CNPJ"]{white-space:nowrap}.admin-authenticated .customer-list-table tbody td[data-label="Tabela de preços"]{color:#4d544c}.admin-authenticated .customer-list-table tbody td[data-label="Vendedor"]{white-space:nowrap}.admin-authenticated .customer-list-table .customer-status{padding:5px 8px;font-size:10px}.admin-authenticated .customer-list-table tbody td[data-label="Ação"]{white-space:nowrap}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn{margin:0 0 0 5px;padding:6px 9px;border-color:#d2d7cf;color:#364038;font-size:11px;font-weight:800}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn:first-child{background:#20251f;border-color:#20251f;color:#fff}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn:first-child:hover{background:#303a30;border-color:#303a30}@media(max-width:960px){.customer-list-tools{grid-template-columns:minmax(240px,1fr) minmax(190px,.8fr) auto}.admin-authenticated .customer-list-table tbody td[data-label="CNPJ"]{white-space:normal}}@media(max-width:767px){.admin-authenticated .customer-list-hero{align-items:flex-start;flex-direction:column}.admin-authenticated .customer-list-pending{width:100%}.customer-list-tools{grid-template-columns:1fr;padding:16px}.customer-filter-submit{width:100%}.admin-authenticated .customer-list-panel>header{align-items:flex-start;flex-direction:column;gap:5px}.admin-authenticated .customer-list-table tbody td[data-label="Ação"]{display:flex!important;gap:8px;align-items:stretch}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn{flex:1;margin:0;text-align:center}.admin-authenticated .customer-list-table tbody td[data-label="CNPJ"]{white-space:nowrap}}
+.admin-authenticated .customer-list-page{padding:0 0 48px;background:transparent}.admin-authenticated .customer-list-container{max-width:none}.admin-authenticated .customer-approval-breadcrumb{display:none}.admin-authenticated .customer-list-hero{align-items:center;gap:24px;margin:0 0 20px;padding:0;border:0;background:transparent}.admin-authenticated .customer-list-hero h1{margin:5px 0;font-size:clamp(32px,3vw,46px);letter-spacing:-1.8px}.admin-authenticated .customer-list-hero p{margin:0;color:var(--muted);font-size:14px}.admin-authenticated .customer-list-pending{min-width:190px;padding:12px 14px;border-radius:10px;background:#f8f2e4;border-color:#e6d4a7}.admin-authenticated .customer-list-pending>i{width:30px;height:30px;font-size:12px}.admin-authenticated .customer-list-pending strong{font-size:12px}.customer-list-tools{display:grid;grid-template-columns:minmax(300px,1.4fr) minmax(220px,.9fr) auto;gap:12px;align-items:end;margin-bottom:18px;padding:16px 18px;border:1px solid #141f1814;border-radius:14px;background:#fff;box-shadow:0 8px 22px #141f1f0a}.customer-list-tools label{display:block;margin-bottom:6px;color:#646961;font-size:11px;font-weight:800}.customer-list-tools .form-control,.customer-list-tools .form-select{min-height:42px;border-color:#d9ddd4}.customer-search{position:relative}.customer-search>i{position:absolute;z-index:1;top:50%;left:13px;color:#7e847b;font-size:12px;transform:translateY(-50%)}.customer-search .form-control{padding-left:34px}.customer-filter-submit{min-width:148px;min-height:42px}.admin-authenticated .customer-list-panel{border:1px solid #141f1814;border-radius:14px;box-shadow:0 8px 24px #141f1f0a;overflow:hidden}.admin-authenticated .customer-list-panel>header{padding:14px 18px;background:#fff}.admin-authenticated .customer-list-panel>header h2{margin:3px 0 0;font-size:18px}.admin-authenticated .customer-list-panel>header>span{font-size:12px}.admin-authenticated .customer-list-table{margin:0;background:#fff}.admin-authenticated .customer-list-table thead th{padding:13px 16px;background:#20251f;color:#fff;border:0;font-size:10px;letter-spacing:.7px}.admin-authenticated .customer-list-table thead a{color:inherit;text-decoration:none}.admin-authenticated .customer-list-table tbody td{padding:12px 16px;border-color:#edf0eb;font-size:13px;vertical-align:middle}.admin-authenticated .customer-list-table tbody tr:hover{background:#faf9f5}.admin-authenticated .customer-list-table tbody td:first-child strong{font-size:13px}.admin-authenticated .customer-list-table tbody td:first-child small{margin-top:2px}.admin-authenticated .customer-list-table tbody td[data-label="CNPJ"]{white-space:nowrap}.admin-authenticated .customer-list-table tbody td[data-label="Tabela de preços"]{color:#4d544c}.admin-authenticated .customer-list-table tbody td[data-label="Vendedor"]{white-space:nowrap}.admin-authenticated .customer-list-table .customer-status{padding:5px 8px;font-size:10px}.admin-authenticated .customer-list-table tbody td[data-label="Ação"]{white-space:nowrap}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn{margin:0 0 0 5px;padding:6px 9px;border-color:#d2d7cf;color:#364038;font-size:11px;font-weight:800}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn:first-child{background:#20251f;border-color:#20251f;color:#fff}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn:first-child:hover{background:#303a30;border-color:#303a30}@media(max-width:960px){.customer-list-tools{grid-template-columns:minmax(240px,1fr) minmax(190px,.8fr) auto}.admin-authenticated .customer-list-table tbody td[data-label="CNPJ"]{white-space:normal}}@media(max-width:767px){.admin-authenticated .customer-list-hero{align-items:flex-start;flex-direction:column}.admin-authenticated .customer-list-pending{width:100%}.customer-list-tools{grid-template-columns:1fr;padding:16px}.customer-filter-submit{width:100%}.admin-authenticated .customer-list-panel>header{align-items:flex-start;flex-direction:column;gap:5px}.admin-authenticated .customer-list-table tbody td[data-label="Ação"]{display:flex!important;gap:8px;align-items:stretch}.admin-authenticated .customer-list-table tbody td[data-label="Ação"] .btn{flex:1;margin:0;text-align:center}.admin-authenticated .customer-list-table tbody td[data-label="CNPJ"]{white-space:nowrap}}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page{background:#0F172A;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-tools,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel>header,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-metrics article,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-attention,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunities-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-finance-metrics article,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-hero,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-status-panel,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .registration-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .registration-card-heading>span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-summary,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .admin-form-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .checkout-summary,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-product-list article{border-color:#334155;background:#111827;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-pending{border-color:#854D0E;background:#422F12}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table{--bs-table-bg:#111827;--bs-table-color:#E5E7EB;--bs-table-border-color:#334155;background:#111827;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table thead th{border-color:#334155;background:#1E293B;color:#F8FAFC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-table tbody td{border-color:#334155;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody tr:hover{--bs-table-bg:#1E293B;background:#1E293B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Tabela de preços"]{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"]{--customer-action-border:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table .btn:disabled{background:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-status--pending{border-color:#854D0E;background:#422F12;color:#FCD34D}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-status--approved{border-color:#047857;background:#12352C;color:#6EE7B7}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-status--blocked,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-status--inactive{border-color:#B91C1C;background:#451A1A;color:#FCA5A5}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-table{--bs-table-bg:#111827;--bs-table-color:#E5E7EB;--bs-table-border-color:#334155;background:#111827;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-table thead th{background:#1E293B;color:#F8FAFC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-table a{color:#38BDF8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-history-timeline article,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-activity-list article{border-color:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-history-timeline i{background:#1E293B;color:#38BDF8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-tabs{border-color:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-tabs .nav-link{--customer-tab-link-color:#CBD5E1;border-color:transparent}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-tabs .nav-link.active{--customer-tab-link-color:#38BDF8;border-color:#334155 #334155 #111827;background:#111827}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-attention{border-color:#334155;background:#111827;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-attention h2,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-metrics strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-panel h2{color:#F8FAFC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-status{border-color:#047857;background:#12352C;color:#6EE7B7}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-status-panel strong.is-pending{color:#FCD34D}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-hint{border-color:#075985;background:#0C3043;color:#7DD3FC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-summary li i{color:#6EE7B7}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .input-group-text,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-check-input{border-color:#334155;background-color:#1E293B;color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-check-input:checked{border-color:#38BDF8;background-color:#38BDF8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .btn-outline-dark{border-color:#334155;color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .btn-outline-dark:hover{background:#1E293B;color:#F8FAFC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-list select{background:#1E293B;color:#E5E7EB}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-hero p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-tools label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-search>i,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-pending small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-pending strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel>header small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel>header>span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td::before,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td:first-child strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td:first-child small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .page-item.disabled .page-link,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-hero p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-metrics small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-attention dt,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-attention dd,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-list small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-panel dt,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-panel dd,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-panel-heading>span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-table thead th,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-table tbody td,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-table small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-finance-metrics small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-finance-metrics strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-history-timeline strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-history-timeline span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-history-timeline time,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-empty{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-hero p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-status-panel small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-status-panel strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .registration-card-heading small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-label em,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-hint,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-field-help,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-summary li,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-summary>p:last-child,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .portal-top p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .portal-top small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-product-list small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .summary-label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .summary-total,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page #assisted-summary-items,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .text-muted{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-commercial-attention dt,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-panel dt{color:#94A3B8}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-select,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-list select,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-select,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .catalog-tools input,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-product-list input,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-line input,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields select,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields input,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields textarea{border-color:#334155;background-color:#1E293B;color:#E5E7EB;color-scheme:dark}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-select:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-list select:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-select:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-check-input:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .catalog-tools input:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-product-list input:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-line input:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields select:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields input:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields textarea:focus{border-color:#38BDF8;outline:2px solid #38BDF8;outline-offset:2px;box-shadow:none}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-select:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-select:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .catalog-tools input:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-product-list input:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-line input:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields select:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields input:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields textarea:disabled{background-color:#111827;color:#94A3B8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-control[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .form-select[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-list select[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-control[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .form-select[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .catalog-tools input[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-product-list input[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-line input[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields select[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields input[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-fields textarea[readonly]{background-color:#111827}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table thead a:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .page-link:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-tabs .nav-link:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .btn:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .btn:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .btn:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .btn:focus-visible{outline:2px solid #38BDF8;outline-offset:2px}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .btn-outline-dark,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .btn-outline-dark{border-color:#334155;color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .btn-outline-dark:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .btn-outline-dark:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .btn-outline-dark:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .btn-outline-dark:disabled{background:#1E293B;color:#F8FAFC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table .btn-gold:disabled{background:#334155}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .text-danger,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .text-danger{color:#FCA5A5!important}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-line button{color:#FCA5A5}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-order-line button:focus-visible{outline:2px solid #38BDF8;outline-offset:2px}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .checkout-summary .summary-total strong{color:#F8FAFC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .checkout-summary .summary-label{color:#F59E0B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page #assisted-submit:disabled{outline:2px solid #64748B;outline-offset:2px}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel > header{border-color:#334155;background:#111827;color:#E5E7EB}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .registration-card-heading > span{background:#1E293B;color:#F59E0B}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .admin-order-status{border-color:#047857;background:#12352C;color:#6EE7B7}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-list select:disabled{background:#111827;color:#94A3B8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-list select[readonly]{background:#111827}html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .page-link{border-color:#334155;background:#111827;color:#38BDF8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .page-item.active .page-link{border-color:var(--action-primary,#2563EB);background:var(--action-primary,#2563EB);color:#F8FAFC}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .page-item.disabled .page-link{background:#111827;color:#94A3B8}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-detail-panel-heading > span{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-approval-page .customer-approval-summary > p:last-child{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-search > i{color:#94A3B8}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel > header small{color:#CBD5E1}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel > header > span{color:#CBD5E1}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-gold {
+    border-color: var(--action-primary, #2563EB);
+    background: var(--action-primary, #2563EB);
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-gold:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-gold:focus-visible {
+    border-color: #1D4ED8;
+    background: #1D4ED8;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-outline-dark {
+    border-color: #334155;
+    background: #111827;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.btn-outline-dark:focus-visible {
+    border-color: #475569;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td[data-label="Ação"] .btn.disabled {
+    border-color: #334155;
+    background: #1E293B;
+    color: #94A3B8;
+    opacity: 1;
+    cursor: not-allowed;
+}
+/* Compact opportunity cards on the customer detail page. */
+.customer-commercial-page .customer-opportunity-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.customer-commercial-page .customer-opportunity-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 13px 15px;
+    border: 1px solid #e5ded2;
+    border-radius: 10px;
+    background: #fff;
+    color: #252b24;
+}
+
+.customer-commercial-page .customer-opportunity-card__main,
+.customer-commercial-page .customer-opportunity-card__header > div {
+    min-width: 0;
+}
+
+.customer-commercial-page .customer-opportunity-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.customer-commercial-page .customer-opportunity-card__title {
+    display: block;
+    color: #252b24;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.customer-commercial-page .customer-opportunity-card__type {
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.customer-commercial-page .customer-opportunity-card__value {
+    flex: 0 0 auto;
+    color: #80570e;
+    font-size: 17px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.customer-commercial-page .customer-opportunity-card__controls {
+    display: grid;
+    grid-template-columns: auto minmax(145px, 190px) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.customer-commercial-page .customer-opportunity-card__status {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.customer-commercial-page .customer-opportunity-stage-form {
+    display: contents;
+}
+
+.customer-commercial-page .customer-opportunity-stage-form select {
+    width: 100%;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-card {
+    border-color: #334155;
+    background: #111827;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-card__title,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-card__value {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-card__type,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-commercial-page .customer-opportunity-card__status {
+    color: #CBD5E1;
+}
+
+@media(max-width:900px) {
+    .customer-commercial-page .customer-opportunity-card {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .customer-commercial-page .customer-opportunity-card__controls {
+        justify-content: start;
+    }
+}
+
+@media(max-width:520px) {
+    .customer-commercial-page .customer-opportunity-card {
+        padding: 12px 13px;
+    }
+
+    .customer-commercial-page .customer-opportunity-card__header {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .customer-commercial-page .customer-opportunity-card__value {
+        justify-self: start;
+    }
+
+    .customer-commercial-page .customer-opportunity-card__controls {
+        grid-template-columns: 1fr;
+        gap: 7px;
+    }
+
+    .customer-commercial-page .customer-opportunity-stage-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 7px;
+    }
+
+    .customer-commercial-page .customer-opportunity-stage-form .btn {
+        width: 100%;
+    }
+}

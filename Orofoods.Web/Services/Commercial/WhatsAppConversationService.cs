@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
@@ -14,10 +16,12 @@ public sealed class WhatsAppConversationService(
     IOptions<WhatsAppBusinessOptions> options,
     UserNotificationService notifications,
     IWhatsAppMediaClient? mediaClient = null,
-    IWhatsAppMediaStorage? mediaStorage = null)
+    IWhatsAppMediaStorage? mediaStorage = null,
+    ILogger<WhatsAppConversationService>? logger = null)
 {
     private static readonly SemaphoreSlim[] MessageProcessingLocks =
         Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
+    private static readonly EventId MetaDeliveryFailureEvent = new(4301, "WhatsApp.MetaDeliveryFailure");
 
     public bool Enabled => options.Value.Enabled;
 
@@ -182,6 +186,8 @@ public sealed class WhatsAppConversationService(
         };
         if (mappedStatus is null) return null;
 
+        var failure = mappedStatus == WhatsAppMessageStatus.Failed ? ParseFailure(status) : null;
+
         DateTime? occurredAt = null;
         if (status.TryGetProperty("timestamp", out var timestampNode) && timestampNode.ValueKind == JsonValueKind.String &&
             long.TryParse(timestampNode.GetString(), out var seconds))
@@ -190,7 +196,65 @@ public sealed class WhatsAppConversationService(
             catch (ArgumentOutOfRangeException) { throw new WhatsAppWebhookPayloadException(); }
         }
 
-        return new InboundStatus(id, mappedStatus.Value, occurredAt ?? DateTime.UtcNow);
+        return new InboundStatus(id, mappedStatus.Value, occurredAt ?? DateTime.UtcNow, failure?.Code, failure?.Message);
+    }
+
+    private static InboundFailure? ParseFailure(JsonElement status)
+    {
+        if (!status.TryGetProperty("errors", out var errors) || errors.ValueKind == JsonValueKind.Null)
+            return null;
+        if (errors.ValueKind != JsonValueKind.Array)
+            throw new WhatsAppWebhookPayloadException();
+        if (errors.GetArrayLength() == 0)
+            return null;
+
+        var primaryError = errors[0];
+        if (primaryError.ValueKind != JsonValueKind.Object)
+            throw new WhatsAppWebhookPayloadException();
+
+        var code = ReadMetaErrorCode(primaryError);
+        var details = new List<string?>
+        {
+            ReadMetaErrorText(primaryError, "title"),
+            ReadMetaErrorText(primaryError, "message")
+        };
+        if (primaryError.TryGetProperty("error_data", out var errorData) && errorData.ValueKind == JsonValueKind.Object)
+            details.Add(ReadMetaErrorText(errorData, "details"));
+
+        return new InboundFailure(code, SanitizeMetaFailureMessage(details));
+    }
+
+    private static string? ReadMetaErrorCode(JsonElement error)
+    {
+        if (!error.TryGetProperty("code", out var code)) return null;
+        var value = code.ValueKind switch
+        {
+            JsonValueKind.Number => code.GetRawText(),
+            JsonValueKind.String => code.GetString(),
+            _ => null
+        };
+        return value is { Length: > 0 and <= 80 } && value.All(char.IsAsciiDigit) ? value : null;
+    }
+
+    private static string? ReadMetaErrorText(JsonElement error, string propertyName) =>
+        error.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static string? SanitizeMetaFailureMessage(IEnumerable<string?> parts)
+    {
+        var message = string.Join(" — ", parts.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim()));
+        if (message.Length == 0) return null;
+
+        message = Regex.Replace(message, @"(?i)\b(?:access[_\s-]?token|token|authorization|app[_\s-]?secret|client[_\s-]?secret|secret|password|api[_\s-]?key|verify[_\s-]?token)\s*[:=]\s*(?:bearer\s+)?[^\s,;]+", "[REDACTED_CREDENTIAL]");
+        message = Regex.Replace(message, @"(?i)\bbearer\s+[^\s,;]+", "Bearer [REDACTED]");
+        message = Regex.Replace(message, @"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b", "[REDACTED_CREDENTIAL]");
+        message = Regex.Replace(message, @"(?<!\d)\+?(?:[\s().-]*\d){8,15}(?!\d)", "[REDACTED_PHONE]");
+        message = Regex.Replace(message, @"(?i)\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", "[REDACTED_EMAIL]");
+        message = string.Concat(message.Select(character => char.IsControl(character) ? ' ' : character));
+        message = Regex.Replace(message, @"\s{2,}", " ").Trim();
+
+        return message.Length <= 500 ? message : message[..500];
     }
 
     private static string ReadRequiredString(JsonElement element, string propertyName)
@@ -375,10 +439,38 @@ public sealed class WhatsAppConversationService(
         var messages = db.WhatsAppMessages.Where(x => x.ExternalMessageId == status.ExternalId);
         if (status.Status == WhatsAppMessageStatus.Failed)
         {
-            await messages.Where(x => x.Status != WhatsAppMessageStatus.Failed)
+            var target = await messages
+                .Select(x => new { x.Id, x.ConversationId })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (target is null) return;
+
+            var updated = await messages.Where(x => x.Status != WhatsAppMessageStatus.Failed)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.Status, WhatsAppMessageStatus.Failed)
-                    .SetProperty(x => x.FailedAt, status.OccurredAt), cancellationToken);
+                    .SetProperty(x => x.FailedAt, status.OccurredAt)
+                    .SetProperty(x => x.ErrorCode, x => x.ErrorCode ?? status.ErrorCode)
+                    .SetProperty(x => x.ErrorMessage, x => x.ErrorMessage ?? status.ErrorMessage), cancellationToken);
+
+            if (updated == 0 && (status.ErrorCode is not null || status.ErrorMessage is not null))
+            {
+                updated = await messages.Where(x => x.Status == WhatsAppMessageStatus.Failed &&
+                        ((x.ErrorCode == null && status.ErrorCode != null) || (x.ErrorMessage == null && status.ErrorMessage != null)))
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(x => x.ErrorCode, x => x.ErrorCode ?? status.ErrorCode)
+                        .SetProperty(x => x.ErrorMessage, x => x.ErrorMessage ?? status.ErrorMessage), cancellationToken);
+            }
+
+            if (updated > 0)
+            {
+                logger?.LogWarning(
+                    MetaDeliveryFailureEvent,
+                    "Meta reported WhatsApp message delivery failure. ExternalMessageId={ExternalMessageId} MetaErrorCode={MetaErrorCode} Status={Status} ConversationId={ConversationId} MessageId={MessageId}",
+                    status.ExternalId,
+                    status.ErrorCode,
+                    status.Status,
+                    target.ConversationId,
+                    target.Id);
+            }
             return;
         }
 
@@ -428,7 +520,8 @@ public sealed class WhatsAppConversationService(
     private sealed record CustomerPhoneCandidate(int Id, string WhatsApp, string Phone, string? InternalSalesUserId);
     private sealed record InboundMessage(string ExternalId, string From, string Type, string? Text, InboundMedia? Media);
     private sealed record InboundMedia(string MediaId, string MimeType, string? FileName, string? Caption, bool IsVoice);
-    private sealed record InboundStatus(string ExternalId, WhatsAppMessageStatus Status, DateTime OccurredAt);
+    private sealed record InboundStatus(string ExternalId, WhatsAppMessageStatus Status, DateTime OccurredAt, string? ErrorCode, string? ErrorMessage);
+    private sealed record InboundFailure(string? Code, string? Message);
     private sealed record WebhookBatch(IReadOnlyList<InboundMessage> Messages, IReadOnlyList<InboundStatus> Statuses)
     {
         public static WebhookBatch Empty { get; } = new([], []);

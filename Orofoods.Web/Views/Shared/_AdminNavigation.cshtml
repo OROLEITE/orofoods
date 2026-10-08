@@ -15,7 +15,7 @@
     string Active(string value) => controller == value ? "active" : string.Empty;
 }
 
-<div class="admin-sidebar-header"><small>OROFOODS</small><h2>Administração</h2><span>Operação interna</span></div>
+<div class="admin-sidebar-header"><img class="admin-sidebar-logo" src="~/images/logo-orofoods-transparent.png" asp-append-version="true" alt="Orofoods" /><h2>Administração</h2><span>Operação interna</span></div>
 <nav id="@prefix-admin-menu" class="admin-nav" aria-label="Seções administrativas">
     @if (isAdministrator)
     {
@@ -35,7 +35,8 @@
         <div class="admin-nav-cluster @(crmActive ? "is-active" : string.Empty)">
             <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-Crm" data-admin-nav-group aria-expanded="@crmActive.ToString().ToLowerInvariant()" aria-controls="@prefix-Crm" aria-label="Alternar menu CRM" title="CRM"><span><i class="fa-solid fa-headset" aria-hidden="true"></i><span class="admin-nav-label">CRM</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>
             <div id="@prefix-Crm" class="admin-nav-submenu collapse @(crmActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@crmActive.ToString().ToLowerInvariant()">
-                <a class="admin-nav-link admin-nav-link--nested @(controller == "Commercial" && action != "Calendar" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Commercial" asp-action="Index"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Minha rotina</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @(controller == "Commercial" && action == "Index" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Commercial" asp-action="Index"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i><span>Visão geral</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @(controller == "Commercial" && action != "Calendar" && action != "Index" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Commercial" asp-action="Index"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Minha rotina</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @(controller == "Commercial" && action == "Calendar" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Commercial" asp-action="Calendar"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>Agenda</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Customers")" asp-area="Admin" asp-controller="Customers" asp-action="Index"><i class="fa-solid fa-building" aria-hidden="true"></i><span>Clientes</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Opportunities")" asp-area="Admin" asp-controller="Opportunities" asp-action="Index"><i class="fa-solid fa-bullseye" aria-hidden="true"></i><span>Oportunidades</span></a>

@@ -70,7 +70,7 @@
                     <span asp-validation-for="AcceptPrivacyPolicy" class="text-danger d-block"></span>
                     <div class="registration-step-actions">
                         <button type="button" class="btn btn-outline-dark" data-registration-previous><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar</button>
-                        <button type="submit" class="btn btn-gold">Enviar para an&aacute;lise <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+                        <button type="submit" class="btn btn-primary">Enviar para an&aacute;lise <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
                     </div>
                 </section>
 
@@ -105,3 +105,6 @@ document.querySelectorAll("[data-password-toggle]").forEach(button => {
     });
 });
 </script>
+@section Head {
+    <link rel="stylesheet" href="~/css/primary-action-buttons.css" asp-append-version="true" />
+}

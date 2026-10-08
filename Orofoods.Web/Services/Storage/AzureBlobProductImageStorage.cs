@@ -11,32 +11,22 @@ public sealed class AzureBlobProductImageStorage : IProductImageStorage
     private readonly Uri _containerUri;
 
     public AzureBlobProductImageStorage(StorageOptions? options = null)
-        : this(options, CreateContainerClient(options), ensurePrivateContainer: true)
+        : this(options, CreateContainerClient)
     {
     }
 
     internal AzureBlobProductImageStorage(StorageOptions? options, IAzureBlobContainerClient containerClient)
-        : this(options, containerClient, ensurePrivateContainer: false)
+        : this(options, _ => containerClient)
     {
     }
 
-    private AzureBlobProductImageStorage(StorageOptions? options, IAzureBlobContainerClient containerClient, bool ensurePrivateContainer)
+    internal AzureBlobProductImageStorage(
+        StorageOptions? options,
+        Func<Uri, IAzureBlobContainerClient> containerClientFactory)
     {
-        var effectiveOptions = options ?? new StorageOptions();
-        var serviceUri = effectiveOptions.AzureBlob.ServiceUri;
-        var containerName = effectiveOptions.AzureBlob.ContainerName;
-
-        if (string.IsNullOrWhiteSpace(serviceUri) || string.IsNullOrWhiteSpace(containerName))
-        {
-            throw new InvalidOperationException("Storage:Provider=AzureBlob exige Storage:AzureBlob:ServiceUri e Storage:AzureBlob:ContainerName configurados.");
-        }
-
-        _containerUri = new Uri($"{serviceUri.TrimEnd('/')}/{containerName.TrimStart('/')}" );
-        _containerClient = containerClient;
-        if (ensurePrivateContainer)
-        {
-            _containerClient.EnsurePrivate();
-        }
+        ArgumentNullException.ThrowIfNull(containerClientFactory);
+        _containerUri = CreateContainerUri(options);
+        _containerClient = containerClientFactory(_containerUri);
     }
 
     public async Task<string> SaveAsync(Stream content, string fileName, string? contentType, CancellationToken cancellationToken = default)
@@ -87,7 +77,7 @@ public sealed class AzureBlobProductImageStorage : IProductImageStorage
         return newUrl;
     }
 
-    private static IAzureBlobContainerClient CreateContainerClient(StorageOptions? options)
+    private static Uri CreateContainerUri(StorageOptions? options)
     {
         var effectiveOptions = options ?? new StorageOptions();
         var serviceUri = effectiveOptions.AzureBlob.ServiceUri;
@@ -97,9 +87,21 @@ public sealed class AzureBlobProductImageStorage : IProductImageStorage
             throw new InvalidOperationException("Storage:Provider=AzureBlob exige Storage:AzureBlob:ServiceUri e Storage:AzureBlob:ContainerName configurados.");
         }
 
-        var containerUri = new Uri($"{serviceUri.TrimEnd('/')}/{containerName.TrimStart('/')}" );
-        return new AzureBlobContainerClientAdapter(new BlobContainerClient(containerUri, new DefaultAzureCredential()));
+        if (!Uri.TryCreate(serviceUri, UriKind.Absolute, out var parsedServiceUri)
+            || (parsedServiceUri.Scheme != Uri.UriSchemeHttps && parsedServiceUri.Scheme != Uri.UriSchemeHttp)
+            || string.IsNullOrWhiteSpace(parsedServiceUri.Host)
+            || !string.IsNullOrEmpty(parsedServiceUri.Query)
+            || !string.IsNullOrEmpty(parsedServiceUri.Fragment))
+        {
+            throw new InvalidOperationException("Storage:AzureBlob:ServiceUri deve ser uma URL HTTP ou HTTPS absoluta, sem query ou fragmento.");
+        }
+
+        return new Uri($"{serviceUri.TrimEnd('/')}/{containerName.TrimStart('/')}");
     }
+
+    // The private container is provisioned by infrastructure; this only creates local SDK client objects.
+    private static IAzureBlobContainerClient CreateContainerClient(Uri containerUri) =>
+        new AzureBlobContainerClientAdapter(new BlobContainerClient(containerUri, new DefaultAzureCredential()));
 
     private static string GetBlobNameFromUrl(string url, Uri containerUri)
     {
@@ -167,7 +169,6 @@ public sealed class AzureBlobProductImageStorage : IProductImageStorage
     internal interface IAzureBlobContainerClient
     {
         IAzureBlobClient GetBlobClient(string blobName);
-        void EnsurePrivate();
     }
 
     internal interface IAzureBlobClient
@@ -181,12 +182,6 @@ public sealed class AzureBlobProductImageStorage : IProductImageStorage
     private sealed class AzureBlobContainerClientAdapter(BlobContainerClient client) : IAzureBlobContainerClient
     {
         public IAzureBlobClient GetBlobClient(string blobName) => new AzureBlobClientAdapter(client.GetBlobClient(blobName));
-
-        public void EnsurePrivate()
-        {
-            client.CreateIfNotExists(PublicAccessType.None);
-            client.SetAccessPolicy(PublicAccessType.None);
-        }
     }
 
     private sealed class AzureBlobClientAdapter(BlobClient client) : IAzureBlobClient

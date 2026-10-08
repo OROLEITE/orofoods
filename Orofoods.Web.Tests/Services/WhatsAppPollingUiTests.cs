@@ -31,9 +31,6 @@ public class WhatsAppPollingUiTests
         var layout = ReadText(Path.Combine(root, "Orofoods.Web", "Views", "Shared", "_Layout.cshtml"));
         var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var styles = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
-        var themeBootstrap = layout.IndexOf("savedCrmTheme", StringComparison.Ordinal);
-        var firstStylesheet = layout.IndexOf("<link rel=\"stylesheet\"", StringComparison.Ordinal);
-
         Assert.Contains("<form asp-action=\"Send\" method=\"post\"", view);
         Assert.Contains("form.addEventListener('submit', async event =>", script);
         Assert.Contains("event.preventDefault()", script);
@@ -41,18 +38,22 @@ public class WhatsAppPollingUiTests
         Assert.Contains("if (sendInFlight)", script);
         Assert.Contains("await synchronize()", script);
         Assert.Contains("whatsapp-send-feedback", view);
-        Assert.True(themeBootstrap >= 0 && themeBootstrap < firstStylesheet);
-        Assert.Contains("orofoods.crm.theme", layout);
+        Assert.Contains("data-theme=\"@(isAdminArea ? \"dark\" : null)\"", layout);
+        Assert.DoesNotContain("orofoods.crm.theme", layout);
+        Assert.DoesNotContain("orofoods.crm.theme", script);
+        Assert.DoesNotContain("whatsapp-theme-toggle", view);
+        Assert.Contains("whatsapp-sound-toggle", view);
         Assert.Contains("html[data-theme=\"dark\"]:has(.whatsapp-inbox-page)", styles);
         Assert.Contains("--crm-page-bg", styles);
         Assert.Contains("--crm-chat-bg", styles);
     }
 
     [Fact]
-    public void Customer_actions_share_a_spaced_container_and_theme_controls_use_shared_tokens()
+    public void Customer_actions_share_a_spaced_container_and_sound_control_uses_shared_tokens()
     {
         var root = FindRepositoryRoot();
         var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var styles = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
 
         Assert.Contains("whatsapp-customer-actions", view);
@@ -61,7 +62,10 @@ public class WhatsAppPollingUiTests
         Assert.Contains("gap: 12px", styles);
         Assert.Contains(".whatsapp-unlink-customer:hover", styles);
         Assert.Contains(".whatsapp-sound-toggle", styles);
-        Assert.Contains(".whatsapp-theme-toggle", styles);
+        Assert.DoesNotContain("whatsapp-theme-toggle", view);
+        Assert.DoesNotContain("whatsapp-theme-toggle", script);
+        Assert.DoesNotContain("whatsapp-theme-toggle", styles);
+        Assert.Contains("Som desligado", script);
         Assert.Contains(".whatsapp-channel-badge", styles);
         Assert.Contains("--crm-message-in", styles);
         Assert.Contains("--crm-message-out", styles);
@@ -585,15 +589,15 @@ public class WhatsAppPollingUiTests
     }
 
     [Fact]
-    public void Theme_and_conversation_search_are_additive_to_the_existing_whatsapp_page()
+    public void Fixed_dark_theme_and_conversation_search_keep_the_whatsapp_page_intact()
     {
         var root = FindRepositoryRoot();
         var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
         var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var styles = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css"));
 
-        Assert.Contains("whatsapp-theme-toggle", view);
-        Assert.Contains("orofoods.crm.theme", script);
+        Assert.DoesNotContain("whatsapp-theme-toggle", view);
+        Assert.DoesNotContain("orofoods.crm.theme", script);
         Assert.Contains("whatsapp-search-input", view);
         Assert.Contains("data-search-phone", view);
         Assert.Contains("conversation.textContent", script);

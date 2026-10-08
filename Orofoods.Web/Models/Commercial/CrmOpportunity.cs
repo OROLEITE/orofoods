@@ -1,11 +1,52 @@
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Orders;
 
 namespace Orofoods.Web.Models.Commercial;
 
-public enum CrmOpportunityType { Repurchase, NewProduct, CrossSell, CustomerRecovery, Proposal, Other }
+public enum CrmOpportunityType
+{
+    [Display(Name = "Recompra")]
+    Repurchase,
+    [Display(Name = "Novo produto")]
+    NewProduct,
+    [Display(Name = "Venda cruzada")]
+    CrossSell,
+    [Display(Name = "Recuperação de cliente")]
+    CustomerRecovery,
+    [Display(Name = "Proposta")]
+    Proposal,
+    [Display(Name = "Outro")]
+    Other
+}
+
+public static class CrmOpportunityTypeDisplayExtensions
+{
+    public static string ToDisplayName(this CrmOpportunityType type) =>
+        typeof(CrmOpportunityType)
+            .GetField(type.ToString())?
+            .GetCustomAttribute<DisplayAttribute>()?
+            .GetName() ?? type.ToString();
+}
+
 public enum CrmOpportunityStage { Open, Contacted, Proposal, Negotiation, Won, Lost, Cancelled }
+
+public static class CrmOpportunityStageDisplayExtensions
+{
+    public static string ToDisplayName(this CrmOpportunityStage stage) => stage switch
+    {
+        CrmOpportunityStage.Open => "Aberta",
+        CrmOpportunityStage.Contacted => "Em contato",
+        CrmOpportunityStage.Proposal => "Proposta",
+        CrmOpportunityStage.Negotiation => "Em negocia\u00e7\u00e3o",
+        CrmOpportunityStage.Won => "Ganha",
+        CrmOpportunityStage.Lost => "Perdida",
+        CrmOpportunityStage.Cancelled => "Cancelada",
+        _ => stage.ToString()
+    };
+}
+
 public enum CrmOpportunitySource { Manual, RepurchaseAlert, NoPurchaseAlert, FirstContact, OrderFollowUp }
 public enum CrmOpportunityEventType { Created, StageChanged, ProposalSent, Won, Lost, OrderRelated }
 
