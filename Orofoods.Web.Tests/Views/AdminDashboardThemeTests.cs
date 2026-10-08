@@ -22,7 +22,7 @@ public class AdminDashboardThemeTests
         Assert.Contains("html[data-theme=\"dark\"] .admin-dashboard-page", dashboardStyles);
         Assert.Contains("background-color:#0F172A;", dashboardStyles);
         Assert.Contains("html[data-theme=\"dark\"] .admin-dashboard-hero .container", dashboardStyles);
-        Assert.Contains("min-height: 168px;", dashboardStyles);
+        Assert.Contains("min-height: 128px;", dashboardStyles);
         Assert.DoesNotContain("min-height:280px;", dashboardStyles);
         Assert.Contains("border-radius: 14px", dashboardStyles);
         Assert.Contains("linear-gradient", dashboardStyles);
@@ -58,6 +58,8 @@ public class AdminDashboardThemeTests
         Assert.Contains("letter-spacing: -.4px", dashboardStyles);
         Assert.Contains("@media (max-width: 1000px)", dashboardStyles);
         Assert.Contains("@media (max-width: 650px)", dashboardStyles);
+        Assert.Contains("@media (max-width: 767px)", dashboardStyles);
+        Assert.Matches(@"gap:\s*10px;\s*padding:\s*14px;", dashboardStyles);
     }
 
     [Fact]
@@ -86,5 +88,30 @@ public class AdminDashboardThemeTests
         Assert.Contains("grid-template-columns: repeat(4, minmax(0, 1fr))", dashboardStyles);
         Assert.Contains("@media (max-width: 1000px)", dashboardStyles);
         Assert.Contains("@media (max-width: 650px)", dashboardStyles);
+    }
+
+    [Fact]
+    public void Dashboard_hero_and_today_cards_keep_their_compact_vertical_spacing_and_secondary_contrast()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var dashboardStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard.css"));
+
+        Assert.Matches(@"\.admin-authenticated\s+\.admin-dashboard-page\s+\.admin-dashboard-hero\s+\.container\s*\{\s*min-height:\s*128px;\s*padding:\s*12px", dashboardStyles);
+        Assert.Matches(@"html\[data-theme=""dark""\]\s+\.admin-dashboard-page\s+\.admin-dashboard-hero\s+\.container\s*\{\s*min-height:\s*128px;\s*padding:\s*12px", dashboardStyles);
+        Assert.Matches(@"\.admin-authenticated\s+\.admin-dashboard-page\s+\.admin-operation-step\s*\{(?=[^}]*display:\s*flex)(?=[^}]*min-height:\s*88px)", dashboardStyles);
+        Assert.Contains("--dashboard-card-muted: #A8B6C9;", dashboardStyles);
+    }
+
+    [Fact]
+    public void Dashboard_density_refinement_compacts_hero_and_operation_cards_with_readable_dark_muted_text()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var dashboardStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard.css"));
+
+        Assert.Matches(@"\.admin-authenticated \.admin-dashboard-page \.admin-dashboard-hero \.container\s*\{(?=[^}]*min-height:\s*128px)(?=[^}]*padding:\s*12px clamp\(20px,\s*2\.2vw,\s*30px\))", dashboardStyles);
+        Assert.Matches(@"\.admin-authenticated \.admin-dashboard-page \.admin-operation-step\s*\{(?=[^}]*min-height:\s*88px)", dashboardStyles);
+        Assert.Matches(@"\.admin-authenticated \.admin-dashboard-page \.admin-operation-step,\s*\.admin-authenticated \.admin-dashboard-page \.admin-operation-metrics article\s*\{(?=[^}]*padding:\s*12px 14px)", dashboardStyles);
+        Assert.Matches(@"\.admin-authenticated \.admin-dashboard-page \.admin-operation-step\s*\{(?=[^}]*padding:\s*10px 14px)", dashboardStyles);
+        Assert.Matches(@"html\[data-theme=\""dark\""\] \.admin-dashboard-page\s*\{(?=[^}]*--dashboard-card-muted:\s*#A8B6C9)", dashboardStyles);
     }
 }

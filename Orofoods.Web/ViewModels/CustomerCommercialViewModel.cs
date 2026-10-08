@@ -27,7 +27,9 @@ public sealed class CustomerCommercialViewModel
     public CommercialAttentionCustomerViewModel? Attention { get; init; }
     public IReadOnlyList<CrmOpportunity> Opportunities { get; init; } = [];
     public long? WhatsAppConversationId { get; init; }
-    public bool HasValidWhatsAppPhone { get; init; }
+    public string? WhatsAppPhoneNumber =>
+        WhatsAppConversationService.TryNormalizePhone(Customer.WhatsApp) ??
+        WhatsAppConversationService.TryNormalizePhone(Customer.Phone);
 }
 
 public sealed record CustomerProductPurchaseViewModel(

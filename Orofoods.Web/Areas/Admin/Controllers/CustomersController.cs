@@ -241,7 +241,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             ,Attention = (await attentionService.GetAsync(User, DateTime.Now)).Customers.SingleOrDefault(x => x.CustomerId == id)
             ,Opportunities = opportunities
             ,WhatsAppConversationId = conversationId
-            ,HasValidWhatsAppPhone = WhatsAppConversationLookup.HasValidPhone(customer.WhatsApp, customer.Phone)
         });
     }
 

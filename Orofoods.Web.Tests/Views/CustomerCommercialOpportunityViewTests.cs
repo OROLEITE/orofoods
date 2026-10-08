@@ -7,18 +7,40 @@ namespace Orofoods.Web.Tests.Views;
 public class CustomerCommercialOpportunityViewTests
 {
     [Fact]
-    public void Customer_details_uses_internal_whatsapp_navigation_without_external_links()
+    public void Customer_details_prefers_existing_crm_conversation_and_uses_normalized_wa_me_fallback()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Customers", "Details.cshtml"));
 
-        Assert.DoesNotContain("wa.me", view, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("asp-controller=\"WhatsApp\"", view);
         Assert.Contains("asp-route-id=\"@Model.WhatsAppConversationId\"", view);
         Assert.Contains("asp-route-customerId=\"@Model.Customer.Id\"", view);
         Assert.Contains("asp-route-markAsRead=\"false\"", view);
-        Assert.Contains("Model.HasValidWhatsAppPhone", view);
-        Assert.Contains("selectConversation", view);
+        Assert.Contains("https://wa.me/@whatsappPhoneNumber", view);
+        Assert.Contains("Model.WhatsAppPhoneNumber is string whatsappPhoneNumber", view);
+        Assert.Contains("target=\"_blank\" rel=\"noopener noreferrer\"", view);
+        Assert.Contains("Cliente sem telefone WhatsApp válido", view);
+    }
+
+    [Theory]
+    [InlineData("(19) 99876-5432", "", "5519998765432")]
+    [InlineData("", "+351 912 345 678", "351912345678")]
+    [InlineData("987654321", "", null)]
+    public void Customer_details_only_exposes_normalized_whatsapp_numbers(
+        string phone,
+        string whatsapp,
+        string? expected)
+    {
+        var viewModel = new Orofoods.Web.ViewModels.CustomerCommercialViewModel
+        {
+            Customer = new Orofoods.Web.Models.Customers.Customer
+            {
+                Phone = phone,
+                WhatsApp = whatsapp
+            }
+        };
+
+        Assert.Equal(expected, viewModel.WhatsAppPhoneNumber);
     }
 
     [Fact]

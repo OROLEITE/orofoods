@@ -1,0 +1,545 @@
+/* Compact operational layout for the Admin order detail only. */
+.admin-authenticated .admin-order-details-page {
+    --order-detail-surface: #FFFFFF;
+    --order-detail-surface-secondary: #F8FAFC;
+    --order-detail-border: #DDE3E8;
+    --order-detail-text: #27312D;
+    --order-detail-muted: #64748B;
+    padding: 18px 0 32px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-layout {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-header h1 {
+    margin: 2px 0 0;
+    color: var(--order-detail-text);
+    font-size: clamp(1.55rem, 2.4vw, 2.1rem);
+    line-height: 1.05;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-header small,
+.admin-authenticated .admin-order-details-page .order-detail-section-heading small {
+    color: var(--order-detail-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .55px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-header .btn {
+    padding: 8px 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 14px;
+    overflow: hidden;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 14px;
+    background: var(--order-detail-surface);
+}
+
+.admin-authenticated .admin-order-details-page .order-details-summary-item {
+    display: grid;
+    align-content: center;
+    gap: 5px;
+    min-width: 0;
+    padding: 12px 14px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-summary-item + .order-details-summary-item {
+    border-left: 1px solid var(--order-detail-border);
+}
+
+.admin-authenticated .admin-order-details-page .order-details-summary-item small {
+    color: var(--order-detail-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .55px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-summary-item strong {
+    overflow-wrap: anywhere;
+    color: var(--order-detail-text);
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-summary-item--total strong {
+    font-size: 20px;
+    letter-spacing: -.4px;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-chip,
+.admin-authenticated .admin-order-details-page .order-payment-status {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 4px 8px;
+    border: 1px solid #CBD5E1;
+    border-radius: 999px;
+    background: var(--order-detail-surface-secondary);
+    color: #475569;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-card,
+.admin-authenticated .admin-order-details-page .order-point-charge-card,
+.admin-authenticated .admin-order-details-page .order-point-audit,
+.admin-authenticated .admin-order-details-page .order-actions-card,
+.admin-authenticated .admin-order-details-page .order-detail-section {
+    min-width: 0;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 14px;
+    background: var(--order-detail-surface);
+    color: var(--order-detail-text);
+    box-shadow: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 11px;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-section-heading h2,
+.admin-authenticated .admin-order-details-page .order-point-charge-card h2 {
+    margin: 2px 0 0;
+    color: var(--order-detail-text);
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-status--approved {
+    border-color: #86C89B;
+    background: #EAF6ED;
+    color: #17623A;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-status--pending {
+    border-color: #E5C678;
+    background: #FFF8E5;
+    color: #80570E;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-details {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid var(--order-detail-border);
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-details > div {
+    min-width: 0;
+    padding: 10px 12px 2px 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-details dt,
+.admin-authenticated .admin-order-details-page .order-payment-details dd {
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-details dt {
+    color: var(--order-detail-muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-details dd {
+    margin-top: 3px;
+    overflow-wrap: anywhere;
+    color: var(--order-detail-text);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-charge-card .card-body {
+    padding: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-charge-card p {
+    margin: 8px 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-charge-card form:not([data-point-payment-poll]) {
+    margin-right: 6px;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-list,
+.admin-authenticated .admin-order-details-page .order-history-list {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-entry,
+.admin-authenticated .admin-order-details-page .order-history-entry {
+    min-width: 0;
+    padding: 9px 0;
+    border: 0;
+    border-top: 1px solid var(--order-detail-border);
+    background: transparent;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-entry {
+    display: grid;
+    grid-template-columns: minmax(180px, .8fr) minmax(0, 1.7fr);
+    gap: 14px;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-main,
+.admin-authenticated .admin-order-details-page .order-point-audit-meta,
+.admin-authenticated .admin-order-details-page .order-history-entry > div {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-transition {
+    color: #2563EB;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-meta {
+    justify-content: flex-end;
+    color: var(--order-detail-muted);
+    font-size: 11px;
+    text-align: right;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-meta code {
+    overflow-wrap: anywhere;
+}
+
+.admin-authenticated .admin-order-details-page .order-actions-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(220px, .7fr);
+    gap: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-status-form,
+.admin-authenticated .admin-order-details-page .order-details-wmc-form {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-status-form label,
+.admin-authenticated .admin-order-details-page .order-details-wmc-form label {
+    color: var(--order-detail-muted);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.admin-authenticated .admin-order-details-page .order-action-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-authenticated .admin-order-details-page .order-action-controls .form-select {
+    min-width: 0;
+    min-height: 40px;
+}
+
+.admin-authenticated .admin-order-details-page .order-actions-card .btn {
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+.admin-authenticated .admin-order-details-page .order-action-feedback {
+    display: block;
+    margin-top: 2px;
+    padding: 6px 8px;
+    border: 1px solid #E5C678;
+    border-radius: 6px;
+    background: #FFF8E5;
+    color: #92400E !important;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.admin-authenticated .admin-order-details-page .order-action-warning {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    font-size: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-entry > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-entry small,
+.admin-authenticated .admin-order-details-page .order-history-entry time {
+    color: var(--order-detail-muted);
+    font-size: 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-entry time {
+    flex: 0 0 auto;
+}
+
+.admin-authenticated .admin-order-details-page .order-empty-state {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 0;
+    margin: 0;
+    padding: 11px 12px;
+    border: 1px dashed var(--order-detail-border);
+    border-radius: 10px;
+    background: var(--order-detail-surface-secondary);
+    font-size: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-items {
+    overflow: hidden;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-items-heading,
+.admin-authenticated .admin-order-details-page .order-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) minmax(90px, .55fr) minmax(110px, .75fr) minmax(110px, .75fr);
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-items-heading {
+    padding: 8px 12px;
+    background: var(--order-detail-surface-secondary);
+    color: var(--order-detail-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .45px;
+    text-transform: uppercase;
+}
+
+.admin-authenticated .admin-order-details-page .order-row {
+    padding: 9px 12px;
+    border: 0;
+    border-top: 1px solid var(--order-detail-border);
+    background: var(--order-detail-surface);
+}
+
+.admin-authenticated .admin-order-details-page .order-item-product {
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-item-product small {
+    color: var(--order-detail-muted);
+    font-size: 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-item-product h3 {
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+    color: var(--order-detail-text);
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.admin-authenticated .admin-order-details-page .order-row > span,
+.admin-authenticated .admin-order-details-page .order-row > strong {
+    color: var(--order-detail-text);
+    font-size: 12px;
+    text-align: right;
+}
+
+.admin-authenticated .admin-order-details-page .order-row > strong {
+    font-size: 13px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page {
+    --order-detail-surface: #111827;
+    --order-detail-surface-secondary: #1E293B;
+    --order-detail-border: #334155;
+    --order-detail-text: #E5E7EB;
+    --order-detail-muted: #A8B6C9;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-payment-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-point-charge-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-point-audit,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-actions-card,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-detail-section,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-summary,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-row {
+    border-color: var(--order-detail-border);
+    background: var(--order-detail-surface);
+    color: var(--order-detail-text);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-payment-status--approved {
+    border-color: #047857;
+    background: #12352C;
+    color: #6EE7B7;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-payment-status--pending {
+    border-color: #854D0E;
+    background: #422F12;
+    color: #FCD34D;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-detail-chip,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-empty-state,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-items-heading {
+    border-color: var(--order-detail-border);
+    background: var(--order-detail-surface-secondary);
+    color: var(--order-detail-muted);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-point-audit-transition {
+    color: #38BDF8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-action-feedback {
+    border-color: #854D0E;
+    background: #422F12;
+    color: #FCD34D !important;
+}
+
+@media (max-width: 900px) {
+    .admin-authenticated .admin-order-details-page .order-details-summary,
+    .admin-authenticated .admin-order-details-page .order-payment-details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-summary-item:nth-child(3) {
+        border-top: 1px solid var(--order-detail-border);
+        border-left: 0;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-summary-item:nth-child(4) {
+        border-top: 1px solid var(--order-detail-border);
+    }
+
+    .admin-authenticated .admin-order-details-page .order-history-grid,
+    .admin-authenticated .admin-order-details-page .order-actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-authenticated .admin-order-details-page {
+        padding-top: 12px;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-header {
+        align-items: flex-start;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-header .btn {
+        flex: 0 0 auto;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-summary,
+    .admin-authenticated .admin-order-details-page .order-payment-details {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-summary-item + .order-details-summary-item {
+        border-top: 1px solid var(--order-detail-border);
+        border-left: 0;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-detail-section-heading,
+    .admin-authenticated .admin-order-details-page .order-action-controls,
+    .admin-authenticated .admin-order-details-page .order-point-audit-entry,
+    .admin-authenticated .admin-order-details-page .order-history-entry {
+        align-items: stretch;
+        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-payment-status {
+        align-self: flex-start;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-actions-card .btn,
+    .admin-authenticated .admin-order-details-page .order-action-controls .form-select {
+        width: 100%;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-point-audit-meta {
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-items-heading {
+        display: none;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-items {
+        display: grid;
+        gap: 10px;
+        overflow: visible;
+        border: 0;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        border: 1px solid var(--order-detail-border);
+        border-radius: 10px;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-row > span,
+    .admin-authenticated .admin-order-details-page .order-row > strong {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        text-align: right;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-row > span::before,
+    .admin-authenticated .admin-order-details-page .order-row > strong::before {
+        content: attr(data-label);
+        color: var(--order-detail-muted);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+    }
+}
