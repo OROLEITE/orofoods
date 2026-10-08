@@ -39,6 +39,12 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("@product.Status", view, StringComparison.Ordinal);
         Assert.Contains("Todos", view, StringComparison.Ordinal);
         Assert.Contains("wmc-page-header", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-hero-card", view, StringComparison.Ordinal);
+        Assert.Contains("data-icon=\"refresh-cw\"", view, StringComparison.Ordinal);
+        Assert.Contains("Integra&ccedil;&atilde;o Firebird", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-status-badge", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-last-sync", view, StringComparison.Ordinal);
+        Assert.Contains("data-icon=\"package\"", view, StringComparison.Ordinal);
         Assert.Contains(".admin-authenticated .admin-wmc-page{padding-top:28px}", css, StringComparison.Ordinal);
         Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-page-header{margin-bottom:8px}", css, StringComparison.Ordinal);
         Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-brand-grid{display:grid;grid-template-columns:repeat(2", css, StringComparison.Ordinal);
