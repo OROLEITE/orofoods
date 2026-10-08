@@ -59,19 +59,27 @@
             {
                 <div class="alert alert-warning" role="alert">@previewError</div>
             }
-            <form method="post" asp-action="WmcPreview" class="row g-3 align-items-end">
+            <form method="post" asp-action="WmcPreview" class="wmc-preview-form">
                 @Html.AntiForgeryToken()
-                <div class="col-md-8">
-                    <label class="form-label" for="wmcBrandCode">Marca</label>
-                    <select class="form-select" id="wmcBrandCode" name="brandCode">
-                        <option value="">Todas as marcas</option>
-                        @foreach (var brand in Model.Brands)
-                        {
-                            <option value="@brand.Code" selected="@(Model.SelectedBrandCode == brand.Code)">@brand.Code - @brand.Description (@brand.ProductCount produtos)</option>
-                        }
-                    </select>
+                <div class="wmc-brand-toolbar">
+                    <label class="form-label" for="wmcBrandSearch">Pesquisar marca</label>
+                    <input class="form-control" id="wmcBrandSearch" type="search" placeholder="Código ou descrição" autocomplete="off" />
+                    <button class="btn btn-outline-secondary" type="button" id="wmcSelectFiltered">Selecionar todas as marcas filtradas</button>
+                    <button class="btn btn-outline-secondary" type="button" id="wmcClearSelection">Limpar seleção</button>
                 </div>
-                <div class="col-md-4"><button type="submit" class="btn admin-primary-action">Simular importa&ccedil;&atilde;o</button></div>
+                <div class="wmc-brand-grid" id="wmcBrandGrid" role="group" aria-label="Marcas WMC">
+                    @foreach (var brand in Model.Brands)
+                    {
+                        var isSelected = Model.SelectedBrandCodes.Contains((short)brand.Code);
+                        <label class="wmc-brand-row" data-brand-search="@brand.Code @brand.Description">
+                            <input type="checkbox" name="brandCodes" value="@brand.Code" checked="@(isSelected ? "checked" : null)" />
+                            <span class="wmc-brand-code">@brand.Code</span>
+                            <span class="wmc-brand-description">@brand.Description</span>
+                            <span class="wmc-brand-count">@brand.ActiveProductCount ativos de @brand.ProductCount</span>
+                        </label>
+                    }
+                </div>
+                <button type="submit" class="btn admin-primary-action">Simular importa&ccedil;&atilde;o</button>
             </form>
 
             @if (Model.Preview is not null)
@@ -104,12 +112,37 @@
                     </table>
                 </div>
                 <p class="text-muted">A pr&eacute;via preserva pre&ccedil;os, fotos, categorias comerciais, publica&ccedil;&atilde;o e reservas locais.</p>
+                @if (Model.BrandPreviews.Count > 0)
+                {
+                    <h3 class="mt-4">Resultado por marca</h3>
+                    <div class="wmc-brand-results">
+                        @foreach (var brandPreview in Model.BrandPreviews)
+                        {
+                            <article class="wmc-brand-result">
+                                <h4>@brandPreview.Code - @brandPreview.Description</h4>
+                                <span>@brandPreview.Preview.NewProducts novos</span>
+                                <span>@brandPreview.Preview.ExistingProducts existentes</span>
+                                <span>@brandPreview.Preview.InactiveIgnoredProducts ignorados</span>
+                            </article>
+                        }
+                    </div>
+                }
             }
         </section>
-
-        <form method="post" asp-action="WmcSyncNow" class="mt-4">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn admin-primary-action" @(isRunning ? "disabled" : "")>Sincronizar agora</button>
-        </form>
     </div>
 </section>
+
+<script>
+    (() => {
+        const search = document.getElementById('wmcBrandSearch');
+        const rows = [...document.querySelectorAll('.wmc-brand-row')];
+        const visibleRows = () => rows.filter(row => row.hidden !== true);
+        const updateRows = () => {
+            const term = (search?.value ?? '').trim().toLocaleLowerCase();
+            rows.forEach(row => row.hidden = term.length > 0 && !(row.dataset.brandSearch ?? '').toLocaleLowerCase().includes(term));
+        };
+        search?.addEventListener('input', updateRows);
+        document.getElementById('wmcSelectFiltered')?.addEventListener('click', () => visibleRows().forEach(row => row.querySelector('input').checked = true));
+        document.getElementById('wmcClearSelection')?.addEventListener('click', () => rows.forEach(row => row.querySelector('input').checked = false));
+    })();
+</script>

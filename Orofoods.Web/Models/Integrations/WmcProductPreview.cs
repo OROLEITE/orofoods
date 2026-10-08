@@ -1,6 +1,6 @@
 namespace Orofoods.Web.Models.Integrations;
 
-public sealed record WmcBrandRecord(int Code, string Description, int ProductCount);
+public sealed record WmcBrandRecord(int Code, string Description, int ProductCount, int ActiveProductCount);
 
 public sealed record WmcProductPreviewResult(
     int ProductsRead,
@@ -23,5 +23,15 @@ public sealed record WmcProductPreviewResult(
 
 public sealed record WmcPreviewPageModel(
     IReadOnlyList<WmcBrandRecord> Brands,
-    short? SelectedBrandCode,
-    WmcProductPreviewResult? Preview);
+    IReadOnlyList<short> SelectedBrandCodes,
+    WmcProductPreviewResult? Preview,
+    IReadOnlyList<WmcBrandPreviewResult> BrandPreviews);
+
+public sealed record WmcBrandPreviewResult(
+    short Code,
+    string Description,
+    WmcProductPreviewResult Preview);
+
+public sealed record WmcProductPreviewBatchResult(
+    WmcProductPreviewResult Summary,
+    IReadOnlyList<WmcBrandPreviewResult> ByBrand);

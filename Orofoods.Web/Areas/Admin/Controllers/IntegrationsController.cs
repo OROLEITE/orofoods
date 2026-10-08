@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Integrations;
@@ -18,6 +19,7 @@ public class IntegrationsController(
     WmcExportAuditService wmcExportAuditService,
     WmcSyncCoordinator wmcSyncCoordinator,
     WmcSyncService wmcSyncService,
+    IOptions<WmcSyncOptions> wmcSyncOptions,
     IWmcBrandReader wmcBrandReader,
     WmcProductPreviewService wmcProductPreviewService) : Controller
 {
@@ -112,12 +114,12 @@ public class IntegrationsController(
         {
             TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
         }
-        return View(new WmcPreviewPageModel(brands, null, null));
+        return View(new WmcPreviewPageModel(brands, [], null, []));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcPreview(short? brandCode, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcPreview(short[]? brandCodes, CancellationToken cancellationToken)
     {
         IReadOnlyList<WmcBrandRecord> brands = [];
         try
@@ -128,16 +130,37 @@ public class IntegrationsController(
         {
             TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
         }
-        var preview = await wmcProductPreviewService.PreviewAsync(brandCode, cancellationToken);
+        var availableCodes = brands.Select(brand => (short)brand.Code).ToHashSet();
+        var selectedCodes = (brandCodes ?? [])
+            .Where(availableCodes.Contains)
+            .Distinct()
+            .ToArray();
+        if (selectedCodes.Length == 0)
+        {
+            selectedCodes = availableCodes.OrderBy(code => code).ToArray();
+        }
+
+        var batch = await wmcProductPreviewService.PreviewByBrandsAsync(selectedCodes, cancellationToken);
+        var previewsByBrand = batch.ByBrand
+            .Select(item => item with
+            {
+                Description = brands.FirstOrDefault(brand => brand.Code == item.Code)?.Description ?? item.Description
+            })
+            .ToList();
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, brandCode, preview));
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WmcSyncNow(CancellationToken cancellationToken)
     {
+        if (!wmcSyncOptions.Value.Enabled)
+        {
+            return Forbid();
+        }
+
         var result = await wmcSyncCoordinator.RunExclusivelyAsync(() => wmcSyncService.SyncAllAsync(cancellationToken), cancellationToken);
         TempData["WmcSyncMessage"] = result is null
             ? "Sincroniza\u00e7\u00e3o j\u00e1 em andamento."
