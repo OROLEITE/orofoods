@@ -22,6 +22,28 @@ public class CustomerCommercialOpportunityViewTests
         Assert.Contains("Cliente sem telefone WhatsApp válido", view);
     }
 
+    [Fact]
+    public void Customer_details_loads_page_scoped_responsive_layout_without_fixed_card_heights()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Customers", "Details.cshtml"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_AdminLayout.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-customer-details.css"));
+
+        Assert.Contains("Values[\"controller\"]?.ToString() == \"Customers\"", layout);
+        Assert.Contains("Values[\"action\"]?.ToString() == \"Details\"", layout);
+        Assert.Contains("~/css/admin-customer-details.css", layout);
+        Assert.Contains(".customer-commercial-page .customer-commercial-hero h1", styles);
+        Assert.Contains(".customer-commercial-page .customer-commercial-actions", styles);
+        Assert.Contains(".customer-commercial-page .customer-commercial-metrics", styles);
+        Assert.Contains(".customer-commercial-page .customer-opportunities-panel", styles);
+        Assert.Contains(".customer-commercial-page #overview .customer-detail-grid", styles);
+        Assert.Contains(".customer-commercial-page .customer-detail-tabs-shell", styles);
+        Assert.Contains("@media (max-width: 900px)", styles);
+        Assert.Contains("@media (max-width: 600px)", styles);
+        Assert.DoesNotMatch(@"(?:^|[;{])\s*(?:height|max-height)\s*:", styles);
+    }
+
     [Theory]
     [InlineData("(19) 99876-5432", "", "5519998765432")]
     [InlineData("", "+351 912 345 678", "351912345678")]
