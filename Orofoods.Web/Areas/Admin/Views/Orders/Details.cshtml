@@ -157,7 +157,7 @@
                     @foreach (var audit in pointAuditEvents)
                     {
                         <li class="order-point-audit-entry">
-                            <div class="order-point-audit-main"><strong>@audit.ResultSummary</strong><span class="order-point-audit-transition">@audit.PreviousStatus?.ToDisplayName() → @audit.NewStatus.ToDisplayName()</span></div>
+                            <div class="order-point-audit-main"><strong>@audit.ResultSummary</strong><span class="order-point-audit-transition @(audit.PreviousStatus == Orofoods.Web.Models.Payments.PaymentStatus.Processing && audit.NewStatus == Orofoods.Web.Models.Payments.PaymentStatus.Approved ? "order-point-audit-transition--success" : audit.PreviousStatus == Orofoods.Web.Models.Payments.PaymentStatus.Pending && audit.NewStatus == Orofoods.Web.Models.Payments.PaymentStatus.Processing ? "order-point-audit-transition--info" : audit.PreviousStatus == Orofoods.Web.Models.Payments.PaymentStatus.Pending && audit.NewStatus == Orofoods.Web.Models.Payments.PaymentStatus.Pending ? "order-point-audit-transition--neutral" : "")">@audit.PreviousStatus?.ToDisplayName() → @audit.NewStatus.ToDisplayName()</span></div>
                             <div class="order-point-audit-meta"><span>tentativa @audit.AttemptNumber</span><span>@(audit.AdminUser?.Email ?? "Sistema")</span>@if (!string.IsNullOrWhiteSpace(audit.ExternalOrderId)) { <code>Order: @audit.ExternalOrderId</code> }<time>@audit.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</time></div>
                         </li>
                     }
