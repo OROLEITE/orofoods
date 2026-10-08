@@ -1,0 +1,227 @@
+.assisted-order-page {
+    padding: 14px 0 42px;
+}
+
+.assisted-order-page > .container {
+    max-width: 1480px;
+}
+
+.assisted-order-page .assisted-order-header {
+    align-items: center;
+    gap: 16px;
+    margin: 0 0 12px;
+}
+
+.assisted-order-page .assisted-order-header h1 {
+    margin: 2px 0 4px;
+    font-size: clamp(22px, 2vw, 28px);
+    letter-spacing: -.6px;
+}
+
+.assisted-order-page .assisted-order-header p {
+    margin: 0;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.assisted-order-page .assisted-order-header small {
+    font-size: 12px;
+}
+
+.assisted-order-page .assisted-order-header .btn {
+    flex: 0 0 auto;
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+.assisted-order-page .assisted-order-search {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.assisted-order-page .assisted-order-search input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 40px;
+}
+
+.assisted-order-page .assisted-order-search .btn {
+    flex: 0 0 auto;
+    height: 40px;
+    padding: 0 20px;
+}
+
+.assisted-order-page .assisted-order-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 27%);
+    gap: 16px;
+}
+
+.assisted-order-page .assisted-order-layout .admin-form-card {
+    padding: 16px 18px;
+}
+
+.assisted-order-page .assisted-order-layout .admin-form-card h2 {
+    margin: 0;
+    font-size: 17px;
+}
+
+.assisted-order-page .assisted-product-list {
+    gap: 0;
+    margin-top: 10px;
+}
+
+.assisted-order-page .assisted-product-list article {
+    grid-template-columns: minmax(0, 1fr) 96px auto;
+    gap: 10px;
+    padding: 9px 4px;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: transparent;
+}
+
+.assisted-order-page .assisted-product-list article:last-child {
+    border-bottom: 0;
+}
+
+.assisted-order-page .assisted-product-info strong {
+    font-size: 14px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.assisted-order-page .assisted-product-info small {
+    margin-top: 2px;
+    font-size: 12px;
+}
+
+.assisted-order-page .assisted-product-list input,
+.assisted-order-page .assisted-order-line input {
+    height: 36px;
+    padding: 4px 8px;
+    text-align: center;
+}
+
+.assisted-order-page .assisted-add-product {
+    min-width: 92px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+}
+
+.assisted-order-page .assisted-order-lines {
+    gap: 6px;
+    margin-top: 14px;
+    padding-top: 12px;
+}
+
+.assisted-order-page .assisted-order-line {
+    grid-template-columns: minmax(0, 1fr) 80px auto 32px;
+    padding: 6px 0;
+    border-bottom: 1px solid #334155;
+    font-size: 13px;
+}
+
+.assisted-order-page .assisted-order-lines > .text-muted {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px dashed #475569;
+    border-radius: 8px;
+    color: #CBD5E1;
+    font-size: 13px;
+    text-align: center;
+}
+
+.assisted-order-page .checkout-summary {
+    position: sticky;
+    top: 84px;
+    padding: 16px 18px;
+}
+
+.assisted-order-page .checkout-summary h2 {
+    margin: 4px 0 10px;
+    font-size: 18px;
+    overflow-wrap: anywhere;
+}
+
+.assisted-order-page .assisted-order-fields {
+    gap: 10px;
+    margin: 14px 0;
+}
+
+.assisted-order-page .assisted-order-fields label {
+    gap: 4px;
+    font-size: 12px;
+}
+
+.assisted-order-page .assisted-order-fields select,
+.assisted-order-page .assisted-order-fields input,
+.assisted-order-page .assisted-order-fields textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    background-color: #0F172A;
+    color: #E5E7EB;
+    color-scheme: dark;
+    font-size: 14px;
+}
+
+.assisted-order-page .assisted-order-fields select,
+.assisted-order-page .assisted-order-fields input {
+    height: 40px;
+}
+
+.assisted-order-page .assisted-order-fields textarea {
+    resize: vertical;
+}
+
+.assisted-order-page #assisted-submit {
+    min-height: 46px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+    .assisted-order-page .assisted-order-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 34%);
+    }
+}
+
+@media (max-width: 900px) {
+    .assisted-order-page .assisted-order-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .assisted-order-page .checkout-summary {
+        position: static;
+    }
+}
+
+@media (max-width: 520px) {
+    .assisted-order-page .assisted-order-header {
+        align-items: stretch;
+    }
+
+    .assisted-order-page .assisted-order-search {
+        flex-wrap: wrap;
+    }
+
+    .assisted-order-page .assisted-order-search .btn {
+        width: 100%;
+    }
+
+    .assisted-order-page .assisted-product-list article {
+        grid-template-columns: minmax(0, 1fr) 84px;
+    }
+
+    .assisted-order-page .assisted-product-list article .assisted-add-product {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .assisted-order-page .assisted-order-line {
+        grid-template-columns: minmax(0, 1fr) 64px auto 28px;
+        font-size: 12px;
+    }
+}
