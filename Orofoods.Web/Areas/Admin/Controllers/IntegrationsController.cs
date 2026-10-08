@@ -17,7 +17,9 @@ public class IntegrationsController(
     WmcOrderFileGenerator wmcOrderFileGenerator,
     WmcExportAuditService wmcExportAuditService,
     WmcSyncCoordinator wmcSyncCoordinator,
-    WmcSyncService wmcSyncService) : Controller
+    WmcSyncService wmcSyncService,
+    IWmcBrandReader wmcBrandReader,
+    WmcProductPreviewService wmcProductPreviewService) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -97,11 +99,39 @@ public class IntegrationsController(
     private string? CurrentUserId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     private string? CurrentUserEmail => User.Identity?.Name;
 
-    public IActionResult Wmc()
+    public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
-        return View();
+        IReadOnlyList<WmcBrandRecord> brands = [];
+        try
+        {
+            brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
+        }
+        return View(new WmcPreviewPageModel(brands, null, null));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcPreview(short? brandCode, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<WmcBrandRecord> brands = [];
+        try
+        {
+            brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
+        }
+        var preview = await wmcProductPreviewService.PreviewAsync(brandCode, cancellationToken);
+        ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
+        ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, brandCode, preview));
     }
 
     [HttpPost]
