@@ -8,5 +8,14 @@ public sealed record WmcProductRecord(
     string Produto,
     string? Situacao,
     string? Un,
-    int? EstoqueDisponivel,
-    int? EstoqueAtual);
+    decimal? EstoqueDisponivel,
+    decimal? EstoqueAtual,
+    string? Ean = null,
+    string? CodMarca = null,
+    string? UnAltern = null,
+    decimal? QtdeEmbalagem = null,
+    decimal? QtdeConversao = null,
+    decimal? PrecoCusto = null,
+    decimal? PrecoVenda = null,
+    decimal? EstoqueReservado = null,
+    DateTime? DataAlteracao = null);

@@ -484,9 +484,9 @@ public class PortalController(
                 product.Name,
                 product.UnitDescription,
                 product.MinimumCases,
-                product.IsAvailable ? item.Quantity : 0,
+                product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) ? item.Quantity : 0,
                 prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice),
-                product.IsAvailable,
+                product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)),
                 product.SubstituteProduct?.Name);
         }).ToList();
 
@@ -549,7 +549,7 @@ public class PortalController(
 
         for (var i = 0; i < Math.Min(input.ProductIds.Length, input.Quantities.Length); i++)
         {
-            if (!products.TryGetValue(input.ProductIds[i], out var product) || !product.IsAvailable || input.Quantities[i] <= 0)
+            if (!products.TryGetValue(input.ProductIds[i], out var product) || !product.IsActive || !product.IsAvailable || (product.WmcCode != null && (!product.IsWmcActive || !product.WmcStockAvailable || !product.WmcInitialLoadReady)) || input.Quantities[i] <= 0)
             {
                 continue;
             }
@@ -673,7 +673,7 @@ public class PortalController(
             .ToDictionaryAsync(inventory => inventory.ProductId);
         foreach (var product in productList)
         {
-            product.IsCommerciallyAvailable = product.IsAvailable && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= product.MinimumCases;
+            product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= product.MinimumCases;
         }
     }
 }

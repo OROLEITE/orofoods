@@ -25,7 +25,7 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
             Items = products.OrderBy(x => x.Name).Select(product =>
             {
                 var quantity = Math.Max(quantities[product.Id], product.MinimumCases);
-                var isAvailable = product.IsAvailable && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= quantity;
+                var isAvailable = product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= quantity;
                 return new CartLineViewModel(product.Id, product.Sku, product.Name, product.UnitDescription,
                     quantity, product.MinimumCases, prices.GetValueOrDefault(product.Id, product.BasePrice), isAvailable);
             }).ToList()
@@ -39,7 +39,7 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
             throw new InvalidOperationException("Informe uma quantidade válida.");
         }
 
-        var product = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable)
+        var product = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
             ?? throw new InvalidOperationException("Produto indisponível.");
         var quantities = Read(session, scope);
         var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId);
@@ -67,7 +67,7 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
         }
 
         var product = await db.Products.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable)
+            .SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
             ?? throw new InvalidOperationException("Produto indisponível.");
         var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId);
         if (inventory is null || inventory.AvailableQuantity < Math.Max(quantity, product.MinimumCases))
@@ -90,7 +90,7 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
     public async Task ReplaceAsync(int customerId, IEnumerable<SavedOrderLine> lines, ISession session, CartScope? scope = null)
     {
         var productIds = lines.Select(x => x.ProductId).Distinct().ToList();
-        var products = await db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id) && x.IsActive && x.IsAvailable).ToDictionaryAsync(x => x.Id);
+        var products = await db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id) && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady))).ToDictionaryAsync(x => x.Id);
         var inventories = await db.ProductInventories.AsNoTracking()
             .Where(x => productIds.Contains(x.ProductId))
             .ToDictionaryAsync(x => x.ProductId);

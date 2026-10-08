@@ -12,6 +12,183 @@ namespace Orofoods.Web.Tests.Services;
 public class WmcSyncServiceTests
 {
     [Fact]
+    public async Task Product_sync_preserves_commercial_fields_and_tracks_wmc_state_and_ean()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Congelados", Slug = "congelados", IsActive = true };
+        db.Add(category);
+        await db.SaveChangesAsync();
+        var product = new Product
+        {
+            WmcCode = "ABC-1",
+            Sku = "LOCAL-1",
+            Name = "Nome antigo",
+            ProductCategoryId = category.Id,
+            BasePrice = 19.90m,
+            PromotionalPrice = 17.90m,
+            IsActive = true,
+            IsAvailable = true
+        };
+        db.Add(product);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db, products:
+        [
+            new WmcProductRecord("ABC-1", "Nome WMC", "I", "CX", null, -2, "789", "M1", null, null, null, null, null, null, DateTime.UtcNow)
+        ]);
+
+        var result = await service.SyncProductsAsync();
+
+        Assert.Equal(1, result.RecordsUpdated);
+        var updated = Assert.Single(db.Products);
+        Assert.Equal("Nome WMC", updated.Name);
+        Assert.Equal("789", updated.Ean);
+        Assert.Equal("M1", updated.WmcBrandCode);
+        Assert.False(updated.IsWmcActive);
+        Assert.Equal(19.90m, updated.BasePrice);
+        Assert.Equal(17.90m, updated.PromotionalPrice);
+        Assert.Equal(category.Id, updated.ProductCategoryId);
+        Assert.Equal("LOCAL-1", updated.Sku);
+    }
+
+    [Fact]
+    public async Task Negative_or_null_wmc_stock_does_not_release_sales()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Congelados", Slug = "congelados", IsActive = true };
+        db.Add(category);
+        await db.SaveChangesAsync();
+        var product = new Product { WmcCode = "P-STOCK", Sku = "P-STOCK", Name = "Produto", ProductCategoryId = category.Id, IsAvailable = true };
+        db.Add(product);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, products:
+        [new WmcProductRecord("P-STOCK", "Produto", "A", "CX", null, null, null, null, null, null, null, null, null, null, DateTime.UtcNow)]);
+
+        await service.SyncStockAsync();
+
+        Assert.False(product.WmcStockAvailable);
+    }
+
+    [Fact]
+    public async Task Negative_wmc_stock_is_zero_and_fractional_stock_is_rejected()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Congelados", Slug = "congelados", IsActive = true };
+        db.Add(category);
+        await db.SaveChangesAsync();
+        var negative = new Product { WmcCode = "NEG", Sku = "NEG", Name = "Negativo", ProductCategoryId = category.Id };
+        var fractional = new Product { WmcCode = "FRAC", Sku = "FRAC", Name = "Fracionado", ProductCategoryId = category.Id };
+        db.AddRange(negative, fractional);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, products:
+        [
+            new WmcProductRecord("NEG", "Negativo", "A", "CX", null, -3),
+            new WmcProductRecord("FRAC", "Fracionado", "A", "CX", null, 1.5m)
+        ]);
+
+        await service.SyncStockAsync();
+
+        Assert.Equal(0, db.ProductInventories.Single(x => x.ProductId == negative.Id).QuantityOnHand);
+        Assert.False(negative.WmcStockAvailable);
+        Assert.False(fractional.WmcStockAvailable);
+        Assert.Empty(db.ProductInventories.Where(x => x.ProductId == fractional.Id));
+    }
+
+    [Fact]
+    public async Task Duplicate_wmc_codes_are_rejected_without_creating_duplicate_products()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, products:
+        [
+            new WmcProductRecord("DUP", "Primeiro", "A", "CX", null, 1),
+            new WmcProductRecord("DUP", "Segundo", "A", "CX", null, 1)
+        ]);
+
+        var result = await service.SyncProductsAsync();
+
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Empty(db.Products.Where(x => x.WmcCode == "DUP"));
+    }
+
+    [Fact]
+    public async Task Duplicate_wmc_codes_abort_product_stage_without_writes()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, products:
+        [
+            new WmcProductRecord("DUP", "Primeiro", "A", "CX", null, 1),
+            new WmcProductRecord("DUP", "Segundo", "A", "CX", null, 2)
+        ]);
+
+        var result = await service.SyncProductsAsync();
+
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Empty(db.Products);
+    }
+
+    [Fact]
+    public async Task Duplicate_wmc_codes_ignore_case_and_spaces()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, products:
+        [
+            new WmcProductRecord(" dup ", "Primeiro", "A", "CX", null, 1),
+            new WmcProductRecord("DUP", "Segundo", "A", "CX", null, 1)
+        ]);
+
+        var result = await service.SyncProductsAsync();
+
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("DUP", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(db.Products);
+    }
+
+    [Fact]
+    public async Task Initial_success_persists_run_and_releases_only_wmc_products()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Local", Slug = "local", IsActive = true };
+        db.Add(category);
+        await db.SaveChangesAsync();
+        db.Add(new Product { WmcCode = null, Sku = "LOCAL", Name = "Local", ProductCategoryId = category.Id });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, products: [new WmcProductRecord("P-READY", "Produto", "A", "CX", null, 4)]);
+
+        var result = await service.SyncAllAsync();
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.True(db.WmcSyncRuns.Single().InitialLoad);
+        Assert.True(db.Products.Single(x => x.WmcCode == "P-READY").WmcInitialLoadReady);
+        Assert.False(db.Products.Single(x => x.WmcCode == null).WmcInitialLoadReady);
+    }
+
+    [Fact]
+    public async Task Unknown_wmc_situation_blocks_the_product()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, products: [new WmcProductRecord("P-UNKNOWN", "Produto", "X", "CX", null, 1)]);
+
+        await service.SyncProductsAsync();
+
+        var product = Assert.Single(db.Products);
+        Assert.False(product.IsWmcActive);
+    }
+
+    [Fact]
+    public async Task Failed_stage_is_persisted_without_marking_initial_load_ready()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, customerReader: new FailingCustomerReader());
+
+        var result = await service.SyncAllAsync();
+
+        Assert.Equal("Failed", result.Status);
+        var run = Assert.Single(db.WmcSyncRuns);
+        Assert.Equal("Customers", run.FailedStage);
+        Assert.Equal("Failed", run.Status);
+        Assert.DoesNotContain(db.Products, product => product.WmcInitialLoadReady);
+    }
+    [Fact]
     public async Task New_customer_is_created_pending_with_a_placeholder_cnpj()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

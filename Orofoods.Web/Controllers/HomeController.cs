@@ -13,7 +13,7 @@ public class HomeController(ApplicationDbContext db) : Controller
     {
         var products = await db.Products
             .AsNoTracking()
-            .Where(product => product.IsActive && product.IsAvailable)
+            .Where(product => product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)))
             .Include(product => product.ProductCategory)
             .Include(product => product.Images)
             .OrderByDescending(product => product.IsFeatured)

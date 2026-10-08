@@ -81,42 +81,111 @@ public sealed class WmcSyncService(
         {
             var rows = await productReader.GetAllAsync(cancellationToken);
             read = rows.Count;
-            var pendingCategoryId = await GetOrCreatePendingCategoryIdAsync(cancellationToken);
-            foreach (var row in rows)
+            var duplicateCodes = FindDuplicateCodes(rows);
+            if (duplicateCodes.Count > 0)
             {
-                if (string.IsNullOrWhiteSpace(row.CodProduto))
+                return new WmcSyncEntityResult(read, 0, 0, 0, $"CODPRODUTO duplicado na réplica: {string.Join(", ", duplicateCodes)}");
+            }
+
+            var distinctRows = rows.ToList();
+            var products = await db.Products.ToListAsync(cancellationToken);
+            var duplicateLocalCodes = products
+                .Where(product => !string.IsNullOrWhiteSpace(product.WmcCode))
+                .GroupBy(product => NormalizeWmcCode(product.WmcCode), StringComparer.Ordinal)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToList();
+            if (duplicateLocalCodes.Count > 0)
+            {
+                return new WmcSyncEntityResult(read, 0, 0, 0, $"WmcCode duplicado no PostgreSQL: {string.Join(", ", duplicateLocalCodes)}");
+            }
+
+            var pendingCategoryId = await GetOrCreatePendingCategoryIdAsync(cancellationToken);
+            var byWmcCode = products
+                .Where(product => !string.IsNullOrWhiteSpace(product.WmcCode))
+                .GroupBy(product => NormalizeWmcCode(product.WmcCode), StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+            foreach (var row in distinctRows)
+            {
+                var code = row.CodProduto.Trim();
+                if (string.IsNullOrWhiteSpace(code))
                 {
                     skipped++;
                     continue;
                 }
 
-                var existing = await db.Products.FirstOrDefaultAsync(p => p.WmcCode == row.CodProduto, cancellationToken);
+                byWmcCode.TryGetValue(NormalizeWmcCode(code), out var existing);
                 if (existing is null)
                 {
-                    // ProductCategoryId is required in Orofoods but WMC has no confirmed category mapping,
-                    // and P.PRECOCOMPRA must not be assumed as sale price (see spec section 23). New
-                    // products land inactive/unavailable in a pending category until a human categorizes
-                    // and prices them.
-                    db.Products.Add(new Product
+                    existing = new Product
                     {
-                        WmcCode = row.CodProduto,
+                        WmcCode = code,
+                        Ean = Clean(row.Ean),
+                        WmcBrandCode = Clean(row.CodMarca),
+                        WmcAlternateUnit = Clean(row.UnAltern),
+                        WmcPackageQuantity = row.QtdeEmbalagem,
+                        WmcConversionQuantity = row.QtdeConversao,
                         Sku = BuildPlaceholderSku(row.CodProduto),
                         Name = row.Produto,
                         Unit = string.IsNullOrWhiteSpace(row.Un) ? "caixa" : row.Un,
                         ProductCategoryId = pendingCategoryId,
                         IsActive = false,
-                        IsAvailable = false
-                    });
+                        IsAvailable = false,
+                        IsWmcActive = ReadWmcActive(row.Situacao, code),
+                        WmcStockAvailable = false
+                    };
+                    db.Products.Add(existing);
+                    byWmcCode[NormalizeWmcCode(code)] = existing;
                     created++;
-                }
-                else if (!string.Equals(existing.Name, row.Produto, StringComparison.Ordinal))
-                {
-                    existing.Name = row.Produto;
-                    updated++;
                 }
                 else
                 {
-                    skipped++;
+                    var changed = false;
+                    if (!string.Equals(existing.Name, row.Produto, StringComparison.Ordinal))
+                    {
+                        existing.Name = row.Produto;
+                        changed = true;
+                    }
+                    var ean = Clean(row.Ean);
+                    if (!string.Equals(existing.Ean, ean, StringComparison.Ordinal))
+                    {
+                        existing.Ean = ean;
+                        changed = true;
+                    }
+                    var brandCode = Clean(row.CodMarca);
+                    if (!string.Equals(existing.WmcBrandCode, brandCode, StringComparison.Ordinal))
+                    {
+                        existing.WmcBrandCode = brandCode;
+                        changed = true;
+                    }
+                    var alternateUnit = Clean(row.UnAltern);
+                    if (!string.Equals(existing.WmcAlternateUnit, alternateUnit, StringComparison.Ordinal))
+                    {
+                        existing.WmcAlternateUnit = alternateUnit;
+                        changed = true;
+                    }
+                    if (existing.WmcPackageQuantity != row.QtdeEmbalagem)
+                    {
+                        existing.WmcPackageQuantity = row.QtdeEmbalagem;
+                        changed = true;
+                    }
+                    if (existing.WmcConversionQuantity != row.QtdeConversao)
+                    {
+                        existing.WmcConversionQuantity = row.QtdeConversao;
+                        changed = true;
+                    }
+                    var wmcActive = ReadWmcActive(row.Situacao, code);
+                    if (existing.IsWmcActive != wmcActive)
+                    {
+                        existing.IsWmcActive = wmcActive;
+                        changed = true;
+                    }
+                    if (!string.IsNullOrWhiteSpace(row.Un) && !string.Equals(existing.Unit, row.Un.Trim(), StringComparison.Ordinal))
+                    {
+                        existing.Unit = row.Un.Trim();
+                        changed = true;
+                    }
+                    if (changed) updated++; else skipped++;
                 }
             }
 
@@ -137,33 +206,56 @@ public sealed class WmcSyncService(
         {
             var rows = await productReader.GetAllAsync(cancellationToken);
             read = rows.Count;
-            foreach (var row in rows)
+            var duplicateCodes = FindDuplicateCodes(rows);
+            if (duplicateCodes.Count > 0)
             {
-                if (row.EstoqueAtual is null)
-                {
-                    skipped++;
-                    continue;
-                }
+                return new WmcSyncEntityResult(read, 0, 0, 0, $"CODPRODUTO duplicado na réplica: {string.Join(", ", duplicateCodes)}");
+            }
 
-                var product = await db.Products.FirstOrDefaultAsync(p => p.WmcCode == row.CodProduto, cancellationToken);
-                if (product is null)
+            var distinctRows = rows.ToList();
+            var products = await db.Products
+                .Where(product => product.WmcCode != null)
+                .ToDictionaryAsync(product => NormalizeWmcCode(product.WmcCode), StringComparer.Ordinal, cancellationToken);
+            var productIds = products.Values.Select(product => product.Id).ToArray();
+            var inventories = await db.ProductInventories
+                .Where(inventory => productIds.Contains(inventory.ProductId))
+                .ToDictionaryAsync(inventory => inventory.ProductId, cancellationToken);
+            foreach (var row in distinctRows)
+            {
+                if (!products.TryGetValue(NormalizeWmcCode(row.CodProduto), out var product))
                 {
                     skipped++; // Product not yet linked locally; stock has nothing to attach to.
                     continue;
                 }
 
-                var inventory = await db.ProductInventories.FirstOrDefaultAsync(i => i.ProductId == product.Id, cancellationToken);
+                if (!TryNormalizeStock(row.EstoqueAtual, out var quantity, out var warning))
+                {
+                    product.WmcStockAvailable = false;
+                    logger.LogWarning("Estoque WMC inválido para {WmcCode}: {Reason}", product.WmcCode, warning);
+                    skipped++;
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(warning))
+                {
+                    logger.LogWarning("Estoque WMC ajustado para {WmcCode}: {Reason}", product.WmcCode, warning);
+                }
+
+                var inventory = inventories.GetValueOrDefault(product.Id);
                 if (inventory is null)
                 {
-                    db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = row.EstoqueAtual.Value });
+                    inventory = new ProductInventory { ProductId = product.Id, QuantityOnHand = quantity };
+                    db.ProductInventories.Add(inventory);
+                    inventories[product.Id] = inventory;
                     created++;
                 }
-                else if (inventory.QuantityOnHand != row.EstoqueAtual.Value)
+                else if (inventory.QuantityOnHand != quantity)
                 {
-                    inventory.QuantityOnHand = row.EstoqueAtual.Value;
+                    inventory.QuantityOnHand = quantity;
                     updated++;
                 }
-                else
+                product.WmcStockAvailable = quantity > 0;
+                if (inventory.QuantityOnHand == quantity && quantity == 0)
                 {
                     skipped++;
                 }
@@ -188,11 +280,44 @@ public sealed class WmcSyncService(
     public async Task<WmcSyncRunResult> SyncAllAsync(CancellationToken cancellationToken = default)
     {
         var startedAt = timeProvider.GetUtcNow().UtcDateTime;
+        var initialLoad = !await db.WmcSyncRuns.AnyAsync(run => run.Status == "Succeeded", cancellationToken);
+        var run = new Models.Integrations.WmcSyncRun { StartedAt = startedAt, InitialLoad = initialLoad, Status = "Running" };
+        db.WmcSyncRuns.Add(run);
+        await db.SaveChangesAsync(cancellationToken);
+
         var customers = await SyncCustomersAsync(cancellationToken);
+        run.CustomersRead = customers.RecordsRead;
+        if (customers.ErrorMessage is not null) return await FailRunAsync(run, "Customers", customers.ErrorMessage, startedAt, customers, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, cancellationToken);
         var products = await SyncProductsAsync(cancellationToken);
+        run.ProductsRead = products.RecordsRead;
+        run.ProductsCreated = products.RecordsCreated;
+        run.ProductsUpdated = products.RecordsUpdated;
+        if (products.ErrorMessage is not null) return await FailRunAsync(run, "Products", products.ErrorMessage, startedAt, customers, products, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, cancellationToken);
         var sellers = await SyncSellersAsync(cancellationToken);
+        run.SellersRead = sellers.RecordsRead;
+        if (sellers.ErrorMessage is not null) return await FailRunAsync(run, "Sellers", sellers.ErrorMessage, startedAt, customers, products, sellers, WmcSyncEntityResult.Empty, cancellationToken);
         var stock = await SyncStockAsync(cancellationToken);
-        return new WmcSyncRunResult(startedAt, timeProvider.GetUtcNow().UtcDateTime, customers, products, sellers, stock);
+        run.StockRead = stock.RecordsRead;
+        run.StockCreated = stock.RecordsCreated;
+        run.StockUpdated = stock.RecordsUpdated;
+        if (stock.ErrorMessage is not null) return await FailRunAsync(run, "Stock", stock.ErrorMessage, startedAt, customers, products, sellers, stock, cancellationToken);
+
+        var wmcProducts = await db.Products.Where(product => product.WmcCode != null).ToListAsync(cancellationToken);
+        foreach (var product in wmcProducts) product.WmcInitialLoadReady = true;
+        run.Status = "Succeeded";
+        run.FinishedAt = timeProvider.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(cancellationToken);
+        return new WmcSyncRunResult(startedAt, run.FinishedAt.Value, customers, products, sellers, stock, run.Status);
+    }
+
+    private async Task<WmcSyncRunResult> FailRunAsync(WmcSyncRun run, string stage, string error, DateTime startedAt, WmcSyncEntityResult customers, WmcSyncEntityResult products, WmcSyncEntityResult sellers, WmcSyncEntityResult stock, CancellationToken cancellationToken)
+    {
+        run.Status = "Failed";
+        run.FailedStage = stage;
+        run.ErrorMessage = error;
+        run.FinishedAt = timeProvider.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(cancellationToken);
+        return new WmcSyncRunResult(startedAt, run.FinishedAt.Value, customers, products, sellers, stock, run.Status);
     }
 
     private async Task<int> GetOrCreatePendingCategoryIdAsync(CancellationToken cancellationToken)
@@ -219,5 +344,55 @@ public sealed class WmcSyncService(
     {
         var value = $"WMC-{codProduto}";
         return value.Length > 30 ? value[..30] : value;
+    }
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private bool ReadWmcActive(string? situation, string code) => situation?.Trim().ToUpperInvariant() switch
+    {
+        "A" => true,
+        "I" => false,
+        _ => LogUnknownSituation(code)
+    };
+
+    private bool LogUnknownSituation(string code)
+    {
+        logger.LogWarning("Situação WMC desconhecida para {WmcCode}; produto bloqueado.", code);
+        return false;
+    }
+
+    private static List<string> FindDuplicateCodes(IEnumerable<WmcProductRecord> rows) => rows
+        .Where(row => !string.IsNullOrWhiteSpace(row.CodProduto))
+        .GroupBy(row => NormalizeWmcCode(row.CodProduto), StringComparer.Ordinal)
+        .Where(group => group.Count() > 1)
+        .Select(group => group.Key)
+        .ToList();
+
+    private static string NormalizeWmcCode(string? value) => (value ?? string.Empty).Trim().ToUpperInvariant();
+
+    private static bool TryNormalizeStock(decimal? value, out int quantity, out string reason)
+    {
+        quantity = 0;
+        reason = "valor ausente";
+        if (!value.HasValue)
+        {
+            return false;
+        }
+
+        if (value.Value < 0)
+        {
+            reason = "valor negativo; disponibilidade definida como zero";
+            return true;
+        }
+
+        if (decimal.Truncate(value.Value) != value.Value || value.Value > int.MaxValue)
+        {
+            reason = "valor fracionário ou fora do intervalo suportado";
+            return false;
+        }
+
+        quantity = (int)value.Value;
+        reason = "";
+        return true;
     }
 }

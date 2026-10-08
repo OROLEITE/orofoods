@@ -8,6 +8,11 @@ public class Product
     public int Id { get; set; }
     [MaxLength(30)] public string Sku { get; set; } = "";
     [MaxLength(30)] public string? WmcCode { get; set; }
+    [MaxLength(80)] public string? Ean { get; set; }
+    [MaxLength(30)] public string? WmcBrandCode { get; set; }
+    [MaxLength(20)] public string? WmcAlternateUnit { get; set; }
+    public decimal? WmcPackageQuantity { get; set; }
+    public decimal? WmcConversionQuantity { get; set; }
     [MaxLength(140)] public string Name { get; set; } = "";
     public int ProductCategoryId { get; set; }
     public ProductCategory? ProductCategory { get; set; }
@@ -21,6 +26,9 @@ public class Product
     public decimal BasePrice { get; set; }
     public decimal? PromotionalPrice { get; set; }
     public bool IsAvailable { get; set; } = true;
+    public bool IsWmcActive { get; set; } = true;
+    public bool WmcStockAvailable { get; set; } = true;
+    public bool WmcInitialLoadReady { get; set; }
     public bool IsFeatured { get; set; }
     public bool IsPromotional { get; set; }
     [MaxLength(200)] public string StorageInformation { get; set; } = "";

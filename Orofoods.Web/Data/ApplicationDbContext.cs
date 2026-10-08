@@ -6,6 +6,7 @@ using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Delivery;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Payments;
+using Orofoods.Web.Models.Integrations;
 
 namespace Orofoods.Web.Data;
 
@@ -35,6 +36,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<WmcExportAudit> WmcExportAudits => Set<WmcExportAudit>();
+    public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
     public DbSet<CommercialActivity> CommercialActivities => Set<CommercialActivity>();
@@ -283,6 +285,12 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<Product>().Property(x => x.Weight).HasPrecision(12, 3);
         builder.Entity<Product>().Property(x => x.BasePrice).HasPrecision(12, 2);
         builder.Entity<Product>().Property(x => x.PromotionalPrice).HasPrecision(12, 2);
+        builder.Entity<Product>().Property(x => x.WmcPackageQuantity).HasPrecision(12, 3);
+        builder.Entity<Product>().Property(x => x.WmcConversionQuantity).HasPrecision(12, 3);
+        builder.Entity<WmcSyncRun>().Property(x => x.Status).HasMaxLength(20);
+        builder.Entity<WmcSyncRun>().Property(x => x.FailedStage).HasMaxLength(40);
+        builder.Entity<WmcSyncRun>().Property(x => x.ErrorMessage).HasMaxLength(2000);
+        builder.Entity<WmcSyncRun>().HasIndex(x => new { x.Status, x.StartedAt });
         builder.Entity<PriceTableItem>().Property(x => x.Price).HasPrecision(12, 2);
         builder.Entity<PriceTableItem>().Property(x => x.PromotionalPrice).HasPrecision(12, 2);
         builder.Entity<Order>().Property(x => x.Subtotal).HasPrecision(12, 2);
