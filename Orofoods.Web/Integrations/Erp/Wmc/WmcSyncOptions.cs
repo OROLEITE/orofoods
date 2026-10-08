@@ -5,5 +5,5 @@ public sealed class WmcSyncOptions
     public const string SectionName = "WmcSync";
 
     public bool Enabled { get; set; }
-    public int IntervalMinutes { get; set; } = 120;
+    public int IntervalMinutes { get; set; } = 2;
 }

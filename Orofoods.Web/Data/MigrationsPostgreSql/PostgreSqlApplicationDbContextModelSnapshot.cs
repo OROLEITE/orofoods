@@ -222,6 +222,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("Ean")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<string>("Ingredients")
                         .IsRequired()
                         .HasMaxLength(400)
@@ -232,6 +236,29 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");
+
+                    b.Property<bool>("IsWmcActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("WmcStockAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("WmcInitialLoadReady")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("WmcBrandCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("WmcAlternateUnit")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal?>("WmcPackageQuantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("WmcConversionQuantity")
+                        .HasColumnType("numeric");
 
                     b.Property<bool>("IsFeatured")
                         .HasColumnType("boolean");
@@ -1856,6 +1883,33 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasKey("Id");
 
                     b.ToTable("PriceTables");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcSyncRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CustomersRead").HasColumnType("integer");
+                    b.Property<string>("ErrorMessage").HasMaxLength(2000).HasColumnType("character varying(2000)");
+                    b.Property<string>("FailedStage").HasMaxLength(40).HasColumnType("character varying(40)");
+                    b.Property<DateTime?>("FinishedAt").HasColumnType("timestamp without time zone");
+                    b.Property<bool>("InitialLoad").HasColumnType("boolean");
+                    b.Property<int>("ProductsCreated").HasColumnType("integer");
+                    b.Property<int>("ProductsRead").HasColumnType("integer");
+                    b.Property<int>("ProductsUpdated").HasColumnType("integer");
+                    b.Property<int>("SellersRead").HasColumnType("integer");
+                    b.Property<int>("StockCreated").HasColumnType("integer");
+                    b.Property<int>("StockRead").HasColumnType("integer");
+                    b.Property<int>("StockUpdated").HasColumnType("integer");
+                    b.Property<DateTime>("StartedAt").HasColumnType("timestamp without time zone");
+                    b.Property<string>("Status").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)");
+                    b.HasKey("Id");
+                    b.HasIndex("Status", "StartedAt");
+                    b.ToTable("WmcSyncRuns");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.PriceTableItem", b =>

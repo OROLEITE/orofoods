@@ -11,7 +11,8 @@ public sealed record WmcSyncRunResult(
     WmcSyncEntityResult Customers,
     WmcSyncEntityResult Products,
     WmcSyncEntityResult Sellers,
-    WmcSyncEntityResult Stock);
+    WmcSyncEntityResult Stock,
+    string Status = "Succeeded");
 
 /// <summary>
 /// Tracks whether a sync is currently running and the outcome of the last one, in memory only. Once

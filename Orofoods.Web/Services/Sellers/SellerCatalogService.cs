@@ -33,8 +33,7 @@ public sealed class SellerCatalogService(
         var productsQuery = db.Products.AsNoTracking()
             .Include(x => x.Images)
             .Where(x =>
-                x.IsActive &&
-                x.IsAvailable &&
+                x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)) &&
                 db.ProductInventories.Any(inventory =>
                     inventory.ProductId == x.Id &&
                     inventory.QuantityOnHand - inventory.QuantityReserved >= x.MinimumCases));

@@ -24,7 +24,7 @@ public class CatalogController(ApplicationDbContext db) : ControllerBase
             .OrderBy(product => product.Name).Skip(request.Skip).Take(request.PageSize)
             .Select(product => new ProductProjection(product.Id, product.Sku, product.Name, product.Brand, product.Description,
                 product.ProductCategory!.Name, product.UnitsPerCase,
-                product.IsAvailable && db.ProductInventories.Any(inventory => inventory.ProductId == product.Id && inventory.QuantityOnHand > inventory.QuantityReserved),
+                product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && db.ProductInventories.Any(inventory => inventory.ProductId == product.Id && inventory.QuantityOnHand > inventory.QuantityReserved),
                 product.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).Select(image => (int?)image.Id).FirstOrDefault()))
             .ToListAsync(cancellationToken);
         var responses = items.Select(product => new ProductResponse(
@@ -35,7 +35,7 @@ public class CatalogController(ApplicationDbContext db) : ControllerBase
             product.Description,
             product.Category,
             product.UnitsPerCase,
-            product.IsAvailable,
+                product.IsAvailable,
             product.ImageId is int imageId ? Url.RouteUrl("ProductMedia", new { imageId }) : null)).ToList();
         return Ok(new PagedResult<ProductResponse>(responses, request.Page, request.PageSize, totalItems));
     }

@@ -117,7 +117,7 @@ public sealed class OrderPlacementService(
         }
 
         var products = await db.Products.AsNoTracking()
-            .Where(x => lines.Select(line => line.ProductId).Contains(x.Id) && x.IsActive && x.IsAvailable)
+            .Where(x => lines.Select(line => line.ProductId).Contains(x.Id) && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         if (products.Count != lines.Count)
         {
