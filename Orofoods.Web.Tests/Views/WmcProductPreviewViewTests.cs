@@ -15,6 +15,7 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("[ValidateAntiForgeryToken]", controller, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
         Assert.Contains("WmcProductPreviewService", controller, StringComparison.Ordinal);
+        Assert.Contains("logger.LogError(ex, \"WMC brand loading failed. Operation={Operation}\", \"LoadBrands\")", controller, StringComparison.Ordinal);
         Assert.Contains("if (!wmcSyncOptions.Value.Enabled)", controller, StringComparison.Ordinal);
         Assert.Contains("return Forbid();", controller, StringComparison.Ordinal);
         Assert.Contains("short[]? brandCodes", controller, StringComparison.Ordinal);

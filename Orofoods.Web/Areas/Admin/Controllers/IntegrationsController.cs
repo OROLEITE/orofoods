@@ -21,7 +21,8 @@ public class IntegrationsController(
     WmcSyncService wmcSyncService,
     IOptions<WmcSyncOptions> wmcSyncOptions,
     IWmcBrandReader wmcBrandReader,
-    WmcProductPreviewService wmcProductPreviewService) : Controller
+    WmcProductPreviewService wmcProductPreviewService,
+    ILogger<IntegrationsController> logger) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -112,7 +113,8 @@ public class IntegrationsController(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
+            logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
+            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
         }
         return View(new WmcPreviewPageModel(brands, [], null, []));
     }
@@ -128,7 +130,8 @@ public class IntegrationsController(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
+            logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
+            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
         }
         var availableCodes = brands.Select(brand => (short)brand.Code).ToHashSet();
         var selectedCodes = (brandCodes ?? [])
