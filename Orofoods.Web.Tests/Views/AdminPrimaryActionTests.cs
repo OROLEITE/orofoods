@@ -81,7 +81,7 @@ public class AdminPrimaryActionTests
         Assert.Contains("admin-users-secondary\">Cancelar", ReadView("Users", "Create.cshtml"));
         Assert.Contains("class=\"btn btn-danger\"", ReadView("Users", "Index.cshtml"));
         Assert.Contains("btn-outline-danger", ReadView("Drivers", "Index.cshtml"));
-        Assert.Contains("class=\"btn admin-primary-action\"", ReadView("Integrations", "Wmc.cshtml"));
+        Assert.Contains("class=\"btn btn-primary\"", ReadView("Integrations", "Wmc.cshtml"));
     }
 
     [Fact]

@@ -14,6 +14,7 @@ public sealed class WmcBrandReaderTests
         Assert.Contains("MARCAS", reader.Sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("PRODUTOS", reader.Sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("SITUACAO", reader.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("HAVING", reader.Sql, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("Visconti", brands.Single().Description);
         Assert.Equal(5, brands.Single().Code);
         Assert.Equal(36, brands.Single().ProductCount);
