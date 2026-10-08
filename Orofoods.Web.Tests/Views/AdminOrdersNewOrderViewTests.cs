@@ -25,6 +25,8 @@ public class AdminOrdersNewOrderViewTests
         Assert.Contains("asp-route-id=\"@customer.Id\"", customersView);
         Assert.Contains("class=\"btn btn-sm admin-primary-action\"", customersView);
         Assert.Contains("class=\"btn btn-sm @(isNewOrderContext ? \"btn-outline-dark\" : \"btn-gold\")\"", customersView);
+        Assert.Contains("customer-row-actions--selection", customersView);
+        Assert.Contains("table table-sm customer-list-table", customersView);
         Assert.Contains("btn-gold", customersView);
         Assert.Contains("context", customersView);
         Assert.Contains("Selecionar cliente para novo pedido", customersView);
