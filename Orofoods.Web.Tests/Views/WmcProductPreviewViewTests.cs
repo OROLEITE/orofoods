@@ -49,4 +49,21 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-page-header{margin-bottom:8px}", css, StringComparison.Ordinal);
         Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-brand-grid{display:grid;grid-template-columns:repeat(2", css, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Wmc_brand_grid_uses_admin_dark_tokens_for_rows_selection_and_scrollbar()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
+
+        Assert.Contains(".wmc-brand-row:has", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-grid::-webkit-scrollbar-thumb", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-grid input[type=checkbox]", css, StringComparison.Ordinal);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-grid", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-surface)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-surface-secondary)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-text)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-muted)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-border)", css, StringComparison.Ordinal);
+    }
 }
