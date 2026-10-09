@@ -85,6 +85,33 @@ public class AdminOrderServiceTests
     }
 
     [Fact]
+    public async Task Cannot_cancel_order_after_WMC_export_has_been_claimed()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        var user = new ApplicationUser { Id = "buyer-processing", UserName = "processing@test", Email = "processing@test" };
+        var order = new Order
+        {
+            Customer = customer,
+            CreatedByUser = user,
+            Number = "ORO-2026-000009",
+            Status = OrderStatus.Approved,
+            IntegrationStatus = Orofoods.Web.Models.Integrations.IntegrationStatus.Processing
+        };
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var sut = CreateService(db, TimeProvider.System, new OrderReservationService(db));
+
+        var result = await sut.UpdateStatusAsync(order.Id, OrderStatus.Cancelled, user.Id);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("O pedido está sendo enviado ao WMC e não pode ser cancelado agora.", result.ErrorMessage);
+        Assert.Equal(OrderStatus.Approved, order.Status);
+        Assert.Equal(Orofoods.Web.Models.Integrations.IntegrationStatus.Processing, order.IntegrationStatus);
+        Assert.Empty(db.OrderStatusHistories);
+    }
+
+    [Fact]
     public async Task CardOnDelivery_PendingPayment_CannotBeDelivered()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
