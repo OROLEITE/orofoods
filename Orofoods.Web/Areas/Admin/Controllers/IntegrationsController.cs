@@ -71,7 +71,7 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ExportWmc(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ExportWmc(int id, CancellationToken cancellationToken, Guid? attemptId = null)
     {
         var order = await db.Orders
             .AsNoTracking()
@@ -93,16 +93,40 @@ public class IntegrationsController(
         }
 
         var result = wmcOrderFileGenerator.Build(order);
+        var idempotencyKey = attemptId is null || attemptId == Guid.Empty ? Guid.NewGuid() : attemptId.Value;
+        var generatedAt = result.Succeeded ? DateTime.UtcNow : (DateTime?)null;
+        var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
         if (!result.Succeeded)
         {
             var error = string.Join(" ", result.Errors);
-            await wmcExportAuditService.RecordAsync(order.Id, CurrentUserId, CurrentUserEmail, null, false, error, cancellationToken);
+            await wmcExportAuditService.RecordAttemptAsync(new WmcExportAudit
+            {
+                OrderId = order.Id,
+                AttemptId = idempotencyKey,
+                Source = WmcExportSource.Manual,
+                Outcome = WmcExportOutcome.Failed,
+                ExportedByUserId = CurrentUserId,
+                ExportedByEmail = CurrentUserEmail,
+                ExportedAt = DateTime.UtcNow,
+                FileName = fileName,
+                Error = error
+            }, cancellationToken);
             TempData["WmcError"] = error;
             return RedirectToAction(nameof(Index));
         }
 
-        var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
-        await wmcExportAuditService.RecordAsync(order.Id, CurrentUserId, CurrentUserEmail, fileName, true, null, cancellationToken);
+        await wmcExportAuditService.RecordAttemptAsync(new WmcExportAudit
+        {
+            OrderId = order.Id,
+            AttemptId = idempotencyKey,
+            Source = WmcExportSource.Manual,
+            Outcome = WmcExportOutcome.Generated,
+            ExportedByUserId = CurrentUserId,
+            ExportedByEmail = CurrentUserEmail,
+            ExportedAt = DateTime.UtcNow,
+            GeneratedAt = generatedAt,
+            FileName = fileName
+        }, cancellationToken);
         return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", fileName);
     }
 

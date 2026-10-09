@@ -284,6 +284,10 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WmcExportAudit>()
             .HasIndex(x => new { x.OrderId, x.ExportedAt });
 
+        builder.Entity<WmcExportAudit>()
+            .HasIndex(x => new { x.OrderId, x.AttemptId })
+            .IsUnique();
+
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);
         builder.Entity<Customer>().Property(x => x.CreditLimit).HasPrecision(12, 2);

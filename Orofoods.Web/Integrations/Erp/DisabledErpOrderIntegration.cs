@@ -5,6 +5,6 @@ namespace Orofoods.Web.Integrations.Erp;
 // Blocks external delivery until the WMC contract and provider configuration are available.
 public sealed class DisabledErpOrderIntegration : IErpOrderIntegration
 {
-    public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default) =>
+    public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default, Guid? attemptId = null) =>
         Task.FromResult(new ErpOrderResult(false, Error: "Integração ERP não configurada."));
 }
