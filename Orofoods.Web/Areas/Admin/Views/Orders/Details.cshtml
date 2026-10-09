@@ -188,13 +188,13 @@
                         <button class="btn btn-primary">Atualizar status</button>
                     </div>
                 </form>
-                @if (Model.Status == Orofoods.Web.Models.Orders.OrderStatus.Approved && Model.IntegrationStatus != Orofoods.Web.Models.Integrations.IntegrationStatus.Processing)
+                @if (Model.Status == OrderStatus.Approved && Model.IntegrationStatus != IntegrationStatus.Processing)
                 {
-                <form asp-action="ReprocessIntegration" method="post" class="order-details-wmc-form">
-                    <input type="hidden" name="id" value="@Model.Id" />
-                    <label>Integração ERP</label>
-                    <button class="btn btn-outline-dark">Reprocessar integra&#231;&#227;o</button>
-                </form>
+                    <form asp-action="ReprocessIntegration" method="post" class="order-details-wmc-form">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <label>Integração ERP</label>
+                        <button class="btn btn-outline-dark">Reprocessar integra&#231;&#227;o</button>
+                    </form>
                 }
                 @if (!string.IsNullOrWhiteSpace(Model.IntegrationError))
                 {
