@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Integrations;
+using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Orders;
 
@@ -44,10 +45,10 @@ public class IntegrationsController(
         switch (wmcStatus?.Trim().ToLowerInvariant())
         {
             case "failed":
-                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "succeeded":
-                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "none":
                 query = query.Where(order => !order.WmcExportAudits.Any());
@@ -83,6 +84,12 @@ public class IntegrationsController(
         if (order is null)
         {
             return NotFound();
+        }
+
+        if (order.Status != OrderStatus.Approved)
+        {
+            TempData["WmcError"] = "Somente pedidos aprovados podem ser exportados para o WMC.";
+            return RedirectToAction(nameof(Index));
         }
 
         var result = wmcOrderFileGenerator.Build(order);
