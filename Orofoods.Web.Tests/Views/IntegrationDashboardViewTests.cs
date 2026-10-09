@@ -34,4 +34,24 @@ public class IntegrationDashboardViewTests
         Assert.Contains("textContent = trigger.dataset.error", view);
         Assert.DoesNotContain("erp-error-detail-row", view);
     }
+
+    [Fact]
+    public void Integration_dashboard_shows_commercial_and_derived_wmc_statuses_and_gates_actions()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Integrations", "Index.cshtml"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
+        var statusDisplay = File.ReadAllText(Path.Combine(projectPath, "Models", "StatusDisplayExtensions.cs"));
+
+        Assert.Contains("order.Status.ToDisplayName()", view);
+        Assert.Contains("Aguardando aprovação", view);
+        Assert.Contains("Aguardando envio WMC", view);
+        Assert.Contains("Não elegível para envio", view);
+        Assert.Contains("IntegrationStatus.Succeeded => \"Arquivo disponibilizado\"", statusDisplay);
+        Assert.Contains("order.Status == OrderStatus.Approved", view);
+        Assert.Contains("order.IntegrationStatus != IntegrationStatus.Processing", view);
+        Assert.Contains("WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id)", controller);
+        Assert.Contains("OrderByDescending(item => item.ExportedAt).ThenByDescending(item => item.Id)", view);
+        Assert.DoesNotContain("OrderByDescending(audit => audit.ExportedAt).Select", controller);
+    }
 }
