@@ -376,7 +376,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group:hover span > i,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link:focus-visible > i,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group:focus-visible span > i {
-    color: #CBD5E1;
+    color: #F8FAFC;
 }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link:focus-visible,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group:focus-visible,
@@ -455,11 +455,27 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group span > i {
-    font-size: 17px;
+    flex: 0 0 20px;
+    width: 20px;
+    font-size: 16px;
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link--nested {
     min-height: 36px;
     padding-block: 6px;
     font-size: 13px;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i,
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group span > i {
+    flex: 0 0 20px;
+    width: 20px;
+    font-size: 16px;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link:hover > i,
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group:hover span > i,
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link:focus-visible > i,
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-group:focus-visible span > i {
+    color: var(--nav-text-active);
 }

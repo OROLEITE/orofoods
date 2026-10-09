@@ -33,7 +33,7 @@
     else if (isCommercialUser)
     {
         <div class="admin-nav-cluster @(crmActive ? "is-active" : string.Empty)">
-            <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-Crm" data-admin-nav-group aria-expanded="@crmActive.ToString().ToLowerInvariant()" aria-controls="@prefix-Crm" aria-label="Alternar menu CRM" title="CRM"><span><i class="fa-solid fa-headset" aria-hidden="true"></i><span class="admin-nav-label">CRM</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>
+            <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-Crm" data-admin-nav-group aria-expanded="@crmActive.ToString().ToLowerInvariant()" aria-controls="@prefix-Crm" aria-label="Alternar menu CRM" title="CRM"><span><i class="fa-solid fa-handshake" aria-hidden="true"></i><span class="admin-nav-label">CRM</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>
             <div id="@prefix-Crm" class="admin-nav-submenu collapse @(crmActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@crmActive.ToString().ToLowerInvariant()">
                 <a class="admin-nav-link admin-nav-link--nested @(controller == "Commercial" && action == "Index" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Commercial" asp-action="Index"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i><span>Visão geral</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @(controller == "Commercial" && action != "Calendar" && action != "Index" ? "active" : string.Empty)" asp-area="Admin" asp-controller="Commercial" asp-action="Index"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Minha rotina</span></a>
@@ -65,7 +65,7 @@
             <div id="@prefix-Registrations" class="admin-nav-submenu collapse @(registrationsActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@registrationsActive.ToString().ToLowerInvariant()">
                 <a class="admin-nav-link admin-nav-link--nested @Active("Categories")" asp-area="Admin" asp-controller="Categories" asp-action="Index"><i class="fa-solid fa-tags" aria-hidden="true"></i><span>Categorias</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("PriceTables")" asp-area="Admin" asp-controller="PriceTables" asp-action="Index"><i class="fa-solid fa-table" aria-hidden="true"></i><span>Tabelas de preço</span></a>
-                <a class="admin-nav-link admin-nav-link--nested @Active("PaymentTerms")" asp-area="Admin" asp-controller="PaymentTerms" asp-action="Index"><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Condições de pagamento</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @Active("PaymentTerms")" asp-area="Admin" asp-controller="PaymentTerms" asp-action="Index"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span>Condições de pagamento</span></a>
             </div>
         </div>
 

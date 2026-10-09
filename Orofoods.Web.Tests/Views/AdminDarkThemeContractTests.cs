@@ -295,6 +295,15 @@ public class AdminDarkThemeContractTests
         AssertAdminDarkRulesExcludeWhatsApp(ReadStyles(stylesheet), stylesheet);
     }
 
+    [Fact]
+    public void ScopeAuditAcceptsLightAdminNavigationRulesWhenFullyScoped()
+    {
+        const string lightNavigationRule = "html:not([data-theme=\"dark\"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i { font-size: 16px; }";
+        var styles = ReadStyles("admin-navigation.css") + lightNavigationRule;
+
+        AssertAdminDarkRulesExcludeWhatsApp(styles, "admin-navigation.css");
+    }
+
     [Theory]
     [InlineData(".orders-table", "background-position: center;", "background")]
     [InlineData(".orders-table", "outline-offset: 2px;", "outline")]
@@ -931,6 +940,7 @@ public class AdminDarkThemeContractTests
         foreach (var rule in ReadRules(styles).Where(rule => !historicalRules.Contains(RuleIdentity(rule))))
         {
             Assert.True((IsScopedAdminDarkSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
+                        (stylesheet == "admin-navigation.css" && IsScopedAdminLightSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
                         IsPermittedScopedCustomerOpportunityLayoutRule(rule.Selector, stylesheet),
                 $"Additional/changed {stylesheet} rule requires both gates, WhatsApp exclusion, and positive component/page scope: {rule.Selector}");
         }
@@ -1002,6 +1012,9 @@ public class AdminDarkThemeContractTests
         Regex.IsMatch(selector,
             @"^html\[data-theme=""dark""\] body\.admin-authenticated:has\(\.whatsapp-inbox-page\) \.site-header-modern \.main-nav \.nav-link(?:\.active|:hover|:focus-visible)?$",
             RegexOptions.CultureInvariant);
+
+    private static bool IsScopedAdminLightSelector(string selector) =>
+        selector.StartsWith("html:not([data-theme=\"dark\"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) ", StringComparison.Ordinal);
 
     private static bool ContainsComponent(string selector, string component)
     {
