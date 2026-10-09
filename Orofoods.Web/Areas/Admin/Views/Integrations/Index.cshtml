@@ -49,7 +49,16 @@
                 <tbody>
                     @foreach (var order in Model)
                     {
-                        var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).FirstOrDefault();
+                        var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).ThenByDescending(item => item.Id).FirstOrDefault();
+                        var wmcOutcome = lastWmcExport is null || lastWmcExport.Outcome == WmcExportOutcome.Unknown
+                            ? (lastWmcExport?.Succeeded == true ? WmcExportOutcome.Generated : WmcExportOutcome.Failed)
+                            : lastWmcExport.Outcome;
+                        var wmcOutcomeLabel = wmcOutcome switch
+                        {
+                            WmcExportOutcome.Generated => "TXT gerado",
+                            WmcExportOutcome.Available => "Arquivo disponibilizado",
+                            _ => "Falhou"
+                        };
                         var integrationStatusClass = order.IntegrationStatus.ToString().ToLowerInvariant();
                         var hasIntegrationError = !string.IsNullOrWhiteSpace(order.IntegrationError);
                         <tr>
@@ -71,8 +80,14 @@
                                 }
                                 else
                                 {
-                                    <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@(lastWmcExport.Succeeded ? "Gerado" : "Falhou")</span>
+                                    <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@wmcOutcomeLabel</span>
+                                    <small class="d-block">@(lastWmcExport.Source == WmcExportSource.Automatic ? "Automática" : "Manual")</small>
                                     <small class="d-block">@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                                    @if (lastWmcExport.GeneratedAt is not null)
+                                    {
+                                        <small class="d-block">TXT gerado @lastWmcExport.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                                    }
+                                    <a class="d-block" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">Consultar histórico</a>
                                     @if (!string.IsNullOrWhiteSpace(lastWmcExport.FileName))
                                     {
                                         <small class="d-block">@lastWmcExport.FileName</small>
@@ -85,14 +100,21 @@
                             </td>
                             <td class="text-end">
                                 <div class="erp-row-actions">
-                                    <form asp-action="ExportWmc" method="post">
-                                        <input type="hidden" name="id" value="@order.Id" />
-                                        <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>
-                                    </form>
-                                    <form asp-action="Reprocess" method="post">
-                                        <input type="hidden" name="id" value="@order.Id" />
-                                        <button class="btn btn-sm btn-erp-reprocess" type="submit">Reprocessar</button>
-                                    </form>
+                                    @if (order.Status == Orofoods.Web.Models.Orders.OrderStatus.Approved)
+                                    {
+                                        <form asp-action="ExportWmc" method="post">
+                                            <input type="hidden" name="id" value="@order.Id" />
+                                            <input type="hidden" name="attemptId" value="@Guid.NewGuid()" />
+                                            <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>
+                                        </form>
+                                        @if (order.IntegrationStatus != IntegrationStatus.Processing)
+                                        {
+                                            <form asp-action="Reprocess" method="post">
+                                                <input type="hidden" name="id" value="@order.Id" />
+                                                <button class="btn btn-sm btn-erp-reprocess" type="submit">Reprocessar</button>
+                                            </form>
+                                        }
+                                    }
                                 </div>
                             </td>
                         </tr>

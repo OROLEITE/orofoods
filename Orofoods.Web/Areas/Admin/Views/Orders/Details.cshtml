@@ -188,15 +188,18 @@
                         <button class="btn btn-primary">Atualizar status</button>
                     </div>
                 </form>
+                @if (Model.Status == Orofoods.Web.Models.Orders.OrderStatus.Approved && Model.IntegrationStatus != Orofoods.Web.Models.Integrations.IntegrationStatus.Processing)
+                {
                 <form asp-action="ReprocessIntegration" method="post" class="order-details-wmc-form">
                     <input type="hidden" name="id" value="@Model.Id" />
                     <label>Integração ERP</label>
                     <button class="btn btn-outline-dark">Reprocessar integra&#231;&#227;o</button>
-                    @if (!string.IsNullOrWhiteSpace(Model.IntegrationError))
-                    {
-                        <small class="order-action-feedback text-danger">@Model.IntegrationError</small>
-                    }
                 </form>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.IntegrationError))
+                {
+                    <small class="order-action-feedback text-danger">@Model.IntegrationError</small>
+                }
             </div>
             @if (cardOnDelivery && !paymentApproved)
             {
@@ -224,10 +227,10 @@
                 else
                 {
                     <ol class="list-group order-history-list">
-                        @foreach (var entry in Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt))
+                        @foreach (var entry in Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt).ThenByDescending(x => x.Id))
                         {
                             <li class="list-group-item order-history-entry">
-                                <div><strong>@(entry.Succeeded ? "Arquivo gerado" : "Falha na exportação")</strong>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
+                                <div><strong>@(entry.Outcome switch { Orofoods.Web.Models.Integrations.WmcExportOutcome.Generated => "TXT gerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Available => "Arquivo disponibilizado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Failed => "Falha na exportação", _ => entry.Succeeded ? "TXT gerado" : "Falha na exportação" })</strong><small>@(entry.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Automatic ? "Automática" : "Manual")</small>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (entry.GeneratedAt is not null) { <small>TXT gerado @entry.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
                                 <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
                             </li>
                         }

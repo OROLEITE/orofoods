@@ -54,9 +54,10 @@ public sealed class OrderIntegrationService(
             .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken)
             ?? throw new InvalidOperationException("Pedido não encontrado.");
         ErpOrderResult result;
+        var attemptId = Guid.NewGuid();
         try
         {
-            result = await erp.SendOrderAsync(order, cancellationToken);
+            result = await erp.SendOrderAsync(order, cancellationToken, attemptId);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

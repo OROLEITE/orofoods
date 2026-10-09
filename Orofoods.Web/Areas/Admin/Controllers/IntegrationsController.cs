@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Integrations;
+using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Orders;
 
@@ -44,10 +45,10 @@ public class IntegrationsController(
         switch (wmcStatus?.Trim().ToLowerInvariant())
         {
             case "failed":
-                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "succeeded":
-                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "none":
                 query = query.Where(order => !order.WmcExportAudits.Any());
@@ -70,7 +71,7 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ExportWmc(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ExportWmc(int id, CancellationToken cancellationToken, Guid? attemptId = null)
     {
         var order = await db.Orders
             .AsNoTracking()
@@ -85,17 +86,47 @@ public class IntegrationsController(
             return NotFound();
         }
 
+        if (order.Status != OrderStatus.Approved)
+        {
+            TempData["WmcError"] = "Somente pedidos aprovados podem ser exportados para o WMC.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var result = wmcOrderFileGenerator.Build(order);
+        var idempotencyKey = attemptId is null || attemptId == Guid.Empty ? Guid.NewGuid() : attemptId.Value;
+        var generatedAt = result.Succeeded ? DateTime.UtcNow : (DateTime?)null;
+        var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
         if (!result.Succeeded)
         {
             var error = string.Join(" ", result.Errors);
-            await wmcExportAuditService.RecordAsync(order.Id, CurrentUserId, CurrentUserEmail, null, false, error, cancellationToken);
+            await wmcExportAuditService.RecordAttemptAsync(new WmcExportAudit
+            {
+                OrderId = order.Id,
+                AttemptId = idempotencyKey,
+                Source = WmcExportSource.Manual,
+                Outcome = WmcExportOutcome.Failed,
+                ExportedByUserId = CurrentUserId,
+                ExportedByEmail = CurrentUserEmail,
+                ExportedAt = DateTime.UtcNow,
+                FileName = fileName,
+                Error = error
+            }, cancellationToken);
             TempData["WmcError"] = error;
             return RedirectToAction(nameof(Index));
         }
 
-        var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
-        await wmcExportAuditService.RecordAsync(order.Id, CurrentUserId, CurrentUserEmail, fileName, true, null, cancellationToken);
+        await wmcExportAuditService.RecordAttemptAsync(new WmcExportAudit
+        {
+            OrderId = order.Id,
+            AttemptId = idempotencyKey,
+            Source = WmcExportSource.Manual,
+            Outcome = WmcExportOutcome.Generated,
+            ExportedByUserId = CurrentUserId,
+            ExportedByEmail = CurrentUserEmail,
+            ExportedAt = DateTime.UtcNow,
+            GeneratedAt = generatedAt,
+            FileName = fileName
+        }, cancellationToken);
         return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", fileName);
     }
 

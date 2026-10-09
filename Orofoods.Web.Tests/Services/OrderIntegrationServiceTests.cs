@@ -29,6 +29,8 @@ public class OrderIntegrationServiceTests
         await new OrderIntegrationService(db, erp).SendAsync(order.Id);
 
         Assert.True(erp.ReceivedMappedOrder);
+        Assert.NotNull(erp.AttemptId);
+        Assert.NotEqual(Guid.Empty, erp.AttemptId);
         var persisted = await db.Orders.SingleAsync(item => item.Id == order.Id);
         Assert.Equal("WMC_ORO2026000777.txt", persisted.ExternalOrderId);
     }
@@ -88,10 +90,12 @@ public class OrderIntegrationServiceTests
     {
         public bool ReceivedMappedOrder { get; private set; }
         public int SendCount { get; private set; }
+        public Guid? AttemptId { get; private set; }
 
-        public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default)
+        public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default, Guid? attemptId = null)
         {
             SendCount++;
+            AttemptId = attemptId;
             ReceivedMappedOrder = order.Customer?.WmcCode == "107072" && order.Items.Single().Product?.WmcCode == "610601552";
             return Task.FromResult(new ErpOrderResult(true, "WMC_ORO2026000777.txt"));
         }
@@ -99,7 +103,7 @@ public class OrderIntegrationServiceTests
 
     private sealed class ThrowingErpOrderIntegration : IErpOrderIntegration
     {
-        public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default) =>
+        public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default, Guid? attemptId = null) =>
             throw new IOException("Diretorio indisponivel.");
     }
 }

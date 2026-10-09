@@ -19,6 +19,11 @@ public class IntegrationDashboardViewTests
         Assert.Contains("Reprocess", view);
         Assert.Contains("Exportar WMC", view);
         Assert.Contains("&Uacute;ltima exporta&ccedil;&atilde;o WMC", view);
+        Assert.Contains("WmcExportAudits.OrderByDescending", view);
+        Assert.Contains("lastWmcExport.Source", view);
+        Assert.Contains("lastWmcExport.Outcome", view);
+        Assert.Contains("asp-controller=\"Orders\" asp-action=\"Details\"", view);
+        Assert.Contains("order.Status == Orofoods.Web.Models.Orders.OrderStatus.Approved", view);
     }
 
     [Fact]

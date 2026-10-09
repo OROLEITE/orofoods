@@ -1181,6 +1181,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<Guid?>("AttemptId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("ExportedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1196,7 +1199,16 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<DateTime?>("GeneratedAt")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Source")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Succeeded")
@@ -1205,6 +1217,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasKey("Id");
 
                     b.HasIndex("OrderId", "ExportedAt");
+
+                    b.HasIndex("OrderId", "AttemptId")
+                        .IsUnique();
 
                     b.ToTable("WmcExportAudits");
                 });
