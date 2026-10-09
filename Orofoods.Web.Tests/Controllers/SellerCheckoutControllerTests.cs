@@ -83,6 +83,8 @@ public class SellerCheckoutControllerTests
         Assert.Equal("Success", redirect.ActionName);
         Assert.Equal(0, gateway.CallCount);
         var order = await db.Orders.SingleAsync(x => x.CustomerId == customer.Id);
+        Assert.Equal(customer.SalesRepresentativeId, order.SalesRepresentativeId);
+        Assert.Equal(seller.Id, order.CreatedByUserId);
         var payment = await db.Payments.SingleAsync(x => x.OrderId == order.Id);
         Assert.Equal(PaymentMethodType.CardOnDelivery, payment.Method);
         Assert.Equal(PaymentStatus.Pending, payment.Status);

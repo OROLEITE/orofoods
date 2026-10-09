@@ -209,6 +209,12 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey")
             .IsUnique();
 
+        builder.Entity<Order>()
+            .HasOne(x => x.SalesRepresentative)
+            .WithMany()
+            .HasForeignKey(x => x.SalesRepresentativeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Entity<OrderStatusHistory>()
             .HasOne(x => x.ChangedByUser)
             .WithMany()

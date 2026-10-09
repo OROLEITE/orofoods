@@ -12,6 +12,8 @@ public class Order
     public int CustomerId { get; set; }
     [MaxLength(128)] public string? CheckoutAttemptKey { get; set; }
     public Customer? Customer { get; set; }
+    public int? SalesRepresentativeId { get; set; }
+    public SalesRepresentative? SalesRepresentative { get; set; }
     [MaxLength(450)] public string CreatedByUserId { get; set; } = "";
     public ApplicationUser? CreatedByUser { get; set; }
     public int? DeliveryAddressId { get; set; }

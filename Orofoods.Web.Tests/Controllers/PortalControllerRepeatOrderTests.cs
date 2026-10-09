@@ -156,7 +156,8 @@ public class PortalControllerRepeatOrderTests
             Status = CustomerStatus.Approved,
             IsActive = true,
             MinimumOrder = 1m,
-            CreditLimit = 1000m
+            CreditLimit = 1000m,
+            SalesRepresentative = new SalesRepresentative { Name = "Carteira externa", IsActive = true }
         };
         var address = new CustomerAddress
         {
@@ -208,6 +209,7 @@ public class PortalControllerRepeatOrderTests
         Assert.Equal(Orofoods.Web.Models.Orders.OrderStatus.Received, createdOrder.Status);
         Assert.Equal(IntegrationStatus.Pending, createdOrder.IntegrationStatus);
         Assert.Equal(user.Id, createdOrder.CreatedByUserId);
+        Assert.Equal(customer.SalesRepresentativeId, createdOrder.SalesRepresentativeId);
         Assert.Equal("repeat-attempt", createdOrder.CheckoutAttemptKey);
         Assert.Equal(Orofoods.Web.Models.Orders.OrderStatus.Received, Assert.Single(createdOrder.StatusHistory).Status);
         Assert.Empty(await db.Payments.Where(payment => payment.OrderId == createdOrder.Id).ToListAsync());
