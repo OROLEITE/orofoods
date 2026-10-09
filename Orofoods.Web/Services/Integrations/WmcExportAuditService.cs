@@ -24,20 +24,33 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
         if (existing is null)
         {
             db.WmcExportAudits.Add(attempt);
-        }
-        else
-        {
-            existing.Source = attempt.Source;
-            existing.Outcome = attempt.Outcome;
-            existing.ExportedByUserId = attempt.ExportedByUserId;
-            existing.ExportedByEmail = attempt.ExportedByEmail;
-            existing.ExportedAt = attempt.ExportedAt;
-            existing.GeneratedAt ??= attempt.GeneratedAt;
-            existing.FileName = attempt.FileName;
-            existing.Succeeded = attempt.Succeeded;
-            existing.Error = attempt.Error;
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateException)
+            {
+                db.Entry(attempt).State = EntityState.Detached;
+                existing = await db.WmcExportAudits.SingleOrDefaultAsync(
+                    audit => audit.OrderId == attempt.OrderId && audit.AttemptId == attempt.AttemptId,
+                    cancellationToken);
+                if (existing is null)
+                {
+                    throw;
+                }
+            }
         }
 
+        existing.Source = attempt.Source;
+        existing.Outcome = attempt.Outcome;
+        existing.ExportedByUserId = attempt.ExportedByUserId;
+        existing.ExportedByEmail = attempt.ExportedByEmail;
+        existing.ExportedAt = attempt.ExportedAt;
+        existing.GeneratedAt ??= attempt.GeneratedAt;
+        existing.FileName = attempt.FileName;
+        existing.Succeeded = attempt.Succeeded;
+        existing.Error = attempt.Error;
         await db.SaveChangesAsync(cancellationToken);
     }
 
