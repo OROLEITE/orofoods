@@ -52,6 +52,31 @@ public class AdminViewConfigurationTests
     }
 
     [Fact]
+    public void Admin_sidebar_icons_use_compact_fontawesome_sizing_and_theme_states()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var navigation = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_AdminNavigation.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
+        var fontAwesome = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "lib", "fontawesome", "css", "all.min.css"));
+
+        Assert.Contains("fa-solid fa-handshake", navigation);
+        Assert.Contains("fa-solid fa-calendar-check", navigation);
+        Assert.Contains("fa-handshake", fontAwesome);
+        Assert.Contains("fa-calendar-check", fontAwesome);
+        Assert.Contains("html:not([data-theme=\"dark\"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i", styles);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i", styles);
+        Assert.Contains("flex: 0 0 20px;", styles);
+        Assert.Contains("width: 20px;", styles);
+        Assert.Contains("font-size: 16px;", styles);
+        Assert.Contains("color: var(--nav-text-active);", styles);
+        Assert.Contains("color: #94A3B8;", styles);
+        Assert.Contains("color: #F8FAFC;", styles);
+        Assert.Contains("color: var(--admin-sidebar-accent);", styles);
+        Assert.Contains("min-height: 46px;", styles);
+        Assert.Contains("min-height: 40px;", styles);
+    }
+
+    [Fact]
     public void Reports_view_uses_compact_bi_components_with_existing_aggregations()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
