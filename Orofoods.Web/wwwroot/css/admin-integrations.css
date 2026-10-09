@@ -334,3 +334,110 @@ html:not([data-theme="dark"]) .admin-authenticated .admin-wmc-page .wmc-status-b
 html:not([data-theme="dark"]) .admin-authenticated .admin-wmc-page .wmc-status-badge--running{border-color:#38BDF8;color:#12658E}
 html:not([data-theme="dark"]) .admin-authenticated .admin-wmc-page .wmc-last-sync{color:#687166}
 @media(max-width:767px){.admin-authenticated .admin-wmc-page .wmc-hero-card{align-items:stretch;flex-direction:column;gap:12px;margin-bottom:14px;padding:14px}.admin-authenticated .admin-wmc-page .wmc-hero-meta{justify-content:flex-start}.admin-authenticated .admin-wmc-page .wmc-last-sync{flex:1 1 100%}.admin-authenticated .admin-wmc-page .wmc-hero-meta .btn{width:100%}}
+
+/* Brand selection stays legible in both Admin themes without changing its grid behavior. */
+.admin-authenticated .admin-wmc-page .wmc-brand-grid {
+    color: var(--ink);
+    scrollbar-color: #aab4a8 #f1f3ef;
+    scrollbar-width: thin;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-grid::-webkit-scrollbar {
+    width: 10px;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-grid::-webkit-scrollbar-track {
+    border-radius: 8px;
+    background: #f1f3ef;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-grid::-webkit-scrollbar-thumb {
+    border: 2px solid #f1f3ef;
+    border-radius: 8px;
+    background: #aab4a8;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-row {
+    background: #fff;
+    color: var(--ink);
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-row:hover {
+    border-color: #c5cec1;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-row:has(> input:checked) {
+    border-color: var(--gold-dark);
+    background: #fff8e7;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-row:focus-within {
+    outline: 2px solid #2583d8;
+    outline-offset: 1px;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-grid input[type=checkbox] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--gold-dark);
+    cursor: pointer;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-code {
+    color: inherit;
+}
+
+.admin-authenticated .admin-wmc-page .wmc-brand-count {
+    color: var(--muted);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-grid {
+    border-color: var(--admin-dark-border);
+    background: var(--admin-dark-surface);
+    color: var(--admin-dark-text);
+    color-scheme: dark;
+    scrollbar-color: var(--admin-dark-border) var(--admin-dark-surface);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-grid::-webkit-scrollbar-track {
+    background: var(--admin-dark-surface);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-grid::-webkit-scrollbar-thumb {
+    border-color: var(--admin-dark-surface);
+    background: var(--admin-dark-border);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-row {
+    border-color: var(--admin-dark-border);
+    background: var(--admin-dark-surface);
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-row:hover {
+    border-color: var(--admin-dark-muted);
+    background: var(--admin-dark-surface-secondary);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-row:has(> input:checked) {
+    border-color: var(--gold);
+    background: var(--admin-dark-surface-secondary);
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-row:focus-within {
+    outline-color: #38bdf8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-grid input[type=checkbox] {
+    accent-color: var(--gold);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-code {
+    color: var(--admin-dark-text);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-count {
+    color: var(--admin-dark-muted);
+}
