@@ -33,6 +33,7 @@ public class RepeatOrderVm
     public required List<RepeatItemVm> Items { get; init; }
     public required List<CustomerAddressModel> Addresses { get; init; }
     public required List<PaymentTerm> PaymentTerms { get; init; }
+    public required string AttemptKey { get; init; }
 }
 
 public class ConfirmOrderVm
@@ -44,4 +45,5 @@ public class ConfirmOrderVm
     public string Notes { get; set; } = "";
     public int[] ProductIds { get; set; } = [];
     public int[] Quantities { get; set; } = [];
+    public string AttemptKey { get; set; } = "";
 }

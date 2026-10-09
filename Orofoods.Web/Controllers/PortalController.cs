@@ -496,7 +496,8 @@ public class PortalController(
             SourceOrder = order,
             Items = items,
             Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-            PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList()
+            PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList(),
+            AttemptKey = Guid.NewGuid().ToString("N")
         });
     }
 
@@ -512,93 +513,42 @@ public class PortalController(
             return Forbid();
         }
 
-        var isCustomerOrder = await db.Orders.AnyAsync(order =>
-            order.Id == input.SourceOrderId && order.CustomerId == customer.Id);
-        if (!isCustomerOrder)
+        var sourceOrder = await db.Orders
+            .Include(order => order.Items)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(order => order.Id == input.SourceOrderId && order.CustomerId == customer.Id);
+        if (sourceOrder is null)
         {
             return Forbid();
         }
 
-        var eligibility = await paymentEligibilityService.ValidateAsync(customer.Id, input.PaymentTermId);
-        if (!eligibility.IsAllowed)
+        if (string.IsNullOrWhiteSpace(input.AttemptKey) || input.AttemptKey.Length > 128)
         {
-            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = eligibility.ErrorMessage });
+            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = "Atualize a pagina e tente novamente." });
         }
 
-        var paymentTerm = await db.PaymentTerms.SingleOrDefaultAsync(term => term.Id == input.PaymentTermId && term.IsActive);
-        if (paymentTerm is null) return Forbid();
+        var sourceProductIds = sourceOrder.Items.Select(item => item.ProductId).ToHashSet();
+        if (input.ProductIds.Any(productId => !sourceProductIds.Contains(productId)))
+        {
+            return Forbid();
+        }
 
         var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
-        var products = await db.Products
-            .Where(x => input.ProductIds.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id);
-        var prices = await priceService.GetPricesAsync(customer.Id, input.ProductIds);
-        var order = new Order
+        var requestedLines = Enumerable.Range(0, Math.Min(input.ProductIds.Length, input.Quantities.Length))
+            .Select(index => (input.ProductIds[index], input.Quantities[index]))
+            .ToList();
+        var result = await assistedOrderService.PlaceLinesAsync(
+            customer.Id,
+            userId,
+            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDate, input.Notes, input.AttemptKey),
+            requestedLines);
+        if (!result.Succeeded)
         {
-            CustomerId = customer.Id,
-            CreatedByUserId = userId,
-            DeliveryAddressId = input.AddressId,
-            RequestedDeliveryDate = input.RequestedDate,
-            Status = OrderStatus.Received,
-            PaymentTermId = paymentTerm.Id,
-            PaymentMethod = paymentTerm.Name,
-            Notes = input.Notes,
-            CreatedAt = DateTime.UtcNow
-        };
-        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Received, ChangedAt = order.CreatedAt, ChangedByUserId = userId });
-
-        for (var i = 0; i < Math.Min(input.ProductIds.Length, input.Quantities.Length); i++)
-        {
-            if (!products.TryGetValue(input.ProductIds[i], out var product) || !product.IsActive || !product.IsAvailable || (product.WmcCode != null && (!product.IsWmcActive || !product.WmcStockAvailable || !product.WmcInitialLoadReady)) || input.Quantities[i] <= 0)
-            {
-                continue;
-            }
-
-            var quantity = Math.Max(input.Quantities[i], product.MinimumCases);
-            var unitPrice = prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice);
-            order.Items.Add(new OrderItem
-            {
-                ProductId = product.Id,
-                Quantity = quantity,
-                UnitPrice = unitPrice,
-                ProductNameSnapshot = product.Name,
-                SkuSnapshot = product.Sku,
-                Subtotal = quantity * unitPrice
-            });
+            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = result.Errors[0] });
         }
 
-        order.Subtotal = order.Items.Sum(x => x.Subtotal);
-        order.Total = order.Subtotal + order.Freight;
-
-        var error = !order.Items.Any()
-            ? "Nenhum item deste pedido está disponível no momento. Escolha produtos disponíveis no catálogo."
-            : order.Total < customer.MinimumOrder
-            ? $"O pedido mínimo é {customer.MinimumOrder:C}."
-            : paymentTerm.DaysUntilDue > 0 && order.Total > customer.CreditLimit - customer.CreditUsed
-                ? "O total ultrapassa o credito disponivel."
-            : null;
-
-        if (error is not null)
-        {
-            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error });
-        }
-
-        db.Orders.Add(order);
-        await db.SaveChangesAsync();
-        var reservation = await orderReservationService.ReserveAsync(order);
-        if (!reservation.IsValid)
-        {
-            db.Orders.Remove(order);
-            await db.SaveChangesAsync();
-            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = reservation.ErrorMessage });
-        }
-
-        order.Number = $"ORO-{DateTime.Now:yyyy}-{order.Id:000000}";
-        order.ConfirmedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
-        return RedirectToAction(nameof(Success), new { id = order.Id });
+        return RedirectToAction(nameof(Success), new { id = result.Order!.Id });
     }
-
     public async Task<IActionResult> Success(int id)
     {
         var customer = await GetCurrentCustomerAsync();
