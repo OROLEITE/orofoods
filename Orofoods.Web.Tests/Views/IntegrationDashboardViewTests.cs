@@ -47,12 +47,15 @@ public class IntegrationDashboardViewTests
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Integrations", "Index.cshtml"));
         var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
         var statusDisplay = File.ReadAllText(Path.Combine(projectPath, "Models", "StatusDisplayExtensions.cs"));
+        var orderDetails = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
 
         Assert.Contains("order.Status.ToDisplayName()", view);
         Assert.Contains("Aguardando aprovação", view);
         Assert.Contains("Aguardando envio WMC", view);
         Assert.Contains("Não elegível para envio", view);
         Assert.Contains("IntegrationStatus.Succeeded => \"Arquivo disponibilizado\"", statusDisplay);
+        Assert.DoesNotContain("Importado WMC", view, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Importado WMC", orderDetails, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("order.Status == OrderStatus.Approved", view);
         Assert.Contains("order.IntegrationStatus != IntegrationStatus.Processing", view);
         Assert.Contains("WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id)", controller);

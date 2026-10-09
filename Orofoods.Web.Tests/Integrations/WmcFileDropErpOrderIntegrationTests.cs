@@ -144,19 +144,22 @@ public class WmcFileDropErpOrderIntegrationTests
         Assert.False(Directory.Exists(directory));
     }
 
-    [Fact]
-    public async Task Does_not_export_or_audit_an_unapproved_order()
+    [Theory]
+    [InlineData(OrderStatus.UnderReview)]
+    [InlineData(OrderStatus.Cancelled)]
+    public async Task Does_not_export_or_audit_an_unapproved_order(OrderStatus status)
     {
         var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}") });
         await using var db = await TestDbContextFactory.CreateAsync();
         var order = ApprovedOrder("ORO-2026-000782");
-        order.Status = OrderStatus.UnderReview;
+        order.Status = status;
         await PersistOrderAsync(db, order);
 
         var result = await CreateAdapter(options, db).SendOrderAsync(order);
 
         Assert.False(result.Succeeded);
         Assert.Empty(db.WmcExportAudits);
+        Assert.False(Directory.Exists(options.Value.OutputDirectory));
     }
 
     private static Order ApprovedOrder(string number) => new()
