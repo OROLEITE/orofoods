@@ -31,11 +31,66 @@ public class OrderPlacementServiceTests
             fixture.Scope);
 
         Assert.True(result.Succeeded, string.Join("; ", result.Errors));
-        Assert.Equal(OrderStatus.Received, result.Order!.Status);
-        Assert.Equal(fixture.SellerUser.Id, result.Order.CreatedByUserId);
-        Assert.Equal(fixture.CurrentPrice, Assert.Single(result.Order.Items).UnitPrice);
-        Assert.Equal(OrderStatus.Received, Assert.Single(result.Order.StatusHistory).Status);
+        var order = result.Order!;
+        Assert.Equal(OrderStatus.Received, order.Status);
+        Assert.Equal(fixture.SellerUser.Id, order.CreatedByUserId);
+        Assert.Equal(fixture.Customer.SalesRepresentativeId, order.SalesRepresentativeId);
+        Assert.Equal(fixture.CurrentPrice, Assert.Single(order.Items).UnitPrice);
+        Assert.Equal(OrderStatus.Received, Assert.Single(order.StatusHistory).Status);
         Assert.False(fixture.Session.TryGetValue("orofoods-cart-product-ids:seller:7:customer:1", out _));
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_snapshots_the_customer_external_seller_separately_from_the_creator()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var internalOperator = new ApplicationUser { Id = "internal-operator", UserName = "internal-operator", Email = "operator@test.local", IsActive = true };
+        fixture.Db.Users.Add(internalOperator);
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            internalOperator.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var order = result.Order!;
+        Assert.Equal(fixture.Customer.SalesRepresentativeId, order.SalesRepresentativeId);
+        Assert.Equal(internalOperator.Id, order.CreatedByUserId);
+
+        var originalRepresentativeId = fixture.Customer.SalesRepresentativeId;
+        var replacementRepresentative = new SalesRepresentative { Name = "Novo vendedor", IsActive = true };
+        fixture.Db.SalesRepresentatives.Add(replacementRepresentative);
+        await fixture.Db.SaveChangesAsync();
+        fixture.Customer.SalesRepresentative = replacementRepresentative;
+        fixture.Customer.SalesRepresentativeId = replacementRepresentative.Id;
+        await fixture.Db.SaveChangesAsync();
+
+        var persistedOrder = await fixture.Db.Orders.AsNoTracking().SingleAsync(row => row.Id == order.Id);
+        Assert.NotEqual(originalRepresentativeId, fixture.Customer.SalesRepresentativeId);
+        Assert.Equal(originalRepresentativeId, persistedOrder.SalesRepresentativeId);
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_keeps_sales_representative_snapshot_null_when_customer_has_no_external_seller()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Customer.SalesRepresentativeId = null;
+        fixture.Customer.SalesRepresentative = null;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var persistedOrder = await fixture.Db.Orders.AsNoTracking().SingleAsync(order => order.Id == result.Order!.Id);
+        Assert.Null(persistedOrder.SalesRepresentativeId);
     }
 
     [Fact]

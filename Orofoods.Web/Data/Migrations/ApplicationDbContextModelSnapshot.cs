@@ -714,6 +714,9 @@ namespace Orofoods.Web.Data.Migrations
                     b.Property<int>("CustomerId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("SalesRepresentativeId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("DeliveryAddressId")
                         .HasColumnType("INTEGER");
 
@@ -762,6 +765,8 @@ namespace Orofoods.Web.Data.Migrations
                     b.HasIndex("DeliveryAddressId");
 
                     b.HasIndex("PaymentTermId");
+
+                    b.HasIndex("SalesRepresentativeId");
 
                     b.ToTable("Orders");
                 });
@@ -1174,6 +1179,11 @@ namespace Orofoods.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("PaymentTermId");
 
+                    b.HasOne("Orofoods.Web.Models.Customers.SalesRepresentative", "SalesRepresentative")
+                        .WithMany()
+                        .HasForeignKey("SalesRepresentativeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Customer");
@@ -1181,6 +1191,8 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("DeliveryAddress");
 
                     b.Navigation("PaymentTerm");
+
+                    b.Navigation("SalesRepresentative");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Orders.OrderItem", b =>

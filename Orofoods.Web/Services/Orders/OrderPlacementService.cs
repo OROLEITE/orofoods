@@ -128,6 +128,7 @@ public sealed class OrderPlacementService(
         var order = new Order
         {
             CustomerId = customerId,
+            SalesRepresentativeId = customer.SalesRepresentativeId,
             CheckoutAttemptKey = string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) ? null : command.CheckoutAttemptKey,
             CreatedByUserId = createdByUserId,
             DeliveryAddressId = command.AddressId,
