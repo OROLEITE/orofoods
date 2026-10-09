@@ -74,10 +74,14 @@ public sealed class WmcProductPreviewViewTests
         var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
 
         Assert.Contains(".admin-wmc-page section[aria-labelledby=\"wmc-preview-title\"]", css, StringComparison.Ordinal);
-        Assert.Contains("margin-top: 1.5rem", css, StringComparison.Ordinal);
+        Assert.Contains("margin-top: 0.5rem !important", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page > .container > p.mt-3", css, StringComparison.Ordinal);
+        Assert.Contains("margin-bottom: 8px", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-preview-heading{display:flex;align-items:center;gap:8px;margin:0 0 2px}", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-preview-heading + p", css, StringComparison.Ordinal);
+        Assert.Contains("margin: 0 0 2px", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-brand-toolbar{", css, StringComparison.Ordinal);
-        Assert.Contains("margin:6px 0 8px", css, StringComparison.Ordinal);
+        Assert.Contains("margin:2px 0 8px", css, StringComparison.Ordinal);
         Assert.Contains("font-size:11.5px", css, StringComparison.Ordinal);
         Assert.Contains("font-weight:600", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-brand-count{color:#687166;font-size:11.5px;font-weight:600;white-space:nowrap}", css, StringComparison.Ordinal);
