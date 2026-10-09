@@ -66,4 +66,22 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("var(--admin-dark-muted)", css, StringComparison.Ordinal);
         Assert.Contains("var(--admin-dark-border)", css, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Wmc_preview_section_uses_compact_spacing_and_keeps_brand_count_colors()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
+
+        Assert.Contains(".admin-wmc-page section[aria-labelledby=\"wmc-preview-title\"]", css, StringComparison.Ordinal);
+        Assert.Contains("margin-top: 1.5rem", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-preview-heading + p", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-toolbar{", css, StringComparison.Ordinal);
+        Assert.Contains("margin:6px 0 8px", css, StringComparison.Ordinal);
+        Assert.Contains("font-size:11.5px", css, StringComparison.Ordinal);
+        Assert.Contains("font-weight:600", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-count{color:#687166;font-size:11.5px;font-weight:600;white-space:nowrap}", css, StringComparison.Ordinal);
+        Assert.Contains("color: var(--muted)", css, StringComparison.Ordinal);
+        Assert.Contains("color: var(--admin-dark-muted)", css, StringComparison.Ordinal);
+    }
 }
