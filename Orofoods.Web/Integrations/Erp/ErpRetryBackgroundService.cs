@@ -4,6 +4,7 @@ using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure.Logging;
 using Orofoods.Web.Models.Integrations;
+using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Orders;
 
 namespace Orofoods.Web.Integrations.Erp;
@@ -42,16 +43,17 @@ public sealed class ErpRetryBackgroundService(
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var service = scope.ServiceProvider.GetRequiredService<OrderIntegrationService>();
                 var ids = await db.Orders
-                    .Where(order => order.IntegrationStatus == IntegrationStatus.Pending ||
-                        (resolvedOptions.AutoRetryEnabled && order.IntegrationStatus == IntegrationStatus.Failed))
+                    .Where(order => order.Status == OrderStatus.Approved &&
+                        (order.IntegrationStatus == IntegrationStatus.Pending ||
+                            (resolvedOptions.AutoRetryEnabled && order.IntegrationStatus == IntegrationStatus.Failed)))
                     .OrderBy(order => order.LastIntegrationAttempt ?? order.CreatedAt)
-                    .Select(order => order.Id)
+                    .Select(order => new { order.Id, order.IntegrationStatus })
                     .Take(20)
                     .ToListAsync(stoppingToken);
-                foreach (var id in ids)
+                foreach (var candidate in ids)
                 {
-                    try { await service.SendAsync(id, stoppingToken); }
-                    catch (Exception exception) { logger.LogError(exception, "Falha ao processar pedido {OrderId}", id); }
+                    try { await service.SendAsync(candidate.Id, stoppingToken, candidate.IntegrationStatus); }
+                    catch (Exception exception) { logger.LogError(exception, "Falha ao processar pedido {OrderId}", candidate.Id); }
                 }
             }
         }

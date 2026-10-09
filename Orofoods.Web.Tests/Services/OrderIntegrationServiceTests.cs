@@ -20,7 +20,7 @@ public class OrderIntegrationServiceTests
         var product = new Product { Sku = "BIM-001", WmcCode = "610601552", Name = "Pao", ProductCategory = category, Brand = "BIMBO", Unit = "caixa", BasePrice = 50m };
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", WmcCode = "107072" };
         var user = new ApplicationUser { Id = "user-1", UserName = "user@orofoods.local", NormalizedUserName = "USER@OROFOODS.LOCAL", Email = "user@orofoods.local", NormalizedEmail = "USER@OROFOODS.LOCAL" };
-        var order = new Order { Number = "ORO-2026-000777", Customer = customer, CreatedByUser = user, Total = 100m };
+        var order = new Order { Number = "ORO-2026-000777", Customer = customer, CreatedByUser = user, Total = 100m, Status = OrderStatus.Approved };
         order.Items.Add(new OrderItem { Product = product, ProductNameSnapshot = "Pao", SkuSnapshot = "BIM-001", Quantity = 2, UnitPrice = 50m, Subtotal = 100m });
         db.Add(order);
         await db.SaveChangesAsync();
@@ -39,7 +39,7 @@ public class OrderIntegrationServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
         var user = new ApplicationUser { Id = "user-2", UserName = "user2@orofoods.local", NormalizedUserName = "USER2@OROFOODS.LOCAL", Email = "user2@orofoods.local", NormalizedEmail = "USER2@OROFOODS.LOCAL" };
-        var order = new Order { Number = "ORO-2026-000778", Customer = customer, CreatedByUser = user };
+        var order = new Order { Number = "ORO-2026-000778", Customer = customer, CreatedByUser = user, Status = OrderStatus.Approved };
         db.Add(order);
         await db.SaveChangesAsync();
 
@@ -50,12 +50,48 @@ public class OrderIntegrationServiceTests
         Assert.Equal("Falha inesperada ao enviar o pedido ao ERP.", persisted.IntegrationError);
     }
 
+    [Theory]
+    [InlineData(OrderStatus.Draft)]
+    [InlineData(OrderStatus.Received)]
+    [InlineData(OrderStatus.UnderReview)]
+    [InlineData(OrderStatus.Cancelled)]
+    [InlineData(OrderStatus.Picking)]
+    [InlineData(OrderStatus.Invoiced)]
+    [InlineData(OrderStatus.OutForDelivery)]
+    [InlineData(OrderStatus.Delivered)]
+    public async Task Does_not_start_or_consume_an_attempt_for_an_order_that_is_not_approved(OrderStatus status)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        var user = new ApplicationUser { Id = "user-ineligible", UserName = "ineligible@orofoods.local", NormalizedUserName = "INELIGIBLE@OROFOODS.LOCAL", Email = "ineligible@orofoods.local", NormalizedEmail = "INELIGIBLE@OROFOODS.LOCAL" };
+        var order = new Order
+        {
+            Number = $"ORO-2026-{(int)status:000000}",
+            Customer = customer,
+            CreatedByUser = user,
+            Status = status,
+            IntegrationError = "erro anterior"
+        };
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var erp = new CapturingErpOrderIntegration();
+
+        await new OrderIntegrationService(db, erp).SendAsync(order.Id);
+
+        Assert.Equal(0, erp.SendCount);
+        Assert.Equal(IntegrationStatus.Pending, order.IntegrationStatus);
+        Assert.Null(order.LastIntegrationAttempt);
+        Assert.Equal("erro anterior", order.IntegrationError);
+    }
+
     private sealed class CapturingErpOrderIntegration : IErpOrderIntegration
     {
         public bool ReceivedMappedOrder { get; private set; }
+        public int SendCount { get; private set; }
 
         public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default)
         {
+            SendCount++;
             ReceivedMappedOrder = order.Customer?.WmcCode == "107072" && order.Items.Single().Product?.WmcCode == "610601552";
             return Task.FromResult(new ErpOrderResult(true, "WMC_ORO2026000777.txt"));
         }
