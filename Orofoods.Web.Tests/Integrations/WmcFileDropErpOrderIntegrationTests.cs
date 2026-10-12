@@ -25,6 +25,9 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000777",
+            CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            Total = 100m,
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Customer = new Customer { WmcCode = "107072" },
             Items =
             [
@@ -66,6 +69,9 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000778",
+            CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            Total = 50m,
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Customer = new Customer { WmcCode = "107072" },
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
         };

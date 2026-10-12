@@ -255,10 +255,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasColumnType("character varying(20)");
 
                     b.Property<decimal?>("WmcPackageQuantity")
-                        .HasColumnType("numeric");
+                        .HasColumnType("numeric(12,3)");
 
                     b.Property<decimal?>("WmcConversionQuantity")
-                        .HasColumnType("numeric");
+                        .HasColumnType("numeric(12,3)");
 
                     b.Property<bool>("IsFeatured")
                         .HasColumnType("boolean");
@@ -1912,6 +1912,30 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("WmcSyncRuns");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
+                {
+                    b.Property<int>("OrderId").HasColumnType("integer");
+                    b.Property<string>("ExportedByEmail").HasMaxLength(256).HasColumnType("character varying(256)");
+                    b.Property<string>("ExportedByUserId").HasMaxLength(450).HasColumnType("character varying(450)");
+                    b.Property<DateTime?>("ExportedAt").HasColumnType("timestamp without time zone");
+                    b.Property<string>("FileName").HasMaxLength(160).HasColumnType("character varying(160)");
+                    b.Property<string>("ImportedByEmail").HasMaxLength(256).HasColumnType("character varying(256)");
+                    b.Property<string>("ImportedByUserId").HasMaxLength(450).HasColumnType("character varying(450)");
+                    b.Property<DateTime?>("ImportedAt").HasColumnType("timestamp without time zone");
+                    b.Property<string>("LastError").HasMaxLength(2000).HasColumnType("character varying(2000)");
+                    b.Property<DateTime?>("ProcessingStartedAt").HasColumnType("timestamp without time zone");
+                    b.Property<bool>("RequiresManualReview").HasColumnType("boolean");
+                    b.Property<string>("ReviewedByEmail").HasMaxLength(256).HasColumnType("character varying(256)");
+                    b.Property<string>("ReviewedByUserId").HasMaxLength(450).HasColumnType("character varying(450)");
+                    b.Property<DateTime?>("ReviewedAt").HasColumnType("timestamp without time zone");
+                    b.Property<string>("Status").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)");
+                    b.Property<DateTime>("UpdatedAt").HasColumnType("timestamp without time zone");
+                    b.Property<long>("Version").IsConcurrencyToken().HasColumnType("bigint");
+                    b.HasKey("OrderId");
+                    b.ToTable("WmcOrderExportStates", (string)null, t =>
+                        t.HasCheckConstraint("CK_WmcOrderExportStates_Status", "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Imported', 'Error')"));
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.PriceTableItem", b =>
                 {
                     b.Property<int>("Id")
@@ -2241,6 +2265,17 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithOne("WmcOrderExportState")
+                        .HasForeignKey("Orofoods.Web.Models.Integrations.WmcOrderExportState", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
 
             modelBuilder.Entity("Orofoods.Web.Models.Inventory.InventoryAdjustment", b =>
                 {
@@ -2557,6 +2592,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("StatusHistory");
 
                     b.Navigation("WmcExportAudits");
+
+                    b.Navigation("WmcOrderExportState");
 
                 });
 

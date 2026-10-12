@@ -217,6 +217,7 @@ builder.Services.AddHttpClient<IWhatsAppMediaClient, MetaWhatsAppMediaClient>((s
     client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
 });
 builder.Services.AddScoped<WmcExportAuditService>();
+builder.Services.AddScoped<WmcManualExportService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();
 builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));

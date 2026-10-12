@@ -40,4 +40,5 @@ public class Order
     public List<OrderStatusHistory> StatusHistory { get; set; } = [];
     public List<Payment> Payments { get; set; } = [];
     public List<WmcExportAudit> WmcExportAudits { get; set; } = [];
+    public WmcOrderExportState? WmcOrderExportState { get; set; }
 }

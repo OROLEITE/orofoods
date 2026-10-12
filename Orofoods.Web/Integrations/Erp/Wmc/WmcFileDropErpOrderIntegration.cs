@@ -21,6 +21,15 @@ public sealed class WmcFileDropErpOrderIntegration(
             return new ErpOrderResult(false, Error: "Diretório de exportação WMC não configurado.");
         }
 
+        if (order.PaymentTerm?.Code == "CARD_ON_DELIVERY")
+        {
+            return new ErpOrderResult(false, Error: "WMC_CARD_ON_DELIVERY_MAPPING_PENDING");
+        }
+        if (order.PaymentTerm?.Code == "CREDIT_CARD")
+        {
+            return new ErpOrderResult(false, Error: "WMC_CREDIT_CARD_MAPPING_PENDING");
+        }
+
         var fileName = $"WMC_{SafeFileName(order.Number)}.txt";
         var finalPath = Path.Combine(settings.OutputDirectory, fileName);
         var export = fileGenerator.Build(order);

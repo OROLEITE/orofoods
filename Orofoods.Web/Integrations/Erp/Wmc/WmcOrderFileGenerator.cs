@@ -1,11 +1,14 @@
 using System.Globalization;
 using System.Text;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Pricing;
 
 namespace Orofoods.Web.Integrations.Erp.Wmc;
 
 public sealed class WmcOrderFileGenerator
 {
+    private static readonly int[] SupportedPaymentDays = [0, 7, 14];
+
     public WmcOrderFileResult Build(Order order)
     {
         var errors = Validate(order);
@@ -18,7 +21,7 @@ public sealed class WmcOrderFileGenerator
         var lines = new List<string>
         {
             BuildHeader(order),
-            BuildCustomerRecord(order, customerCode),
+            BuildPaymentRecord021(order),
             BuildBlankRecord("030", 122)
         };
 
@@ -34,10 +37,10 @@ public sealed class WmcOrderFileGenerator
     private static List<string> Validate(Order order)
     {
         var errors = new List<string>();
-        if (order.PaymentTerm?.Code == "CARD_ON_DELIVERY")
+        var paymentDays = GetWmcPaymentDays(order.PaymentTerm);
+        if (paymentDays is null || !SupportedPaymentDays.Contains(paymentDays.Value))
         {
-            errors.Add("WMC_CARD_ON_DELIVERY_MAPPING_PENDING");
-            return errors;
+            errors.Add("WMC_PAYMENT_TERM_UNSUPPORTED");
         }
 
         if (string.IsNullOrWhiteSpace(order.Customer?.WmcCode))
@@ -71,15 +74,26 @@ public sealed class WmcOrderFileGenerator
         return FixedRight(payload.ToString(), 315);
     }
 
-    private static string BuildCustomerRecord(Order order, string customerCode)
+    internal static string BuildPaymentRecord021(Order order)
     {
+        var paymentDays = GetWmcPaymentDays(order.PaymentTerm!)!.Value;
         var createdAt = order.CreatedAt == default ? DateTime.UtcNow : order.CreatedAt;
-        var payload = new StringBuilder("021");
-        payload.Append("  5  1  CD ");
-        payload.Append(createdAt.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
-        payload.Append(FixedLeft(customerCode, 12));
-        return FixedRight(payload.ToString(), 45);
+        var dueDate = createdAt.Date.AddDays(paymentDays);
+        return "021  5  1  CD "
+            + paymentDays.ToString("D3", CultureInfo.InvariantCulture)
+            + dueDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture)
+            + FixedLeft(ToCents(order.Total), 15)
+            + "10000";
     }
+
+    private static int? GetWmcPaymentDays(PaymentTerm? paymentTerm) => paymentTerm?.Code switch
+    {
+        "PIX" or "CASH" when paymentTerm.DaysUntilDue == 0 => 0,
+        "CREDIT_CARD" or "CARD_ON_DELIVERY" => 0,
+        "BOLETO_7D" when paymentTerm.DaysUntilDue == 7 => 7,
+        "BOLETO_14D" when paymentTerm.DaysUntilDue == 14 => 14,
+        _ => null
+    };
 
     private static string BuildItemRecord(OrderItem item, int sequence)
     {

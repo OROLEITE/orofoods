@@ -36,6 +36,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<WmcExportAudit> WmcExportAudits => Set<WmcExportAudit>();
+    public DbSet<WmcOrderExportState> WmcOrderExportStates => Set<WmcOrderExportState>();
     public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
@@ -277,6 +278,31 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
 
         builder.Entity<WmcExportAudit>()
             .HasIndex(x => new { x.OrderId, x.ExportedAt });
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            builder.Entity<WmcExportAudit>()
+                .Property(x => x.ExportedAt)
+                .HasColumnType("timestamp without time zone");
+        }
+
+        builder.Entity<WmcOrderExportState>()
+            .HasKey(x => x.OrderId);
+        builder.Entity<WmcOrderExportState>()
+            .Property(x => x.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+        builder.Entity<WmcOrderExportState>()
+            .Property(x => x.Version)
+            .IsConcurrencyToken();
+        builder.Entity<WmcOrderExportState>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_WmcOrderExportStates_Status",
+                "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Imported', 'Error')"));
+        builder.Entity<WmcOrderExportState>()
+            .HasOne(x => x.Order)
+            .WithOne(x => x.WmcOrderExportState)
+            .HasForeignKey<WmcOrderExportState>(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
 
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);
