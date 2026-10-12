@@ -88,6 +88,10 @@ public sealed class AdminWmcLegacyDownloadTests
             null!,
             new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db)),
             null!,
+            null!,
+            null!,
+            null!,
+            null!,
             null!)
         {
             ControllerContext = new ControllerContext { HttpContext = context },

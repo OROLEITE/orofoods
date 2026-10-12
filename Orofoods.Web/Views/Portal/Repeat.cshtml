@@ -21,6 +21,7 @@
         }
         <form asp-action="Confirm" method="post" id="repeatForm" data-minimum="@Model.Customer.MinimumOrder.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-credit="@((Model.Customer.CreditLimit - Model.Customer.CreditUsed).ToString(System.Globalization.CultureInfo.InvariantCulture))">
             <input type="hidden" name="SourceOrderId" value="@Model.SourceOrder.Id" />
+            <input type="hidden" name="AttemptKey" value="@Model.AttemptKey" />
             <div class="order-layout">
                 <div class="order-items">
                     <div class="order-list-head"><span>PRODUTO</span><span>QUANTIDADE</span><span>SUBTOTAL</span></div>

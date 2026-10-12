@@ -210,6 +210,20 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey")
             .IsUnique();
 
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            builder.Entity<Order>()
+                .HasOne(x => x.SalesRepresentative)
+                .WithMany()
+                .HasForeignKey(x => x.SalesRepresentativeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+        else
+        {
+            // SQLite cannot add this FK to the existing Orders table without rebuilding it.
+            builder.Entity<Order>().Ignore(x => x.SalesRepresentative);
+        }
+
         builder.Entity<OrderStatusHistory>()
             .HasOne(x => x.ChangedByUser)
             .WithMany()
@@ -278,12 +292,10 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
 
         builder.Entity<WmcExportAudit>()
             .HasIndex(x => new { x.OrderId, x.ExportedAt });
-        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
-        {
-            builder.Entity<WmcExportAudit>()
-                .Property(x => x.ExportedAt)
-                .HasColumnType("timestamp without time zone");
-        }
+
+        builder.Entity<WmcExportAudit>()
+            .HasIndex(x => new { x.OrderId, x.AttemptId })
+            .IsUnique();
 
         builder.Entity<WmcOrderExportState>()
             .HasKey(x => x.OrderId);
@@ -303,7 +315,6 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .WithOne(x => x.WmcOrderExportState)
             .HasForeignKey<WmcOrderExportState>(x => x.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
-
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);
         builder.Entity<Customer>().Property(x => x.CreditLimit).HasPrecision(12, 2);

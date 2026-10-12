@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Payments;
@@ -11,9 +13,182 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Area("Admin"), Authorize(Roles = "Administrador")]
 public sealed class PaymentTerminalsController(
     ApplicationDbContext db,
-    IDriverPaymentTerminalService assignmentService) : Controller
+    IDriverPaymentTerminalService assignmentService,
+    IMercadoPagoPointTerminalDiscovery terminalDiscovery,
+    IPointStagingOneRealTestClient stagingOneRealTestClient,
+    IOptions<PointStagingOneRealTestOptions> stagingOneRealTestOptions,
+    IHostEnvironment hostEnvironment,
+    ILogger<PaymentTerminalsController> logger) : Controller
 {
-    public async Task<IActionResult> Index() => View(await db.PaymentTerminals.AsNoTracking().OrderBy(x => x.Provider).ThenBy(x => x.DeviceId).ToListAsync());
+    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
+    {
+        var isStaging = hostEnvironment.IsStaging();
+        IReadOnlyList<MercadoPagoPointTerminal> mercadoPagoTerminals = [];
+        var discoveryFailed = false;
+
+        if (isStaging)
+        {
+            try
+            {
+                mercadoPagoTerminals = await terminalDiscovery.ListTerminalsAsync(cancellationToken);
+            }
+            catch (PaymentGatewayException exception)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery returned HTTP {StatusCode}.", (int)exception.StatusCode);
+                discoveryFailed = true;
+            }
+            catch (HttpRequestException exception)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery failed. ErrorType={ErrorType}", exception.GetType().Name);
+                discoveryFailed = true;
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery timed out.");
+                discoveryFailed = true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (InvalidOperationException)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery is not configured.");
+                discoveryFailed = true;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning("Mercado Pago Point terminal discovery failed. ErrorType={ErrorType}", exception.GetType().Name);
+                discoveryFailed = true;
+            }
+        }
+
+        var model = new PaymentTerminalIndexViewModel
+        {
+            ConfiguredTerminals = await db.PaymentTerminals.AsNoTracking()
+                .OrderBy(x => x.Provider).ThenBy(x => x.DeviceId).ToListAsync(cancellationToken),
+            MercadoPagoTerminals = mercadoPagoTerminals,
+            IsStaging = isStaging,
+            DiscoveryFailed = discoveryFailed,
+            PointStagingOneRealTestEnabled = isStaging && stagingOneRealTestOptions.Value.Enabled,
+            StagingOneRealTestAttemptStarted = isStaging && stagingOneRealTestOptions.Value.Enabled && stagingOneRealTestClient.AttemptStarted,
+            StagingOneRealTestOrderId = TempData["StagingOneRealTestOrderId"] as string,
+            StagingOneRealTestStatus = TempData["StagingOneRealTestStatus"] as string,
+            StagingOneRealTestMessage = TempData["StagingOneRealTestMessage"] as string
+        };
+
+        return View(model);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> StartStagingOneRealPointTest(CancellationToken cancellationToken = default)
+    {
+        if (!IsStagingOneRealPointTestEnabled()) return NotFound();
+
+        SetStagingOneRealTestResult(await stagingOneRealTestClient.StartAsync(cancellationToken));
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RefreshStagingOneRealPointTestStatus(string orderId, CancellationToken cancellationToken = default)
+    {
+        if (!IsStagingOneRealPointTestEnabled()) return NotFound();
+
+        SetStagingOneRealTestResult(await stagingOneRealTestClient.GetStatusAsync(orderId, cancellationToken));
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DiscoverMercadoPagoTerminals(CancellationToken cancellationToken = default)
+    {
+        if (!hostEnvironment.IsStaging()) return NotFound();
+
+        try
+        {
+            return Ok(await terminalDiscovery.ListTerminalsAsync(cancellationToken));
+        }
+        catch (PaymentGatewayException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery returned HTTP {StatusCode}.", (int)exception.StatusCode);
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "N\u00E3o foi poss\u00EDvel consultar os terminais Mercado Pago." });
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery failed. ErrorType={ErrorType}", exception.GetType().Name);
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = "N\u00E3o foi poss\u00EDvel consultar os terminais Mercado Pago." });
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery timed out.");
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new { message = "A consulta de terminais Mercado Pago excedeu o tempo limite." });
+        }
+        catch (InvalidOperationException)
+        {
+            logger.LogWarning("Mercado Pago Point terminal discovery is not configured.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "A consulta de terminais Mercado Pago n\u00E3o est\u00E1 configurada." });
+        }
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetMercadoPagoTerminalOperatingModeToPdv(CancellationToken cancellationToken = default)
+    {
+        if (!hostEnvironment.IsStaging()) return NotFound();
+
+        try
+        {
+            await terminalDiscovery.SetTerminalOperatingModeAsync(
+                MercadoPagoPointTerminalDiscovery.AuthorizedStagingTerminalId,
+                "PDV",
+                cancellationToken);
+            TempData["MercadoPagoPointTerminalMessage"] = "Terminal configurado em modo PDV com sucesso.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (PaymentGatewayException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update returned HTTP {StatusCode}.", (int)exception.StatusCode);
+            return ModeUpdateFailed();
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update failed. ErrorType={ErrorType}", exception.GetType().Name);
+            return ModeUpdateFailed();
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update timed out; no automatic retry was attempted.");
+            return ModeUpdateFailed();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update precondition or configuration failed.");
+            return ModeUpdateFailed();
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning("Mercado Pago Point terminal mode update failed. ErrorType={ErrorType}", exception.GetType().Name);
+            return ModeUpdateFailed();
+        }
+    }
+
+    private IActionResult ModeUpdateFailed()
+    {
+        TempData["MercadoPagoPointTerminalMessage"] = "N\u00E3o foi poss\u00EDvel confirmar a configura\u00E7\u00E3o do terminal. Atualize a descoberta para conferir o estado atual antes de tentar novamente.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private bool IsStagingOneRealPointTestEnabled() =>
+        hostEnvironment.IsStaging() && stagingOneRealTestOptions.Value.Enabled;
+
+    private void SetStagingOneRealTestResult(PointStagingOneRealTestResult result)
+    {
+        TempData["StagingOneRealTestOrderId"] = result.OrderId;
+        TempData["StagingOneRealTestStatus"] = result.Status;
+        TempData["StagingOneRealTestMessage"] = result.Message;
+    }
 
     public async Task<IActionResult> Edit(int? id)
     {

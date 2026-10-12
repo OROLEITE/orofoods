@@ -714,6 +714,9 @@ namespace Orofoods.Web.Data.Migrations
                     b.Property<int>("CustomerId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("SalesRepresentativeId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("DeliveryAddressId")
                         .HasColumnType("INTEGER");
 
@@ -762,6 +765,8 @@ namespace Orofoods.Web.Data.Migrations
                     b.HasIndex("DeliveryAddressId");
 
                     b.HasIndex("PaymentTermId");
+
+                    b.HasIndex("SalesRepresentativeId");
 
                     b.ToTable("Orders");
                 });
@@ -961,14 +966,19 @@ namespace Orofoods.Web.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Error").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<Guid?>("AttemptId").HasColumnType("TEXT");
                     b.Property<DateTime>("ExportedAt").HasColumnType("TEXT");
                     b.Property<string>("ExportedByEmail").HasMaxLength(256).HasColumnType("TEXT");
                     b.Property<string>("ExportedByUserId").HasMaxLength(450).HasColumnType("TEXT");
                     b.Property<string>("FileName").HasMaxLength(160).HasColumnType("TEXT");
+                    b.Property<DateTime?>("GeneratedAt").HasColumnType("TEXT");
                     b.Property<int>("OrderId").HasColumnType("INTEGER");
+                    b.Property<int>("Outcome").HasColumnType("INTEGER");
+                    b.Property<int>("Source").HasColumnType("INTEGER");
                     b.Property<bool>("Succeeded").HasColumnType("INTEGER");
                     b.HasKey("Id");
                     b.HasIndex("OrderId", "ExportedAt");
+                    b.HasIndex("OrderId", "AttemptId").IsUnique();
                     b.ToTable("WmcExportAudits");
                 });
 

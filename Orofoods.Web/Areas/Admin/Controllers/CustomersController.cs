@@ -88,6 +88,45 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             return NotFound();
         }
 
+        var customerConversations = await db.WhatsAppConversations
+            .AsNoTracking()
+            .Where(conversation => conversation.CustomerId == id)
+            .OrderByDescending(conversation => conversation.LastMessageAt)
+            .ThenByDescending(conversation => conversation.Id)
+            .ToListAsync();
+        var conversationId = WhatsAppConversationLookup.FindConversationId(
+            customerConversations,
+            id,
+            customer.WhatsApp,
+            customer.Phone);
+        if (conversationId is null)
+        {
+            var normalizedPhones = new[]
+            {
+                WhatsAppConversationService.TryNormalizePhone(customer.WhatsApp),
+                WhatsAppConversationService.TryNormalizePhone(customer.Phone)
+            }
+            .Where(value => value is not null)
+            .Select(value => value!)
+            .Distinct(StringComparer.Ordinal)
+            .ToHashSet(StringComparer.Ordinal);
+            if (normalizedPhones.Count > 0)
+            {
+                var fallbackConversations = await db.WhatsAppConversations
+                    .AsNoTracking()
+                    .Where(conversation => conversation.CustomerId == null && normalizedPhones.Contains(conversation.PhoneNumber))
+                    .OrderByDescending(conversation => conversation.LastMessageAt)
+                    .ThenByDescending(conversation => conversation.Id)
+                    .Take(2)
+                    .ToListAsync();
+                conversationId = WhatsAppConversationLookup.FindConversationId(
+                    fallbackConversations,
+                    id,
+                    customer.WhatsApp,
+                    customer.Phone);
+            }
+        }
+
         var orders = await db.Orders
             .AsNoTracking()
             .Include(x => x.PaymentTerm)
@@ -201,6 +240,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             ,OverdueAmount = payments.Where(payment => payment.Status == PaymentStatus.Overdue).Sum(payment => payment.Amount)
             ,Attention = (await attentionService.GetAsync(User, DateTime.Now)).Customers.SingleOrDefault(x => x.CustomerId == id)
             ,Opportunities = opportunities
+            ,WhatsAppConversationId = conversationId
         });
     }
 
@@ -258,8 +298,18 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CompleteActivity(int id, int customerId)
+    public async Task<IActionResult> CompleteActivity(int id, int customerId, int? status = null, bool asJson = false)
     {
+        var targetStatus = status.HasValue && Enum.IsDefined((CommercialActivityStatus)status.Value)
+            ? (CommercialActivityStatus)status.Value
+            : status.HasValue
+                ? (CommercialActivityStatus?)null
+                : CommercialActivityStatus.Completed;
+        if (targetStatus is null || targetStatus is not CommercialActivityStatus.Scheduled and not CommercialActivityStatus.InProgress and not CommercialActivityStatus.Completed)
+        {
+            return BadRequest(new { success = false, message = "Status inválido para o Kanban." });
+        }
+
         var scope = await accessService.GetScopeAsync(User);
         if (!await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope).AnyAsync(x => x.Id == customerId))
         {
@@ -271,9 +321,20 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             return NotFound();
         }
 
-        activity.Status = CommercialActivityStatus.Completed;
-        activity.CompletedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        if (activity.Status != targetStatus.Value)
+        {
+            activity.Status = targetStatus.Value;
+            activity.CompletedAt = targetStatus == CommercialActivityStatus.Completed
+                ? activity.CompletedAt ?? DateTime.UtcNow
+                : null;
+            await db.SaveChangesAsync();
+        }
+
+        if (asJson)
+        {
+            return Json(new { success = true, status = (int)activity.Status });
+        }
+
         return RedirectToAction(nameof(Details), new { id = customerId });
     }
 

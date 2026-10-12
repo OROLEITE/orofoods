@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Integrations;
+using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Orders;
 
@@ -16,7 +18,11 @@ public class IntegrationsController(
     OrderIntegrationService integrationService,
     WmcManualExportService wmcManualExportService,
     WmcSyncCoordinator wmcSyncCoordinator,
-    WmcSyncService wmcSyncService) : Controller
+    WmcSyncService wmcSyncService,
+    IOptions<WmcSyncOptions> wmcSyncOptions,
+    IWmcBrandReader wmcBrandReader,
+    WmcProductPreviewService wmcProductPreviewService,
+    ILogger<IntegrationsController> logger) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -38,10 +44,10 @@ public class IntegrationsController(
         switch (wmcStatus?.Trim().ToLowerInvariant())
         {
             case "failed":
-                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "succeeded":
-                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "none":
                 query = query.Where(order => !order.WmcExportAudits.Any());
@@ -75,22 +81,74 @@ public class IntegrationsController(
         {
             return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", result.FileName!);
         }
+
         if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
         TempData["WmcError"] = result.Error ?? "Não foi possível exportar o pedido para o WMC.";
         return RedirectToAction(nameof(Index));
     }
 
-    public IActionResult Wmc()
+    public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
-        return View();
+        IReadOnlyList<WmcBrandRecord> brands = [];
+        try
+        {
+            brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
+            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
+        }
+        return View(new WmcPreviewPageModel(brands, [], null, []));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcPreview(short[]? brandCodes, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<WmcBrandRecord> brands = [];
+        try
+        {
+            brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
+            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
+        }
+        var availableCodes = brands.Select(brand => (short)brand.Code).ToHashSet();
+        var selectedCodes = (brandCodes ?? [])
+            .Where(availableCodes.Contains)
+            .Distinct()
+            .ToArray();
+        if (selectedCodes.Length == 0)
+        {
+            selectedCodes = availableCodes.OrderBy(code => code).ToArray();
+        }
+
+        var batch = await wmcProductPreviewService.PreviewByBrandsAsync(selectedCodes, cancellationToken);
+        var previewsByBrand = batch.ByBrand
+            .Select(item => item with
+            {
+                Description = brands.FirstOrDefault(brand => brand.Code == item.Code)?.Description ?? item.Description
+            })
+            .ToList();
+        ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
+        ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WmcSyncNow(CancellationToken cancellationToken)
     {
+        if (!wmcSyncOptions.Value.Enabled)
+        {
+            return Forbid();
+        }
+
         var result = await wmcSyncCoordinator.RunExclusivelyAsync(() => wmcSyncService.SyncAllAsync(cancellationToken), cancellationToken);
         TempData["WmcSyncMessage"] = result is null
             ? "Sincroniza\u00e7\u00e3o j\u00e1 em andamento."

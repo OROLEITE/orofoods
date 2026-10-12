@@ -1,0 +1,109 @@
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .page-header h1 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .page-header p {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) h1 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) p {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .table-responsive {
+    border-color: #334155;
+    background: #111827;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .table-responsive table {
+    color: #E5E7EB;
+    --bs-table-bg: #111827;
+    --bs-table-color: #E5E7EB;
+    --bs-table-border-color: #334155;
+    --bs-table-hover-bg: #1E293B;
+    --bs-table-hover-color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .table-responsive table thead th {
+    border-color: #334155;
+    background: #1E293B;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .table-responsive table tbody td {
+    border-color: #334155;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .table-responsive table tbody tr:hover > * {
+    --bs-table-accent-bg: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-check-label {
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-select {
+    border-color: #475569;
+    background-color: #0F172A;
+    color: #E5E7EB;
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-select:focus {
+    border-color: #38BDF8;
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-select:disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-control[readonly],
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) form .form-select[readonly] {
+    border-color: #334155;
+    background-color: #1E293B;
+    color: #CBD5E1;
+    opacity: 1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .btn-outline-secondary {
+    border-color: #64748B;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .btn-outline-secondary:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .btn-outline-secondary:focus-visible {
+    border-color: #38BDF8;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .btn-outline-secondary:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .btn-outline-danger {
+    border-color: #F87171;
+    color: #FCA5A5;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .text-danger,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .validation-summary-errors {
+    color: #FCA5A5;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .alert-warning {
+    border-color: #854D0E;
+    background: #422006;
+    color: #FDE68A;
+}

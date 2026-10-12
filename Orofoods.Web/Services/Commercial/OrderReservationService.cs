@@ -91,6 +91,12 @@ public class OrderReservationService(ApplicationDbContext db)
     public async Task ReleaseAsync(Order order, CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        await ReleaseWithinTransactionAsync(order, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task ReleaseWithinTransactionAsync(Order order, CancellationToken cancellationToken = default)
+    {
         var currentOrder = await db.Orders
             .Include(x => x.Customer)
             .Include(x => x.PaymentTerm)
@@ -100,7 +106,6 @@ public class OrderReservationService(ApplicationDbContext db)
             .ToListAsync(cancellationToken);
         if (reservations.Count == 0)
         {
-            await transaction.CommitAsync(cancellationToken);
             return;
         }
 
@@ -122,7 +127,6 @@ public class OrderReservationService(ApplicationDbContext db)
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
     }
 
     private static bool UsesCredit(Order order) => order.PaymentTerm is not null

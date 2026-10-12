@@ -1,0 +1,561 @@
+body.portal-authenticated,
+body.portal-customer-select {
+    --portal-dark-canvas: #0F172A;
+    --portal-dark-surface: #111827;
+    --portal-dark-surface-secondary: #1E293B;
+    --portal-dark-border: #334155;
+    --portal-dark-text-primary: #F8FAFC;
+    --portal-dark-text-secondary: #CBD5E1;
+    --portal-dark-text-muted: #94A3B8;
+    --portal-dark-primary: #2563EB;
+    --portal-dark-primary-hover: #1D4ED8;
+    color-scheme: dark;
+    min-height: 100vh;
+    background: var(--portal-dark-canvas);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .site-main,
+body.portal-customer-select .site-main {
+    min-height: 0;
+    background: var(--portal-dark-canvas);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main {
+    background: var(--portal-dark-canvas);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .portal-main-inner {
+    background: var(--portal-dark-canvas);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .site-header-modern,
+body.portal-customer-select .site-header-modern {
+    border-bottom: 1px solid var(--portal-dark-border);
+    background: var(--nav-header-bg);
+    box-shadow: none;
+}
+
+body.portal-authenticated .site-header-modern .main-nav .nav-link,
+body.portal-customer-select .site-header-modern .main-nav .nav-link {
+    position: relative;
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--portal-dark-text-secondary) !important;
+}
+
+body.portal-authenticated .site-header-modern .main-nav .nav-link:hover,
+body.portal-authenticated .site-header-modern .main-nav .nav-link:focus-visible,
+body.portal-customer-select .site-header-modern .main-nav .nav-link:hover,
+body.portal-customer-select .site-header-modern .main-nav .nav-link:focus-visible {
+    background: var(--nav-item-hover);
+    color: var(--portal-dark-text-primary) !important;
+}
+
+body.portal-authenticated .site-header-modern .main-nav .nav-link.active,
+body.portal-customer-select .site-header-modern .main-nav .nav-link.active {
+    background: var(--nav-item-hover);
+    box-shadow: none;
+    color: var(--portal-dark-text-primary) !important;
+}
+
+body.portal-authenticated .site-header-modern .main-nav .nav-link.active::before,
+body.portal-customer-select .site-header-modern .main-nav .nav-link.active::before {
+    position: absolute;
+    top: .45rem;
+    bottom: .45rem;
+    left: 0;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--gold);
+    content: '';
+}
+
+body.portal-authenticated .site-header-modern .main-nav .nav-link.active::after,
+body.portal-customer-select .site-header-modern .main-nav .nav-link.active::after {
+    display: none;
+}
+
+body.portal-authenticated > .site-footer {
+    border-top: 1px solid var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated > .site-footer :is(a, strong) {
+    color: #FBBF24;
+}
+
+body.portal-authenticated > .site-footer a:hover,
+body.portal-authenticated > .site-footer a:focus-visible {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated > .site-footer .footer-brand p,
+body.portal-authenticated > .site-footer .footer-legal p {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated > .site-footer .footer-legal small {
+    color: var(--portal-dark-text-muted);
+}
+
+body.portal-authenticated .portal-app-main .portal-page-hero {
+    border: 1px solid var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .portal-page-hero h1 {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .portal-page-hero :is(p, .eyebrow.light) {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .portal-page-hero .eyebrow.light {
+    color: #FBBF24;
+}
+
+body.portal-authenticated .portal-app-main .empty-state {
+    border: 1px dashed var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .empty-state h2 {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .order-items {
+    border: 1px solid var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .order-product h3,
+body.portal-authenticated .portal-app-main .line-price strong,
+body.portal-authenticated .portal-app-main .summary-card strong {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main :is(.order-product small, .line-price small, .summary-line span, .summary-label, .minimum, .minimum small, .summary-card label) {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .minimum {
+    background: var(--portal-dark-surface-secondary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-hero {
+    border: 1px solid var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-hero h1 {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-hero :is(p, .eyebrow.light) {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-hero .eyebrow.light {
+    color: #FBBF24;
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-dashboard-heading h1, .customer-dashboard-card h2, .customer-dashboard-card h3, .customer-kpi-card strong, .checkout-panel h2, .checkout-summary h2, .success-card h1, .success-card h2, .summary-card strong, .customer-commercial-summary dt),
+body.portal-authenticated .portal-app-main .portal-page :is(h1, h2, h3, h4),
+body.portal-authenticated .portal-app-main .portal-catalog-page :is(h1, h2, h3, h4),
+body.portal-customer-select .site-main :is(h1, h2, h3, h4, strong, dt) {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-dashboard-card, .customer-kpi-card, .customer-last-order-details, .checkout-panel, .checkout-summary, .success-card, .empty-state, .summary-card, .product-card, .orders-history-row) :is(p, li, dd, small, time, label, legend),
+body.portal-authenticated .portal-app-main .portal-page :is(p, li, dd, small, time, label, legend),
+body.portal-authenticated .portal-app-main .portal-catalog-page :is(p, li, dd, small, time, label, legend),
+body.portal-customer-select .site-main :is(p, li, dd, small, time, label, legend, .form-text) {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-kpi-card, .customer-dashboard-card, .customer-last-order-details, .checkout-panel, .checkout-summary, .success-card, .empty-state, .summary-card, .product-card, .orders-history-row, .customer-selector-card),
+body.portal-customer-select .site-main :is(.contact-form, .customer-selector-card) {
+    border: 1px solid var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-secondary);
+    box-shadow: 0 12px 30px rgba(2, 6, 23, .2);
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-kpi-card, .customer-dashboard-card, .customer-last-order-details, .checkout-panel, .checkout-summary, .success-card, .empty-state, .summary-card, .product-card, .orders-history-row, .customer-selector-card) :is(p, li, dd, small, time, span, label, legend),
+body.portal-customer-select .site-main .customer-selector-card :is(p, small, label, .form-text) {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-dashboard-section-heading, .orders-history-card-header, .order-list-head, .checkout-panel header > span, .customer-last-order-meta, .customer-commercial-summary dl > div),
+body.portal-customer-select .site-main .customer-selector-card .customer-selector-field {
+    border-color: var(--portal-dark-border);
+    background-color: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main :is(.portal-page, .portal-catalog-page, .checkout-page, .order-page, .success-page, .portal-dashboard, .portal-pix-page),
+body.portal-customer-select .site-main .order-page {
+    background: var(--portal-dark-canvas);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-dashboard-card a, .customer-product-ranking-label a, .orders-history-number, .orders-history-details, .orders-history-repeat, .customer-order-link, .customer-commercial-link, .back-link, .text-link),
+body.portal-authenticated .portal-app-main :is(.portal-page, .portal-catalog-page, .checkout-page) a:not(.btn),
+body.portal-customer-select .site-main .back-link {
+    color: #93C5FD;
+}
+
+body.portal-authenticated .portal-app-main :is(.form-control, .form-select, input, select, textarea),
+body.portal-customer-select .site-main :is(.form-control, .form-select, input, select, textarea) {
+    border-color: var(--portal-dark-border);
+    background-color: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main :is(.form-control, .form-select, input, select, textarea)::placeholder,
+body.portal-customer-select .site-main :is(.form-control, .form-select, input, select, textarea)::placeholder {
+    color: var(--portal-dark-text-muted);
+    opacity: 1;
+}
+
+body.portal-authenticated .portal-app-main :is(.form-control, .form-select, input, select, textarea):focus,
+body.portal-customer-select .site-main :is(.form-control, .form-select, input, select, textarea):focus {
+    border-color: #60A5FA;
+    background-color: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .28);
+}
+
+body.portal-authenticated .portal-app-main .form-check-input,
+body.portal-customer-select .site-main .form-check-input {
+    border-color: var(--portal-dark-border);
+    background-color: var(--portal-dark-surface-secondary);
+}
+
+body.portal-authenticated .portal-app-main .form-check-input:checked,
+body.portal-customer-select .site-main .form-check-input:checked {
+    border-color: var(--portal-dark-primary);
+    background-color: var(--portal-dark-primary);
+}
+
+body.portal-authenticated .portal-app-main .btn-gold,
+body.portal-authenticated .portal-app-main .btn-dark,
+body.portal-customer-select .site-main .btn-gold {
+    border-color: var(--portal-dark-primary);
+    background: var(--portal-dark-primary);
+    color: #fff;
+    box-shadow: none;
+}
+
+body.portal-authenticated .portal-app-main .btn-gold:hover,
+body.portal-authenticated .portal-app-main .btn-gold:focus-visible,
+body.portal-authenticated .portal-app-main .btn-dark:hover,
+body.portal-authenticated .portal-app-main .btn-dark:focus-visible,
+body.portal-customer-select .site-main .btn-gold:hover,
+body.portal-customer-select .site-main .btn-gold:focus-visible {
+    border-color: var(--portal-dark-primary-hover);
+    background: var(--portal-dark-primary-hover);
+    color: #fff;
+}
+
+body.portal-authenticated .portal-app-main .btn-outline-dark,
+body.portal-customer-select .site-main .btn-outline-dark {
+    border-color: var(--portal-dark-border);
+    background: transparent;
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .btn-outline-dark:hover,
+body.portal-authenticated .portal-app-main .btn-outline-dark:focus-visible,
+body.portal-customer-select .site-main .btn-outline-dark:hover,
+body.portal-customer-select .site-main .btn-outline-dark:focus-visible {
+    border-color: #64748B;
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .btn-link,
+body.portal-authenticated .portal-app-main .text-link,
+body.portal-authenticated .portal-app-main .back-link,
+body.portal-customer-select .site-main .btn-link,
+body.portal-customer-select .site-main .back-link {
+    color: #93C5FD;
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-dashboard-empty, .customer-first-order, .orders-history-empty, .empty-state),
+body.portal-customer-select .site-main .auth-validation {
+    border-color: var(--portal-dark-border);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .customer-kpi-icon,
+body.portal-authenticated .portal-app-main .customer-section-icon,
+body.portal-authenticated .portal-app-main .customer-commercial-summary .customer-section-icon {
+    background: var(--portal-dark-surface-secondary);
+    color: #93C5FD;
+}
+
+body.portal-authenticated .portal-app-main .customer-section-kicker,
+body.portal-authenticated .portal-app-main .customer-kpi-card small,
+body.portal-authenticated .portal-app-main .customer-last-order-meta small {
+    color: var(--portal-dark-text-muted);
+}
+
+body.portal-authenticated .portal-app-main .customer-last-order {
+    border-color: var(--portal-dark-border);
+    background-color: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .customer-last-order-details,
+body.portal-authenticated .portal-app-main .customer-commercial-summary dl > div,
+body.portal-authenticated .portal-app-main .customer-recent-order-row,
+body.portal-authenticated .portal-app-main .orders-history-row,
+body.portal-authenticated .portal-app-main .order-row {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+}
+
+body.portal-authenticated .portal-app-main .purchase-chart-track {
+    background: var(--portal-dark-surface-secondary);
+}
+
+body.portal-authenticated .portal-app-main :is(.purchase-chart-value, .purchase-chart-month) {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .customer-last-order-meta strong,
+body.portal-authenticated .portal-app-main .customer-last-order-total strong {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .customer-last-order-details li span {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-card-body > small,
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-add-form label,
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-price span,
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-add-status {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-price strong {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-quantity-button,
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-quantity-stepper .form-control {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-quantity-button:hover:not(:disabled) {
+    border-color: #64748B;
+    background: #334155;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-details-link {
+    color: #93C5FD;
+}
+
+body.portal-authenticated .portal-app-main .product-card {
+    overflow: hidden;
+    border-color: var(--portal-dark-border);
+}
+
+body.portal-authenticated .portal-app-main .product-card :is(.p-4, .catalog-card-body) {
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .product-card :is(h2, h3, p, small, label) {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .product-card :is(h2, h3) {
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .product-visual {
+    background: var(--portal-dark-surface-secondary);
+}
+
+body.portal-authenticated .portal-app-main .product-visual img {
+    mix-blend-mode: normal;
+}
+
+body.portal-authenticated .portal-app-main .product-detail-media {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-muted);
+}
+
+body.portal-authenticated .portal-app-main .product-detail-media img {
+    mix-blend-mode: normal;
+}
+
+body.portal-authenticated .portal-app-main :is(.catalog-price, .summary-total, .customer-recent-order-total, .customer-commercial-summary dd, .line-price strong, .orders-history-total) {
+    border-color: var(--portal-dark-border);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main :is(.catalog-price, .minimum, .checkout-items, .checkout-security, .customer-last-order-total) {
+    border-color: var(--portal-dark-border);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .catalog-cart-count {
+    background: var(--portal-dark-primary);
+    color: #fff;
+}
+
+body.portal-authenticated .portal-app-main .catalog-quantity-button {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main :is(.orders-history-card-header, .orders-history-card-main, .orders-history-card, .orders-history-row, .order-list-head, .order-row, .list-group-item) {
+    border-color: var(--portal-dark-border);
+    background-color: var(--portal-dark-surface);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .order-list-head {
+    background-color: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-muted);
+}
+
+body.portal-authenticated .portal-app-main :is(.orders-status-badge, .customer-order-status) {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .checkout-panel header > span {
+    border: 1px solid var(--portal-dark-border);
+    background: var(--portal-dark-primary);
+    color: #fff;
+}
+
+body.portal-authenticated .portal-app-main .checkout-security {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main :is(.checkout-card-visual, .success-pix, .pix-copy-input, .pix-copy-qrcode, .checkout-card-form) {
+    border-color: var(--portal-dark-border);
+    background-color: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .success-icon {
+    color: #34D399;
+}
+
+body.portal-authenticated .portal-app-main .status-track::before {
+    border-color: var(--portal-dark-border);
+}
+
+body.portal-authenticated .portal-app-main .status-track :is(.current, .done)::before {
+    border-color: var(--portal-dark-primary);
+    background: var(--portal-dark-primary);
+}
+
+body.portal-authenticated .portal-app-main .status-track :is(.current, .done) {
+    color: #93C5FD;
+}
+
+body.portal-authenticated .portal-app-main .progress {
+    background: var(--portal-dark-surface-secondary);
+}
+
+body.portal-authenticated .portal-app-main .alert-warning {
+    border-color: #854D0E;
+    background: #422006;
+    color: #FDE68A;
+}
+
+body.portal-authenticated .portal-app-main .alert-success {
+    border-color: #166534;
+    background: #052E16;
+    color: #BBF7D0;
+}
+
+body.portal-authenticated .portal-app-main .alert-danger {
+    border-color: #991B1B;
+    background: #450A0A;
+    color: #FECACA;
+}
+
+body.portal-authenticated .portal-app-main :is(.customer-dashboard-footnote, .customer-dashboard-footnote i) {
+    color: var(--portal-dark-text-muted);
+}
+
+body.portal-authenticated .portal-app-main .customer-dashboard-footnote a {
+    color: #93C5FD;
+}
+
+body.portal-authenticated .portal-app-main .pagination .page-link {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .pagination .page-item.active .page-link {
+    border-color: var(--portal-dark-primary);
+    background: var(--portal-dark-primary);
+    color: #fff;
+}
+
+body.portal-authenticated .portal-app-main :is(.dropdown-menu, .modal-content, .modal-header, .modal-body, .modal-footer) {
+    border-color: var(--portal-dark-border);
+    background: var(--portal-dark-surface);
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .modal-header {
+    background: var(--portal-dark-surface-secondary);
+}
+
+body.portal-authenticated .portal-app-main .dropdown-item {
+    color: var(--portal-dark-text-secondary);
+}
+
+body.portal-authenticated .portal-app-main .dropdown-item:hover,
+body.portal-authenticated .portal-app-main .dropdown-item:focus {
+    background: var(--portal-dark-surface-secondary);
+    color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main :is(a, button, input, select, textarea):focus-visible,
+body.portal-customer-select .site-main :is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid #60A5FA;
+    outline-offset: 2px;
+}
+
+body.portal-authenticated .portal-app-main .text-muted,
+body.portal-customer-select .site-main .text-muted {
+    color: var(--portal-dark-text-muted) !important;
+}
+
+@media (max-width: 767.98px) {
+    body.portal-authenticated .portal-app-main :is(.checkout-panel, .checkout-summary, .success-card, .empty-state, .summary-card),
+    body.portal-customer-select .site-main .customer-selector-card {
+        border-radius: 12px;
+    }
+}

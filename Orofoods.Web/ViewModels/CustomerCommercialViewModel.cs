@@ -26,6 +26,14 @@ public sealed class CustomerCommercialViewModel
     public decimal OverdueAmount { get; init; }
     public CommercialAttentionCustomerViewModel? Attention { get; init; }
     public IReadOnlyList<CrmOpportunity> Opportunities { get; init; } = [];
+    public long? WhatsAppConversationId { get; init; }
+    public string? PhoneNumberForCall =>
+        WhatsAppConversationService.TryNormalizePhone(Customer.Phone) is not null
+            ? Customer.Phone
+            : null;
+    public string? WhatsAppPhoneNumber =>
+        WhatsAppConversationService.TryNormalizePhone(Customer.WhatsApp) ??
+        WhatsAppConversationService.TryNormalizePhone(Customer.Phone);
 }
 
 public sealed record CustomerProductPurchaseViewModel(

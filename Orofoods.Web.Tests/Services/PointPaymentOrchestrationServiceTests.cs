@@ -196,6 +196,89 @@ public sealed class PointPaymentOrchestrationServiceTests
     }
 
     [Fact]
+    public async Task StartChargeAsync_sends_authorized_physical_terminal_and_exact_order_total()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.True(result.Succeeded);
+        var request = Assert.Single(provider.Requests);
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", request.DeviceId);
+        Assert.Equal(seed.Order.Total, request.Amount);
+        Assert.Equal(result.Payment!.IdempotencyKey, request.IdempotencyKey);
+    }
+
+    [Fact]
+    public async Task StartChargeAsync_allows_staging_only_with_the_explicit_real_point_flag()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider, environmentName: "Staging", stagingRealEnabled: true);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", Assert.Single(provider.Requests).DeviceId);
+    }
+
+    [Fact]
+    public async Task StartChargeAsync_allows_production_only_with_all_flags_and_allowlisted_terminal()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider, environmentName: "Production", productionEnabled: true);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(seed.Order.Total, Assert.Single(provider.Requests).Amount);
+        Assert.Equal(result.Payment!.IdempotencyKey, provider.Requests[0].IdempotencyKey);
+        Assert.Equal("NEWLAND_N950__N950NCD600484709", provider.Requests[0].DeviceId);
+    }
+
+    [Theory]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    public async Task StartChargeAsync_blocks_production_when_any_required_flag_is_false(
+        bool pointEnabled, bool productionEnabled, bool cardOnDeliveryEnabled)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider, pointEnabled: pointEnabled, environmentName: "Production",
+            productionEnabled: productionEnabled, cardOnDeliveryEnabled: cardOnDeliveryEnabled);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, provider.CreateCalls);
+    }
+
+    [Fact]
+    public async Task StartChargeAsync_rejects_a_different_terminal_before_provider_call()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seed = await AddPendingOrderAsync(db);
+        seed.Assignment.PaymentTerminal!.DeviceId = "NEWLAND_N950__OTHER";
+        await db.SaveChangesAsync();
+        var provider = new FakePointProvider();
+        var sut = CreateService(db, provider);
+
+        var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("POINT_ASSIGNMENT_INVALID", result.ErrorCode);
+        Assert.Equal(0, provider.CreateCalls);
+    }
+
+    [Fact]
     public async Task Cancellation_after_commit_before_provider_processing_keeps_attempt_for_restarted_service()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -337,7 +420,8 @@ public sealed class PointPaymentOrchestrationServiceTests
 
     [Theory]
     [InlineData(false, "Test", "POINT_INTEGRATION_DISABLED")]
-    [InlineData(true, "Production", "POINT_TEST_ENVIRONMENT_REQUIRED")]
+    [InlineData(true, "Production", "POINT_ENVIRONMENT_NOT_AUTHORIZED")]
+    [InlineData(true, "Staging", "POINT_ENVIRONMENT_NOT_AUTHORIZED")]
     public async Task StartChargeAsync_enforces_feature_and_test_environment(bool enabled, string environment, string errorCode)
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -363,7 +447,7 @@ public sealed class PointPaymentOrchestrationServiceTests
         var result = await sut.StartChargeAsync(seed.Order.Id, seed.Assignment.Id, RequestKey);
 
         Assert.False(result.Succeeded);
-        Assert.Equal("POINT_TEST_CREDENTIALS_REQUIRED", result.ErrorCode);
+        Assert.Equal("POINT_CREDENTIALS_REQUIRED", result.ErrorCode);
         Assert.Equal(0, provider.CreateCalls);
     }
 
@@ -663,6 +747,9 @@ public sealed class PointPaymentOrchestrationServiceTests
         IPointPaymentProvider provider,
         bool pointEnabled = true,
         string environmentName = "Test",
+        bool stagingRealEnabled = false,
+        bool productionEnabled = false,
+        bool cardOnDeliveryEnabled = true,
         bool tokenConfigured = true,
         RecordingApprovalHandler? approval = null,
         IPointPaymentOrderConcurrencyLock? orderLock = null,
@@ -670,8 +757,21 @@ public sealed class PointPaymentOrchestrationServiceTests
         db,
         provider,
         new PaymentTerminalEligibilityService(),
-        Options.Create(new MercadoPagoPointOptions { Enabled = pointEnabled, Environment = environmentName, AccessToken = tokenConfigured ? "fake-test-token" : "" }),
-        Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = true }),
+        Options.Create(new MercadoPagoPointOptions
+        {
+            Enabled = pointEnabled,
+            Environment = environmentName,
+            StagingRealEnabled = stagingRealEnabled,
+            ProductionEnabled = productionEnabled,
+            AuthorizedDeviceIdsByEnvironment = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Test"] = ["NEWLAND_N950__N950NCD600484709"],
+                ["Staging"] = ["NEWLAND_N950__N950NCD600484709"],
+                ["Production"] = ["NEWLAND_N950__N950NCD600484709"]
+            },
+            AccessToken = tokenConfigured ? "fake-test-token" : ""
+        }),
+        Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled }),
         new TestHostEnvironment(environmentName),
         approval ?? new RecordingApprovalHandler(),
         TimeProvider.System,
@@ -709,7 +809,7 @@ public sealed class PointPaymentOrchestrationServiceTests
         var terminal = new PaymentTerminal
         {
             Provider = PaymentTerminalProvider.MercadoPago,
-            DeviceId = "SBX0000001",
+            DeviceId = "NEWLAND_N950__N950NCD600484709",
             StoreId = "store-test",
             PosId = "pos-test",
             IsActive = terminalActive
@@ -888,3 +988,4 @@ public sealed class PointPaymentOrchestrationServiceTests
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 }
+

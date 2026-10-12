@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Orofoods.Web.Models.Payments;
+using Orofoods.Web.Services.Payments;
 
 namespace Orofoods.Web.ViewModels;
 
@@ -24,6 +25,19 @@ public sealed class PaymentTerminalEditViewModel
     [MaxLength(120)] public string? StoreId { get; set; }
     [MaxLength(120)] public string? PosId { get; set; }
     public bool IsActive { get; set; } = true;
+}
+
+public sealed class PaymentTerminalIndexViewModel
+{
+    public IReadOnlyList<PaymentTerminal> ConfiguredTerminals { get; init; } = [];
+    public IReadOnlyList<MercadoPagoPointTerminal> MercadoPagoTerminals { get; init; } = [];
+    public bool IsStaging { get; init; }
+    public bool DiscoveryFailed { get; init; }
+    public bool PointStagingOneRealTestEnabled { get; init; }
+    public bool StagingOneRealTestAttemptStarted { get; init; }
+    public string? StagingOneRealTestOrderId { get; init; }
+    public string? StagingOneRealTestStatus { get; init; }
+    public string? StagingOneRealTestMessage { get; init; }
 }
 
 public sealed class DriverPaymentTerminalAssignmentCreateViewModel

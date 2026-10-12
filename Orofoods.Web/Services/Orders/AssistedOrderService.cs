@@ -49,6 +49,14 @@ public sealed class AssistedOrderService
         bool clearCart = true,
         CancellationToken cancellationToken = default) =>
         orderPlacementService.PlaceAsync(customerId, userId, command, session, scope, clearCart, cancellationToken);
+
+    public Task<OrderPlacementResult> PlaceLinesAsync(
+        int customerId,
+        string userId,
+        OrderPlacementCommand command,
+        IReadOnlyList<(int ProductId, int Quantity)> requestedLines,
+        CancellationToken cancellationToken = default) =>
+        orderPlacementService.PlaceLinesAsync(customerId, userId, command, requestedLines, cancellationToken: cancellationToken);
 }
 
 public sealed record AssistedOrderResult(bool Succeeded, int? OrderId, string? ErrorMessage)

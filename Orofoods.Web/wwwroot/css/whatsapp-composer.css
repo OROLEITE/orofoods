@@ -529,6 +529,54 @@ body:has(.whatsapp-inbox-page) .admin-shell {
     color: #aa4640;
 }
 
+.whatsapp-failure-details {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    color: var(--oro-text-muted);
+}
+
+.whatsapp-failure-details > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    list-style: none;
+}
+
+.whatsapp-failure-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.whatsapp-failure-details > summary:focus-visible {
+    outline: 2px solid var(--crm-accent);
+    outline-offset: 2px;
+}
+
+.whatsapp-failure-details-popover {
+    position: absolute;
+    z-index: 20;
+    right: 0;
+    bottom: calc(100% + 6px);
+    display: grid;
+    gap: 4px;
+    width: min(280px, 70vw);
+    padding: 10px 12px;
+    border: 1px solid var(--oro-border);
+    border-radius: 8px;
+    background: var(--oro-surface);
+    color: var(--oro-text);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .22);
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    text-align: left;
+    white-space: normal;
+}
+
 .whatsapp-compose {
     display: grid;
     flex: 0 0 auto;
@@ -1567,34 +1615,8 @@ body:has(.whatsapp-inbox-page) .page-context-bar {
     align-items: center;
     gap: 10px;
 }
-.whatsapp-theme-toggle {
-    display: inline-flex;
-    min-height: 36px;
-    align-items: center;
-    gap: 8px;
-    padding: 0 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-}
-.whatsapp-theme-toggle:hover {
-    border-color: var(--border-color-strong);
-    background: var(--bg-surface-secondary);
-    color: var(--text-primary);
-}
-.whatsapp-theme-toggle:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--primary) 35%, transparent);
-    outline-offset: 2px;
-}
 @media (max-width: 767.98px) {
     .whatsapp-heading-actions { gap: 6px; }
-    .whatsapp-theme-toggle { min-height: 34px; padding: 0 8px; font-size: 11px; }
-    .whatsapp-theme-toggle span { display: none; }
 }
 
 
@@ -2154,7 +2176,7 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-actions :is(a, button):focus-v
     outline-offset: 2px;
 }
 
-body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle, .whatsapp-channel-badge) {
+body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-sound-toggle, .whatsapp-channel-badge) {
     display: inline-flex;
     min-height: 36px;
     align-items: center;
@@ -2170,11 +2192,11 @@ body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-to
     font-weight: 600;
 }
 
-body:has(.whatsapp-inbox-page) .whatsapp-header-actions :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle) {
+body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle {
     cursor: pointer;
 }
 
-body:has(.whatsapp-inbox-page) .whatsapp-header-actions :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle):hover {
+body:has(.whatsapp-inbox-page) .whatsapp-header-actions .whatsapp-sound-toggle:hover {
     border-color: var(--crm-accent);
     background: var(--crm-surface);
 }
@@ -2226,12 +2248,12 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-panel {
 }
 
 @media (max-width: 767.98px) {
-    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle, .whatsapp-channel-badge) {
+    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-sound-toggle, .whatsapp-channel-badge) {
         min-width: 36px;
         padding-inline: 8px;
     }
 
-    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-theme-toggle, .whatsapp-sound-toggle, .whatsapp-channel-badge) span {
+    body:has(.whatsapp-inbox-page) .whatsapp-header-actions > :is(.whatsapp-sound-toggle, .whatsapp-channel-badge) span {
         display: none;
     }
 }

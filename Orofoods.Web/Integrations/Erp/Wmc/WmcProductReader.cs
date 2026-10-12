@@ -5,15 +5,24 @@ namespace Orofoods.Web.Integrations.Erp.Wmc;
 public interface IWmcProductReader
 {
     Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default) =>
+        GetAllAsync(cancellationToken);
 }
 
 /// <summary>Reads the confirmed product master and stock columns from the read-only WMC replica.</summary>
 public sealed class WmcProductReader(IWmcFirebirdReader reader) : IWmcProductReader
 {
     public Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        GetAllByBrandAsync(null, cancellationToken);
+
+    public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default) =>
         reader.QueryAsync(
-            "SELECT CODPRODUTO, PRODUTO, SITUACAO, UN, ESTOQUEDISPONIVEL, ESTOQUEATUAL, CODBARRASFAB, CODMARCA, UN_ALTERN, QTDE_EMB, QTDE_CONV, PRECOCUSTO, PRECOVENDA, ESTOQUERESERVADO, DATA_ALTERACAO FROM PRODUTOS",
+            brandCode is null
+                ? "SELECT CODPRODUTO, PRODUTO, SITUACAO, UN, ESTOQUEDISPONIVEL, ESTOQUEATUAL, CODBARRASFAB, CODMARCA, UN_ALTERN, QTDE_EMB, QTDE_CONV, PRECOCUSTO, PRECOVENDA, ESTOQUERESERVADO, DATA_ALTERACAO FROM PRODUTOS"
+                : "SELECT CODPRODUTO, PRODUTO, SITUACAO, UN, ESTOQUEDISPONIVEL, ESTOQUEATUAL, CODBARRASFAB, CODMARCA, UN_ALTERN, QTDE_EMB, QTDE_CONV, PRECOCUSTO, PRECOVENDA, ESTOQUERESERVADO, DATA_ALTERACAO FROM PRODUTOS WHERE CODMARCA = @CODMARCA",
             Map,
+            brandCode is null ? null : new Dictionary<string, object?> { ["CODMARCA"] = brandCode.Value },
             cancellationToken: cancellationToken);
 
     private static WmcProductRecord Map(DbDataReader row) => new(

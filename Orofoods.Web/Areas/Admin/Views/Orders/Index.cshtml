@@ -2,6 +2,7 @@
 @using Orofoods.Web.Api
 @using Orofoods.Web.Models.Integrations
 @using Orofoods.Web.Models.Orders
+@section Head { <link rel="stylesheet" href="~/css/admin-orders-list.css" asp-append-version="true" /> }
 @{
     ViewData["Title"] = "Pedidos";
     var paged = (PagedResult<Order>)ViewBag.PagedResult;
@@ -10,10 +11,11 @@
     var wmcManualExportEligibleOrderIds = (IReadOnlySet<int>)ViewData["WmcManualExportEligibleOrderIds"]!;
     string NextDirection(string column) => sort == column && direction == "asc" ? "desc" : "asc";
 }
-<section class="section admin-orders-page">
+<section class="section admin-orders-page orders-index-compact">
     <div class="container">
-        <header class="admin-page-header">
+        <header class="admin-page-header d-flex align-items-center justify-content-between gap-3 flex-wrap">
             <div><div class="eyebrow"><span></span> OPERA&Ccedil;&Atilde;O</div><h1>Pedidos</h1><p>Acompanhe e gerencie os pedidos da opera&ccedil;&atilde;o.</p></div>
+            <a class="btn admin-primary-action text-nowrap" asp-controller="Customers" asp-action="Index" asp-route-context="new-order"><i class="fa-solid fa-plus" aria-hidden="true"></i> Novo pedido</a>
         </header>
         @if (TempData["WmcManualExportMessage"] is string message) { <div class="alert alert-success" role="status">@message</div> }
         @if (TempData["WmcManualExportError"] is string error) { <div class="alert alert-warning" role="alert">@error</div> }
@@ -100,14 +102,14 @@
                             <form asp-action="SendToWmc" method="post" class="mt-1"><input type="hidden" name="id" value="@order.Id" /><button class="btn btn-sm btn-outline-primary" type="submit">Enviar ao WMC</button></form>
                         }
                     </td>
-                    <td data-label="A&ccedil;&atilde;o" class="text-end"><a class="btn btn-sm btn-order-open" asp-action="Details" asp-route-id="@order.Id">Ver pedido <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></td>
+                    <td data-label="Ação" class="text-end"><a class="btn btn-sm btn-order-open" asp-action="Details" asp-route-id="@order.Id">Ver pedido <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></td>
                 </tr>
             }
             </tbody>
         </table></div></div>
         @if (paged.TotalPages > 1)
         {
-            <nav aria-label="Pagina&ccedil;&atilde;o dos pedidos"><ul class="pagination justify-content-center mb-0">
+            <nav class="orders-pagination" aria-label="Pagina&ccedil;&atilde;o dos pedidos"><ul class="pagination justify-content-center mb-0">
                 <li class="page-item @(paged.Page == 1 ? "disabled" : "")"><a class="page-link" asp-route-q="@ViewBag.Query" asp-route-status="@ViewBag.Status" asp-route-sort="@sort" asp-route-direction="@direction" asp-route-page="@(paged.Page - 1)">Anterior</a></li>
                 @for (var currentPage = Math.Max(1, paged.Page - 2); currentPage <= Math.Min(paged.TotalPages, paged.Page + 2); currentPage++) { <li class="page-item @(currentPage == paged.Page ? "active" : "")"><a class="page-link" asp-route-q="@ViewBag.Query" asp-route-status="@ViewBag.Status" asp-route-sort="@sort" asp-route-direction="@direction" asp-route-page="@currentPage">@currentPage</a></li> }
                 <li class="page-item @(paged.Page == paged.TotalPages ? "disabled" : "")"><a class="page-link" asp-route-q="@ViewBag.Query" asp-route-status="@ViewBag.Status" asp-route-sort="@sort" asp-route-direction="@direction" asp-route-page="@(paged.Page + 1)">Pr&oacute;xima</a></li>

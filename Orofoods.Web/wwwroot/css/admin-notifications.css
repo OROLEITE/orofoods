@@ -1,0 +1,106 @@
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .section {
+    background: #0F172A;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .portal-top .eyebrow,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .portal-top h1 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .portal-top h1 small {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article {
+    border-color: #334155;
+    background: #111827;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article strong {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article p {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article small {
+    color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article.is-unread {
+    border-left-color: #F59E0B;
+    background: #172033;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article .btn-outline-dark {
+    border-color: #64748B;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article .btn-outline-dark:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article .btn-outline-dark:focus-visible {
+    border-color: #38BDF8;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .notification-list article button:focus-visible {
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+}
+
+.admin-notifications-page .admin-empty-state {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 34px 24px;
+    border: 1px solid #e5ded2;
+    border-radius: 12px;
+    background: #fff;
+    color: #4c514a;
+    text-align: center;
+}
+
+.admin-notifications-page .admin-empty-state > i {
+    color: #64748B;
+    font-size: 1.35rem;
+}
+
+.admin-notifications-page .admin-empty-state h2 {
+    margin: 0;
+    color: #252b24;
+    font-size: 1.1rem;
+}
+
+.admin-notifications-page .admin-empty-state p {
+    max-width: 34rem;
+    margin: 0;
+    color: #64748B;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-notifications-page .admin-empty-state {
+    border-color: #334155;
+    background: #111827;
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-notifications-page .admin-empty-state > i {
+    color: #38BDF8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-notifications-page .admin-empty-state h2 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-notifications-page .admin-empty-state p {
+    color: #CBD5E1;
+}
+
+@media (max-width: 575.98px) {
+    .admin-notifications-page .admin-empty-state {
+        padding: 26px 18px;
+    }
+}

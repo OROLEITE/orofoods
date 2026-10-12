@@ -333,6 +333,104 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Failed_webhook_status_persists_primary_meta_error_with_sensitive_values_redacted()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.WhatsAppMessages.Add(new WhatsAppMessage
+        {
+            Conversation = new WhatsAppConversation { PhoneNumber = "5548999999999" },
+            ExternalMessageId = "failed-details-message",
+            Direction = WhatsAppMessageDirection.Outbound,
+            Type = WhatsAppMessageType.Text,
+            Status = WhatsAppMessageStatus.Sent
+        });
+        await db.SaveChangesAsync();
+        var logger = new CapturingLogger<WhatsAppConversationService>();
+        var service = new WhatsAppConversationService(db, Options.Create(TestWebhookOptions()), new UserNotificationService(db), logger: logger);
+        var errors = new object[]
+        {
+            new
+            {
+                code = 131047,
+                title = "Re-engagement message",
+                message = "Recipient +55 (11) 99999-9999 rejected token=private-value",
+                error_data = new { details = "Free-form message outside the window" }
+            },
+            new { code = 999001, title = "Secondary error", message = "Do not persist this error" }
+        };
+
+        await ProcessStatusAsync(service, "failed-details-message", "failed", "1750003000", errors);
+
+        var message = await db.WhatsAppMessages.AsNoTracking().SingleAsync();
+        Assert.Equal(WhatsAppMessageStatus.Failed, message.Status);
+        Assert.Equal("131047", message.ErrorCode);
+        Assert.Contains("Re-engagement message", message.ErrorMessage);
+        Assert.Contains("Free-form message outside the window", message.ErrorMessage);
+        Assert.DoesNotContain("99999-9999", message.ErrorMessage);
+        Assert.DoesNotContain("private-value", message.ErrorMessage);
+        Assert.DoesNotContain("Secondary error", message.ErrorMessage);
+        var log = Assert.Single(logger.Entries);
+        Assert.Equal(4301, log.EventId.Id);
+        Assert.Contains("ExternalMessageId=failed-details-message", log.Message);
+        Assert.Contains("MetaErrorCode=131047", log.Message);
+        Assert.Contains("ConversationId=", log.Message);
+        Assert.Contains("MessageId=", log.Message);
+        Assert.DoesNotContain("99999-9999", log.Message);
+        Assert.DoesNotContain("private-value", log.Message);
+        Assert.DoesNotContain("Mensagem de teste", log.Message);
+    }
+
+    [Fact]
+    public async Task Failed_webhook_status_without_errors_keeps_error_fields_empty()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.WhatsAppMessages.Add(new WhatsAppMessage
+        {
+            Conversation = new WhatsAppConversation { PhoneNumber = "5548999999999" },
+            ExternalMessageId = "failed-no-details-message",
+            Direction = WhatsAppMessageDirection.Outbound,
+            Type = WhatsAppMessageType.Text,
+            Status = WhatsAppMessageStatus.Sent
+        });
+        await db.SaveChangesAsync();
+        var service = CreateConversationService(db);
+
+        await ProcessStatusAsync(service, "failed-no-details-message", "failed", "1750003000");
+
+        var message = await db.WhatsAppMessages.AsNoTracking().SingleAsync();
+        Assert.Equal(WhatsAppMessageStatus.Failed, message.Status);
+        Assert.Null(message.ErrorCode);
+        Assert.Null(message.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Duplicate_failed_webhook_does_not_replace_saved_error_details()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.WhatsAppMessages.Add(new WhatsAppMessage
+        {
+            Conversation = new WhatsAppConversation { PhoneNumber = "5548999999999" },
+            ExternalMessageId = "failed-idempotent-details-message",
+            Direction = WhatsAppMessageDirection.Outbound,
+            Type = WhatsAppMessageType.Text,
+            Status = WhatsAppMessageStatus.Sent
+        });
+        await db.SaveChangesAsync();
+        var service = CreateConversationService(db);
+
+        await ProcessStatusAsync(service, "failed-idempotent-details-message", "failed", "1750003000", [new { code = 131047, title = "First failure", message = "First reason" }]);
+        await ProcessStatusAsync(service, "failed-idempotent-details-message", "failed", "1750004000", [new { code = 999001, title = "Duplicate failure", message = "Replacement reason" }]);
+        await ProcessStatusAsync(service, "failed-idempotent-details-message", "read", "1750005000");
+
+        var message = await db.WhatsAppMessages.AsNoTracking().SingleAsync();
+        Assert.Equal(WhatsAppMessageStatus.Failed, message.Status);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1750003000).UtcDateTime, message.FailedAt);
+        Assert.Equal("131047", message.ErrorCode);
+        Assert.Contains("First reason", message.ErrorMessage);
+        Assert.DoesNotContain("Replacement reason", message.ErrorMessage);
+    }
+
+    [Fact]
     public async Task Conversation_and_message_roll_back_together_when_message_save_fails()
     {
         var connection = new SqliteConnection("Data Source=:memory:");
@@ -653,7 +751,7 @@ public class WhatsAppBusinessTests
         }
     });
 
-    private static string BuildWebhookStatusJson(string externalId, string status, string timestamp) => JsonSerializer.Serialize(new
+    private static string BuildWebhookStatusJson(string externalId, string status, string timestamp, object[]? errors = null) => JsonSerializer.Serialize(new
     {
         @object = "whatsapp_business_account",
         entry = new[]
@@ -669,7 +767,7 @@ public class WhatsAppBusinessTests
                         value = new
                         {
                             metadata = new { phone_number_id = "phone-test" },
-                            statuses = new[] { new { id = externalId, status, timestamp } }
+                            statuses = new[] { new { id = externalId, status, timestamp, errors } }
                         }
                     }
                 }
@@ -689,9 +787,9 @@ public class WhatsAppBusinessTests
     private static WhatsAppConversationService CreateConversationService(ApplicationDbContext db) =>
         new(db, Options.Create(TestWebhookOptions()), new UserNotificationService(db));
 
-    private static async Task ProcessStatusAsync(WhatsAppConversationService service, string externalId, string status, string timestamp)
+    private static async Task ProcessStatusAsync(WhatsAppConversationService service, string externalId, string status, string timestamp, object[]? errors = null)
     {
-        using var document = JsonDocument.Parse(BuildWebhookStatusJson(externalId, status, timestamp));
+        using var document = JsonDocument.Parse(BuildWebhookStatusJson(externalId, status, timestamp, errors));
         await service.ProcessAsync(document);
     }
 

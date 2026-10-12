@@ -34,7 +34,7 @@ public class WmcSyncServiceTests
 
         var service = CreateService(db, products:
         [
-            new WmcProductRecord("ABC-1", "Nome WMC", "I", "CX", null, -2, "789", "M1", null, null, null, null, null, null, DateTime.UtcNow)
+            new WmcProductRecord("ABC-1", "Nome WMC", "A", "CX", null, -2, "789", "M1", null, null, null, null, null, null, DateTime.UtcNow)
         ]);
 
         var result = await service.SyncProductsAsync();
@@ -44,7 +44,7 @@ public class WmcSyncServiceTests
         Assert.Equal("Nome WMC", updated.Name);
         Assert.Equal("789", updated.Ean);
         Assert.Equal("M1", updated.WmcBrandCode);
-        Assert.False(updated.IsWmcActive);
+        Assert.True(updated.IsWmcActive);
         Assert.Equal(19.90m, updated.BasePrice);
         Assert.Equal(17.90m, updated.PromotionalPrice);
         Assert.Equal(category.Id, updated.ProductCategoryId);
@@ -170,8 +170,7 @@ public class WmcSyncServiceTests
 
         await service.SyncProductsAsync();
 
-        var product = Assert.Single(db.Products);
-        Assert.False(product.IsWmcActive);
+        Assert.Empty(db.Products);
     }
 
     [Fact]
@@ -242,6 +241,53 @@ public class WmcSyncServiceTests
         Assert.Equal(0m, product.BasePrice);
         var category = db.ProductCategories.Single(c => c.Id == product.ProductCategoryId);
         Assert.Equal("wmc-pendente-categorizacao", category.Slug);
+    }
+
+    [Fact]
+    public async Task Inactive_wmc_product_is_not_created()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, products: [new WmcProductRecord("P-INACTIVE", "Produto", "I", "CX", null, 10)]);
+
+        var result = await service.SyncProductsAsync();
+
+        Assert.Equal(0, result.RecordsCreated);
+        Assert.Empty(db.Products);
+    }
+
+    [Fact]
+    public async Task Existing_inactive_wmc_product_is_blocked_without_overwriting_commercial_data()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Comercial", Slug = "comercial", IsActive = true };
+        db.Add(category);
+        await db.SaveChangesAsync();
+        var product = new Product
+        {
+            WmcCode = "P-INACTIVE",
+            Sku = "SKU-LOCAL",
+            Name = "Nome comercial",
+            ProductCategoryId = category.Id,
+            BasePrice = 12.50m,
+            PromotionalPrice = 10.00m,
+            IsActive = true,
+            IsAvailable = true,
+            IsWmcActive = true,
+            WmcStockAvailable = true
+        };
+        db.Add(product);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, products: [new WmcProductRecord("P-INACTIVE", "Nome WMC", "I", "CX", null, 10)]);
+
+        await service.SyncProductsAsync();
+
+        Assert.False(product.IsWmcActive);
+        Assert.False(product.WmcStockAvailable);
+        Assert.Equal("Nome comercial", product.Name);
+        Assert.Equal("SKU-LOCAL", product.Sku);
+        Assert.Equal(12.50m, product.BasePrice);
+        Assert.Equal(10.00m, product.PromotionalPrice);
+        Assert.Equal(category.Id, product.ProductCategoryId);
     }
 
     [Fact]

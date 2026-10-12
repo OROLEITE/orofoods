@@ -1,0 +1,271 @@
+.customer-commercial-page {
+    padding: 14px 0 42px;
+}
+
+.customer-commercial-page > .container {
+    max-width: 1380px;
+}
+
+.customer-commercial-page .customer-commercial-hero {
+    align-items: center;
+    gap: 20px;
+    margin: 8px 0 12px;
+}
+
+.customer-commercial-page .customer-commercial-hero > div:first-child {
+    min-width: 0;
+}
+
+.customer-commercial-page .customer-commercial-hero h1 {
+    margin: 2px 0 0;
+    font-size: clamp(24px, 2vw, 29px);
+    letter-spacing: -.8px;
+    overflow-wrap: anywhere;
+}
+
+.customer-commercial-page .customer-commercial-hero p:not(.eyebrow) {
+    margin-top: 5px;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.customer-commercial-page .customer-commercial-hero > div:last-child {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.customer-commercial-page .customer-commercial-status {
+    padding: 7px 10px;
+}
+
+.customer-commercial-page .customer-commercial-hero > div:last-child .btn,
+.customer-commercial-page .customer-commercial-actions .btn {
+    min-height: 38px;
+    padding: 8px 12px;
+    white-space: nowrap;
+}
+
+.customer-commercial-page .customer-commercial-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.customer-commercial-page .customer-commercial-actions .btn {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+}
+
+.customer-commercial-page .customer-commercial-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.customer-commercial-page .customer-commercial-metrics article {
+    min-width: 0;
+    padding: 12px 15px;
+}
+
+.customer-commercial-page .customer-commercial-metrics strong {
+    margin-top: 5px;
+    font-size: 17px;
+    overflow-wrap: anywhere;
+}
+
+.customer-commercial-page .customer-commercial-attention {
+    grid-template-columns: minmax(170px, .7fr) minmax(0, 2.3fr);
+    align-items: center;
+    gap: 16px;
+    margin-top: 14px;
+    padding: 14px 17px;
+}
+
+.customer-commercial-page .customer-commercial-attention h2 {
+    margin-top: 3px;
+    font-size: 19px;
+}
+
+.customer-commercial-page .customer-commercial-attention dl {
+    gap: 10px 14px;
+}
+
+.customer-commercial-page .customer-commercial-attention dt {
+    margin-bottom: 3px;
+}
+
+.customer-commercial-page .customer-opportunities-panel {
+    margin-top: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.customer-commercial-page .customer-opportunities-panel > header {
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 2px;
+}
+
+.customer-commercial-page .customer-opportunities-panel > header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.customer-commercial-page .customer-opportunity-list {
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.customer-commercial-page .customer-opportunity-card {
+    gap: 12px;
+    padding: 11px 13px;
+}
+
+.customer-commercial-page .customer-opportunity-card__controls {
+    grid-template-columns: minmax(0, 150px) auto;
+    gap: 7px;
+}
+
+.customer-commercial-page .customer-opportunity-stage-form select,
+.customer-commercial-page .customer-opportunity-stage-form .btn {
+    min-height: 36px;
+}
+
+.customer-commercial-page .customer-opportunity-stage-form select {
+    padding-right: 28px;
+}
+
+.customer-commercial-page .customer-opportunity-stage-form .btn {
+    padding-right: 11px;
+    padding-left: 11px;
+}
+
+.customer-commercial-page .customer-detail-tabs-shell {
+    margin-top: 16px;
+}
+
+.customer-commercial-page .customer-detail-content {
+    padding-top: 14px;
+}
+
+.customer-commercial-page #overview .customer-detail-grid {
+    gap: 12px;
+}
+
+.customer-commercial-page #overview .customer-detail-panel {
+    padding: 18px 20px;
+}
+
+.customer-commercial-page #overview .customer-detail-panel h2 {
+    font-size: 18px;
+}
+
+.customer-commercial-page #overview .customer-detail-panel dl {
+    gap: 13px 18px;
+    margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+    .customer-commercial-page .customer-commercial-hero {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .customer-commercial-page .customer-commercial-hero > div:last-child {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .customer-commercial-page .customer-commercial-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .customer-commercial-page .customer-commercial-attention {
+        grid-template-columns: 1fr;
+    }
+
+    .customer-commercial-page .customer-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .customer-commercial-page .customer-opportunity-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .customer-commercial-page .customer-opportunity-card__controls {
+        grid-template-columns: minmax(0, 180px) auto;
+        justify-content: start;
+    }
+}
+
+@media (max-width: 600px) {
+    .customer-commercial-page {
+        padding: 12px 0 32px;
+    }
+
+    .customer-commercial-page .customer-commercial-hero > div:last-child {
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .customer-commercial-page .customer-commercial-hero > div:last-child .customer-commercial-status {
+        width: 100%;
+    }
+
+    .customer-commercial-page .customer-commercial-hero > div:last-child .btn {
+        flex: 1 1 auto;
+    }
+
+    .customer-commercial-page .customer-commercial-actions .btn {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .customer-commercial-page .customer-commercial-metrics article {
+        padding: 11px 12px;
+    }
+
+    .customer-commercial-page .customer-commercial-attention {
+        padding: 13px 14px;
+    }
+
+    .customer-commercial-page .customer-commercial-attention dl {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .customer-commercial-page .customer-opportunities-panel {
+        padding: 14px;
+    }
+
+    .customer-commercial-page .customer-opportunities-panel > header {
+        align-items: flex-start;
+    }
+
+    .customer-commercial-page .customer-opportunity-card__controls {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .customer-commercial-page .customer-opportunity-stage-form {
+        display: contents;
+    }
+
+    .customer-commercial-page .customer-opportunity-stage-form select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .customer-commercial-page #overview .customer-detail-panel {
+        padding: 15px;
+    }
+
+    .customer-commercial-page #overview .customer-detail-panel dl {
+        gap: 12px;
+    }
+}

@@ -1,0 +1,115 @@
+.commercial-dashboard-page .commercial-activity-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    min-width: 0;
+    padding: 12px;
+    cursor: grab;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-meta {
+    color: #777D73;
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-customer {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    margin: 0;
+    color: #30352E;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-subject {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    color: #70766D;
+    font-size: 11px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-footer {
+    display: flex;
+    min-width: 0;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-people {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 3px;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-person {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: #70766D;
+    font-size: 10px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-person > span {
+    display: inline;
+    color: #555C52;
+    font-weight: 600;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-action {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    place-items: center;
+    border-radius: 6px;
+}
+
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-action:hover,
+.commercial-dashboard-page .commercial-activity-card .commercial-activity-action:focus-visible {
+    background: #EEF5E9;
+    outline: 2px solid #98B67E;
+    outline-offset: 1px;
+}
+
+@media (max-width: 900px) {
+    .commercial-dashboard-page .commercial-activity-card {
+        padding: 10px;
+    }
+
+    .commercial-dashboard-page .commercial-activity-card .commercial-activity-person {
+        font-size: 9px;
+    }
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card .commercial-activity-customer {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card .commercial-activity-meta,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card .commercial-activity-subject,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card .commercial-activity-person {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .commercial-dashboard-page .commercial-activity-card .commercial-activity-person > span {
+    color: #E2E8F0;
+}

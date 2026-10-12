@@ -1,16 +1,110 @@
-@model IReadOnlyList<Orofoods.Web.Models.Payments.PaymentTerminal>
+@model Orofoods.Web.ViewModels.PaymentTerminalIndexViewModel
 @{
     ViewData["Title"] = "Terminais Point";
 }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <div><h1>Terminais de pagamento</h1><p>Cadastro interno. Esta tela não consulta o Mercado Pago nem realiza cobranças.</p></div>
+    <div><h1>Terminais de pagamento</h1><p>Cadastro interno. O teste Point de R$ 1,00 só aparece quando habilitado em Staging.</p></div>
     <a class="btn btn-primary" asp-action="Edit">Novo terminal</a>
 </div>
+
+@if (TempData["MercadoPagoPointTerminalMessage"] is string terminalMessage)
+{
+    var success = terminalMessage.StartsWith("Terminal configurado", StringComparison.Ordinal);
+    <div class="alert @(success ? "alert-success" : "alert-warning")" role="status">@terminalMessage</div>
+}
+
+@if (Model.IsStaging && User.IsInRole("Administrador"))
+{
+    <section class="card mb-4 admin-mp-terminal-discovery-card" aria-labelledby="mercado-pago-terminals-title">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0" id="mercado-pago-terminals-title">Terminais Mercado Pago</h2>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Atualizar descoberta</a>
+        </div>
+        <div class="card-body">
+            @if (Model.DiscoveryFailed)
+            {
+                <div class="alert alert-warning mb-0" role="status">Não foi possível atualizar a descoberta. Recarregue a tela para conferir o estado atual.</div>
+            }
+            else if (Model.MercadoPagoTerminals.Count == 0)
+            {
+                <p class="text-muted mb-0">Nenhum terminal foi retornado pela descoberta.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Terminal ID</th><th>Store ID</th><th>POS ID</th><th>Modo</th><th>Ação</th></tr></thead>
+                        <tbody>
+                        @foreach (var terminal in Model.MercadoPagoTerminals)
+                        {
+                            var isAuthorizedTerminal = string.Equals(terminal.Id, Orofoods.Web.Services.Payments.MercadoPagoPointTerminalDiscovery.AuthorizedStagingTerminalId, StringComparison.Ordinal);
+                            <tr>
+                                <td>@terminal.Id</td>
+                                <td>@(terminal.StoreId ?? "—")</td>
+                                <td>@(terminal.PosId ?? "—")</td>
+                                <td>@terminal.OperatingMode</td>
+                                <td>
+                                @if (isAuthorizedTerminal && terminal.OperatingMode == "PDV")
+                                {
+                                    <span class="badge text-bg-success">Terminal em modo PDV</span>
+                                    @if (Model.PointStagingOneRealTestEnabled && !Model.StagingOneRealTestAttemptStarted && string.IsNullOrWhiteSpace(Model.StagingOneRealTestOrderId))
+                                    {
+                                        <form asp-area="Admin" asp-action="StartStagingOneRealPointTest" method="post" asp-antiforgery="true" class="mt-2" onsubmit="return confirm('Enviar uma única cobrança real de R$ 1,00 para o terminal NEWLAND_N950__N950NCD600484709?');">
+                                            <button class="btn btn-sm btn-warning" type="submit">Enviar teste de R$ 1,00</button>
+                                        </form>
+                                    }
+                                }
+                                else if (isAuthorizedTerminal && terminal.OperatingMode == "STANDALONE" && User.IsInRole("Administrador"))
+                                {
+                                    <form asp-area="Admin" asp-action="SetMercadoPagoTerminalOperatingModeToPdv" method="post" asp-antiforgery="true" onsubmit="return confirm('Deseja alterar a maquininha NEWLAND_N950__N950NCD600484709 de STANDALONE para PDV?');">
+                                        <button class="btn btn-sm btn-primary" type="submit">Configurar como PDV</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if (Model.PointStagingOneRealTestEnabled)
+            {
+                @if (Model.StagingOneRealTestAttemptStarted && string.IsNullOrWhiteSpace(Model.StagingOneRealTestMessage))
+                {
+                    <div class="alert alert-info mt-3" role="status">A tentativa única já foi iniciada. Não envie novamente; consulte o status pelo order_id.</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.StagingOneRealTestMessage))
+                {
+                    <div class="alert alert-info mt-3" role="status">
+                        @if (!string.IsNullOrWhiteSpace(Model.StagingOneRealTestOrderId))
+                        {
+                            <div><strong>order_id:</strong> @Model.StagingOneRealTestOrderId</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.StagingOneRealTestStatus))
+                        {
+                            <div><strong>status:</strong> @Model.StagingOneRealTestStatus</div>
+                        }
+                        <div>@Model.StagingOneRealTestMessage</div>
+                    </div>
+                }
+                <form asp-area="Admin" asp-action="RefreshStagingOneRealPointTestStatus" method="get" class="row g-2 mt-2">
+                    <div class="col-auto"><label class="visually-hidden" for="stagingPointTestOrderId">order_id</label><input class="form-control form-control-sm" id="stagingPointTestOrderId" name="orderId" value="@Model.StagingOneRealTestOrderId" maxlength="100" placeholder="order_id" /></div>
+                    <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" type="submit">Consultar status</button></div>
+                </form>
+            }
+        </div>
+    </section>
+}
+
 <div class="table-responsive"><table class="table align-middle">
     <thead><tr><th>Provedor</th><th>Device ID</th><th>Store ID</th><th>POS ID</th><th>Status</th><th></th></tr></thead>
     <tbody>
-    @foreach (var terminal in Model)
+    @foreach (var terminal in Model.ConfiguredTerminals)
     {
         <tr>
             <td>@terminal.Provider</td><td>@(terminal.DeviceId ?? "Não configurado")</td><td>@(terminal.StoreId ?? "—")</td><td>@(terminal.PosId ?? "—")</td><td>@(terminal.IsActive ? "Ativo" : "Inativo")</td>
@@ -28,3 +122,4 @@
     }
     </tbody>
 </table></div>
+@section Head { <link rel="stylesheet" href="~/css/admin-payment-terminals.css" asp-append-version="true" /> }
