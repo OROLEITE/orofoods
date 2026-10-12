@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -25,7 +26,7 @@ public class AdminWmcMonitorControllerTests
     [InlineData(OrderStatus.OutForDelivery)]
     [InlineData(OrderStatus.Delivered)]
     [InlineData(OrderStatus.Cancelled)]
-    public async Task Manual_wmc_export_does_not_generate_or_audit_non_approved_orders(OrderStatus status)
+    public async Task Manual_wmc_export_records_rejected_non_approved_attempts(OrderStatus status)
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12345678000199" };
@@ -39,7 +40,11 @@ public class AdminWmcMonitorControllerTests
 
         Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Index", Assert.IsType<RedirectToActionResult>(result).ActionName);
-        Assert.Empty(await db.WmcExportAudits.ToListAsync());
+        var audit = Assert.Single(await db.WmcExportAudits.ToListAsync());
+        Assert.False(audit.Succeeded);
+        Assert.Equal(order.Id, audit.OrderId);
+        Assert.Equal("wmc-export-user", audit.ExportedByUserId);
+        Assert.Equal("Somente pedidos aprovados podem ser exportados para o WMC.", audit.Error);
         Assert.Equal("Somente pedidos aprovados podem ser exportados para o WMC.", controller.TempData["WmcError"]);
     }
 
@@ -73,15 +78,19 @@ public class AdminWmcMonitorControllerTests
         var controller = new IntegrationsController(
             db,
             null!,
-            new WmcOrderFileGenerator(),
-            new WmcExportAuditService(db),
+            new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db)),
             null!,
             null!,
             null!,
             null!,
             null!,
             null!);
-        var context = new DefaultHttpContext();
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "wmc-export-user"), new Claim(ClaimTypes.Name, "export@orofoods.local")],
+                "test"))
+        };
         controller.ControllerContext = new ControllerContext { HttpContext = context };
         controller.TempData = new TempDataDictionary(context, Mock.Of<ITempDataProvider>());
         return controller;

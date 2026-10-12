@@ -8,6 +8,7 @@ using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Tests.Infrastructure;
 
@@ -39,6 +40,9 @@ public class WmcFileDropConcurrencyTests
                 order = new Order
                 {
                     Number = "ORO-2026-009901",
+                    CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+                    Total = 12m,
+                    PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
                     Status = OrderStatus.Approved,
                     Customer = new Customer { LegalName = "Cliente de teste", TradeName = "Teste", Cnpj = "12345678000199", WmcCode = "107072" },
                     CreatedByUser = TestDbContextFactory.CreateOrderCreator("wmc-concurrency-test"),

@@ -13,10 +13,12 @@ using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Models.Pricing;
+using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Payments;
+using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Tests.Infrastructure;
 
 namespace Orofoods.Web.Tests.Controllers;
@@ -156,6 +158,7 @@ public sealed class AdminPointPaymentTests
             db,
             service,
             integrationService: null!,
+            new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db)),
             point,
             Options.Create(new MercadoPagoPointOptions { Enabled = enabled, Environment = environment, StagingRealEnabled = stagingRealEnabled, ProductionEnabled = productionEnabled, AccessToken = "fake" }),
             paymentOptions,

@@ -14,6 +14,24 @@ public class OrderWmcAuditViewTests
     }
 
     [Fact]
+    public void Admin_order_monitor_exposes_manual_send_review_and_separate_import_confirmation()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Index.cshtml"));
+
+        Assert.Contains("Pendente", view);
+        Assert.Contains("Exportado", view);
+        Assert.Contains("Importado no WMC", view);
+        Assert.Contains("Erro", view);
+        Assert.Contains("Enviar ao WMC", view);
+        Assert.Contains("Confirmar importa&ccedil;&atilde;o", view);
+        Assert.Contains("Confirmar exportado", view);
+        Assert.Contains("Confirmar que n&atilde;o chegou ao WMC", view);
+        Assert.Contains("asp-action=\"SendToWmc\"", view);
+        Assert.Contains("asp-action=\"ConfirmWmcImported\"", view);
+    }
+
+    [Fact]
     public void Order_details_only_offer_integration_reprocessing_for_approved_orders_and_break_audit_ties()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

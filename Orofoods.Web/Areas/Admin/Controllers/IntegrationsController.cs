@@ -16,8 +16,7 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 public class IntegrationsController(
     ApplicationDbContext db,
     OrderIntegrationService integrationService,
-    WmcOrderFileGenerator wmcOrderFileGenerator,
-    WmcExportAuditService wmcExportAuditService,
+    WmcManualExportService wmcManualExportService,
     WmcSyncCoordinator wmcSyncCoordinator,
     WmcSyncService wmcSyncService,
     IOptions<WmcSyncOptions> wmcSyncOptions,
@@ -71,67 +70,22 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ExportWmc(int id, CancellationToken cancellationToken, Guid? attemptId = null)
+    public async Task<IActionResult> ExportWmc(int id, CancellationToken cancellationToken)
     {
-        var order = await db.Orders
-            .AsNoTracking()
-            .Include(item => item.Customer)
-            .Include(item => item.PaymentTerm)
-            .Include(item => item.Items)
-            .ThenInclude(item => item.Product)
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
-
-        if (order is null)
+        var result = await wmcManualExportService.ExportAsync(
+            id,
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            User.Identity?.Name,
+            cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
         {
-            return NotFound();
+            return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", result.FileName!);
         }
 
-        if (order.Status != OrderStatus.Approved)
-        {
-            TempData["WmcError"] = "Somente pedidos aprovados podem ser exportados para o WMC.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        var result = wmcOrderFileGenerator.Build(order);
-        var idempotencyKey = attemptId is null || attemptId == Guid.Empty ? Guid.NewGuid() : attemptId.Value;
-        var generatedAt = result.Succeeded ? DateTime.UtcNow : (DateTime?)null;
-        var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
-        if (!result.Succeeded)
-        {
-            var error = string.Join(" ", result.Errors);
-            await wmcExportAuditService.RecordAttemptAsync(new WmcExportAudit
-            {
-                OrderId = order.Id,
-                AttemptId = idempotencyKey,
-                Source = WmcExportSource.Manual,
-                Outcome = WmcExportOutcome.Failed,
-                ExportedByUserId = CurrentUserId,
-                ExportedByEmail = CurrentUserEmail,
-                ExportedAt = DateTime.UtcNow,
-                FileName = fileName,
-                Error = error
-            }, cancellationToken);
-            TempData["WmcError"] = error;
-            return RedirectToAction(nameof(Index));
-        }
-
-        await wmcExportAuditService.RecordAttemptAsync(new WmcExportAudit
-        {
-            OrderId = order.Id,
-            AttemptId = idempotencyKey,
-            Source = WmcExportSource.Manual,
-            Outcome = WmcExportOutcome.Generated,
-            ExportedByUserId = CurrentUserId,
-            ExportedByEmail = CurrentUserEmail,
-            ExportedAt = DateTime.UtcNow,
-            GeneratedAt = generatedAt,
-            FileName = fileName
-        }, cancellationToken);
-        return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", fileName);
+        if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
+        TempData["WmcError"] = result.Error ?? "Não foi possível exportar o pedido para o WMC.";
+        return RedirectToAction(nameof(Index));
     }
-
-    private string? CurrentUserId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    private string? CurrentUserEmail => User.Identity?.Name;
 
     public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {

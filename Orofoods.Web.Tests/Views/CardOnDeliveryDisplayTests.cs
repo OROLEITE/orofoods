@@ -30,7 +30,8 @@ public class CardOnDeliveryDisplayTests
         var sellerView = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Vendedor", "Views", "Checkout", "Success.cshtml"));
 
         Assert.Contains("Include(x => x.Payments)", adminController);
-        Assert.Contains("Include(item => item.PaymentTerm)", wmcController);
+        Assert.Contains("Include(x => x.PaymentTerm)", adminController);
+        Assert.Contains("WmcManualExportService", wmcController);
         Assert.Contains("Cartão na entrega", adminView);
         Assert.Contains("Aguardando pagamento", adminView);
         Assert.Contains("SITUAÇÃO FINANCEIRA", sellerView);

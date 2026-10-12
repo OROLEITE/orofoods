@@ -13,7 +13,7 @@ public class IntegrationDashboardViewTests
         Assert.Contains("IntegrationStatus", controller);
         Assert.Contains("Reprocess", controller);
         Assert.Contains("ExportWmc", controller);
-        Assert.Contains("WmcExportAuditService", controller);
+        Assert.Contains("WmcManualExportService", controller);
         Assert.Contains("status", view);
         Assert.Contains("wmcStatus", view);
         Assert.Contains("Reprocess", view);

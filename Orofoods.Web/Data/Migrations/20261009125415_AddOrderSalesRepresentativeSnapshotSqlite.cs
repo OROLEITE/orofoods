@@ -23,21 +23,10 @@ public partial class AddOrderSalesRepresentativeSnapshotSqlite : Migration
             table: "Orders",
             column: "SalesRepresentativeId");
 
-        migrationBuilder.AddForeignKey(
-            name: "FK_Orders_SalesRepresentatives_SalesRepresentativeId",
-            table: "Orders",
-            column: "SalesRepresentativeId",
-            principalTable: "SalesRepresentatives",
-            principalColumn: "Id",
-            onDelete: ReferentialAction.Restrict);
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropForeignKey(
-            name: "FK_Orders_SalesRepresentatives_SalesRepresentativeId",
-            table: "Orders");
-
         migrationBuilder.DropIndex(
             name: "IX_Orders_SalesRepresentativeId",
             table: "Orders");

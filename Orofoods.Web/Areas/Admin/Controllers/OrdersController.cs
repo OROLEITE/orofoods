@@ -8,6 +8,7 @@ using Orofoods.Web.Api;
 using Orofoods.Web.Data;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Customers;
+using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Payments;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
@@ -17,6 +18,7 @@ public class OrdersController(
     ApplicationDbContext db,
     AdminOrderService service,
     OrderIntegrationService integrationService,
+    WmcManualExportService wmcManualExportService,
     IPointPaymentOrchestrationService pointPaymentService,
     IOptions<MercadoPagoPointOptions> pointOptions,
     IOptions<PaymentEligibilityOptions> paymentOptions,
@@ -24,7 +26,9 @@ public class OrdersController(
 {
     public async Task<IActionResult> Index(string? q, string? status, string sort = "date", string direction = "desc", int page = 1)
     {
-        var query = db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).AsQueryable();
+        var query = db.Orders.AsNoTracking().AsSplitQuery().Include(x => x.Customer).Include(x => x.PaymentTerm)
+            .Include(x => x.Items).ThenInclude(x => x.Product)
+            .Include(x => x.WmcOrderExportState).Include(x => x.WmcExportAudits).AsQueryable();
         if (!string.IsNullOrWhiteSpace(q)) query = query.Where(x => x.Number.Contains(q) || x.Customer!.TradeName.Contains(q));
         if (Enum.TryParse<OrderStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
         var descending = !string.Equals(direction, "asc", StringComparison.OrdinalIgnoreCase);
@@ -47,6 +51,11 @@ public class OrdersController(
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)request.PageSize));
         if (request.Page > totalPages) request = new PageRequest(totalPages, request.PageSize);
         var orders = await query.Skip(request.Skip).Take(request.PageSize).ToListAsync();
+
+        ViewData["WmcManualExportEligibleOrderIds"] = orders
+            .Where(wmcManualExportService.CanManuallyExport)
+            .Select(order => order.Id)
+            .ToHashSet();
 
         ViewBag.Query = q;
         ViewBag.Status = status;
@@ -204,6 +213,62 @@ public class OrdersController(
         var result = await service.UpdateStatusAsync(id, status, User.FindFirstValue(ClaimTypes.NameIdentifier));
         if (!result.Succeeded) TempData["OrderStatusError"] = result.ErrorMessage;
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendToWmc(int id, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.ExportAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
+        {
+            return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", result.FileName!);
+        }
+
+        if (result.Disposition == WmcManualExportDisposition.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["WmcManualExportError"] = result.Error ?? "Não foi possível exportar o pedido para o WMC.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmWmcImported(int id, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.ConfirmImportedAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Imported)
+        {
+            TempData["WmcManualExportMessage"] = "Importação no WMC confirmada manualmente.";
+        }
+        else
+        {
+            TempData["WmcManualExportError"] = result.Error ?? "Não foi possível confirmar a importação.";
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmPriorWmcExport(int id, bool exported, CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var email = User.Identity?.Name;
+        var result = exported
+            ? await wmcManualExportService.ConfirmPriorExportAsync(id, userId, email, cancellationToken)
+            : await wmcManualExportService.ConfirmPriorExportDidNotReachWmcAsync(id, userId, email, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
+        {
+            TempData["WmcManualExportMessage"] = "Histórico confirmado como exportado; a importação continua pendente de confirmação separada.";
+        }
+        else if (result.Error is not null)
+        {
+            TempData["WmcManualExportError"] = result.Error;
+        }
+        else
+        {
+            TempData["WmcManualExportMessage"] = "Histórico conferido. O pedido está pendente de envio manual.";
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost, ValidateAntiForgeryToken]

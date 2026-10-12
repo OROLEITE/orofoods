@@ -29,13 +29,15 @@ public class WmcOrderFileGeneratorTests
             ]
         };
 
+        order.Total = 758.40m;
+        order.PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 };
         var result = new WmcOrderFileGenerator().Build(order);
         var lines = result.Content!.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
 
         Assert.True(result.Succeeded);
         Assert.Equal([315, 45, 122, 330, 122], lines.Select(line => line.Length));
         Assert.StartsWith("019", lines[0]);
-        Assert.Contains("107072", lines[1]);
+        Assert.Contains("00020260830", lines[1]);
         Assert.Contains("610601552", lines[3]);
         Assert.StartsWith("090", lines[4]);
     }
@@ -58,20 +60,24 @@ public class WmcOrderFileGeneratorTests
     }
 
     [Fact]
-    public void Rejects_card_on_delivery_until_its_wmc_mapping_is_defined()
+    public void Exports_card_on_delivery_as_due_today_without_changing_the_payment_term()
     {
         var order = new Order
         {
             Number = "ORO-2026-000778",
+            CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
             Customer = new Customer { WmcCode = "107072" },
-            PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega" },
-            Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1 }]
+            PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", DaysUntilDue = 14 },
+            Total = 63.20m,
+            Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 63.20m, Subtotal = 63.20m }]
         };
 
         var result = new WmcOrderFileGenerator().Build(order);
+        var paymentRecord = result.Content?.Split(Environment.NewLine)[1];
 
-        Assert.False(result.Succeeded);
-        Assert.Null(result.Content);
-        Assert.Contains("WMC_CARD_ON_DELIVERY_MAPPING_PENDING", result.Errors);
+        Assert.True(result.Succeeded);
+        Assert.Equal(45, paymentRecord?.Length);
+        Assert.Contains("00020260830", paymentRecord);
+        Assert.Equal(14, order.PaymentTerm.DaysUntilDue);
     }
 }

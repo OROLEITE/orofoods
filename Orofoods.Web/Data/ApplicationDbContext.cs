@@ -36,6 +36,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<WmcExportAudit> WmcExportAudits => Set<WmcExportAudit>();
+    public DbSet<WmcOrderExportState> WmcOrderExportStates => Set<WmcOrderExportState>();
     public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
@@ -209,11 +210,19 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey")
             .IsUnique();
 
-        builder.Entity<Order>()
-            .HasOne(x => x.SalesRepresentative)
-            .WithMany()
-            .HasForeignKey(x => x.SalesRepresentativeId)
-            .OnDelete(DeleteBehavior.Restrict);
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            builder.Entity<Order>()
+                .HasOne(x => x.SalesRepresentative)
+                .WithMany()
+                .HasForeignKey(x => x.SalesRepresentativeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+        else
+        {
+            // SQLite cannot add this FK to the existing Orders table without rebuilding it.
+            builder.Entity<Order>().Ignore(x => x.SalesRepresentative);
+        }
 
         builder.Entity<OrderStatusHistory>()
             .HasOne(x => x.ChangedByUser)
@@ -288,6 +297,24 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasIndex(x => new { x.OrderId, x.AttemptId })
             .IsUnique();
 
+        builder.Entity<WmcOrderExportState>()
+            .HasKey(x => x.OrderId);
+        builder.Entity<WmcOrderExportState>()
+            .Property(x => x.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+        builder.Entity<WmcOrderExportState>()
+            .Property(x => x.Version)
+            .IsConcurrencyToken();
+        builder.Entity<WmcOrderExportState>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_WmcOrderExportStates_Status",
+                "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Imported', 'Error')"));
+        builder.Entity<WmcOrderExportState>()
+            .HasOne(x => x.Order)
+            .WithOne(x => x.WmcOrderExportState)
+            .HasForeignKey<WmcOrderExportState>(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);
         builder.Entity<Customer>().Property(x => x.CreditLimit).HasPrecision(12, 2);
