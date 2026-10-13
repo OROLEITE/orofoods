@@ -67,11 +67,13 @@ public class OrdersController(
 
     public async Task<IActionResult> Details(int id)
     {
-        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).Include(x => x.DeliveryAddress).Include(x => x.PaymentTerm)
+        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).ThenInclude(x => x.Product)
+            .Include(x => x.DeliveryAddress).Include(x => x.PaymentTerm).Include(x => x.WmcOrderExportState)
             .Include(x => x.Payments).ThenInclude(x => x!.DriverPaymentTerminalAssignment).ThenInclude(x => x!.Driver)
             .Include(x => x.Payments).ThenInclude(x => x!.DriverPaymentTerminalAssignment).ThenInclude(x => x!.PaymentTerminal)
             .Include(x => x.StatusHistory).ThenInclude(x => x.ChangedByUser).Include(x => x.WmcExportAudits).AsSplitQuery().SingleOrDefaultAsync(x => x.Id == id);
         if (order is null) return NotFound();
+        ViewBag.WmcManualExportDiagnostic = wmcManualExportService.DiagnoseManualExport(order);
         var pointEnabled = IsPointEnabled() && order.PaymentTerm?.Code == "CARD_ON_DELIVERY";
         ViewBag.PointPaymentEnabled = pointEnabled;
         ViewBag.PointEligibleAssignments = pointEnabled

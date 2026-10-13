@@ -3,6 +3,26 @@ namespace Orofoods.Web.Tests.Views;
 public class AdminOrderDetailsVisualTests
 {
     [Fact]
+    public void Order_details_expose_a_read_only_wmc_export_diagnostic()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+
+        Assert.Contains("Diagn&oacute;stico WMC", view);
+        Assert.Contains("ManualExportDiagnostic", controller);
+        Assert.Contains("PaymentTerm?.Code", view);
+        Assert.Contains("DaysUntilDue", view);
+        Assert.Contains("Customer?.WmcCode", view);
+        Assert.Contains("Product?.WmcCode", view);
+        Assert.Contains("Product?.Unit", view);
+        Assert.Contains("WmcOrderExportState", controller);
+        Assert.Contains("BlockReason", view);
+        Assert.Contains("CanExport", view);
+        Assert.DoesNotContain("asp-action=\"SendToWmc\"", view);
+    }
+
+    [Fact]
     public void Order_details_groups_operational_information_without_changing_actions()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

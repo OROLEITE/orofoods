@@ -1,4 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Data;
@@ -17,6 +21,33 @@ namespace Orofoods.Web.Tests.Controllers;
 
 public sealed class AdminWmcManualEligibilityTests
 {
+    [Fact]
+    public async Task Order_details_load_diagnostic_context_without_creating_export_records()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder("ORO-2026-000904", "PIX");
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+        var controller = new OrdersController(
+            db,
+            service: null!,
+            integrationService: null!,
+            new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db)),
+            pointPaymentService: null!,
+            Options.Create(new MercadoPagoPointOptions()),
+            Options.Create(new PaymentEligibilityOptions()),
+            new TestHostEnvironment());
+
+        var result = await controller.Details(order.Id);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(typeof(OrdersController).GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>(), attribute => attribute.Roles == "Administrador");
+        var diagnostic = Assert.IsType<WmcManualExportDiagnostic>(controller.ViewData["WmcManualExportDiagnostic"]);
+        Assert.True(diagnostic.CanExport);
+        Assert.Equal(0, await db.WmcExportAudits.CountAsync());
+        Assert.Equal(0, await db.WmcOrderExportStates.CountAsync());
+    }
+
     [Fact]
     public async Task Order_monitor_marks_only_server_eligible_orders_as_manually_exportable()
     {
@@ -83,4 +114,12 @@ public sealed class AdminWmcManualEligibilityTests
             }
         ]
     };
+
+    private sealed class TestHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Test";
+        public string ApplicationName { get; set; } = "Orofoods.Web.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
 }

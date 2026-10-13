@@ -35,6 +35,78 @@ public sealed class WmcManualExportServiceTests
         Assert.False(service.CanManuallyExport(order));
     }
 
+    [Fact]
+    public async Task DiagnoseManualExport_reports_exact_payment_block_without_writing_state_or_audit()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.PaymentTerm!.Code = "UNSUPPORTED";
+        var service = CreateService(db);
+        var result = service.DiagnoseManualExport(order);
+
+        Assert.False(result.CanExport);
+        Assert.Equal("WMC_PAYMENT_TERM_UNSUPPORTED", result.BlockReason);
+        Assert.Empty(await db.WmcOrderExportStates.ToListAsync());
+        Assert.Empty(await db.WmcExportAudits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task DiagnoseManualExport_reports_eligible_order_without_creating_export_records()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+
+        var result = CreateService(db).DiagnoseManualExport(order);
+
+        Assert.True(result.CanExport);
+        Assert.Null(result.BlockReason);
+        Assert.Empty(await db.WmcOrderExportStates.ToListAsync());
+        Assert.Empty(await db.WmcExportAudits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task DiagnoseManualExport_reports_manual_review_state_without_changing_it()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        var state = new WmcOrderExportState
+        {
+            OrderId = order.Id,
+            Status = WmcOrderExportStatus.Pending,
+            RequiresManualReview = true,
+            LastError = "Histórico incerto"
+        };
+        order.WmcOrderExportState = state;
+        db.WmcOrderExportStates.Add(state);
+        await db.SaveChangesAsync();
+
+        var result = CreateService(db).DiagnoseManualExport(order);
+
+        Assert.False(result.CanExport);
+        Assert.Equal("Confira o histórico anterior e confirme se o arquivo chegou ao WMC antes de continuar.", result.BlockReason);
+        Assert.Equal("Histórico incerto", (await db.WmcOrderExportStates.SingleAsync()).LastError);
+        Assert.Empty(await db.WmcExportAudits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task DiagnoseManualExport_prioritizes_exported_state_reason_like_manual_send()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.WmcOrderExportState = new WmcOrderExportState
+        {
+            OrderId = order.Id,
+            Status = WmcOrderExportStatus.Exported,
+            RequiresManualReview = true
+        };
+
+        var result = CreateService(db).DiagnoseManualExport(order);
+
+        Assert.False(result.CanExport);
+        Assert.Equal("O pedido já foi exportado para o WMC.", result.BlockReason);
+        Assert.Empty(await db.WmcExportAudits.ToListAsync());
+    }
+
     [Theory]
     [InlineData(WmcOrderExportStatus.Processing)]
     [InlineData(WmcOrderExportStatus.Exported)]

@@ -27,6 +27,8 @@ public sealed record WmcManualExportResult(
     public bool Succeeded => Disposition is WmcManualExportDisposition.Exported or WmcManualExportDisposition.Imported;
 }
 
+public sealed record WmcManualExportDiagnostic(bool CanExport, string? BlockReason);
+
 public sealed class WmcManualExportService(
     ApplicationDbContext db,
     WmcOrderFileGenerator fileGenerator,
@@ -71,15 +73,38 @@ public sealed class WmcManualExportService(
 
     public bool CanManuallyExport(Order order)
     {
+        return DiagnoseManualExport(order).CanExport;
+    }
+
+    public WmcManualExportDiagnostic DiagnoseManualExport(Order order)
+    {
         var state = order.WmcOrderExportState;
-        if (state?.Status is WmcOrderExportStatus.Processing or WmcOrderExportStatus.Exported or WmcOrderExportStatus.Imported
-            || state?.RequiresManualReview == true
-            || (state is null && order.WmcExportAudits.Count > 0))
+        if (state?.Status is WmcOrderExportStatus.Exported or WmcOrderExportStatus.Imported)
         {
-            return false;
+            return new WmcManualExportDiagnostic(false, "O pedido já foi exportado para o WMC.");
         }
 
-        return TryPrepareExport(order, out _, out _);
+        if (state?.RequiresManualReview == true)
+        {
+            return new WmcManualExportDiagnostic(false,
+                "Confira o histórico anterior e confirme se o arquivo chegou ao WMC antes de continuar.");
+        }
+
+        if (state?.Status == WmcOrderExportStatus.Processing)
+        {
+            return new WmcManualExportDiagnostic(false,
+                "Já existe um envio manual em processamento para este pedido.");
+        }
+
+        if (state is null && order.WmcExportAudits.Count > 0)
+        {
+            return new WmcManualExportDiagnostic(false,
+                "O histórico anterior não confirma a entrega do arquivo nem sua importação.");
+        }
+
+        return TryValidateExport(order, out var error)
+            ? new WmcManualExportDiagnostic(true, null)
+            : new WmcManualExportDiagnostic(false, error);
     }
 
     public async Task<WmcManualExportResult> ConfirmImportedAsync(
@@ -346,6 +371,25 @@ public sealed class WmcManualExportService(
     private bool TryPrepareExport(Order order, out WmcOrderFileResult? export, out string? error)
     {
         export = null;
+        if (!TryValidateExport(order, out error))
+        {
+            return false;
+        }
+
+        export = fileGenerator.Build(order);
+        if (!export.Succeeded)
+        {
+            error = string.Join(" ", export.Errors);
+            export = null;
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private bool TryValidateExport(Order order, out string? error)
+    {
         if (order.Status != OrderStatus.Approved)
         {
             error = "Somente pedidos aprovados podem ser exportados para o WMC.";
@@ -376,11 +420,10 @@ public sealed class WmcManualExportService(
             return false;
         }
 
-        export = fileGenerator.Build(order);
-        if (!export.Succeeded)
+        var generatorErrors = fileGenerator.Validate(order);
+        if (generatorErrors.Count > 0)
         {
-            error = string.Join(" ", export.Errors);
-            export = null;
+            error = string.Join(" ", generatorErrors);
             return false;
         }
 
