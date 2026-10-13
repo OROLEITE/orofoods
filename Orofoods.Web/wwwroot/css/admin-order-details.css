@@ -717,12 +717,25 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: #17623A;
 }
 
+.admin-authenticated .admin-order-details-page .order-wmc-eligibility--pending-import {
+    border-color: var(--order-detail-border);
+    background: var(--order-detail-surface-secondary);
+    color: var(--order-detail-muted);
+    white-space: normal;
+}
+
 .admin-authenticated .admin-order-details-page .order-wmc-block-reason {
     margin: 0 0 8px;
-    padding: 8px 12px;
-    border-left: 4px solid #D97706;
-    font-size: 13px;
-    font-weight: 700;
+    padding: 6px 9px;
+    border: 1px solid var(--order-detail-border);
+    border-left-width: 3px;
+    border-radius: 6px;
+    background: var(--order-detail-surface-secondary);
+    color: var(--order-detail-muted);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
 }
 
 .admin-authenticated .admin-order-details-page .order-wmc-last-error {
@@ -912,8 +925,14 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: #6EE7B7;
 }
 
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-eligibility--pending-import {
+    border-color: var(--order-detail-border);
+    background: var(--order-detail-surface-secondary);
+    color: var(--order-detail-muted);
+}
+
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-block-reason {
-    border-left-color: #F59E0B;
+    border-left-color: var(--order-detail-border);
 }
 
 @media (max-width: 900px) {

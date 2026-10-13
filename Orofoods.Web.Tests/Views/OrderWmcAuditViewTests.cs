@@ -28,6 +28,30 @@ public class OrderWmcAuditViewTests
     }
 
     [Fact]
+    public void Exported_pending_import_diagnostic_uses_specific_compact_copy_and_translated_status()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.Contains("wmcAwaitingImportConfirmation", view);
+        Assert.Contains("Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported", view);
+        Assert.Contains("RequiresManualReview != true", view);
+        Assert.Contains("TXT gerado &mdash; aguardando confirma&ccedil;&atilde;o de importa&ccedil;&atilde;o", view);
+        Assert.Contains("Nova exporta\\u00e7\\u00e3o bloqueada", view);
+        Assert.Contains("@wmcManualExportDiagnostic.BlockReason", view);
+        Assert.Contains(": \"Bloqueado\")", view);
+        Assert.Contains("Exported ? \"TXT gerado\"", view);
+        Assert.Contains("EXPORTA&#199;&#195;O WMC</small><strong>@(Model.WmcOrderExportState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? \"TXT gerado\"", view);
+        Assert.DoesNotContain("alert alert-warning order-wmc-block-reason", view);
+        Assert.Contains("background: var(--order-detail-surface-secondary);", styles);
+        Assert.Contains("color: var(--order-detail-muted);", styles);
+        Assert.Contains("overflow-wrap: anywhere;", styles);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-eligibility--pending-import", styles);
+        Assert.Contains("@media (max-width: 640px)", styles);
+    }
+
+    [Fact]
     public void Admin_order_monitor_shows_only_wmc_badges_and_keeps_actions_on_the_details_page()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
