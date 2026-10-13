@@ -99,13 +99,17 @@ public class OrderPlacementServiceTests
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Rascunho enviado");
+        var lines = new[] { (fixture.Product.Id, 2) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
 
         var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Rascunho enviado"),
+            command,
             draft.Id,
-            [(fixture.Product.Id, 2)]);
+            lines,
+            quote);
 
         Assert.True(result.Succeeded, string.Join("; ", result.Errors));
         Assert.Equal(draft.Id, result.Order!.SellerOrderDraftId);
@@ -128,13 +132,17 @@ public class OrderPlacementServiceTests
         var secondProduct = await fixture.AddAvailableProductAsync("PLACE-002");
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var lines = new[] { (fixture.Product.Id, 1), (secondProduct.Id, 0) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
 
         var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            command,
             draft.Id,
-            [(fixture.Product.Id, 1), (secondProduct.Id, 0)]);
+            lines,
+            quote);
 
         Assert.False(result.Succeeded);
         Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
@@ -147,13 +155,17 @@ public class OrderPlacementServiceTests
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var lines = new[] { (fixture.Product.Id, 1), (fixture.Product.Id, 2) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
 
         var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            command,
             draft.Id,
-            [(fixture.Product.Id, 1), (fixture.Product.Id, 2)]);
+            lines,
+            quote);
 
         Assert.False(result.Succeeded);
         Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
@@ -168,13 +180,17 @@ public class OrderPlacementServiceTests
         await fixture.Db.SaveChangesAsync();
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var lines = new[] { (fixture.Product.Id, 1) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
 
         var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            command,
             draft.Id,
-            [(fixture.Product.Id, 1)]);
+            lines,
+            quote);
 
         Assert.False(result.Succeeded);
         Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
@@ -363,6 +379,29 @@ public class OrderPlacementServiceTests
             Db.SellerOrderDrafts.Add(draft);
             await Db.SaveChangesAsync();
             return draft;
+        }
+
+        public async Task<OrderPlacementQuote> CreateQuoteAsync(
+            OrderPlacementCommand command,
+            IReadOnlyList<(int ProductId, int Quantity)> lines)
+        {
+            var prices = await new Orofoods.Web.Services.Pricing.PriceService(Db)
+                .GetPricesAsync(Customer.Id, lines.Select(line => line.ProductId).Distinct().ToArray());
+            var quotedLines = lines.Select(line =>
+            {
+                var unitPrice = prices.GetValueOrDefault(line.ProductId, Product.BasePrice);
+                return new OrderPlacementQuoteLine(line.ProductId, line.Quantity, unitPrice, 0m, unitPrice * line.Quantity);
+            }).ToArray();
+            var subtotal = quotedLines.Sum(line => line.Subtotal);
+            return new OrderPlacementQuote(
+                Customer.Id,
+                command.AddressId,
+                command.PaymentTermId,
+                command.RequestedDeliveryDate,
+                quotedLines,
+                subtotal,
+                0m,
+                subtotal);
         }
 
         public async Task<Product> AddAvailableProductAsync(string sku)

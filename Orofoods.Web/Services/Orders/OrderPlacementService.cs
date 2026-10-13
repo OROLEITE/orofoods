@@ -18,11 +18,15 @@ public sealed record OrderPlacementCommand(
     string? Notes,
     string? CheckoutAttemptKey = null);
 
-public sealed record OrderPlacementResult(Order? Order, IReadOnlyList<string> Errors, bool WasIdempotentReplay = false)
+public sealed record OrderPlacementResult(
+    Order? Order,
+    IReadOnlyList<string> Errors,
+    bool WasIdempotentReplay = false,
+    string? ErrorCode = null)
 {
     public bool Succeeded => Order is not null && Errors.Count == 0;
 
-    public static OrderPlacementResult Failure(string error) => new(null, [error]);
+    public static OrderPlacementResult Failure(string error, string? errorCode = null) => new(null, [error], ErrorCode: errorCode);
 }
 
 public sealed class OrderPlacementService(
@@ -88,6 +92,7 @@ public sealed class OrderPlacementService(
             sellerOrderDraftId: null,
             strictDraftLines: false,
             ownsTransaction: true,
+            expectedQuote: null,
             cancellationToken);
 
         if (result.Succeeded && clearCart && session is not null)
@@ -104,6 +109,7 @@ public sealed class OrderPlacementService(
         OrderPlacementCommand command,
         int sellerOrderDraftId,
         IReadOnlyList<(int ProductId, int Quantity)> persistedLines,
+        OrderPlacementQuote expectedQuote,
         CancellationToken cancellationToken = default)
     {
         if (db.Database.CurrentTransaction is null)
@@ -129,6 +135,7 @@ public sealed class OrderPlacementService(
             sellerOrderDraftId,
             strictDraftLines: true,
             ownsTransaction: false,
+            expectedQuote: expectedQuote,
             cancellationToken);
     }
 
@@ -140,6 +147,7 @@ public sealed class OrderPlacementService(
         int? sellerOrderDraftId,
         bool strictDraftLines,
         bool ownsTransaction,
+        OrderPlacementQuote? expectedQuote,
         CancellationToken cancellationToken)
     {
         var customer = await db.Customers
@@ -257,6 +265,13 @@ public sealed class OrderPlacementService(
 
         order.Subtotal = order.Items.Sum(x => x.Subtotal);
         order.Total = order.Subtotal + order.Freight;
+        if (expectedQuote is not null && !MatchesQuote(expectedQuote, order, command))
+        {
+            return OrderPlacementResult.Failure(
+                "Os preços ou totais mudaram desde a cotação exibida. Nenhum pedido foi enviado e o rascunho não foi alterado.",
+                OrderPlacementErrorCodes.CommercialQuoteChanged);
+        }
+
         if (order.Total < customer.MinimumOrder)
         {
             return OrderPlacementResult.Failure($"O pedido mínimo é {customer.MinimumOrder:C}.");
@@ -325,6 +340,39 @@ public sealed class OrderPlacementService(
             .Include(x => x.Items)
             .Include(x => x.StatusHistory)
             .SingleOrDefaultAsync(x => x.CustomerId == customerId && x.CheckoutAttemptKey == attemptKey, cancellationToken);
+
+    private static bool MatchesQuote(OrderPlacementQuote quote, Order order, OrderPlacementCommand command)
+    {
+        if (quote.CustomerId != order.CustomerId
+            || quote.DeliveryAddressId != command.AddressId
+            || quote.PaymentTermId != command.PaymentTermId
+            || quote.RequestedDeliveryDate != command.RequestedDeliveryDate
+            || quote.Subtotal != order.Subtotal
+            || quote.Freight != order.Freight
+            || quote.Total != order.Total
+            || quote.Lines.Count != order.Items.Count)
+        {
+            return false;
+        }
+
+        var expectedLines = quote.Lines.OrderBy(line => line.ProductId).ToArray();
+        var actualLines = order.Items.OrderBy(item => item.ProductId).ToArray();
+        for (var index = 0; index < expectedLines.Length; index++)
+        {
+            var expected = expectedLines[index];
+            var actual = actualLines[index];
+            if (expected.ProductId != actual.ProductId
+                || expected.Quantity != actual.Quantity
+                || expected.UnitPrice != actual.UnitPrice
+                || expected.RequestedDiscountAmount != 0m
+                || expected.Subtotal != actual.Subtotal)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private void DetachOrderGraph(Order order)
     {

@@ -88,6 +88,10 @@
             {
                 <div class="seller-order-drafts__notice seller-order-drafts__notice--error" role="alert"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> @conflictMessage</div>
             }
+            @if (TempData["SellerDraftQuoteChanged"] is string quoteChangedMessage)
+            {
+                <div class="seller-order-drafts__notice seller-order-drafts__notice--warning" role="alert"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> @quoteChangedMessage Revise os preços e o total atualizados antes de confirmar novamente.</div>
+            }
             @if (TempData["SellerDraftNotice"] is string noticeMessage)
             {
                 <div class="seller-order-drafts__notice seller-order-drafts__notice--success" role="status"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> @noticeMessage</div>
@@ -111,6 +115,7 @@
                     <form id="seller-order-submit-form" method="post" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Submit" asp-route-id="@Model.DraftId">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="ExpectedVersion" value="@Model.ExpectedVersion" />
+                        <input type="hidden" name="QuoteToken" value="@Model.QuoteToken" />
                     </form>
                 }
                 <form id="seller-order-draft-form" class="seller-order-drafts__form" method="post" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="@formAction" asp-route-id="@Model.DraftId" data-product-search-url="@Model.ProductSearchUrl" data-customer-id="@Model.CustomerId" data-persisted="@Model.IsPersisted.ToString().ToLowerInvariant()">
@@ -255,7 +260,7 @@
                                 <div class="seller-order-drafts__summary-line"><span>Produtos</span><strong id="summary-item-count">@Model.Items.Count(item => !item.RemovalPending)</strong></div>
                                 <div class="seller-order-drafts__summary-line"><span>Desconto</span><strong>0%</strong></div>
                                 <div class="seller-order-drafts__summary-total"><span>Total atual</span><strong id="draft-total" aria-live="polite">@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
-                                <p class="seller-order-drafts__summary-note">O preço final será recalculado no servidor ao salvar, usando a tabela vigente do cliente.</p>
+                                <p class="seller-order-drafts__summary-note">Cotação calculada no servidor com a tabela vigente. Se os valores mudarem antes do envio, revise o novo resumo para confirmar.</p>
                                 <div class="seller-order-drafts__summary-flags">
                                     <span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Sem reserva de estoque</span>
                                     <span><i class="fa-regular fa-file-lines" aria-hidden="true"></i> Não aparece no Monitor até o envio</span>
@@ -270,7 +275,7 @@
                             <button id="save-draft-button" class="btn seller-order-drafts__save" type="submit">
                                 <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Salvar rascunho
                             </button>
-                            <button id="submit-seller-order-button" class="btn seller-order-drafts__send" type="submit" form="seller-order-submit-form" disabled aria-disabled="true" title="A tela precisa carregar para habilitar o envio seguro">
+                            <button id="submit-seller-order-button" class="btn seller-order-drafts__send" type="submit" form="seller-order-submit-form" disabled aria-disabled="true" title="Aguarde a validação da cotação do servidor">
                                 <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar pedido
                             </button>
                         </div>

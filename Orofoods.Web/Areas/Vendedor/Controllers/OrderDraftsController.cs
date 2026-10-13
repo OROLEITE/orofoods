@@ -7,6 +7,7 @@ using Orofoods.Web.Data;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Sellers;
 
 namespace Orofoods.Web.Areas.Vendedor.Controllers;
@@ -20,6 +21,7 @@ public sealed class OrderDraftsController(
     SalesRepresentativeAccessService accessService,
     IPaymentEligibilityService paymentEligibilityService,
     SellerOrderDraftSubmissionService submissionService,
+    SellerOrderDraftQuoteProtector quoteProtector,
     ApplicationDbContext db) : Controller
 {
     [HttpGet("/Vendedor/Rascunhos")]
@@ -203,11 +205,11 @@ public sealed class OrderDraftsController(
     {
         if (!ModelState.IsValid)
         {
-            TempData["SellerDraftError"] = "Não foi possível validar a versão do rascunho. Reabra-o antes de enviar.";
+            TempData["SellerDraftError"] = "Não foi possível validar a cotação do rascunho. Reabra-o para revisar os valores atuais antes de enviar.";
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        var result = await submissionService.SubmitAsync(User, id, form.ExpectedVersion, cancellationToken);
+        var result = await submissionService.SubmitAsync(User, id, form.ExpectedVersion, form.QuoteToken, cancellationToken);
         if (result.Succeeded && result.OrderNumber is not null)
         {
             TempData["SellerDraftNotice"] = $"Pedido {result.OrderNumber} enviado e registrado na Orofoods.";
@@ -222,6 +224,12 @@ public sealed class OrderDraftsController(
         if (result.ErrorCode == SellerOrderDraftErrorCodes.CustomerNotInPortfolio)
         {
             return Forbid();
+        }
+
+        if (result.ErrorCode == SellerOrderDraftErrorCodes.CommercialQuoteChanged)
+        {
+            TempData["SellerDraftQuoteChanged"] = result.ErrorMessage;
+            return RedirectToAction(nameof(Edit), new { id });
         }
 
         TempData["SellerDraftError"] = result.ErrorMessage ?? "Não foi possível enviar o pedido. O rascunho continua editável.";
@@ -318,12 +326,39 @@ public sealed class OrderDraftsController(
             : new SellerOrderDraftEditorItem(item.ProductId, "", "Produto indisponível no catálogo atual", "", item.Quantity,
                 1, 0m, pendingRemovals.Contains(item.ProductId))).ToArray();
 
+        string? quoteToken = null;
+        var ownerUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!usePostedInput
+            && draft is { Status: SellerOrderDraftStatus.Draft }
+            && !string.IsNullOrWhiteSpace(ownerUserId)
+            && editorItems.Length > 0)
+        {
+            var discountsByProductId = draft.Items.ToDictionary(item => item.ProductId, item => item.RequestedDiscountAmount);
+            var quoteLines = editorItems.OrderBy(item => item.ProductId).Select(item => new OrderPlacementQuoteLine(
+                item.ProductId,
+                item.Quantity,
+                item.UnitPrice,
+                discountsByProductId.GetValueOrDefault(item.ProductId),
+                item.Subtotal)).ToArray();
+            var subtotal = quoteLines.Sum(item => item.Subtotal);
+            quoteToken = quoteProtector.Protect(ownerUserId, draft.Id, draft.Version, new OrderPlacementQuote(
+                customerId,
+                draft.DeliveryAddressId,
+                draft.PaymentTermId,
+                draft.RequestedDeliveryDate,
+                quoteLines,
+                subtotal,
+                Freight: 0m,
+                Total: subtotal));
+        }
+
         return new SellerOrderDraftEditorViewModel
         {
             DraftId = draft?.Id,
             Status = draft?.Status,
             SubmittedOrderId = draft?.SubmittedOrderId,
             SubmittedOrderNumber = draft?.SubmittedOrderNumber,
+            QuoteToken = quoteToken,
             CreateRequestKey = createRequestKey,
             ExpectedVersion = draft?.Version ?? 0,
             CustomerId = customerId,

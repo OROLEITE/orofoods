@@ -15,6 +15,7 @@ public sealed class SellerOrderDraftSubmissionService(
     ApplicationDbContext db,
     SalesRepresentativeAccessService accessService,
     OrderPlacementService orderPlacementService,
+    SellerOrderDraftQuoteProtector quoteProtector,
     ILogger<SellerOrderDraftSubmissionService> logger)
 {
     private const string SellerDraftOrderUniqueIndex = "IX_Orders_SellerOrderDraftId";
@@ -23,6 +24,7 @@ public sealed class SellerOrderDraftSubmissionService(
         ClaimsPrincipal user,
         int draftId,
         int expectedVersion,
+        string? quoteToken,
         CancellationToken cancellationToken = default)
     {
         var ownerUserId = user.IsInRole(ApplicationRoles.Seller)
@@ -55,6 +57,12 @@ public sealed class SellerOrderDraftSubmissionService(
 
             if (draft.Status == SellerOrderDraftStatus.Submitted)
             {
+                if (!IsQuoteBoundToDraft(quoteToken, ownerUserId, draft, draft.Version - 1, out _))
+                {
+                    return await AbortAsync(SellerOrderDraftErrorCodes.CommercialQuoteInvalid,
+                        "A cotação não corresponde mais a este rascunho. Reabra-o para consultar o pedido registrado.");
+                }
+
                 if (draft.SubmittedOrder is null)
                 {
                     return await AbortAsync(SellerOrderDraftErrorCodes.SubmissionFailed,
@@ -109,6 +117,13 @@ public sealed class SellerOrderDraftSubmissionService(
                     "O rascunho contém produtos repetidos ou quantidades inválidas. Corrija-o antes do envio.");
             }
 
+            if (!IsQuoteBoundToDraft(quoteToken, ownerUserId, draft, expectedVersion, out var protectedQuote)
+                || protectedQuote is null)
+            {
+                return await AbortAsync(SellerOrderDraftErrorCodes.CommercialQuoteInvalid,
+                    "A cotação não corresponde mais a este rascunho. Reabra-o, revise os valores atuais e tente novamente.");
+            }
+
             var placement = await orderPlacementService.PlaceDraftLinesWithinTransactionAsync(
                 draft.CustomerId,
                 ownerUserId,
@@ -119,10 +134,18 @@ public sealed class SellerOrderDraftSubmissionService(
                     draft.Notes),
                 draft.Id,
                 draft.Items.Select(x => (x.ProductId, x.Quantity)).ToArray(),
+                protectedQuote.Quote,
                 cancellationToken);
 
             if (!placement.Succeeded || placement.Order is null)
             {
+                if (placement.ErrorCode == OrderPlacementErrorCodes.CommercialQuoteChanged)
+                {
+                    return await AbortAsync(SellerOrderDraftErrorCodes.CommercialQuoteChanged,
+                        placement.Errors.FirstOrDefault()
+                            ?? "Os valores comerciais mudaram. Nenhum pedido foi enviado e o rascunho não foi alterado.");
+                }
+
                 return await AbortAsync(SellerOrderDraftErrorCodes.InvalidOrder,
                     placement.Errors.Count == 0
                         ? "Não foi possível validar o pedido. O rascunho continua editável."
@@ -191,6 +214,49 @@ public sealed class SellerOrderDraftSubmissionService(
                 : Failure(SellerOrderDraftErrorCodes.ConcurrencyConflict,
                     "O rascunho foi enviado em outra sessão ou sofreu um conflito. Reabra-o para confirmar o estado.");
         }
+    }
+
+    private static bool QuoteMatchesDraft(OrderPlacementQuote quote, SellerOrderDraft draft)
+    {
+        if (quote.CustomerId != draft.CustomerId
+            || quote.DeliveryAddressId != draft.DeliveryAddressId
+            || quote.PaymentTermId != draft.PaymentTermId
+            || quote.RequestedDeliveryDate != draft.RequestedDeliveryDate
+            || quote.Lines.Count != draft.Items.Count)
+        {
+            return false;
+        }
+
+        var quoteLines = quote.Lines.OrderBy(line => line.ProductId).ToArray();
+        var draftLines = draft.Items.OrderBy(item => item.ProductId).ToArray();
+        for (var index = 0; index < quoteLines.Length; index++)
+        {
+            var quoted = quoteLines[index];
+            var persisted = draftLines[index];
+            if (quoted.ProductId != persisted.ProductId
+                || quoted.Quantity != persisted.Quantity
+                || quoted.RequestedDiscountAmount != persisted.RequestedDiscountAmount)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool IsQuoteBoundToDraft(
+        string? quoteToken,
+        string ownerUserId,
+        SellerOrderDraft draft,
+        int expectedQuoteVersion,
+        out ProtectedSellerDraftQuote? protectedQuote)
+    {
+        return quoteProtector.TryUnprotect(quoteToken, out protectedQuote)
+            && protectedQuote is not null
+            && protectedQuote.OwnerUserId == ownerUserId
+            && protectedQuote.DraftId == draft.Id
+            && protectedQuote.Version == expectedQuoteVersion
+            && QuoteMatchesDraft(protectedQuote.Quote, draft);
     }
 
     private async Task<(SellerOrderDraft Draft, Order Order)?> FindCommittedSubmissionAsync(

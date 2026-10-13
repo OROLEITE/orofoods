@@ -587,5 +587,7 @@ public static class SellerOrderDraftErrorCodes
     public const string ItemNotFound = "item_not_found";
     public const string CreateRequestKeyConflict = "create_request_key_conflict";
     public const string InvalidOrder = "invalid_order";
+    public const string CommercialQuoteInvalid = "commercial_quote_invalid";
+    public const string CommercialQuoteChanged = "commercial_quote_changed";
     public const string SubmissionFailed = "submission_failed";
 }

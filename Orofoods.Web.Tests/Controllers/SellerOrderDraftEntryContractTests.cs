@@ -43,6 +43,7 @@ public sealed class SellerOrderDraftEntryContractTests
         Assert.Contains("0%", view, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"@formAction\"", view, StringComparison.Ordinal);
         Assert.Contains("name=\"ExpectedVersion\"", view, StringComparison.Ordinal);
+        Assert.Contains("name=\"QuoteToken\"", view, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public sealed class SellerOrderDraftEntryContractTests
     {
         var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
 
-        Assert.Contains("if (persisted && submitButton)", script, StringComparison.Ordinal);
+        Assert.Contains("if (persisted && submitButton && hasQuote)", script, StringComparison.Ordinal);
         Assert.Contains("submitButton.disabled = false", script, StringComparison.Ordinal);
         Assert.Contains("submitButton.disabled = true", script, StringComparison.Ordinal);
         Assert.Contains("submitButton.title = 'Salve as altera", script, StringComparison.Ordinal);

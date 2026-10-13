@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Security.Claims;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
@@ -56,6 +57,19 @@ public sealed class SellerOrderDraftSubmissionPostgresIntegrationTests
             .Options;
         await using var initialContext = CreateContext(options);
         var (sellerId, draftId, expectedVersion, productId) = await SeedAsync(initialContext);
+        var quoteProtector = new SellerOrderDraftQuoteProtector(new EphemeralDataProtectionProvider());
+        var seededDraft = await initialContext.SellerOrderDrafts.Include(x => x.Items).SingleAsync(x => x.Id == draftId);
+        var prices = await new PriceService(initialContext).GetPricesAsync(
+            seededDraft.CustomerId, seededDraft.Items.Select(item => item.ProductId).ToArray());
+        var quoteLines = seededDraft.Items.OrderBy(item => item.ProductId).Select(item =>
+        {
+            var unitPrice = prices.GetValueOrDefault(item.ProductId, item.Product?.PromotionalPrice ?? item.Product?.BasePrice ?? 0m);
+            return new OrderPlacementQuoteLine(item.ProductId, item.Quantity, unitPrice, item.RequestedDiscountAmount, unitPrice * item.Quantity);
+        }).ToArray();
+        var subtotal = quoteLines.Sum(item => item.Subtotal);
+        var quoteToken = quoteProtector.Protect(sellerId, draftId, expectedVersion, new OrderPlacementQuote(
+            seededDraft.CustomerId, seededDraft.DeliveryAddressId, seededDraft.PaymentTermId, seededDraft.RequestedDeliveryDate,
+            quoteLines, subtotal, 0m, subtotal));
 
         var concurrentOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(connectionString)
@@ -64,8 +78,8 @@ public sealed class SellerOrderDraftSubmissionPostgresIntegrationTests
         await using var firstDb = CreateContext(concurrentOptions);
         await using var secondDb = CreateContext(concurrentOptions);
         var seller = SellerPrincipal(sellerId);
-        var first = CreateService(firstDb).SubmitAsync(seller, draftId, expectedVersion);
-        var second = CreateService(secondDb).SubmitAsync(seller, draftId, expectedVersion);
+        var first = CreateService(firstDb, quoteProtector).SubmitAsync(seller, draftId, expectedVersion, quoteToken);
+        var second = CreateService(secondDb, quoteProtector).SubmitAsync(seller, draftId, expectedVersion, quoteToken);
 
         var results = await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(30));
 
@@ -90,13 +104,14 @@ public sealed class SellerOrderDraftSubmissionPostgresIntegrationTests
     private static ClaimsPrincipal SellerPrincipal(string sellerId) => new(new ClaimsIdentity(
         [new Claim(ClaimTypes.NameIdentifier, sellerId), new Claim(ClaimTypes.Role, "Vendedor")], "test"));
 
-    private static SellerOrderDraftSubmissionService CreateService(ApplicationDbContext db)
+    private static SellerOrderDraftSubmissionService CreateService(ApplicationDbContext db, SellerOrderDraftQuoteProtector quoteProtector)
     {
         var access = new SalesRepresentativeAccessService(db);
         var prices = new PriceService(db);
         var eligibility = new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions()));
         return new SellerOrderDraftSubmissionService(db, access,
             new OrderPlacementService(db, new CartService(db, prices), prices, eligibility, new OrderReservationService(db)),
+            quoteProtector,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SellerOrderDraftSubmissionService>.Instance);
     }
 

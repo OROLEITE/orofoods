@@ -17,6 +17,8 @@
     const submitForm = document.getElementById('seller-order-submit-form');
     const submitButton = document.getElementById('submit-seller-order-button');
     const persisted = form.dataset.persisted === 'true';
+    const quoteToken = submitForm?.querySelector('input[name="QuoteToken"]')?.value;
+    const hasQuote = typeof quoteToken === 'string' && quoteToken.length > 0;
     const maximumPageSize = 20;
     let searchTimer;
     let activeRequest;
@@ -391,9 +393,9 @@
     window.addEventListener('resize', updateKeyboardVisibility);
     window.visualViewport?.addEventListener('resize', updateKeyboardVisibility);
     updateSummary();
-    if (persisted && submitButton) {
+    if (persisted && submitButton && hasQuote) {
         submitButton.disabled = false;
         submitButton.setAttribute('aria-disabled', 'false');
-        submitButton.title = 'Enviar este rascunho como pedido definitivo';
+        submitButton.title = 'Enviar este rascunho com a cotação atual exibida';
     }
 })();

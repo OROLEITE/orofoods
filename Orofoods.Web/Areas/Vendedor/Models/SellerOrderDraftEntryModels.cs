@@ -40,6 +40,10 @@ public sealed class SellerOrderDraftSubmitForm
 {
     [Range(1, int.MaxValue)]
     public int ExpectedVersion { get; set; }
+
+    [Required]
+    [StringLength(262144, MinimumLength = 1)]
+    public string QuoteToken { get; set; } = "";
 }
 
 public sealed class SellerOrderDraftFormItem
@@ -57,6 +61,7 @@ public sealed class SellerOrderDraftEditorViewModel
     public SellerOrderDraftStatus? Status { get; init; }
     public int? SubmittedOrderId { get; init; }
     public string? SubmittedOrderNumber { get; init; }
+    public string? QuoteToken { get; init; }
     public Guid CreateRequestKey { get; init; }
     public int ExpectedVersion { get; init; }
     public bool IsPersisted => DraftId.HasValue;

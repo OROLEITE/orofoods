@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
@@ -29,7 +30,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 0m), (secondProduct.Id, 3, 0m));
         var expectedVersion = draft.Version;
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, expectedVersion);
+        var result = await fixture.SubmitAsync(draft, expectedVersion: expectedVersion);
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         Assert.False(result.WasIdempotentReplay);
@@ -61,20 +62,104 @@ public sealed class SellerOrderDraftSubmissionServiceTests
     }
 
     [Fact]
-    public async Task Submit_uses_the_current_server_price_when_the_price_table_changes_after_draft_creation()
+    public async Task Submit_rejects_price_changes_since_the_last_server_quote_without_side_effects()
     {
         await using var fixture = await SubmissionFixture.CreateAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 0m));
+        var previousQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
         fixture.PriceTableItem.PromotionalPrice = 31m;
         await fixture.Db.SaveChangesAsync();
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, previousQuote);
 
-        Assert.True(result.Succeeded, result.ErrorMessage);
-        var orderItem = await fixture.Db.OrderItems.SingleAsync(x => x.OrderId == result.OrderId);
-        Assert.Equal(31m, orderItem.UnitPrice);
-        Assert.Equal(62m, orderItem.Subtotal);
-        Assert.Equal(62m, (await fixture.Db.Orders.SingleAsync(x => x.Id == result.OrderId)).Total);
+        Assert.False(result.Succeeded);
+        Assert.Equal("commercial_quote_changed", result.ErrorCode);
+        Assert.Empty(await fixture.Db.Orders.ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
+        Assert.Equal(0, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id)
+            .Select(x => x.QuantityReserved).SingleAsync());
+        var unchangedDraft = await fixture.Db.SellerOrderDrafts.AsNoTracking().SingleAsync(x => x.Id == draft.Id);
+        Assert.Equal(SellerOrderDraftStatus.Draft, unchangedDraft.Status);
+        Assert.Equal(draft.Version, unchangedDraft.Version);
+    }
+
+    [Fact]
+    public async Task Submit_requires_explicit_confirmation_of_the_refreshed_price_then_uses_that_exact_quote()
+    {
+        await using var fixture = await SubmissionFixture.CreateAsync();
+        var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 0m));
+        var displayedQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
+        fixture.PriceTableItem.PromotionalPrice = 31m;
+        await fixture.Db.SaveChangesAsync();
+
+        var firstAttempt = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, displayedQuote);
+
+        Assert.False(firstAttempt.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.CommercialQuoteChanged, firstAttempt.ErrorCode);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+        Assert.Equal(SellerOrderDraftStatus.Draft, (await fixture.Db.SellerOrderDrafts.AsNoTracking().SingleAsync(x => x.Id == draft.Id)).Status);
+
+        var refreshedQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
+        var confirmedAttempt = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, refreshedQuote);
+
+        Assert.True(confirmedAttempt.Succeeded, confirmedAttempt.ErrorMessage);
+        var order = await fixture.Db.Orders.Include(x => x.Items).SingleAsync(x => x.Id == confirmedAttempt.OrderId);
+        Assert.Equal(31m, order.Items.Single().UnitPrice);
+        Assert.Equal(62m, order.Total);
+        Assert.Single(await fixture.Db.Orders.Where(x => x.SellerOrderDraftId == draft.Id).ToListAsync());
+        Assert.Single(await fixture.Db.InventoryReservations.Where(x => x.OrderId == order.Id && x.Status == InventoryReservationStatus.Active).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Submit_rejects_a_quote_bound_to_another_seller_or_draft()
+    {
+        await using var fixture = await SubmissionFixture.CreateAsync(addSecondSeller: true);
+        var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
+        var otherSellerQuote = await fixture.CreateQuoteTokenAsync(
+            SubmissionFixture.CreateSellerPrincipal(fixture.OtherSeller!.Id), draft);
+        var sellerMismatch = await fixture.Service.SubmitAsync(
+            fixture.SellerPrincipal, draft.Id, draft.Version, otherSellerQuote);
+
+        Assert.False(sellerMismatch.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.CommercialQuoteInvalid, sellerMismatch.ErrorCode);
+
+        var anotherDraft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
+        var wrongDraftQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
+        var draftMismatch = await fixture.Service.SubmitAsync(
+            fixture.SellerPrincipal, anotherDraft.Id, anotherDraft.Version, wrongDraftQuote);
+
+        Assert.False(draftMismatch.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.CommercialQuoteInvalid, draftMismatch.ErrorCode);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+
+        var correctDraftQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
+        var submitted = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, correctDraftQuote);
+        Assert.True(submitted.Succeeded, submitted.ErrorMessage);
+
+        var anotherDraftQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, anotherDraft);
+        var wrongQuoteAfterSubmission = await fixture.Service.SubmitAsync(
+            fixture.SellerPrincipal, draft.Id, draft.Version, anotherDraftQuote);
+        Assert.False(wrongQuoteAfterSubmission.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.CommercialQuoteInvalid, wrongQuoteAfterSubmission.ErrorCode);
+    }
+
+    [Fact]
+    public async Task Submit_rejects_a_quote_after_quantity_changes_without_a_version_increment()
+    {
+        await using var fixture = await SubmissionFixture.CreateAsync();
+        var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
+        var oldQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
+        draft.Items.Single().Quantity = 3;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, oldQuote);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.CommercialQuoteInvalid, result.ErrorCode);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Equal(SellerOrderDraftStatus.Draft,
+            (await fixture.Db.SellerOrderDrafts.AsNoTracking().SingleAsync(x => x.Id == draft.Id)).Status);
     }
 
     [Fact]
@@ -84,7 +169,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
         var otherSeller = SubmissionFixture.CreateSellerPrincipal(fixture.OtherSeller!.Id);
 
-        var result = await fixture.Service.SubmitAsync(otherSeller, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft, otherSeller);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.DraftNotFound, result.ErrorCode);
@@ -104,7 +189,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         fixture.Customer.SalesRepresentative = newRepresentative;
         await fixture.Db.SaveChangesAsync();
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.CustomerNotInPortfolio, result.ErrorCode);
@@ -119,7 +204,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         fixture.Address.IsActive = false;
         await fixture.Db.SaveChangesAsync();
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Empty(await fixture.Db.Orders.ToListAsync());
@@ -137,7 +222,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         draft.PaymentTermId = term.Id;
         await fixture.Db.SaveChangesAsync();
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.InvalidOrder, result.ErrorCode);
@@ -150,7 +235,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         await using var fixture = await SubmissionFixture.CreateAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version + 1);
+        var result = await fixture.SubmitAsync(draft, expectedVersion: draft.Version + 1);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.ConcurrencyConflict, result.ErrorCode);
@@ -171,7 +256,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         await fixture.Db.SaveChangesAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Contains("cr\u00e9dito dispon\u00edvel", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
@@ -191,7 +276,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         secondProduct.IsAvailable = false;
         await fixture.Db.SaveChangesAsync();
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Empty(await fixture.Db.Orders.ToListAsync());
@@ -206,7 +291,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         var secondProduct = await fixture.AddAvailableProductAsync("SUBMIT-002", price: 23m, stock: 0);
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m), (secondProduct.Id, 1, 0m));
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.InvalidOrder, result.ErrorCode);
@@ -225,7 +310,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         await using var fixture = await SubmissionFixture.CreateAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 1m));
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.DiscountPolicyNotConfigured, result.ErrorCode);
@@ -238,8 +323,9 @@ public sealed class SellerOrderDraftSubmissionServiceTests
     {
         await using var fixture = await SubmissionFixture.CreateAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 0m));
-        var first = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
-        var retry = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var originalQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
+        var first = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, originalQuote);
+        var retry = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, originalQuote);
 
         Assert.True(first.Succeeded, first.ErrorMessage);
         Assert.True(retry.Succeeded, retry.ErrorMessage);
@@ -267,7 +353,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
             END;
             """);
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.SubmissionFailed, result.ErrorCode);
@@ -294,7 +380,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         await fixture.Db.SaveChangesAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
 
-        var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version);
+        var result = await fixture.SubmitAsync(draft);
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         var payment = await fixture.Db.Payments.SingleAsync(x => x.OrderId == result.OrderId);
@@ -332,10 +418,12 @@ public sealed class SellerOrderDraftSubmissionServiceTests
             {
                 CardOnDeliveryEnabled = cardOnDeliveryEnabled
             }));
+            QuoteProtector = new SellerOrderDraftQuoteProtector(new EphemeralDataProtectionProvider());
             DraftService = new SellerOrderDraftService(db, access,
                 new SellerCatalogService(db, access, priceService), priceService, eligibility);
             Service = new SellerOrderDraftSubmissionService(db, access,
                 new OrderPlacementService(db, new CartService(db, priceService), priceService, eligibility, new OrderReservationService(db)),
+                QuoteProtector,
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<SellerOrderDraftSubmissionService>.Instance);
         }
 
@@ -351,6 +439,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         public ClaimsPrincipal SellerPrincipal { get; }
         public SellerOrderDraftService DraftService { get; }
         public SellerOrderDraftSubmissionService Service { get; }
+        public SellerOrderDraftQuoteProtector QuoteProtector { get; }
 
         public static ClaimsPrincipal CreateSellerPrincipal(string userId) => new(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, "Vendedor")], "test"));
@@ -378,6 +467,45 @@ public sealed class SellerOrderDraftSubmissionServiceTests
             Db.SellerOrderDrafts.Add(draft);
             await Db.SaveChangesAsync();
             return draft;
+        }
+
+        public async Task<string> CreateQuoteTokenAsync(ClaimsPrincipal user, SellerOrderDraft draft)
+        {
+            var ownerUserId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var prices = await new PriceService(Db).GetPricesAsync(
+                draft.CustomerId, draft.Items.Select(item => item.ProductId).ToArray());
+            var quoteLines = draft.Items.OrderBy(item => item.ProductId).Select(item =>
+            {
+                var unitPrice = prices.GetValueOrDefault(item.ProductId, item.Product?.PromotionalPrice ?? item.Product?.BasePrice ?? 0m);
+                return new OrderPlacementQuoteLine(
+                    item.ProductId,
+                    item.Quantity,
+                    unitPrice,
+                    item.RequestedDiscountAmount,
+                    unitPrice * item.Quantity);
+            }).ToArray();
+            var subtotal = quoteLines.Sum(item => item.Subtotal);
+            var quote = new OrderPlacementQuote(
+                draft.CustomerId,
+                draft.DeliveryAddressId,
+                draft.PaymentTermId,
+                draft.RequestedDeliveryDate,
+                quoteLines,
+                subtotal,
+                0m,
+                subtotal);
+            return QuoteProtector.Protect(ownerUserId, draft.Id, draft.Version, quote);
+        }
+
+        public async Task<SellerOrderDraftSubmissionResult> SubmitAsync(
+            SellerOrderDraft draft,
+            ClaimsPrincipal? user = null,
+            int? expectedVersion = null,
+            string? quoteToken = null)
+        {
+            user ??= SellerPrincipal;
+            quoteToken ??= await CreateQuoteTokenAsync(user, draft);
+            return await Service.SubmitAsync(user, draft.Id, expectedVersion ?? draft.Version, quoteToken);
         }
 
         public async Task<Product> AddAvailableProductAsync(string sku, decimal price, int stock = 10)
