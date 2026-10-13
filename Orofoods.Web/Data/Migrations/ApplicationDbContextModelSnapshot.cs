@@ -1006,6 +1006,19 @@ namespace Orofoods.Web.Data.Migrations
                     b.ToTable("WmcSyncRuns");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcInitialLoadReleaseAudit", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("AdminUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<int>("ProductId").HasColumnType("INTEGER");
+                    b.Property<string>("Reason").IsRequired().HasMaxLength(300).HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("ReleasedAtUtc").HasColumnType("TEXT");
+                    b.Property<string>("WmcCode").IsRequired().HasMaxLength(30).HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("ProductId", "ReleasedAtUtc");
+                    b.ToTable("WmcInitialLoadReleaseAudits");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
                 {
                     b.Property<int>("OrderId").HasColumnType("INTEGER");

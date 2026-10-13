@@ -38,6 +38,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<WmcExportAudit> WmcExportAudits => Set<WmcExportAudit>();
     public DbSet<WmcOrderExportState> WmcOrderExportStates => Set<WmcOrderExportState>();
     public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
+    public DbSet<WmcInitialLoadReleaseAudit> WmcInitialLoadReleaseAudits => Set<WmcInitialLoadReleaseAudit>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
     public DbSet<CommercialActivity> CommercialActivities => Set<CommercialActivity>();
@@ -328,6 +329,11 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WmcSyncRun>().Property(x => x.FailedStage).HasMaxLength(40);
         builder.Entity<WmcSyncRun>().Property(x => x.ErrorMessage).HasMaxLength(2000);
         builder.Entity<WmcSyncRun>().HasIndex(x => new { x.Status, x.StartedAt });
+        builder.Entity<WmcInitialLoadReleaseAudit>().HasKey(x => x.Id);
+        builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.WmcCode).HasMaxLength(30).IsRequired();
+        builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.AdminUserId).HasMaxLength(450).IsRequired();
+        builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.Reason).HasMaxLength(300).IsRequired();
+        builder.Entity<WmcInitialLoadReleaseAudit>().HasIndex(x => new { x.ProductId, x.ReleasedAtUtc });
         builder.Entity<PriceTableItem>().Property(x => x.Price).HasPrecision(12, 2);
         builder.Entity<PriceTableItem>().Property(x => x.PromotionalPrice).HasPrecision(12, 2);
         builder.Entity<Order>().Property(x => x.Subtotal).HasPrecision(12, 2);

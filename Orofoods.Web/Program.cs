@@ -300,6 +300,8 @@ builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>
 builder.Services.AddHostedService<ErpRetryBackgroundService>();
 builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
 builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
+builder.Services.Configure<WmcInitialLoadReleaseOptions>(builder.Configuration.GetSection(WmcInitialLoadReleaseOptions.SectionName));
+builder.Services.AddScoped<WmcInitialLoadReadinessReleaseService>();
 builder.Services.AddScoped<IWmcConnectionFactory, WmcFirebirdConnectionFactory>();
 builder.Services.AddScoped<IWmcFirebirdReader, WmcFirebirdReader>();
 builder.Services.AddScoped<IWmcSchemaInspector, WmcSchemaInspector>();
