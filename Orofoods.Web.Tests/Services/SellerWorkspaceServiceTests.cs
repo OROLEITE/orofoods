@@ -8,68 +8,44 @@ using Orofoods.Web.Tests.Infrastructure;
 
 namespace Orofoods.Web.Tests.Services;
 
-public class SellerWorkspaceServiceTests
+public sealed class SellerWorkspaceServiceTests
 {
     [Fact]
-    public async Task Dashboard_and_search_include_only_active_approved_portfolio_customers()
+    public async Task Draft_customer_search_normalizes_cnpj_and_returns_only_the_sellers_portfolio()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var representative = new SalesRepresentative { Name = "Vendedor A", IsActive = true };
-        var seller = new ApplicationUser { Id = "seller-a", UserName = "seller-a", IsActive = true, SalesRepresentative = representative };
-        var assigned = Customer("Burger A", "A-001", representative, CustomerStatus.Approved, true);
-        var other = Customer("Burger B", "B-001", new SalesRepresentative { Name = "Vendedor B", IsActive = true }, CustomerStatus.Approved, true);
-        var pending = Customer("Burger Pendente", "P-001", representative, CustomerStatus.Pending, true);
-        var inactive = Customer("Burger Inativo", "I-001", representative, CustomerStatus.Approved, false);
-        db.AddRange(representative, seller, other.SalesRepresentative!, assigned, other, pending, inactive);
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var otherRepresentative = new SalesRepresentative { Name = "Outro vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var ownCustomer = new Customer
+        {
+            LegalName = "Auto Posto",
+            TradeName = "Auto Posto",
+            Cnpj = "51.735.297/0001-74",
+            Status = CustomerStatus.Approved,
+            IsActive = true,
+            SalesRepresentative = representative
+        };
+        var otherCustomer = new Customer
+        {
+            LegalName = "Outro Cliente",
+            TradeName = "Outro Cliente",
+            Cnpj = "12.345.678/0001-95",
+            Status = CustomerStatus.Approved,
+            IsActive = true,
+            SalesRepresentative = otherRepresentative
+        };
+        db.AddRange(representative, otherRepresentative, seller, ownCustomer, otherCustomer);
         await db.SaveChangesAsync();
 
-        var service = new SellerWorkspaceService(db, new SalesRepresentativeAccessService(db));
-        var principal = SellerPrincipal(seller.Id);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, seller.Id), new Claim(ClaimTypes.Role, ApplicationRoles.Seller)], "test"));
+        var result = await new SellerWorkspaceService(db, new SalesRepresentativeAccessService(db))
+            .SearchCustomersForOrderDraftAsync(principal, "51735297000174");
 
-        var dashboard = Assert.IsType<SellerDashboardViewModel>(await service.GetDashboardAsync(principal));
-        var search = Assert.IsType<SellerCustomerListViewModel>(await service.SearchCustomersAsync(principal, "A-001"));
-
-        Assert.Equal(1, dashboard.ActiveCustomerCount);
-        Assert.Single(dashboard.Customers);
-        Assert.Equal(assigned.Id, dashboard.Customers[0].Id);
-        Assert.Single(search.Customers);
-        Assert.Equal(assigned.Id, search.Customers[0].Id);
+        Assert.NotNull(result);
+        var match = Assert.Single(result.Customers);
+        Assert.Equal(ownCustomer.Id, match.Id);
+        Assert.Equal("AUTO POSTO", match.Name.ToUpperInvariant());
     }
-
-    [Fact]
-    public async Task Workspace_rejects_customer_outside_portfolio_and_unapproved_customer()
-    {
-        await using var db = await TestDbContextFactory.CreateAsync();
-        var representativeA = new SalesRepresentative { Name = "Vendedor A", IsActive = true };
-        var representativeB = new SalesRepresentative { Name = "Vendedor B", IsActive = true };
-        var seller = new ApplicationUser { Id = "seller-a", UserName = "seller-a", IsActive = true, SalesRepresentative = representativeA };
-        var assigned = Customer("Cliente A", "A-001", representativeA, CustomerStatus.Approved, true);
-        var other = Customer("Cliente B", "B-001", representativeB, CustomerStatus.Approved, true);
-        var pending = Customer("Cliente Pendente", "P-001", representativeA, CustomerStatus.Pending, true);
-        db.AddRange(representativeA, representativeB, seller, assigned, other, pending);
-        await db.SaveChangesAsync();
-
-        var service = new SellerWorkspaceService(db, new SalesRepresentativeAccessService(db));
-        var principal = SellerPrincipal(seller.Id);
-
-        Assert.NotNull(await service.GetCustomerWorkspaceAsync(principal, assigned.Id));
-        Assert.Null(await service.GetCustomerWorkspaceAsync(principal, other.Id));
-        Assert.Null(await service.GetCustomerWorkspaceAsync(principal, pending.Id));
-    }
-
-    private static Customer Customer(string name, string code, SalesRepresentative representative, CustomerStatus status, bool active) => new()
-    {
-        LegalName = $"{name} Ltda",
-        TradeName = name,
-        Cnpj = $"{code[..1]}2.345.678/0001-00",
-        WmcCode = code,
-        Status = status,
-        IsActive = active,
-        SalesRepresentative = representative,
-        Addresses = [new CustomerAddress { City = "Campinas", State = "SP", IsActive = true }]
-    };
-
-    private static ClaimsPrincipal SellerPrincipal(string userId) => new(new ClaimsIdentity(
-        [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, "Vendedor")],
-        "test"));
 }

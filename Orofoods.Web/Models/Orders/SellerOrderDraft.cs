@@ -19,6 +19,8 @@ public class SellerOrderDraft
     public int CustomerId { get; set; }
     public Customer? Customer { get; set; }
 
+    public Guid? CreateRequestKey { get; set; }
+
     public int? DeliveryAddressId { get; set; }
     public CustomerAddress? DeliveryAddress { get; set; }
 

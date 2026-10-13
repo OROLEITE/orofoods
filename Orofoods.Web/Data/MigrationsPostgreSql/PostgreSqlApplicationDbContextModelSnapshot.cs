@@ -1810,6 +1810,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("CreateRequestKey")
+                        .HasColumnType("uuid");
+
                     b.Property<int?>("DeliveryAddressId")
                         .HasColumnType("integer");
 
@@ -1857,6 +1860,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("DeliveryAddressId");
 
                     b.HasIndex("PaymentTermId");
+
+                    b.HasIndex("OwnerUserId", "CreateRequestKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SellerOrderDrafts_OwnerUserId_CreateRequestKey");
 
                     b.HasIndex("OwnerUserId", "Status", "UpdatedAt");
 

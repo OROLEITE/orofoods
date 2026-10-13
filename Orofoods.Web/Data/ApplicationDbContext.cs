@@ -129,6 +129,9 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
             entity.Property(x => x.Version).IsConcurrencyToken().HasDefaultValue(1);
             entity.Property(x => x.Notes).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreateRequestKey })
+                .IsUnique()
+                .HasDatabaseName("IX_SellerOrderDrafts_OwnerUserId_CreateRequestKey");
             entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.UpdatedAt });
             entity.HasIndex(x => new { x.SalesRepresentativeId, x.CustomerId, x.Status, x.UpdatedAt })
                 .HasDatabaseName("IX_SellerDrafts_Rep_Customer_Status_Updated");

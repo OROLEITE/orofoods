@@ -17,9 +17,16 @@ public sealed class SellerOrderDraftService(
 {
     private const int MaximumNotesLength = 500;
 
+    public Task<SellerOrderDraftOperationResult> CreateAsync(
+        ClaimsPrincipal user,
+        SellerOrderDraftInput input,
+        CancellationToken cancellationToken = default) =>
+        CreateAsync(user, input, Guid.NewGuid(), cancellationToken);
+
     public async Task<SellerOrderDraftOperationResult> CreateAsync(
         ClaimsPrincipal user,
         SellerOrderDraftInput input,
+        Guid createRequestKey,
         CancellationToken cancellationToken = default)
     {
         if (input is null)
@@ -28,10 +35,33 @@ public sealed class SellerOrderDraftService(
         }
 
         var ownerUserId = GetUserId(user);
+        if (ownerUserId is null || createRequestKey == Guid.Empty)
+        {
+            return Failure(SellerOrderDraftErrorCodes.InvalidInput, "A chave de criação do rascunho é inválida.");
+        }
+
         var scope = await accessService.GetSellerCartScopeAsync(user, input.CustomerId, cancellationToken);
-        if (ownerUserId is null || scope?.SalesRepresentativeId is not int representativeId)
+        if (scope?.SalesRepresentativeId is not int representativeId)
         {
             return Failure(SellerOrderDraftErrorCodes.CustomerNotInPortfolio, "O cliente não pertence à carteira ativa deste vendedor.");
+        }
+
+        var existingId = await db.SellerOrderDrafts.AsNoTracking()
+            .Where(x => x.OwnerUserId == ownerUserId && x.CreateRequestKey == createRequestKey)
+            .Select(x => new { x.Id, x.CustomerId, x.SalesRepresentativeId })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (existingId is not null)
+        {
+            if (existingId.CustomerId != input.CustomerId || existingId.SalesRepresentativeId != representativeId)
+            {
+                return Failure(SellerOrderDraftErrorCodes.CreateRequestKeyConflict,
+                    "Esta tela de criação já foi usada. Reabra o rascunho existente ou inicie uma nova criação.");
+            }
+
+            var existing = await GetAsync(user, existingId.Id, cancellationToken);
+            return existing is null
+                ? Failure(SellerOrderDraftErrorCodes.CustomerNotInPortfolio, "O cliente não pertence mais à carteira ativa deste vendedor.")
+                : Success(existing);
         }
 
         var validation = await ValidateDraftFieldsAsync(
@@ -47,6 +77,7 @@ public sealed class SellerOrderDraftService(
             OwnerUserId = ownerUserId,
             SalesRepresentativeId = representativeId,
             CustomerId = input.CustomerId,
+            CreateRequestKey = createRequestKey,
             DeliveryAddressId = input.DeliveryAddressId,
             PaymentTermId = input.PaymentTermId,
             RequestedDeliveryDate = input.RequestedDeliveryDate,
@@ -64,8 +95,32 @@ public sealed class SellerOrderDraftService(
         };
 
         db.SellerOrderDrafts.Add(draft);
-        await db.SaveChangesAsync(cancellationToken);
-        return Success((await GetAsync(user, draft.Id, cancellationToken))!);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            DetachDraft(draft);
+            var concurrentId = await db.SellerOrderDrafts.AsNoTracking()
+                .Where(x => x.OwnerUserId == ownerUserId && x.CreateRequestKey == createRequestKey
+                    && x.CustomerId == input.CustomerId && x.SalesRepresentativeId == representativeId)
+                .Select(x => (int?)x.Id)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (concurrentId is null)
+            {
+                throw;
+            }
+
+            var existing = await GetAsync(user, concurrentId.Value, cancellationToken);
+            return existing is null
+                ? Failure(SellerOrderDraftErrorCodes.CustomerNotInPortfolio, "O cliente não pertence mais à carteira ativa deste vendedor.")
+                : Success(existing);
+        }
+        var createdView = await GetAsync(user, draft.Id, cancellationToken);
+        return createdView is null
+            ? Failure(SellerOrderDraftErrorCodes.CustomerNotInPortfolio, "O acesso à carteira mudou durante a criação do rascunho.")
+            : Success(createdView);
     }
 
     public async Task<SellerOrderDraftView?> GetAsync(
@@ -166,6 +221,19 @@ public sealed class SellerOrderDraftService(
             return Failure(SellerOrderDraftErrorCodes.ConcurrencyConflict, "O rascunho foi alterado em outra sessão. Reabra-o antes de salvar.");
         }
 
+        if (input.UpsertItems is null)
+        {
+            return Failure(SellerOrderDraftErrorCodes.InvalidInput, "A lista de produtos do rascunho é inválida.");
+        }
+
+        var removedProductIds = input.RemovedProductIds ?? [];
+        if (removedProductIds.Any(id => id <= 0) || removedProductIds.Distinct().Count() != removedProductIds.Count
+            || removedProductIds.Intersect(input.UpsertItems.Select(item => item.ProductId)).Any())
+        {
+            return Failure(SellerOrderDraftErrorCodes.InvalidInput,
+                "A lista de produtos para atualização e remoção é inválida.");
+        }
+
         var validation = await ValidateDraftFieldsAsync(
             user, draft.CustomerId, input.DeliveryAddressId, input.PaymentTermId, input.Notes, input.UpsertItems, cancellationToken);
         if (validation.Error is not null)
@@ -174,6 +242,11 @@ public sealed class SellerOrderDraftService(
         }
 
         var currentItems = draft.Items.ToDictionary(x => x.ProductId);
+        if (removedProductIds.Any(productId => !currentItems.ContainsKey(productId)))
+        {
+            return Failure(SellerOrderDraftErrorCodes.ItemNotFound, "Um produto marcado para remoção não existe neste rascunho.");
+        }
+
         foreach (var item in input.UpsertItems)
         {
             if (currentItems.TryGetValue(item.ProductId, out var existing))
@@ -193,6 +266,13 @@ public sealed class SellerOrderDraftService(
             }
         }
 
+        foreach (var productId in removedProductIds)
+        {
+            var item = currentItems[productId];
+            draft.Items.Remove(item);
+            db.SellerOrderDraftItems.Remove(item);
+        }
+
         draft.DeliveryAddressId = input.DeliveryAddressId;
         draft.PaymentTermId = input.PaymentTermId;
         draft.RequestedDeliveryDate = input.RequestedDeliveryDate;
@@ -210,7 +290,10 @@ public sealed class SellerOrderDraftService(
             return Failure(SellerOrderDraftErrorCodes.ConcurrencyConflict, "O rascunho foi alterado em outra sessão. Reabra-o antes de salvar.");
         }
 
-        return Success((await GetAsync(user, draft.Id, cancellationToken))!);
+        var savedView = await GetAsync(user, draft.Id, cancellationToken);
+        return savedView is null
+            ? Failure(SellerOrderDraftErrorCodes.CustomerNotInPortfolio, "O acesso à carteira mudou durante a atualização do rascunho.")
+            : Success(savedView);
     }
 
     public async Task<SellerOrderDraftOperationResult> RemoveItemAsync(
@@ -257,7 +340,10 @@ public sealed class SellerOrderDraftService(
             return Failure(SellerOrderDraftErrorCodes.ConcurrencyConflict, "O rascunho foi alterado em outra sessão. Reabra-o antes de salvar.");
         }
 
-        return Success((await GetAsync(user, draft.Id, cancellationToken))!);
+        var savedView = await GetAsync(user, draft.Id, cancellationToken);
+        return savedView is null
+            ? Failure(SellerOrderDraftErrorCodes.CustomerNotInPortfolio, "O acesso à carteira mudou durante a atualização do rascunho.")
+            : Success(savedView);
     }
 
     private async Task<(SellerOrderDraft? Draft, SellerOrderDraftOperationResult? Error)> LoadOwnedDraftAsync(
@@ -403,7 +489,8 @@ public sealed class SellerOrderDraftService(
                 item.Product?.UnitDescription ?? "",
                 item.Quantity,
                 item.RequestedDiscountAmount,
-                prices.GetValueOrDefault(item.ProductId, item.Product?.BasePrice ?? 0m))).ToArray());
+                prices.GetValueOrDefault(item.ProductId, item.Product?.BasePrice ?? 0m),
+                item.Product?.MinimumCases ?? 1)).ToArray());
     }
 
     private void DetachDraft(SellerOrderDraft draft)
@@ -441,7 +528,8 @@ public sealed record SellerOrderDraftSaveInput(
     int? PaymentTermId,
     DateTime? RequestedDeliveryDate,
     string? Notes,
-    IReadOnlyList<SellerOrderDraftItemInput> UpsertItems);
+    IReadOnlyList<SellerOrderDraftItemInput> UpsertItems,
+    IReadOnlyList<int>? RemovedProductIds = null);
 
 public sealed record SellerOrderDraftItemInput(int ProductId, int Quantity, decimal RequestedDiscountAmount = 0m);
 
@@ -478,7 +566,8 @@ public sealed record SellerOrderDraftItemView(
     string UnitDescription,
     int Quantity,
     decimal RequestedDiscountAmount,
-    decimal ResolvedUnitPrice);
+    decimal ResolvedUnitPrice,
+    int MinimumCases = 1);
 
 public static class SellerOrderDraftErrorCodes
 {
@@ -494,4 +583,5 @@ public static class SellerOrderDraftErrorCodes
     public const string InvalidAddress = "invalid_address";
     public const string PaymentTermNotAllowed = "payment_term_not_allowed";
     public const string ItemNotFound = "item_not_found";
+    public const string CreateRequestKeyConflict = "create_request_key_conflict";
 }

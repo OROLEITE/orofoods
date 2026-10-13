@@ -53,6 +53,118 @@ public sealed class SellerOrderDraftServiceTests
     }
 
     [Fact]
+    public async Task Save_and_reopen_preserves_all_draft_items_and_updated_quantities()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var secondProduct = await fixture.AddAvailableProductAsync("SECOND");
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, new SellerOrderDraftInput(
+            fixture.Customer.Id,
+            fixture.Address.Id,
+            fixture.PaymentTerm.Id,
+            null,
+            null,
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2), new SellerOrderDraftItemInput(secondProduct.Id, 3)]));
+
+        Assert.True(created.Succeeded, created.ErrorMessage);
+        var saved = await fixture.Service.SaveAsync(fixture.SellerPrincipal, created.Draft!.Id, new SellerOrderDraftSaveInput(
+            created.Draft.Version,
+            fixture.Address.Id,
+            fixture.PaymentTerm.Id,
+            null,
+            "Pedido atualizado",
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 4), new SellerOrderDraftItemInput(secondProduct.Id, 5)]));
+
+        Assert.True(saved.Succeeded, saved.ErrorMessage);
+        var reopened = await fixture.Service.GetAsync(fixture.SellerPrincipal, created.Draft.Id);
+
+        Assert.NotNull(reopened);
+        var itemsByProductId = reopened.Items.ToDictionary(item => item.ProductId, item => item.Quantity);
+        Assert.Equal(2, itemsByProductId.Count);
+        Assert.Equal(4, itemsByProductId[fixture.Product.Id]);
+        Assert.Equal(5, itemsByProductId[secondProduct.Id]);
+    }
+
+    [Fact]
+    public async Task Repeated_create_request_key_returns_the_existing_draft_without_duplicating_it()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var requestKey = Guid.NewGuid();
+        var input = fixture.ValidInput();
+
+        var first = await fixture.Service.CreateAsync(fixture.SellerPrincipal, input, requestKey);
+        var retry = await fixture.Service.CreateAsync(fixture.SellerPrincipal, input, requestKey);
+
+        Assert.True(first.Succeeded, first.ErrorMessage);
+        Assert.True(retry.Succeeded, retry.ErrorMessage);
+        Assert.Equal(first.Draft!.Id, retry.Draft!.Id);
+        Assert.Single(await fixture.Db.SellerOrderDrafts.ToListAsync());
+        Assert.Single(await fixture.Db.SellerOrderDraftItems.ToListAsync());
+        Assert.Empty(await fixture.Db.Orders.ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Concurrent_create_posts_with_the_same_key_persist_only_one_draft()
+    {
+        await using var fixture = await DraftFixture.CreateAsync(sharedDatabase: true);
+        var second = await fixture.OpenSecondContextAsync();
+        await using var secondDb = second.Db;
+        await using var secondConnection = second.Connection;
+        var secondAccess = new SalesRepresentativeAccessService(secondDb);
+        var secondPrice = new PriceService(secondDb);
+        var secondService = new SellerOrderDraftService(secondDb, secondAccess,
+            new SellerCatalogService(secondDb, secondAccess, secondPrice), secondPrice,
+            new PaymentEligibilityService(secondDb, Microsoft.Extensions.Options.Options.Create(new PaymentEligibilityOptions())));
+        var key = Guid.NewGuid();
+        var input = fixture.ValidInput();
+
+        var results = await Task.WhenAll(
+            fixture.Service.CreateAsync(fixture.SellerPrincipal, input, key),
+            secondService.CreateAsync(fixture.SellerPrincipal, input, key));
+
+        Assert.All(results, result => Assert.True(result.Succeeded, result.ErrorMessage));
+        Assert.Single(results.Select(result => result.Draft!.Id).Distinct());
+        Assert.Single(await fixture.Db.SellerOrderDrafts.ToListAsync());
+        Assert.Single(await fixture.Db.SellerOrderDraftItems.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Save_removes_only_products_explicitly_selected_by_the_seller()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var otherProduct = await fixture.AddAvailableProductAsync("SKU-OTHER");
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, new SellerOrderDraftInput(
+            fixture.Customer.Id, fixture.Address.Id, fixture.PaymentTerm.Id, null, null,
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2), new SellerOrderDraftItemInput(otherProduct.Id, 1)]));
+        Assert.True(created.Succeeded, created.ErrorMessage);
+
+        var saved = await fixture.Service.SaveAsync(fixture.SellerPrincipal, created.Draft!.Id, new SellerOrderDraftSaveInput(
+            created.Draft.Version, fixture.Address.Id, fixture.PaymentTerm.Id, null, null,
+            [new SellerOrderDraftItemInput(otherProduct.Id, 3)], [fixture.Product.Id]));
+
+        Assert.True(saved.Succeeded, saved.ErrorMessage);
+        var item = Assert.Single(saved.Draft!.Items);
+        Assert.Equal(otherProduct.Id, item.ProductId);
+        Assert.Equal(3, item.Quantity);
+    }
+
+    [Fact]
+    public async Task Save_rejects_a_product_marked_for_both_update_and_removal()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, fixture.ValidInput());
+        Assert.True(created.Succeeded, created.ErrorMessage);
+
+        var result = await fixture.Service.SaveAsync(fixture.SellerPrincipal, created.Draft!.Id, new SellerOrderDraftSaveInput(
+            created.Draft.Version, fixture.Address.Id, fixture.PaymentTerm.Id, null, null,
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2)], [fixture.Product.Id]));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.InvalidInput, result.ErrorCode);
+        Assert.Single(await fixture.Db.SellerOrderDraftItems.ToListAsync());
+    }
+
+    [Fact]
     public async Task Draft_schema_has_status_and_quantity_constraints_and_owner_lookup_indexes()
     {
         await using var fixture = await DraftFixture.CreateAsync();
@@ -62,6 +174,7 @@ public sealed class SellerOrderDraftServiceTests
         Assert.Contains("CK_SellerOrderDrafts_Version", schema);
         Assert.Contains("CREATE UNIQUE INDEX \"IX_SellerOrderDraftItems_SellerOrderDraftId_ProductId\"", schema);
         Assert.Contains("IX_SellerOrderDrafts_OwnerUserId_Status_UpdatedAt", schema);
+        Assert.Contains("IX_SellerOrderDrafts_OwnerUserId_CreateRequestKey", schema);
         Assert.Contains("CK_SellerOrderDraftItems_Quantity", schema);
         Assert.Contains("CK_SellerOrderDraftItems_RequestedDiscountAmount", schema);
     }
@@ -340,6 +453,16 @@ public sealed class SellerOrderDraftServiceTests
 
         public SellerOrderDraftInput ValidInput() => new(Customer.Id, Address.Id, PaymentTerm.Id, null, null,
             [new SellerOrderDraftItemInput(Product.Id, 2)]);
+
+        public async Task<Product> AddAvailableProductAsync(string sku)
+        {
+            var product = ProductFactory(sku, sku, active: true);
+            Db.Products.Add(product);
+            await Db.SaveChangesAsync();
+            Db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 10 });
+            await Db.SaveChangesAsync();
+            return product;
+        }
 
         public static ClaimsPrincipal CreateSellerPrincipal(string userId) => new(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, "Vendedor")], "test"));

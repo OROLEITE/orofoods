@@ -1,0 +1,294 @@
+@model SellerOrderDraftEditorViewModel
+@{
+    ViewData["Title"] = Model.CustomerId > 0 ? $"Digitação de pedido · {Model.CustomerName}" : "Novo pedido";
+    ViewData["BodyClass"] = "seller-area-page seller-order-drafts-page";
+    var isEditable = Model.CanEdit;
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/seller-order-drafts.css" asp-append-version="true" />
+}
+
+<section class="section seller-order-drafts">
+    <div class="container">
+        <nav class="seller-order-drafts__breadcrumbs" aria-label="Navegação">
+            <a asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index">Área do vendedor</a>
+            <span aria-hidden="true">/</span>
+            <a asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">Rascunhos</a>
+            @if (Model.CustomerId > 0) { <span aria-hidden="true">/</span><span>@Model.CustomerName</span> }
+        </nav>
+
+        @if (Model.CustomerId <= 0)
+        {
+            <header class="seller-order-drafts__header">
+                <div>
+                    <p class="seller-order-drafts__eyebrow">NOVO PEDIDO</p>
+                    <h1>Selecione um cliente</h1>
+                    <p class="seller-order-drafts__muted mb-0">A busca mostra apenas clientes ativos e aprovados da sua carteira.</p>
+                </div>
+            </header>
+            <section class="seller-order-drafts__card seller-order-drafts__customer-picker" aria-labelledby="customer-search-heading">
+                <h2 id="customer-search-heading">Buscar cliente</h2>
+                <form method="get" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" class="seller-order-drafts__search-form" role="search">
+                    <label for="customer-query">Nome, CNPJ ou código WMC</label>
+                    <div class="seller-order-drafts__search-row">
+                        <input id="customer-query" class="form-control" type="search" name="q" value="@Model.CustomerSearch" maxlength="100" autocomplete="organization" />
+                        <button class="btn seller-order-drafts__primary" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
+                    </div>
+                </form>
+                @if (string.IsNullOrWhiteSpace(Model.CustomerSearch))
+                {
+                    <p class="seller-order-drafts__muted mt-3 mb-0">Digite parte do nome ou código para localizar um cliente autorizado.</p>
+                }
+                else if (Model.CustomerResults.Count == 0)
+                {
+                    <p class="seller-order-drafts__empty-inline" role="status">Nenhum cliente autorizado encontrado.</p>
+                }
+                else
+                {
+                    <div class="seller-order-drafts__customer-results">
+                        @foreach (var customer in Model.CustomerResults)
+                        {
+                            <a class="seller-order-drafts__customer-option" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@customer.Id">
+                                <span class="seller-order-drafts__customer-mark" aria-hidden="true"><i class="fa-solid fa-building"></i></span>
+                                <span class="seller-order-drafts__customer-info"><strong>@customer.Name</strong><small>@customer.Code <span aria-hidden="true">·</span> @customer.City</small></span>
+                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                            </a>
+                        }
+                    </div>
+                    @if (Model.CustomerTotalPages > 1)
+                    {
+                        <nav class="seller-order-drafts__pagination" aria-label="Páginas de clientes">
+                            @if (Model.CustomerPage > 1)
+                            {
+                                <a asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-q="@Model.CustomerSearch" asp-route-page="@(Model.CustomerPage - 1)">Anterior</a>
+                            }
+                            <span>Página @Model.CustomerPage de @Model.CustomerTotalPages</span>
+                            @if (Model.CustomerPage < Model.CustomerTotalPages)
+                            {
+                                <a asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-q="@Model.CustomerSearch" asp-route-page="@(Model.CustomerPage + 1)">Próxima</a>
+                            }
+                        </nav>
+                    }
+                }
+            </section>
+        }
+        else
+        {
+            <header class="seller-order-drafts__header seller-order-drafts__header--editor">
+                <div>
+                    <p class="seller-order-drafts__eyebrow">DIGITAÇÃO DE PEDIDO</p>
+                    <h1>@Model.CustomerName</h1>
+                    <p class="seller-order-drafts__muted mb-0">@Model.CustomerCode <span aria-hidden="true">·</span> @(Model.IsPersisted ? $"Rascunho #{Model.DraftId}" : "Novo rascunho")</p>
+                </div>
+                <a class="btn seller-order-drafts__outline" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">Meus rascunhos</a>
+            </header>
+
+            @if (TempData["SellerDraftError"] is string conflictMessage)
+            {
+                <div class="seller-order-drafts__notice seller-order-drafts__notice--error" role="alert"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> @conflictMessage</div>
+            }
+            @if (TempData["SellerDraftNotice"] is string noticeMessage)
+            {
+                <div class="seller-order-drafts__notice seller-order-drafts__notice--success" role="status"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> @noticeMessage</div>
+            }
+            @if (Model.Status == Orofoods.Web.Models.Orders.SellerOrderDraftStatus.Submitted)
+            {
+                <div class="seller-order-drafts__notice seller-order-drafts__notice--success" role="status">Pedido enviado. Este rascunho não pode mais ser editado.</div>
+            }
+
+            @if (isEditable)
+            {
+                var formAction = Model.IsPersisted ? "Save" : "Create";
+                <form id="seller-order-draft-form" class="seller-order-drafts__form" method="post" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="@formAction" asp-route-id="@Model.DraftId" data-product-search-url="@Model.ProductSearchUrl" data-customer-id="@Model.CustomerId" data-persisted="@Model.IsPersisted.ToString().ToLowerInvariant()">
+                    @Html.AntiForgeryToken()
+                    @if (Model.IsPersisted)
+                    {
+                        <input type="hidden" name="ExpectedVersion" value="@Model.ExpectedVersion" />
+                    }
+                    else
+                    {
+                        <input type="hidden" name="CustomerId" value="@Model.CustomerId" />
+                        <input type="hidden" name="CreateRequestKey" value="@Model.CreateRequestKey" />
+                    }
+
+                    <div class="seller-order-drafts__editor-grid">
+                        <div class="seller-order-drafts__editor-main">
+                            <section class="seller-order-drafts__card" aria-labelledby="product-search-heading">
+                                <div class="seller-order-drafts__section-heading">
+                                    <div>
+                                        <span class="seller-order-drafts__step">01</span>
+                                        <h2 id="product-search-heading">Adicionar produtos</h2>
+                                    </div>
+                                    <span class="seller-order-drafts__muted">Nome, código ou EAN</span>
+                                </div>
+                                <label class="visually-hidden" for="product-search">Pesquisar produtos</label>
+                                <div class="seller-order-drafts__search-row seller-order-drafts__product-search-row">
+                                    <input id="product-search" class="form-control" type="search" maxlength="100" autocomplete="off" placeholder="Ex.: pão de queijo, SKU ou EAN" aria-controls="product-results" />
+                                    <button id="product-search-button" class="btn seller-order-drafts__outline" type="button"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="visually-hidden">Buscar produtos</span></button>
+                                </div>
+                                <div id="product-search-status" class="seller-order-drafts__search-status" role="status" aria-live="polite">Digite para pesquisar produtos disponíveis para este cliente.</div>
+                                <div id="product-results" class="seller-order-drafts__product-results" aria-live="polite"></div>
+                                <nav id="product-pagination" class="seller-order-drafts__pagination" aria-label="Páginas de produtos" hidden></nav>
+                            </section>
+
+                            <section class="seller-order-drafts__card" aria-labelledby="draft-items-heading">
+                                <div class="seller-order-drafts__section-heading">
+                                    <div>
+                                        <span class="seller-order-drafts__step">02</span>
+                                        <h2 id="draft-items-heading">Itens do pedido</h2>
+                                    </div>
+                                    <span class="seller-order-drafts__muted"><span id="draft-item-count">@Model.Items.Count(item => !item.RemovalPending)</span> produto(s)</span>
+                                </div>
+                                <div asp-validation-summary="All" class="seller-order-drafts__validation" role="alert"></div>
+                                <p id="draft-items-empty" class="seller-order-drafts__empty-inline" hidden="@(Model.Items.Any(item => !item.RemovalPending))">Adicione produtos para começar a digitação.</p>
+                                <div id="draft-items" class="seller-order-drafts__items">
+                                    @{ var submittedItemIndex = 0; }
+                                    @for (var index = 0; index < Model.Items.Count; index++)
+                                    {
+                                        var item = Model.Items[index];
+                                        var formItemIndex = item.RemovalPending ? -1 : submittedItemIndex++;
+                                        <article class="seller-order-drafts__item @(item.RemovalPending ? "is-removal-pending" : "")" data-draft-item data-product-id="@item.ProductId" data-unit-price="@item.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-minimum="@item.MinimumCases">
+                                            @if (!item.RemovalPending)
+                                            {
+                                                <input type="hidden" data-item-product-id name="Items[@formItemIndex].ProductId" value="@item.ProductId" />
+                                            }
+                                            else
+                                            {
+                                                <input type="hidden" data-item-product-id disabled value="@item.ProductId" />
+                                                <input id="quantity-@item.ProductId" class="visually-hidden" data-item-quantity type="number" disabled min="@item.MinimumCases" value="@item.Quantity" />
+                                            }
+                                            <div class="seller-order-drafts__item-main">
+                                                <span class="seller-order-drafts__sku">@item.Sku</span>
+                                                <h3>@item.Name</h3>
+                                                <span class="seller-order-drafts__muted">@item.UnitDescription</span>
+                                                <span class="seller-order-drafts__unit-price">@item.UnitPrice.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) por unidade comercial</span>
+                                            </div>
+                                            <div class="seller-order-drafts__item-controls">
+                                                @if (item.RemovalPending)
+                                                {
+                                                    <span class="seller-order-drafts__pending-removal">Marcado para remoção</span>
+                                                    <button class="seller-order-drafts__undo-removal" type="button" data-undo-removal="@item.ProductId">Desfazer</button>
+                                                }
+                                                else
+                                                {
+                                                    <label for="quantity-@item.ProductId">Quantidade <small>(mín. @item.MinimumCases)</small></label>
+                                                    <input id="quantity-@item.ProductId" class="form-control seller-order-drafts__quantity" data-item-quantity type="number" inputmode="numeric" min="@item.MinimumCases" step="1" name="Items[@formItemIndex].Quantity" value="@item.Quantity" required />
+                                                    <span class="seller-order-drafts__discount">Desconto <strong>0%</strong> <i class="fa-solid fa-lock" aria-label="Bloqueado"></i></span>
+                                                    <button class="seller-order-drafts__remove" type="button" data-remove-item="@item.ProductId"><i class="fa-regular fa-trash-can" aria-hidden="true"></i> Remover</button>
+                                                }
+                                            </div>
+                                            <div class="seller-order-drafts__item-subtotal">
+                                                <span>Subtotal</span>
+                                                <strong data-item-subtotal>@((item.UnitPrice * item.Quantity).ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")))</strong>
+                                            </div>
+                                        </article>
+                                    }
+                                </div>
+                                @foreach (var removedProductId in Model.RemovedProductIds)
+                                {
+                                    <input type="hidden" name="RemovedProductIds" value="@removedProductId" data-removed-product-id="@removedProductId" />
+                                }
+                                <p id="draft-removal-status" class="seller-order-drafts__removal-status" role="status" aria-live="polite"></p>
+                            </section>
+
+                            <section class="seller-order-drafts__card" aria-labelledby="delivery-heading">
+                                <div class="seller-order-drafts__section-heading">
+                                    <div>
+                                        <span class="seller-order-drafts__step">03</span>
+                                        <h2 id="delivery-heading">Entrega e pagamento</h2>
+                                    </div>
+                                    <span class="seller-order-drafts__muted">Sem cobrança nesta etapa</span>
+                                </div>
+                                <div class="seller-order-drafts__fields-grid">
+                                    <div>
+                                        <label for="delivery-address">Endereço cadastrado</label>
+                                        <select id="delivery-address" class="form-select" name="DeliveryAddressId">
+                                            <option value="">Selecionar endereço</option>
+                                            @foreach (var address in Model.Addresses)
+                                            {
+                                                <option value="@address.Id" selected="@(Model.DeliveryAddressId == address.Id)">@address.Label — @address.FullAddress</option>
+                                            }
+                                        </select>
+                                        @if (Model.Addresses.Count == 0) { <small class="seller-order-drafts__field-hint">Este cliente não possui endereço ativo cadastrado.</small> }
+                                    </div>
+                                    <div>
+                                        <label for="payment-term">Condição de pagamento permitida</label>
+                                        <select id="payment-term" class="form-select" name="PaymentTermId">
+                                            <option value="">Selecionar condição</option>
+                                            @foreach (var term in Model.PaymentTerms)
+                                            {
+                                                <option value="@term.Id" selected="@(Model.PaymentTermId == term.Id)">@term.Name — @(term.DaysUntilDue == 0 ? "à vista" : $"{term.DaysUntilDue} dias")</option>
+                                            }
+                                        </select>
+                                        @if (Model.PaymentTerms.Count == 0) { <small class="seller-order-drafts__field-hint">Nenhuma condição está autorizada para este cliente.</small> }
+                                    </div>
+                                    <div>
+                                        <label for="delivery-date">Data de entrega solicitada</label>
+                                        <input id="delivery-date" class="form-control" type="date" name="RequestedDeliveryDate" value="@(Model.RequestedDeliveryDate?.ToString("yyyy-MM-dd"))" />
+                                    </div>
+                                    <div class="seller-order-drafts__notes-field">
+                                        <label for="draft-notes">Observações <small>(até 500 caracteres)</small></label>
+                                        <textarea id="draft-notes" class="form-control" name="Notes" maxlength="500" rows="3">@Model.Notes</textarea>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <aside class="seller-order-drafts__summary" aria-label="Resumo do pedido">
+                            <section class="seller-order-drafts__card seller-order-drafts__summary-card">
+                                <span class="seller-order-drafts__eyebrow">RESUMO</span>
+                                <h2>Seu pedido</h2>
+                                <div class="seller-order-drafts__summary-line"><span>Produtos</span><strong id="summary-item-count">@Model.Items.Count(item => !item.RemovalPending)</strong></div>
+                                <div class="seller-order-drafts__summary-line"><span>Desconto</span><strong>0%</strong></div>
+                                <div class="seller-order-drafts__summary-total"><span>Total atual</span><strong id="draft-total" aria-live="polite">@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
+                                <p class="seller-order-drafts__summary-note">O preço final será recalculado no servidor ao salvar, usando a tabela vigente do cliente.</p>
+                                <div class="seller-order-drafts__summary-flags">
+                                    <span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Sem reserva de estoque</span>
+                                    <span><i class="fa-regular fa-file-lines" aria-hidden="true"></i> Não aparece no Monitor até o envio</span>
+                                </div>
+                            </section>
+                        </aside>
+                    </div>
+
+                    <div class="seller-order-drafts__actions" data-sticky-actions>
+                        <a class="btn seller-order-drafts__outline" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">Cancelar</a>
+                        <div class="seller-order-drafts__action-main">
+                            <button id="save-draft-button" class="btn seller-order-drafts__save" type="submit">
+                                <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Salvar rascunho
+                            </button>
+                            <button class="btn seller-order-drafts__send" type="button" disabled aria-disabled="true" title="Disponível na Etapa 3">
+                                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar pedido
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <p class="seller-order-drafts__stage-note">O envio definitivo será habilitado na Etapa 3. Salvar rascunho não cria um pedido nem reserva estoque.</p>
+            }
+            else
+            {
+                <section class="seller-order-drafts__card">
+                    <h2>Itens do pedido</h2>
+                    <div class="seller-order-drafts__items">
+                        @foreach (var item in Model.Items)
+                        {
+                            <article class="seller-order-drafts__item">
+                                <div class="seller-order-drafts__item-main"><span class="seller-order-drafts__sku">@item.Sku</span><h3>@item.Name</h3><span class="seller-order-drafts__muted">@item.UnitDescription</span></div>
+                                <div class="seller-order-drafts__item-controls"><span>Quantidade</span><strong>@item.Quantity</strong></div>
+                                <div class="seller-order-drafts__item-subtotal"><span>Subtotal</span><strong>@item.Subtotal.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
+                            </article>
+                        }
+                    </div>
+                    <p class="seller-order-drafts__summary-total"><span>Total</span><strong>@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></p>
+                </section>
+            }
+        }
+    </div>
+</section>
+
+@section Scripts {
+    @if (Model.CustomerId > 0 && isEditable)
+    {
+        <script src="~/js/seller-order-drafts.js" asp-append-version="true"></script>
+    }
+}
