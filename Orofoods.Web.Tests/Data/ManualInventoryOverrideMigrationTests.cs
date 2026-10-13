@@ -11,7 +11,7 @@ public class ManualInventoryOverrideMigrationTests
     public void PostgreSql_migration_script_adds_false_default_for_existing_inventory_rows()
     {
         var options = new DbContextOptionsBuilder<PostgreSqlApplicationDbContext>()
-            .UseNpgsql("Host=127.0.0.1;Database=orofoods_migration_script_only;Username=script;Password=script")
+            .UseNpgsql("Host=127.0.0.1;Database=orofoods_migration_script_only;Username=script")
             .Options;
         using var db = new PostgreSqlApplicationDbContext(options);
 
