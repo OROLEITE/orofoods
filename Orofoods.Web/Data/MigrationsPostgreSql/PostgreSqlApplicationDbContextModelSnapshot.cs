@@ -1398,6 +1398,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<int>("QuantityReserved")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsManuallyAdjusted")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProductId")

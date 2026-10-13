@@ -259,6 +259,13 @@ public sealed class WmcSyncService(
                 }
 
                 var inventory = inventories.GetValueOrDefault(product.Id);
+                product.WmcStockAvailable = product.IsWmcActive && quantity > 0;
+                if (inventory?.IsManuallyAdjusted == true)
+                {
+                    skipped++;
+                    continue;
+                }
+
                 if (inventory is null)
                 {
                     inventory = new ProductInventory { ProductId = product.Id, QuantityOnHand = quantity };
@@ -271,7 +278,6 @@ public sealed class WmcSyncService(
                     inventory.QuantityOnHand = quantity;
                     updated++;
                 }
-                product.WmcStockAvailable = product.IsWmcActive && quantity > 0;
                 if (inventory.QuantityOnHand == quantity && quantity == 0)
                 {
                     skipped++;
