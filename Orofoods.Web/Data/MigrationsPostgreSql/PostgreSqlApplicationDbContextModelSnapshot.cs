@@ -1285,6 +1285,20 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("WmcSyncRuns");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcInitialLoadReleaseAudit", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("bigint");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                    b.Property<string>("AdminUserId").IsRequired().HasMaxLength(450).HasColumnType("character varying(450)");
+                    b.Property<int>("ProductId").HasColumnType("integer");
+                    b.Property<string>("Reason").IsRequired().HasMaxLength(300).HasColumnType("character varying(300)");
+                    b.Property<DateTimeOffset>("ReleasedAtUtc").HasColumnType("timestamp with time zone");
+                    b.Property<string>("WmcCode").IsRequired().HasMaxLength(30).HasColumnType("character varying(30)");
+                    b.HasKey("Id");
+                    b.HasIndex("ProductId", "ReleasedAtUtc");
+                    b.ToTable("WmcInitialLoadReleaseAudits");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
                 {
                     b.Property<int>("OrderId").HasColumnType("integer");
