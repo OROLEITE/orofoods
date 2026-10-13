@@ -21,7 +21,7 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("WmcOrderExportState", controller);
         Assert.Contains("BlockReason", view);
         Assert.Contains("CanExport", view);
-        Assert.DoesNotContain("asp-action=\"SendToWmc\"", view);
+        Assert.DoesNotContain("asp-action=\"SendToWmc\"", view.Substring(0, view.IndexOf("order-wmc-actions", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -31,18 +31,24 @@ public class AdminOrderDetailsVisualTests
         var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Index.cshtml"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-orders-list.css"));
+        var details = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
 
         Assert.Contains("[Area(\"Admin\"), Authorize(Roles = \"Administrador\")]", controller);
-        Assert.Contains("asp-action=\"SendToWmc\"", view);
-        Assert.Contains("TXT gerado &mdash; aguardando importa&ccedil;&atilde;o", view);
-        Assert.Contains("asp-action=\"DownloadWmcTxt\"", view);
-        Assert.Contains("CurrentArtifactId is not null", view);
-        Assert.Contains("asp-action=\"RejectWmcTxt\"", view);
-        Assert.Contains("asp-action=\"RegenerateWmcTxt\"", view);
-        Assert.Contains("maxlength=\"1000\" required", view);
-        Assert.Contains("btn-success wmc-send-button", view);
-        Assert.Contains("min-width: 140px", styles);
-        Assert.Contains("background: transparent", styles);
+        foreach (var action in new[] { "SendToWmc", "DownloadWmcTxt", "RejectWmcTxt", "RegenerateWmcTxt", "ConfirmWmcImported", "ConfirmPriorWmcExport" })
+        {
+            Assert.DoesNotContain($"asp-action=\"{action}\"", view);
+            Assert.Contains($"asp-action=\"{action}\"", details);
+        }
+        Assert.DoesNotContain("<form", view.Substring(view.IndexOf("<tbody>", StringComparison.Ordinal)));
+        Assert.DoesNotContain("name=\"reason\"", view);
+        Assert.Contains("wmc-status-badge", view);
+        Assert.Contains("\"TXT gerado\"", view);
+        Assert.Contains("\"Rejeitado\"", view);
+        Assert.Contains("\"Importado\"", view);
+        Assert.Contains("CurrentArtifactId is not null", details);
+        Assert.Contains("maxlength=\"1000\" required", details);
+        Assert.Contains("btn-success wmc-send-button", details);
+        Assert.Contains("height: 52px", styles);
         Assert.Contains("[HttpGet]", controller);
         Assert.Contains("[HttpPost, ValidateAntiForgeryToken]", controller);
     }

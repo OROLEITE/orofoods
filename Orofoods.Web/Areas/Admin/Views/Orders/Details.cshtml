@@ -105,6 +105,76 @@
                 </ul>
             </details>
         </section>
+        @{
+            var wmcState = Model.WmcOrderExportState;
+            var wmcLatestAudit = Model.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).FirstOrDefault();
+            var wmcUncertainHistory = wmcState?.RequiresManualReview == true || (wmcState is null && wmcLatestAudit is not null);
+            var wmcCanManuallyExport = wmcManualExportDiagnostic.CanExport;
+            var wmcHasActions = wmcUncertainHistory || wmcCanManuallyExport
+                || (wmcState?.Status is Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported or Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Rejected && !wmcState.RequiresManualReview);
+        }
+        @if (wmcHasActions)
+        {
+            <section class="order-detail-section order-wmc-actions" aria-labelledby="order-wmc-actions-title">
+                <header class="order-detail-section-heading"><div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 id="order-wmc-actions-title">A&ccedil;&otilde;es WMC</h2></div></header>
+                @if (wmcLatestAudit is not null)
+                {
+                    <p class="order-wmc-last-audit"><small>@wmcLatestAudit.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") &middot; @(wmcLatestAudit.ExportedByEmail ?? "usuário desconhecido")@if (wmcLatestAudit.FileName is not null) { <text> &middot; @wmcLatestAudit.FileName</text> }</small></p>
+                }
+                <div class="order-wmc-actions-bar">
+                @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported && !wmcState.RequiresManualReview)
+                {
+                    @if (wmcState.CurrentArtifactId is not null)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="DownloadWmcTxt" asp-route-id="@Model.Id">Baixar TXT novamente</a>
+                    }
+                    <form asp-action="RejectWmcTxt" method="post" class="wmc-rejection-form">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <label class="visually-hidden" for="wmc-reject-@Model.Id">Motivo da rejeição</label>
+                        <input id="wmc-reject-@Model.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da rejeição" />
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Registrar rejeição</button>
+                    </form>
+                    <form asp-action="ConfirmWmcImported" method="post">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button class="btn btn-sm btn-outline-success" type="submit" onclick="return confirm('Confirma que este pedido foi importado no WMC?');">Confirmar importação</button>
+                    </form>
+                }
+                @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Rejected && !wmcState.RequiresManualReview)
+                {
+                    @if (!string.IsNullOrWhiteSpace(wmcState.LastError)) { <small class="text-danger w-100">@wmcState.LastError</small> }
+                    <form asp-action="RegenerateWmcTxt" method="post" class="wmc-regeneration-form">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <label class="visually-hidden" for="wmc-regenerate-@Model.Id">Motivo da regeneração</label>
+                        <input id="wmc-regenerate-@Model.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da regeneração" />
+                        <button class="btn btn-sm btn-warning" type="submit">Regenerar TXT</button>
+                    </form>
+                }
+                @if (wmcUncertainHistory)
+                {
+                    @if (wmcState is null)
+                    {
+                        <form asp-action="SendToWmc" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-sm btn-outline-warning" type="submit">Iniciar conferência do histórico</button></form>
+                    }
+                    else
+                    {
+                        <small class="w-100">Confirme o resultado anterior antes de qualquer novo envio.</small>
+                        <form asp-action="ConfirmPriorWmcExport" method="post">
+                            <input type="hidden" name="id" value="@Model.Id" /><input type="hidden" name="exported" value="true" />
+                            <button class="btn btn-sm btn-outline-secondary" type="submit">Confirmar exportado</button>
+                        </form>
+                        <form asp-action="ConfirmPriorWmcExport" method="post">
+                            <input type="hidden" name="id" value="@Model.Id" /><input type="hidden" name="exported" value="false" />
+                            <button class="btn btn-sm btn-outline-warning" type="submit">Confirmar que não chegou ao WMC</button>
+                        </form>
+                    }
+                }
+                else if (wmcCanManuallyExport)
+                {
+                    <form asp-action="SendToWmc" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-success wmc-send-button" type="submit">Enviar ao WMC</button></form>
+                }
+                </div>
+            </section>
+        }
         @if (cardOnDelivery)
         {
             <section class="order-payment-card" data-payment-status="@(paymentApproved ? "approved" : "pending")" aria-labelledby="order-payment-title">

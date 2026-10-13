@@ -8,7 +8,6 @@
     var paged = (PagedResult<Order>)ViewBag.PagedResult;
     var sort = (string)ViewBag.Sort;
     var direction = (string)ViewBag.Direction;
-    var wmcManualExportEligibleOrderIds = (IReadOnlySet<int>)ViewData["WmcManualExportEligibleOrderIds"]!;
     string NextDirection(string column) => sort == column && direction == "asc" ? "desc" : "asc";
 }
 <section class="section admin-orders-page orders-index-compact">
@@ -45,18 +44,19 @@
                 var state = order.WmcOrderExportState;
                 var latestAudit = order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).FirstOrDefault();
                 var uncertainHistory = state?.RequiresManualReview == true || (state is null && latestAudit is not null);
-                var canManuallyExport = wmcManualExportEligibleOrderIds.Contains(order.Id);
-                var wmcLabel = uncertainHistory
-                    ? "Pendente - revisar hist&oacute;rico"
+                var (wmcLabel, wmcClass) = uncertainHistory
+                    ? ("Pendente", "review")
                     : state?.Status switch
                     {
-                        WmcOrderExportStatus.Exported => "TXT gerado &mdash; aguardando importa&ccedil;&atilde;o",
-                        WmcOrderExportStatus.Rejected => "TXT rejeitado",
-                        WmcOrderExportStatus.Imported => "Importado no WMC",
-                        WmcOrderExportStatus.Error => "Erro",
-                        WmcOrderExportStatus.Processing => "Pendente - processamento",
-                        _ => "Pendente"
+                        WmcOrderExportStatus.Exported => ("TXT gerado", "exported"),
+                        WmcOrderExportStatus.Rejected => ("Rejeitado", "rejected"),
+                        WmcOrderExportStatus.Imported => ("Importado", "imported"),
+                        WmcOrderExportStatus.Error => ("Erro", "rejected"),
+                        _ => ("Pendente", "pending")
                     };
+                var wmcTitle = uncertainHistory ? "Revisar histórico de exportações na página do pedido"
+                    : latestAudit is null ? "Nenhuma exportação registrada"
+                    : $"{latestAudit.ExportedAt.ToLocalTime():dd/MM/yyyy HH:mm}" + (latestAudit.FileName is null ? "" : $" · {latestAudit.FileName}");
                 <tr>
                     <td data-label="N&uacute;mero"><strong class="orders-number">@order.Number</strong></td>
                     <td data-label="Cliente"><span class="orders-customer" title="@order.Customer?.TradeName">@order.Customer?.TradeName</span></td>
@@ -64,65 +64,7 @@
                     <td data-label="Itens" class="text-center orders-nowrap">@order.Items.Count</td>
                     <td data-label="Status"><span class="order-status-badge order-status-badge--@statusClass">@order.Status.ToDisplayName()</span></td>
                     <td data-label="Total" class="text-end orders-nowrap"><strong>@order.Total.ToString("C")</strong></td>
-                    <td data-label="WMC">
-                        <strong>@Html.Raw(wmcLabel)</strong>
-                        @if (latestAudit is not null)
-                        {
-                            <small class="d-block">@latestAudit.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") &middot; @(latestAudit.ExportedByEmail ?? "usu&aacute;rio desconhecido")</small>
-                            @if (latestAudit.FileName is not null) { <small class="d-block">@latestAudit.FileName</small> }
-                            @if (!latestAudit.Succeeded && latestAudit.Error is not null) { <small class="d-block text-danger">@latestAudit.Error</small> }
-                        }
-                        @if (state?.Status == WmcOrderExportStatus.Exported && !state.RequiresManualReview)
-                        {
-                            @if (state.CurrentArtifactId is not null)
-                            {
-                                <a class="btn btn-sm btn-outline-secondary mt-1" asp-action="DownloadWmcTxt" asp-route-id="@order.Id">Baixar TXT novamente</a>
-                            }
-                            <form asp-action="RejectWmcTxt" method="post" class="mt-1 wmc-rejection-form">
-                                <input type="hidden" name="id" value="@order.Id" />
-                                <label class="visually-hidden" for="wmc-reject-@order.Id">Motivo da rejei&ccedil;&atilde;o</label>
-                                <input id="wmc-reject-@order.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da rejei&ccedil;&atilde;o" />
-                                <button class="btn btn-sm btn-outline-danger mt-1" type="submit">Registrar rejei&ccedil;&atilde;o</button>
-                            </form>
-                            <form asp-action="ConfirmWmcImported" method="post" class="mt-1">
-                                <input type="hidden" name="id" value="@order.Id" />
-                                <button class="btn btn-sm btn-outline-success" type="submit" onclick="return confirm('Confirma que este pedido foi importado no WMC?');">Confirmar importa&ccedil;&atilde;o</button>
-                            </form>
-                        }
-                        @if (state?.Status == WmcOrderExportStatus.Rejected && !state.RequiresManualReview)
-                        {
-                            @if (!string.IsNullOrWhiteSpace(state.LastError)) { <small class="d-block text-danger">@state.LastError</small> }
-                            <form asp-action="RegenerateWmcTxt" method="post" class="mt-1 wmc-regeneration-form">
-                                <input type="hidden" name="id" value="@order.Id" />
-                                <label class="visually-hidden" for="wmc-regenerate-@order.Id">Motivo da regenera&ccedil;&atilde;o</label>
-                                <input id="wmc-regenerate-@order.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da regenera&ccedil;&atilde;o" />
-                                <button class="btn btn-sm btn-warning mt-1" type="submit">Regenerar TXT</button>
-                            </form>
-                        }
-                        @if (uncertainHistory)
-                        {
-                            @if (state is null)
-                            {
-                                <form asp-action="SendToWmc" method="post" class="mt-1"><input type="hidden" name="id" value="@order.Id" /><button class="btn btn-sm btn-outline-warning" type="submit">Iniciar confer&ecirc;ncia do hist&oacute;rico</button></form>
-                            }
-                            else
-                            {
-                                <small class="d-block">Confirme o resultado anterior antes de qualquer novo envio.</small>
-                                <form asp-action="ConfirmPriorWmcExport" method="post" class="mt-1 d-flex flex-wrap gap-1">
-                                    <input type="hidden" name="id" value="@order.Id" /><input type="hidden" name="exported" value="true" />
-                                    <button class="btn btn-sm btn-outline-secondary" type="submit">Confirmar exportado</button>
-                                </form>
-                                <form asp-action="ConfirmPriorWmcExport" method="post" class="mt-1 d-flex flex-wrap gap-1">
-                                    <input type="hidden" name="id" value="@order.Id" /><input type="hidden" name="exported" value="false" />
-                                    <button class="btn btn-sm btn-outline-warning" type="submit">Confirmar que n&atilde;o chegou ao WMC</button>
-                                </form>
-                            }
-                        }
-                        else if (canManuallyExport)
-                        {
-                            <form asp-action="SendToWmc" method="post" class="mt-1"><input type="hidden" name="id" value="@order.Id" /><button class="btn btn-success wmc-send-button" type="submit">Enviar ao WMC</button></form>
-                        }
-                    </td>
+                    <td data-label="WMC"><span class="wmc-status-badge wmc-status-badge--@wmcClass" title="@wmcTitle">@wmcLabel</span></td>
                     <td data-label="Ação" class="text-end"><a class="btn btn-sm btn-order-open" asp-action="Details" asp-route-id="@order.Id">Ver pedido <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></td>
                 </tr>
             }

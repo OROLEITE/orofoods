@@ -986,3 +986,29 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         content: none;
     }
 }
+
+.admin-authenticated .admin-order-details-page .order-wmc-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-actions-bar form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-rejection-form .form-control,
+.admin-authenticated .admin-order-details-page .wmc-regeneration-form .form-control {
+    width: 260px;
+    max-width: 100%;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-last-audit {
+    margin: 0 0 8px;
+    color: var(--order-detail-muted);
+}

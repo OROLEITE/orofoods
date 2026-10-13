@@ -253,3 +253,30 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         width: 100%;
     }
 }
+
+/* WMC status badges in the orders list. */
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .wmc-status-badge {
+    border-color: var(--admin-dark-border);
+    background: #1E293B;
+    color: #CBD5E1;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .wmc-status-badge--exported {
+    border-color: #1D4ED8;
+    background: #172554;
+    color: #93C5FD;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .wmc-status-badge--imported {
+    border-color: #047857;
+    background: #12352C;
+    color: #6EE7B7;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .wmc-status-badge--rejected {
+    border-color: #B91C1C;
+    background: #3B1618;
+    color: #FCA5A5;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .wmc-status-badge--review {
+    border-color: #854D0E;
+    background: #422F12;
+    color: #FCD34D;
+}
