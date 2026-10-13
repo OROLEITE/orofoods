@@ -30,13 +30,7 @@ public sealed class SellerCatalogService(
             return null;
         }
 
-        var productsQuery = db.Products.AsNoTracking()
-            .Include(x => x.Images)
-            .Where(x =>
-                x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)) &&
-                db.ProductInventories.Any(inventory =>
-                    inventory.ProductId == x.Id &&
-                    inventory.QuantityOnHand - inventory.QuantityReserved >= x.MinimumCases));
+        IQueryable<Models.Catalog.Product> productsQuery = BuildSelectableProductsQuery().Include(x => x.Images);
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -70,4 +64,44 @@ public sealed class SellerCatalogService(
                     .FirstOrDefault())).ToList()
         };
     }
+
+    public async Task<IReadOnlySet<int>?> GetSelectableProductIdsAsync(
+        ClaimsPrincipal user,
+        int customerId,
+        IEnumerable<int> productIds,
+        CancellationToken cancellationToken = default)
+    {
+        var scope = await accessService.GetSellerCartScopeAsync(user, customerId, cancellationToken);
+        if (scope is null)
+        {
+            return null;
+        }
+
+        var customerIsValid = await db.Customers.AsNoTracking().AnyAsync(x =>
+            x.Id == customerId && x.IsActive && x.Status == Models.Customers.CustomerStatus.Approved,
+            cancellationToken);
+        if (!customerIsValid)
+        {
+            return null;
+        }
+
+        var requestedIds = productIds.Where(id => id > 0).Distinct().ToArray();
+        if (requestedIds.Length == 0)
+        {
+            return new HashSet<int>();
+        }
+
+        var selectableIds = await BuildSelectableProductsQuery()
+            .Where(product => requestedIds.Contains(product.Id))
+            .Select(product => product.Id)
+            .ToListAsync(cancellationToken);
+        return selectableIds.ToHashSet();
+    }
+
+    private IQueryable<Models.Catalog.Product> BuildSelectableProductsQuery() => db.Products.AsNoTracking()
+        .Where(x =>
+            x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)) &&
+            db.ProductInventories.Any(inventory =>
+                inventory.ProductId == x.Id &&
+                inventory.QuantityOnHand - inventory.QuantityReserved >= x.MinimumCases));
 }
