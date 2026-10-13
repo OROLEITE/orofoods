@@ -42,7 +42,7 @@ public class OrderWmcAuditViewTests
         Assert.Contains("@wmcManualExportDiagnostic.BlockReason", view);
         Assert.Contains(": \"Bloqueado\")", view);
         Assert.Contains("Exported ? \"TXT gerado\"", view);
-        Assert.Contains("EXPORTA&#199;&#195;O WMC</small><strong>@(Model.WmcOrderExportState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? \"TXT gerado\"", view);
+        Assert.Contains("EXPORTA&#199;&#195;O WMC</small><strong>@(wmcImportConfirmed ? \"Importa\\u00e7\\u00e3o WMC confirmada\" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? \"TXT gerado\"", view);
         Assert.DoesNotContain("alert alert-warning order-wmc-block-reason", view);
         Assert.Contains("background: var(--order-detail-surface-secondary);", styles);
         Assert.Contains("color: var(--order-detail-muted);", styles);
@@ -97,12 +97,28 @@ public class OrderWmcAuditViewTests
     }
 
     [Fact]
+    public void Manually_imported_wmc_order_shows_positive_confirmation_and_hides_erp_reprocess()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.Contains("var wmcImportConfirmed = wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Imported;", view);
+        Assert.Contains("Importa\\u00e7\\u00e3o WMC confirmada", view);
+        Assert.Contains("wmcImportConfirmed ? \"imported\"", view);
+        Assert.Contains("!wmcManualExportDiagnostic.CanExport && !wmcImportConfirmed", view);
+        Assert.Contains("&& !wmcImportConfirmed", view);
+        Assert.Contains("order-wmc-eligibility--imported", styles);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-eligibility--imported", styles);
+    }
+
+    [Fact]
     public void Order_details_only_offer_integration_reprocessing_for_approved_orders_and_break_audit_ties()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
 
-        Assert.Contains("@if (Model.Status == OrderStatus.Approved && Model.IntegrationStatus != IntegrationStatus.Processing)", view);
+        Assert.Contains("@if (Model.Status == OrderStatus.Approved && Model.IntegrationStatus != IntegrationStatus.Processing && !wmcImportConfirmed)", view);
         Assert.Contains("Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt).ThenByDescending(x => x.Id)", view);
     }
 }

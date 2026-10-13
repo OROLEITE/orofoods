@@ -31,8 +31,10 @@
         _ => "Aguardando pagamento"
     };
     var wmcManualExportDiagnostic = (WmcManualExportDiagnostic)ViewBag.WmcManualExportDiagnostic;
-    var wmcAwaitingImportConfirmation = Model.WmcOrderExportState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported
-        && Model.WmcOrderExportState.RequiresManualReview != true;
+    var wmcState = Model.WmcOrderExportState;
+    var wmcImportConfirmed = wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Imported;
+    var wmcAwaitingImportConfirmation = wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported
+        && wmcState.RequiresManualReview != true;
     const int historyPreviewCount = 3;
     void RenderStatusEntry(Orofoods.Web.Models.Orders.OrderStatusHistory entry)
     {
@@ -66,7 +68,7 @@
         <div class="commercial-bar order-details-summary">
             <div class="order-details-summary-item"><small>INTEGRA&#199;&#195;O ERP</small><strong>@Model.IntegrationStatus.ToDisplayName()</strong></div>
             <div class="order-details-summary-item"><small>PEDIDO ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
-            <div class="order-details-summary-item"><small>EXPORTA&#199;&#195;O WMC</small><strong>@(Model.WmcOrderExportState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT gerado" : Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa")</strong></div>
+            <div class="order-details-summary-item"><small>EXPORTA&#199;&#195;O WMC</small><strong>@(wmcImportConfirmed ? "Importa\u00e7\u00e3o WMC confirmada" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT gerado" : wmcState?.Status.ToString() ?? "Sem tentativa")</strong></div>
         </div>
         </div>
         @if (TempData["OrderStatusError"] is string statusError)
@@ -85,9 +87,9 @@
         <section class="order-detail-section order-wmc-diagnostic" aria-labelledby="order-wmc-diagnostic-title" data-wmc-diagnostic-read-only>
             <header class="order-detail-section-heading">
                 <div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 id="order-wmc-diagnostic-title">Diagn&oacute;stico WMC</h2></div>
-                <span class="order-wmc-eligibility order-wmc-eligibility--@(wmcManualExportDiagnostic.CanExport ? "eligible" : wmcAwaitingImportConfirmation ? "pending-import" : "blocked")" data-wmc-export-eligibility="@(wmcManualExportDiagnostic.CanExport ? "eligible" : "blocked")">@(wmcManualExportDiagnostic.CanExport ? "Elegível para exportação manual" : wmcAwaitingImportConfirmation ? "Nova exporta\u00e7\u00e3o bloqueada" : "Bloqueado")</span>
+                <span class="order-wmc-eligibility order-wmc-eligibility--@(wmcManualExportDiagnostic.CanExport ? "eligible" : wmcImportConfirmed ? "imported" : wmcAwaitingImportConfirmation ? "pending-import" : "blocked")" data-wmc-export-eligibility="@(wmcManualExportDiagnostic.CanExport ? "eligible" : wmcImportConfirmed ? "imported" : "blocked")">@(wmcManualExportDiagnostic.CanExport ? "Elegível para exportação manual" : wmcImportConfirmed ? "Importa\u00e7\u00e3o WMC confirmada" : wmcAwaitingImportConfirmation ? "Nova exporta\u00e7\u00e3o bloqueada" : "Bloqueado")</span>
             </header>
-            @if (!wmcManualExportDiagnostic.CanExport)
+            @if (!wmcManualExportDiagnostic.CanExport && !wmcImportConfirmed)
             {
                 <p class="order-wmc-block-reason" role="status" data-wmc-export-block-reason>
                     @if (wmcAwaitingImportConfirmation)
@@ -105,7 +107,7 @@
                 <p class="text-danger order-wmc-last-error"><strong>Último erro registrado:</strong> @Model.WmcOrderExportState.LastError</p>
             }
             <dl class="order-wmc-facts">
-                <div><dt>Estado da exportação manual</dt><dd>@(Model.WmcOrderExportState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT gerado" : Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
+                <div><dt>Estado da exportação manual</dt><dd>@(wmcImportConfirmed ? "Importa\u00e7\u00e3o WMC confirmada" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT gerado" : wmcState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
                 <div><dt>Revisão manual</dt><dd>@(Model.WmcOrderExportState?.RequiresManualReview == true ? "Necessária" : "Não necessária")</dd></div>
                 <div><dt>CNPJ do cliente</dt><dd><code>@(Model.Customer?.Cnpj ?? "Não informado")</code></dd></div>
                 <div><dt>WMC do cliente (informativo)</dt><dd><code>@(Model.Customer?.WmcCode ?? "Não informado")</code></dd></div>
@@ -123,7 +125,6 @@
             </details>
         </section>
         @{
-            var wmcState = Model.WmcOrderExportState;
             var wmcLatestAudit = Model.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).FirstOrDefault();
             var wmcUncertainHistory = wmcState?.RequiresManualReview == true || (wmcState is null && wmcLatestAudit is not null);
             var wmcCanManuallyExport = wmcManualExportDiagnostic.CanExport;
@@ -329,7 +330,7 @@
                         <button class="btn btn-primary">Atualizar status</button>
                     </div>
                 </form>
-                @if (Model.Status == OrderStatus.Approved && Model.IntegrationStatus != IntegrationStatus.Processing)
+                @if (Model.Status == OrderStatus.Approved && Model.IntegrationStatus != IntegrationStatus.Processing && !wmcImportConfirmed)
                 {
                     <form asp-action="ReprocessIntegration" method="post" class="order-details-wmc-form">
                         <input type="hidden" name="id" value="@Model.Id" />
