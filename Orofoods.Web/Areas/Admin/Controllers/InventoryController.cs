@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
+using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
 
@@ -13,9 +16,15 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 public class InventoryController(
     ApplicationDbContext db,
     UserManager<ApplicationUser> userManager,
-    ILogger<InventoryController> logger) : Controller
+    ILogger<InventoryController> logger,
+    WmcInitialLoadReadinessReleaseService readinessReleaseService,
+    IWebHostEnvironment environment,
+    IOptions<WmcInitialLoadReleaseOptions> releaseOptions) : Controller
 {
-    public async Task<IActionResult> Index() => View(await db.Products
+    public async Task<IActionResult> Index()
+    {
+        ViewBag.CanReleaseWmcInitialLoad = environment.IsStaging() && releaseOptions.Value.Enabled;
+        return View(await db.Products
         .AsNoTracking()
         .Where(x => x.IsActive)
         .OrderBy(x => x.Name)
@@ -23,8 +32,10 @@ public class InventoryController(
             product.Id, product.Sku, product.Name, product.Unit, product.UnitsPerCase,
             inventories.Select(x => (int?)x.QuantityOnHand).FirstOrDefault() ?? 0,
             inventories.Select(x => (int?)x.QuantityReserved).FirstOrDefault() ?? 0,
-            inventories.Select(x => (bool?)x.IsManuallyAdjusted).FirstOrDefault() ?? false))
+            inventories.Select(x => (bool?)x.IsManuallyAdjusted).FirstOrDefault() ?? false,
+            product.WmcCode, product.WmcInitialLoadReady))
         .ToListAsync());
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -83,6 +94,18 @@ public class InventoryController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReleaseWmcInitialLoad(int productId, string reason, CancellationToken cancellationToken)
+    {
+        var result = await readinessReleaseService.ReleaseAsync(productId, reason, userManager.GetUserId(User), cancellationToken);
+        if (result.Status is WmcInitialLoadReleaseStatus.Released or WmcInitialLoadReleaseStatus.AlreadyReady)
+            TempData["InventorySuccess"] = result.Message;
+        else
+            TempData["InventoryError"] = result.Message;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResumeWmcStockSync(int productId)
     {
         var inventory = await db.ProductInventories.SingleOrDefaultAsync(x => x.ProductId == productId);
@@ -107,7 +130,9 @@ public sealed record InventoryRow(
     int UnitsPerCase,
     int QuantityOnHand,
     int QuantityReserved,
-    bool IsManuallyAdjusted)
+    bool IsManuallyAdjusted,
+    string? WmcCode,
+    bool WmcInitialLoadReady)
 {
     public int AvailableQuantity => Math.Max(0, QuantityOnHand - QuantityReserved);
 }

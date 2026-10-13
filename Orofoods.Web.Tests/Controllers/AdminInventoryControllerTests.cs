@@ -1,9 +1,14 @@
 using System.Security.Claims;
+using System.Reflection;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Controllers.Api.V1;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -15,6 +20,16 @@ namespace Orofoods.Web.Tests.Controllers;
 
 public class AdminInventoryControllerTests
 {
+    [Fact]
+    public void Initial_load_release_is_admin_only_post_and_antiforgery_protected()
+    {
+        var action = typeof(InventoryController).GetMethod(nameof(InventoryController.ReleaseWmcInitialLoad));
+
+        Assert.Equal("Administrador", typeof(InventoryController).GetCustomAttribute<AuthorizeAttribute>()?.Roles);
+        Assert.NotNull(action?.GetCustomAttribute<HttpPostAttribute>());
+        Assert.NotNull(action?.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+    }
+
     [Fact]
     public async Task Manual_adjustment_is_saved_and_audited_and_not_overwritten_by_wmc_stock_sync()
     {
@@ -266,7 +281,10 @@ public class AdminInventoryControllerTests
         var controller = new InventoryController(
             db,
             TestIdentityFactory.CreateUserManager(db),
-            NullLogger<InventoryController>.Instance);
+            NullLogger<InventoryController>.Instance,
+            new WmcInitialLoadReadinessReleaseService(db, new TestEnvironment(), Options.Create(new WmcInitialLoadReleaseOptions()), TimeProvider.System),
+            new TestEnvironment(),
+            Options.Create(new WmcInitialLoadReleaseOptions()));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
@@ -277,6 +295,16 @@ public class AdminInventoryControllerTests
         };
         controller.TempData = new TempDataDictionary(controller.HttpContext, new TestTempDataProvider());
         return controller;
+    }
+
+    private sealed class TestEnvironment : IWebHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Development";
+        public string ApplicationName { get; set; } = "Orofoods.Web.Tests";
+        public string WebRootPath { get; set; } = "";
+        public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
+        public string ContentRootPath { get; set; } = "";
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
     private static WmcSyncService CreateWmcSyncService(
