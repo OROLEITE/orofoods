@@ -1,4 +1,5 @@
 @model Orofoods.Web.Models.Orders.Order
+@using Orofoods.Web.Services.Integrations
 @{
     ViewData["Title"] = Model.Number;
     var cardOnDelivery = Model.PaymentTerm?.Code == "CARD_ON_DELIVERY";
@@ -29,6 +30,7 @@
         Orofoods.Web.Models.Payments.PaymentStatus.Failed => "Erro de comunicação",
         _ => "Aguardando pagamento"
     };
+    var wmcManualExportDiagnostic = (WmcManualExportDiagnostic)ViewBag.WmcManualExportDiagnostic;
 }
 
 <section class="section admin-order-details-page">
@@ -57,6 +59,31 @@
             <div class="alert alert-success mt-3" role="status">@pointMessage</div>
         }
         <div class="order-details-layout">
+        <section class="order-detail-section order-wmc-diagnostic" aria-labelledby="order-wmc-diagnostic-title" data-wmc-diagnostic-read-only>
+            <header class="order-detail-section-heading"><div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 id="order-wmc-diagnostic-title">Diagn&oacute;stico WMC</h2></div></header>
+            <dl class="row g-2 mb-2">
+                <div class="col-md-6"><dt>Elegibilidade para exporta&ccedil;&atilde;o manual</dt><dd data-wmc-export-eligibility="@(wmcManualExportDiagnostic.CanExport ? "eligible" : "blocked")"><strong>@(wmcManualExportDiagnostic.CanExport ? "Eleg&iacute;vel para exporta&ccedil;&atilde;o manual" : "Bloqueado")</strong></dd></div>
+                <div class="col-md-6"><dt>Condi&ccedil;&atilde;o de pagamento</dt><dd><code>@(Model.PaymentTerm?.Code ?? "N&atilde;o informada")</code> &middot; @(Model.PaymentTerm?.Name ?? "Descri&ccedil;&atilde;o indispon&iacute;vel") &middot; prazo @(Model.PaymentTerm?.DaysUntilDue.ToString() ?? "n&atilde;o informado") dias</dd></div>
+                <div class="col-md-6"><dt>WMC do cliente</dt><dd><code>@(Model.Customer?.WmcCode ?? "N&atilde;o informado")</code></dd></div>
+                <div class="col-md-6"><dt>Estado da exporta&ccedil;&atilde;o manual</dt><dd>@(Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
+                <div class="col-md-6"><dt>Revis&atilde;o manual</dt><dd>@(Model.WmcOrderExportState?.RequiresManualReview == true ? "Necess&aacute;ria" : "N&atilde;o necess&aacute;ria")</dd></div>
+                <div class="col-md-6"><dt>Auditorias WMC</dt><dd>@Model.WmcExportAudits.Count registro(s)</dd></div>
+            </dl>
+            @if (!wmcManualExportDiagnostic.CanExport)
+            {
+                <p class="alert alert-warning mb-2" role="status" data-wmc-export-block-reason>@wmcManualExportDiagnostic.BlockReason</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.WmcOrderExportState?.LastError))
+            {
+                <p class="text-danger mb-2"><strong>Último erro registrado:</strong> @Model.WmcOrderExportState.LastError</p>
+            }
+            <ul class="list-group list-group-flush" aria-label="Produtos para exporta&ccedil;&atilde;o WMC">
+                @foreach (var item in Model.Items)
+                {
+                    <li class="list-group-item d-flex flex-wrap gap-2"><span>@item.ProductNameSnapshot</span><span>C&oacute;digo WMC: <code>@(item.Product?.WmcCode ?? "N&atilde;o informado")</code></span><span>Unidade: @(item.Product?.Unit ?? "N&atilde;o informada")</span></li>
+                }
+            </ul>
+        </section>
         @if (cardOnDelivery)
         {
             <section class="order-payment-card" data-payment-status="@(paymentApproved ? "approved" : "pending")" aria-labelledby="order-payment-title">

@@ -34,7 +34,7 @@ public sealed class WmcOrderFileGenerator
         return new WmcOrderFileResult(true, string.Join(Environment.NewLine, lines), []);
     }
 
-    private static List<string> Validate(Order order)
+    public IReadOnlyList<string> Validate(Order order)
     {
         var errors = new List<string>();
         var paymentDays = GetWmcPaymentDays(order.PaymentTerm);
