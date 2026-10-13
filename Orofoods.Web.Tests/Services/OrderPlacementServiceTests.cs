@@ -94,6 +94,96 @@ public class OrderPlacementServiceTests
     }
 
     [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_creates_order_and_reservations_without_committing_callers_transaction()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Rascunho enviado"),
+            draft.Id,
+            [(fixture.Product.Id, 2)]);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal(draft.Id, result.Order!.SellerOrderDraftId);
+        Assert.Equal(2, Assert.Single(result.Order.Items).Quantity);
+        Assert.Single(await fixture.Db.InventoryReservations.Where(x => x.OrderId == result.Order.Id).ToListAsync());
+        Assert.NotNull(fixture.Db.Database.CurrentTransaction);
+
+        await transaction.RollbackAsync();
+
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+        Assert.Equal(0, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id)
+            .Select(x => x.QuantityReserved).SingleAsync());
+    }
+
+    [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_rejects_the_whole_set_when_one_quantity_is_invalid()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var secondProduct = await fixture.AddAvailableProductAsync("PLACE-002");
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            draft.Id,
+            [(fixture.Product.Id, 1), (secondProduct.Id, 0)]);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_rejects_duplicate_lines_instead_of_merging_them()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            draft.Id,
+            [(fixture.Product.Id, 1), (fixture.Product.Id, 2)]);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_rejects_below_minimum_instead_of_raising_quantity()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Product.MinimumCases = 3;
+        await fixture.Db.SaveChangesAsync();
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            draft.Id,
+            [(fixture.Product.Id, 1)]);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+        Assert.Equal(0, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id)
+            .Select(x => x.QuantityReserved).SingleAsync());
+    }
+
+    [Fact]
     public async Task Card_on_delivery_creates_a_local_pending_payment_without_gateway_metadata()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10, paymentTermCode: "CARD_ON_DELIVERY");
@@ -257,6 +347,42 @@ public class OrderPlacementServiceTests
         public required decimal CurrentPrice { get; init; }
         public required TestSession Session { get; init; }
         public required CartScope Scope { get; init; }
+
+        public async Task<SellerOrderDraft> CreateDraftAsync()
+        {
+            var draft = new SellerOrderDraft
+            {
+                OwnerUserId = SellerUser.Id,
+                SalesRepresentativeId = Customer.SalesRepresentativeId!.Value,
+                CustomerId = Customer.Id,
+                DeliveryAddressId = Address.Id,
+                PaymentTermId = PaymentTerm.Id,
+                Status = SellerOrderDraftStatus.Draft,
+                Version = 1
+            };
+            Db.SellerOrderDrafts.Add(draft);
+            await Db.SaveChangesAsync();
+            return draft;
+        }
+
+        public async Task<Product> AddAvailableProductAsync(string sku)
+        {
+            var product = new Product
+            {
+                Sku = sku,
+                Name = $"Produto {sku}",
+                Brand = "Orofoods",
+                Unit = "caixa",
+                BasePrice = 50m,
+                MinimumCases = 1,
+                IsActive = true,
+                IsAvailable = true,
+                ProductCategory = new ProductCategory { Name = $"Categoria {sku}", Slug = sku.ToLowerInvariant() }
+            };
+            Db.AddRange(product, new ProductInventory { Product = product, QuantityOnHand = 10 });
+            await Db.SaveChangesAsync();
+            return product;
+        }
 
         public static async Task<PlacementFixture> CreateAsync(int availableQuantity, string paymentTermCode = "PIX")
         {

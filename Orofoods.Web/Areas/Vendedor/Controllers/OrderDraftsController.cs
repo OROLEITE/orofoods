@@ -19,6 +19,7 @@ public sealed class OrderDraftsController(
     SellerWorkspaceService workspaceService,
     SalesRepresentativeAccessService accessService,
     IPaymentEligibilityService paymentEligibilityService,
+    SellerOrderDraftSubmissionService submissionService,
     ApplicationDbContext db) : Controller
 {
     [HttpGet("/Vendedor/Rascunhos")]
@@ -196,6 +197,37 @@ public sealed class OrderDraftsController(
         return await ReturnSaveFormAsync(id, form, cancellationToken);
     }
 
+    [HttpPost("/Vendedor/Rascunhos/{id:int}/Enviar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Submit(int id, SellerOrderDraftSubmitForm form, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            TempData["SellerDraftError"] = "Não foi possível validar a versão do rascunho. Reabra-o antes de enviar.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        var result = await submissionService.SubmitAsync(User, id, form.ExpectedVersion, cancellationToken);
+        if (result.Succeeded && result.OrderNumber is not null)
+        {
+            TempData["SellerDraftNotice"] = $"Pedido {result.OrderNumber} enviado e registrado na Orofoods.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        if (result.ErrorCode == SellerOrderDraftErrorCodes.DraftNotFound)
+        {
+            return NotFound();
+        }
+
+        if (result.ErrorCode == SellerOrderDraftErrorCodes.CustomerNotInPortfolio)
+        {
+            return Forbid();
+        }
+
+        TempData["SellerDraftError"] = result.ErrorMessage ?? "Não foi possível enviar o pedido. O rascunho continua editável.";
+        return RedirectToAction(nameof(Edit), new { id });
+    }
+
     private async Task<IActionResult> ReturnCreateFormAsync(SellerOrderDraftCreateForm form, CancellationToken cancellationToken)
     {
         if (form.CustomerId <= 0 || await accessService.GetSellerCartScopeAsync(User, form.CustomerId, cancellationToken) is null)
@@ -290,6 +322,8 @@ public sealed class OrderDraftsController(
         {
             DraftId = draft?.Id,
             Status = draft?.Status,
+            SubmittedOrderId = draft?.SubmittedOrderId,
+            SubmittedOrderNumber = draft?.SubmittedOrderNumber,
             CreateRequestKey = createRequestKey,
             ExpectedVersion = draft?.Version ?? 0,
             CustomerId = customerId,

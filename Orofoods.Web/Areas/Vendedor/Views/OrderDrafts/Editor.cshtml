@@ -94,12 +94,25 @@
             }
             @if (Model.Status == Orofoods.Web.Models.Orders.SellerOrderDraftStatus.Submitted)
             {
-                <div class="seller-order-drafts__notice seller-order-drafts__notice--success" role="status">Pedido enviado. Este rascunho não pode mais ser editado.</div>
+                <div class="seller-order-drafts__notice seller-order-drafts__notice--success" role="status">
+                    Pedido @(Model.SubmittedOrderNumber is null ? "enviado" : $"#{Model.SubmittedOrderNumber}") registrado na Orofoods. Este rascunho não pode mais ser editado.
+                    @if (Model.SubmittedOrderId is int submittedOrderId)
+                    {
+                        <a asp-area="Vendedor" asp-controller="Orders" asp-action="Details" asp-route-customerId="@Model.CustomerId" asp-route-orderId="@submittedOrderId">Ver pedido</a>
+                    }
+                </div>
             }
 
             @if (isEditable)
             {
                 var formAction = Model.IsPersisted ? "Save" : "Create";
+                @if (Model.IsPersisted)
+                {
+                    <form id="seller-order-submit-form" method="post" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Submit" asp-route-id="@Model.DraftId">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ExpectedVersion" value="@Model.ExpectedVersion" />
+                    </form>
+                }
                 <form id="seller-order-draft-form" class="seller-order-drafts__form" method="post" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="@formAction" asp-route-id="@Model.DraftId" data-product-search-url="@Model.ProductSearchUrl" data-customer-id="@Model.CustomerId" data-persisted="@Model.IsPersisted.ToString().ToLowerInvariant()">
                     @Html.AntiForgeryToken()
                     @if (Model.IsPersisted)
@@ -257,13 +270,13 @@
                             <button id="save-draft-button" class="btn seller-order-drafts__save" type="submit">
                                 <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Salvar rascunho
                             </button>
-                            <button class="btn seller-order-drafts__send" type="button" disabled aria-disabled="true" title="Disponível na Etapa 3">
+                            <button id="submit-seller-order-button" class="btn seller-order-drafts__send" type="submit" form="seller-order-submit-form" disabled aria-disabled="true" title="A tela precisa carregar para habilitar o envio seguro">
                                 <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar pedido
                             </button>
                         </div>
                     </div>
                 </form>
-                <p class="seller-order-drafts__stage-note">O envio definitivo será habilitado na Etapa 3. Salvar rascunho não cria um pedido nem reserva estoque.</p>
+                <p class="seller-order-drafts__stage-note">O envio definitivo revalida preço e estoque e cria o pedido na Orofoods. Salve alterações antes de enviar; o envio não inicia cobrança.</p>
             }
             else
             {

@@ -482,6 +482,7 @@ public sealed class SellerOrderDraftService(
             draft.UpdatedAt,
             draft.SubmittedAt,
             draft.SubmittedOrder?.Id,
+            draft.SubmittedOrder?.Number,
             draft.Items.OrderBy(x => x.Id).Select(item => new SellerOrderDraftItemView(
                 item.ProductId,
                 item.Product?.Sku ?? "",
@@ -557,6 +558,7 @@ public sealed record SellerOrderDraftView(
     DateTime UpdatedAt,
     DateTime? SubmittedAt,
     int? SubmittedOrderId,
+    string? SubmittedOrderNumber,
     IReadOnlyList<SellerOrderDraftItemView> Items);
 
 public sealed record SellerOrderDraftItemView(
@@ -584,4 +586,6 @@ public static class SellerOrderDraftErrorCodes
     public const string PaymentTermNotAllowed = "payment_term_not_allowed";
     public const string ItemNotFound = "item_not_found";
     public const string CreateRequestKeyConflict = "create_request_key_conflict";
+    public const string InvalidOrder = "invalid_order";
+    public const string SubmissionFailed = "submission_failed";
 }

@@ -25,17 +25,21 @@ public sealed class SellerOrderDraftEntryContractTests
             .ToArray();
         Assert.NotEmpty(postActions);
         Assert.All(postActions, method => Assert.NotNull(method.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>()));
-        Assert.DoesNotContain(postActions, method => method.Name.Contains("Submit", StringComparison.OrdinalIgnoreCase)
-            || method.Name.Contains("Send", StringComparison.OrdinalIgnoreCase));
+        var submit = Assert.Single(postActions, method => method.Name == "Submit");
+        Assert.Contains("/Vendedor/Rascunhos/{id:int}/Enviar", submit.GetCustomAttribute<HttpPostAttribute>()!.Template);
     }
 
     [Fact]
-    public void Entry_view_keeps_discount_locked_and_stage_three_send_disabled()
+    public void Entry_view_posts_submission_with_antiforgery_and_only_saved_drafts_can_send()
     {
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
 
         Assert.Contains("Enviar pedido", view, StringComparison.Ordinal);
-        Assert.Contains("disabled", view, StringComparison.Ordinal);
+        Assert.Contains("id=\"seller-order-submit-form\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-action=\"Submit\"", view, StringComparison.Ordinal);
+        Assert.Contains("form=\"seller-order-submit-form\"", view, StringComparison.Ordinal);
+        Assert.Contains("form=\"seller-order-submit-form\" disabled aria-disabled=\"true\"", view, StringComparison.Ordinal);
+        Assert.Contains("@Html.AntiForgeryToken()", view, StringComparison.Ordinal);
         Assert.Contains("0%", view, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"@formAction\"", view, StringComparison.Ordinal);
         Assert.Contains("name=\"ExpectedVersion\"", view, StringComparison.Ordinal);
@@ -79,6 +83,17 @@ public sealed class SellerOrderDraftEntryContractTests
         Assert.Contains("RemovedProductIds", script, StringComparison.Ordinal);
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
         Assert.Contains("name=\"ExpectedVersion\"", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Entry_script_enables_send_only_after_initialization_and_disables_it_for_dirty_drafts()
+    {
+        var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+
+        Assert.Contains("if (persisted && submitButton)", script, StringComparison.Ordinal);
+        Assert.Contains("submitButton.disabled = false", script, StringComparison.Ordinal);
+        Assert.Contains("submitButton.disabled = true", script, StringComparison.Ordinal);
+        Assert.Contains("submitButton.title = 'Salve as altera", script, StringComparison.Ordinal);
     }
 
     [Fact]

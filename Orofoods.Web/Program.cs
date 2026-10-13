@@ -175,6 +175,7 @@ builder.Services.AddScoped<SalesRepresentativeAccessService>();
 builder.Services.AddScoped<SellerWorkspaceService>();
 builder.Services.AddScoped<SellerCatalogService>();
 builder.Services.AddScoped<SellerOrderDraftService>();
+builder.Services.AddScoped<SellerOrderDraftSubmissionService>();
 builder.Services.AddScoped<SellerCheckoutService>();
 builder.Services.AddScoped<SellerOrderHistoryService>();
 builder.Services.AddScoped<AdminCustomerContextService>();

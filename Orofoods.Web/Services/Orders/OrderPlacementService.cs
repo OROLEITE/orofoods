@@ -14,7 +14,7 @@ namespace Orofoods.Web.Services.Orders;
 public sealed record OrderPlacementCommand(
     int AddressId,
     int PaymentTermId,
-    DateTime RequestedDeliveryDate,
+    DateTime? RequestedDeliveryDate,
     string? Notes,
     string? CheckoutAttemptKey = null);
 
@@ -80,6 +80,68 @@ public sealed class OrderPlacementService(
             }
         }
 
+        var result = await PlaceLinesCoreAsync(
+            customerId,
+            createdByUserId,
+            command,
+            requestedLines,
+            sellerOrderDraftId: null,
+            strictDraftLines: false,
+            ownsTransaction: true,
+            cancellationToken);
+
+        if (result.Succeeded && clearCart && session is not null)
+        {
+            cartService.Clear(session, scope ?? CartScope.CustomerSelfService);
+        }
+
+        return result;
+    }
+
+    public Task<OrderPlacementResult> PlaceDraftLinesWithinTransactionAsync(
+        int customerId,
+        string createdByUserId,
+        OrderPlacementCommand command,
+        int sellerOrderDraftId,
+        IReadOnlyList<(int ProductId, int Quantity)> persistedLines,
+        CancellationToken cancellationToken = default)
+    {
+        if (db.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("A submissão de rascunho exige uma transação externa ativa.");
+        }
+
+        if (sellerOrderDraftId <= 0)
+        {
+            return Task.FromResult(OrderPlacementResult.Failure("O vínculo do rascunho é inválido."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(command.CheckoutAttemptKey))
+        {
+            return Task.FromResult(OrderPlacementResult.Failure("O envio do rascunho não aceita uma chave de checkout."));
+        }
+
+        return PlaceLinesCoreAsync(
+            customerId,
+            createdByUserId,
+            command,
+            persistedLines,
+            sellerOrderDraftId,
+            strictDraftLines: true,
+            ownsTransaction: false,
+            cancellationToken);
+    }
+
+    private async Task<OrderPlacementResult> PlaceLinesCoreAsync(
+        int customerId,
+        string createdByUserId,
+        OrderPlacementCommand command,
+        IReadOnlyList<(int ProductId, int Quantity)> requestedLines,
+        int? sellerOrderDraftId,
+        bool strictDraftLines,
+        bool ownsTransaction,
+        CancellationToken cancellationToken)
+    {
         var customer = await db.Customers
             .Include(x => x.Addresses)
             .SingleOrDefaultAsync(x => x.Id == customerId && x.IsActive && x.Status == CustomerStatus.Approved, cancellationToken);
@@ -106,29 +168,60 @@ public sealed class OrderPlacementService(
             return OrderPlacementResult.Failure("Condição de pagamento inválida.");
         }
 
-        var lines = requestedLines
-            .Where(x => x.ProductId > 0 && x.Quantity > 0)
-            .GroupBy(x => x.ProductId)
-            .Select(x => (ProductId: x.Key, Quantity: x.Sum(item => item.Quantity)))
-            .ToList();
+        List<(int ProductId, int Quantity)> lines;
+        if (strictDraftLines)
+        {
+            if (requestedLines.Count == 0)
+            {
+                return OrderPlacementResult.Failure("Adicione ao menos um produto ao rascunho.");
+            }
+
+            if (requestedLines.Any(x => x.ProductId <= 0 || x.Quantity <= 0))
+            {
+                return OrderPlacementResult.Failure("Todos os produtos do rascunho precisam ter uma quantidade válida.");
+            }
+
+            if (requestedLines.Select(x => x.ProductId).Distinct().Count() != requestedLines.Count)
+            {
+                return OrderPlacementResult.Failure("O rascunho contém produtos duplicados. Salve-o novamente antes do envio.");
+            }
+
+            lines = requestedLines.ToList();
+        }
+        else
+        {
+            lines = requestedLines
+                .Where(x => x.ProductId > 0 && x.Quantity > 0)
+                .GroupBy(x => x.ProductId)
+                .Select(x => (ProductId: x.Key, Quantity: x.Sum(item => item.Quantity)))
+                .ToList();
+        }
+
         if (lines.Count == 0)
         {
             return OrderPlacementResult.Failure("Adicione ao menos um produto.");
         }
 
+        var productIds = lines.Select(x => x.ProductId).ToArray();
         var products = await db.Products.AsNoTracking()
-            .Where(x => lines.Select(line => line.ProductId).Contains(x.Id) && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
+            .Where(x => productIds.Contains(x.Id) && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         if (products.Count != lines.Count)
         {
             return OrderPlacementResult.Failure("Um ou mais produtos não estão disponíveis.");
         }
 
-        var prices = await priceService.GetPricesAsync(customerId, lines.Select(x => x.ProductId), cancellationToken);
+        if (strictDraftLines && lines.Any(line => line.Quantity < products[line.ProductId].MinimumCases))
+        {
+            return OrderPlacementResult.Failure("A quantidade de um ou mais produtos está abaixo do mínimo de caixas.");
+        }
+
+        var prices = await priceService.GetPricesAsync(customerId, productIds, cancellationToken);
         var order = new Order
         {
             CustomerId = customerId,
             SalesRepresentativeId = customer.SalesRepresentativeId,
+            SellerOrderDraftId = sellerOrderDraftId,
             CheckoutAttemptKey = string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) ? null : command.CheckoutAttemptKey,
             CreatedByUserId = createdByUserId,
             DeliveryAddressId = command.AddressId,
@@ -149,7 +242,7 @@ public sealed class OrderPlacementService(
         foreach (var line in lines)
         {
             var product = products[line.ProductId];
-            var quantity = Math.Max(line.Quantity, product.MinimumCases);
+            var quantity = strictDraftLines ? line.Quantity : Math.Max(line.Quantity, product.MinimumCases);
             var unitPrice = prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice);
             order.Items.Add(new OrderItem
             {
@@ -174,9 +267,12 @@ public sealed class OrderPlacementService(
             return OrderPlacementResult.Failure("O total ultrapassa o crédito disponível.");
         }
 
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         try
         {
+            await using var transaction = ownsTransaction
+                ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+                : null;
+
             db.Orders.Add(order);
             await db.SaveChangesAsync(cancellationToken);
 
@@ -202,13 +298,14 @@ public sealed class OrderPlacementService(
                 });
             }
             await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException exception) when (
-            !string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) && IsCheckoutAttemptUniqueViolation(exception))
+            ownsTransaction && !string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) && IsCheckoutAttemptUniqueViolation(exception))
         {
-            await transaction.RollbackAsync(CancellationToken.None);
-            await transaction.DisposeAsync();
             DetachOrderGraph(order);
 
             var existingOrder = await FindCheckoutAttemptAsync(customerId, command.CheckoutAttemptKey, cancellationToken);
@@ -218,11 +315,6 @@ public sealed class OrderPlacementService(
             }
 
             return new OrderPlacementResult(existingOrder, [], WasIdempotentReplay: true);
-        }
-
-        if (clearCart && session is not null)
-        {
-            cartService.Clear(session, scope ?? CartScope.CustomerSelfService);
         }
 
         return new(order, []);

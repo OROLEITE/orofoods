@@ -14,6 +14,8 @@
     const removalStatus = document.getElementById('draft-removal-status');
     const emptyItems = document.getElementById('draft-items-empty');
     const saveButton = document.getElementById('save-draft-button');
+    const submitForm = document.getElementById('seller-order-submit-form');
+    const submitButton = document.getElementById('submit-seller-order-button');
     const persisted = form.dataset.persisted === 'true';
     const maximumPageSize = 20;
     let searchTimer;
@@ -61,6 +63,11 @@
 
     function markDirty() {
         isDirty = true;
+        if (persisted && submitButton) {
+            submitButton.disabled = true;
+            submitButton.setAttribute('aria-disabled', 'true');
+            submitButton.title = 'Salve as alterações antes de enviar';
+        }
     }
 
     function makeNode(tagName, className, text) {
@@ -359,6 +366,13 @@
         saveButton.textContent = 'Salvando rascunho…';
     });
 
+    submitForm?.addEventListener('submit', () => {
+        if (!submitButton) return;
+        submitButton.disabled = true;
+        submitButton.setAttribute('aria-busy', 'true');
+        submitButton.textContent = 'Enviando pedido...';
+    });
+
     window.addEventListener('beforeunload', event => {
         if (!isDirty) return;
         event.preventDefault();
@@ -377,4 +391,9 @@
     window.addEventListener('resize', updateKeyboardVisibility);
     window.visualViewport?.addEventListener('resize', updateKeyboardVisibility);
     updateSummary();
+    if (persisted && submitButton) {
+        submitButton.disabled = false;
+        submitButton.setAttribute('aria-disabled', 'false');
+        submitButton.title = 'Enviar este rascunho como pedido definitivo';
+    }
 })();
