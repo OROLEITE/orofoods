@@ -134,10 +134,7 @@
                         <input id="wmc-reject-@Model.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da rejeição" />
                         <button class="btn btn-sm btn-outline-danger" type="submit">Registrar rejeição</button>
                     </form>
-                    <form asp-action="ConfirmWmcImported" method="post">
-                        <input type="hidden" name="id" value="@Model.Id" />
-                        <button class="btn btn-sm btn-outline-success" type="submit" onclick="return confirm('Confirma que este pedido foi importado no WMC?');">Confirmar importação</button>
-                    </form>
+                    <button class="btn btn-sm btn-success" type="button" data-bs-toggle="modal" data-bs-target="#confirm-wmc-import-modal" aria-haspopup="dialog" aria-controls="confirm-wmc-import-modal">Confirmar importação</button>
                 }
                 @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Rejected && !wmcState.RequiresManualReview)
                 {
@@ -392,8 +389,61 @@
         </section>
         </div>
     </div>
+    @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported && !wmcState.RequiresManualReview)
+    {
+        <div class="modal fade wmc-import-confirm-modal" id="confirm-wmc-import-modal" tabindex="-1" aria-labelledby="confirm-wmc-import-modal-title" aria-describedby="confirm-wmc-import-modal-message" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="confirm-wmc-import-modal-title">Confirmar importação no WMC</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="wmc-import-confirm-lead">Confirme somente se você verificou que este pedido foi importado no WMC.</p>
+                        <dl class="wmc-import-confirm-summary">
+                            <div><dt>Pedido Orofoods</dt><dd>@Model.Number</dd></div>
+                            <div><dt>Estado WMC atual</dt><dd><span class="wmc-import-confirm-status">TXT gerado — aguardando importação</span></dd></div>
+                        </dl>
+                        <p id="confirm-wmc-import-modal-message" class="wmc-import-confirm-message">Esta confirmação registra o estado informado no Orofoods. Ela não envia nem importa o pedido novamente.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <form asp-action="ConfirmWmcImported" method="post" data-wmc-confirmation-form>
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-success" data-wmc-confirmation-submit><span data-wmc-confirmation-label>Confirmar importação</span></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </section>
 <script src="~/js/admin-point-payment.js" asp-append-version="true" defer></script>
+
+@section Scripts {
+    <script>
+        (() => {
+            const form = document.querySelector("[data-wmc-confirmation-form]");
+            if (!form) return;
+
+            form.addEventListener("submit", event => {
+                if (form.dataset.wmcSubmitting === "true") {
+                    event.preventDefault();
+                    return;
+                }
+
+                form.dataset.wmcSubmitting = "true";
+                const submitButton = form.querySelector("[data-wmc-confirmation-submit]");
+                if (!submitButton) return;
+
+                submitButton.disabled = true;
+                submitButton.setAttribute("aria-disabled", "true");
+                const label = submitButton.querySelector("[data-wmc-confirmation-label]");
+                if (label) label.textContent = "Confirmando...";
+            });
+        })();
+    </script>
+}
 
 @section Head {
     <link rel="stylesheet" href="~/css/admin-order-details.css" asp-append-version="true" />

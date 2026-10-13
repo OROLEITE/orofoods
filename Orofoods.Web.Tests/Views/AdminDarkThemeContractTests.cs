@@ -221,7 +221,8 @@ public class AdminDarkThemeContractTests
         Assert.Contains("<button class=\"btn btn-primary\">Atualizar status</button>", detail);
         Assert.Contains("class=\"order-details-wmc-form\"", detail);
         Assert.Contains("@Model.IntegrationError", detail);
-        Assert.DoesNotContain("class=\"modal", list + detail);
+        Assert.DoesNotContain("class=\"modal", list);
+        Assert.Contains("class=\"modal fade wmc-import-confirm-modal", detail);
         var styles = ReadStyles("admin-orders.css");
         Assert.Contains(".orders-index-compact .orders-filter-card", listStyles);
         Assert.Contains("padding: 13px 16px", listStyles);

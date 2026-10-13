@@ -49,6 +49,27 @@ public class OrderWmcAuditViewTests
     }
 
     [Fact]
+    public void Confirming_wmc_import_uses_an_accessible_bootstrap_modal_and_keeps_the_antiforgery_post()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.DoesNotContain("onclick=\"return confirm(", view);
+        Assert.Contains("data-bs-toggle=\"modal\"", view);
+        Assert.Contains("data-bs-target=\"#confirm-wmc-import-modal\"", view);
+        Assert.Contains("id=\"confirm-wmc-import-modal\"", view);
+        Assert.Contains("data-wmc-confirmation-form", view);
+        Assert.Contains("asp-action=\"ConfirmWmcImported\" method=\"post\"", view);
+        Assert.Contains("name=\"id\" value=\"@Model.Id\"", view);
+        Assert.Contains("@Model.Number", view);
+        Assert.Contains("TXT gerado — aguardando importação", view);
+        Assert.Contains("form.dataset.wmcSubmitting", view);
+        Assert.Contains("html[data-theme=\"dark\"]", styles);
+        Assert.Contains("@media (max-width: 575.98px)", styles);
+    }
+
+    [Fact]
     public void Order_details_only_offer_integration_reprocessing_for_approved_orders_and_break_audit_ties()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
