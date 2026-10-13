@@ -213,7 +213,15 @@ public class WmcOrderFileGeneratorTests
     [Fact]
     public void Uses_the_configured_supplier_cnpj_in_record_019()
     {
-        const string configuredSupplierCnpj = "11222333000181";
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        using var appSettings = System.Text.Json.JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(projectPath, "appsettings.json")));
+        var configuredSupplierCnpj = appSettings.RootElement
+            .GetProperty("WmcOrderFile")
+            .GetProperty("SupplierCnpj")
+            .GetString()!;
+
+        Assert.Equal("51735297000174", configuredSupplierCnpj);
         var order = new Order
         {
             Number = "ORO-2026-000779",
