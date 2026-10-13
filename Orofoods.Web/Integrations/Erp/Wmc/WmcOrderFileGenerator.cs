@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Pricing;
 
@@ -8,6 +9,20 @@ namespace Orofoods.Web.Integrations.Erp.Wmc;
 public sealed class WmcOrderFileGenerator
 {
     private static readonly int[] SupportedPaymentDays = [0, 7, 14];
+    private readonly string supplierCnpj;
+
+    public WmcOrderFileGenerator(IOptions<WmcOrderFileOptions> options)
+    {
+        if (!WmcOrderFileOptions.HasValidSupplierCnpj(options.Value))
+        {
+            throw new OptionsValidationException(
+                WmcOrderFileOptions.SectionName,
+                typeof(WmcOrderFileOptions),
+                ["WmcOrderFile:SupplierCnpj deve conter exatamente 14 digitos."]);
+        }
+
+        supplierCnpj = options.Value.SupplierCnpj;
+    }
 
     public WmcOrderFileResult Build(Order order)
     {
@@ -17,12 +32,11 @@ public sealed class WmcOrderFileGenerator
             return new WmcOrderFileResult(false, null, errors);
         }
 
-        var customerCode = order.Customer!.WmcCode!.Trim();
         var lines = new List<string>
         {
-            BuildHeader(order),
+            BuildHeader(order, supplierCnpj),
             BuildPaymentRecord021(order),
-            BuildBlankRecord("030", 122)
+            BuildDiscountChargesRecord(order)
         };
 
         foreach (var item in order.Items.Select((value, index) => (value, index)))
@@ -30,7 +44,7 @@ public sealed class WmcOrderFileGenerator
             lines.Add(BuildItemRecord(item.value, item.index + 1));
         }
 
-        lines.Add(BuildTrailer(customerCode));
+        lines.Add(BuildTrailer(order));
         return new WmcOrderFileResult(true, string.Join(Environment.NewLine, lines), []);
     }
 
@@ -43,9 +57,10 @@ public sealed class WmcOrderFileGenerator
             errors.Add("WMC_PAYMENT_TERM_UNSUPPORTED");
         }
 
-        if (string.IsNullOrWhiteSpace(order.Customer?.WmcCode))
+        var customerCnpj = DigitsOnly(order.Customer?.Cnpj ?? string.Empty);
+        if (customerCnpj.Length != 14)
         {
-            errors.Add("O codigo WMC do cliente e obrigatorio para exportar o pedido.");
+            errors.Add("WMC_CUSTOMER_CNPJ_INVALID");
         }
 
         foreach (var item in order.Items)
@@ -59,18 +74,30 @@ public sealed class WmcOrderFileGenerator
         return errors;
     }
 
-    private static string BuildHeader(Order order)
+    private static string BuildHeader(Order order, string supplierCnpj)
     {
         var orderReference = DigitsOnly(order.Number);
         var createdAt = order.CreatedAt == default ? DateTime.UtcNow : order.CreatedAt;
+        var deliveryDate = order.RequestedDeliveryDate?.Date ?? createdAt.Date.AddDays(7);
         var payload = new StringBuilder("019");
         payload.Append("  001");
-        payload.Append(FixedRight(orderReference, 15));
+        payload.Append(FixedRight(orderReference, 20));
         payload.Append(FixedRight(orderReference, 20));
         payload.Append(createdAt.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture));
-        payload.Append(createdAt.AddDays(7).ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture));
-        payload.Append(createdAt.AddDays(7).ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture));
+        payload.Append(deliveryDate.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture));
+        payload.Append(deliveryDate.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture));
+        payload.Append(Spaces(82));
+        payload.Append(supplierCnpj);
+        var customerCnpj = FixedLeft(DigitsOnly(order.Customer!.Cnpj), 14);
+        payload.Append(customerCnpj);
+        payload.Append(customerCnpj);
+        payload.Append(customerCnpj);
+        payload.Append(Spaces(3));
+        payload.Append(Zeros(14));
+        payload.Append(Spaces(30));
         payload.Append("CIF");
+        payload.Append("000");
+        payload.Append(Spaces(40));
         return FixedRight(payload.ToString(), 315);
     }
 
@@ -98,27 +125,71 @@ public sealed class WmcOrderFileGenerator
     private static string BuildItemRecord(OrderItem item, int sequence)
     {
         var product = item.Product!;
-        var payload = new StringBuilder("040");
-        payload.Append(sequence.ToString("000", CultureInfo.InvariantCulture));
-        payload.Append("00000   EN ");
-        payload.Append(FixedRight(product.WmcCode!.Trim(), 13));
-        payload.Append(FixedRight(NormalizeDescription(item.ProductNameSnapshot), 60));
-        payload.Append(FixedRight(product.Unit.ToUpperInvariant(), 3));
-        payload.Append(FixedLeft(item.Quantity.ToString(CultureInfo.InvariantCulture), 6));
-        payload.Append(FixedLeft(ToCents(item.UnitPrice), 15));
+        var unit = FixedRight(product.Unit.Trim().ToUpperInvariant(), 3);
+        var payload = new StringBuilder("04");
+        payload.Append(sequence.ToString("D4", CultureInfo.InvariantCulture));
+        payload.Append("00000");
+        payload.Append(Spaces(3));
+        payload.Append(Spaces(3));
+        payload.Append(FixedRight(product.WmcCode!.Trim(), 14));
+        payload.Append(FixedRight(NormalizeDescription(item.ProductNameSnapshot), 40));
+        payload.Append(Spaces(20));
+        payload.Append(unit);
+        payload.Append(FixedLeft(ToWholeNumber(product.WmcPackageQuantity ?? 0m), 5));
+        payload.Append(FixedLeft(ToCents(item.Quantity), 15));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(15));
+        payload.Append(Spaces(3));
+        payload.Append(Zeros(5));
+        payload.Append(FixedLeft(ToCents(item.UnitPrice * item.Quantity), 15));
         payload.Append(FixedLeft(ToCents(item.Subtotal), 15));
+        payload.Append(FixedLeft(ToCents(item.UnitPrice), 15));
+        payload.Append(FixedLeft(ToCents(item.UnitPrice), 15));
+        payload.Append("00001");
+        payload.Append(unit);
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(5));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(5));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(7));
+        payload.Append(Zeros(8));
+        payload.Append(Spaces(10));
         return FixedRight(payload.ToString(), 330);
     }
 
-    private static string BuildTrailer(string customerCode)
+    private static string BuildDiscountChargesRecord(Order order)
     {
-        var payload = new StringBuilder("090");
-        payload.Append(FixedLeft(customerCode, 12));
-        payload.Append(FixedLeft(customerCode, 12));
-        return FixedRight(payload.ToString(), 122);
+        var payload = new StringBuilder("03");
+        payload.Append(Zeros(5 + 15));
+        payload.Append(Zeros(5 + 15));
+        payload.Append(Zeros(5 + 15));
+        payload.Append(Zeros(5 + 15));
+        payload.Append(Zeros(5));
+        payload.Append(FixedLeft(ToCents(order.Freight), 15));
+        payload.Append(Zeros(5 + 15));
+        return payload.ToString();
     }
 
-    private static string BuildBlankRecord(string recordType, int length) => FixedRight(recordType, length, '0');
+    private static string BuildTrailer(Order order)
+    {
+        var payload = new StringBuilder("09");
+        payload.Append(FixedLeft(ToCents(order.Subtotal), 15));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(15));
+        payload.Append(FixedLeft(ToCents(order.Freight), 15));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(15));
+        payload.Append(Zeros(15));
+        payload.Append(FixedLeft(ToCents(order.Total), 15));
+        return payload.ToString();
+    }
+
+    private static string Spaces(int length) => new(' ', length);
+
+    private static string Zeros(int length) => new('0', length);
 
     private static string FixedRight(string value, int length, char padding = ' ') =>
         value.Length > length ? value[..length] : value.PadRight(length, padding);
@@ -126,7 +197,7 @@ public sealed class WmcOrderFileGenerator
     private static string FixedLeft(string value, int length) =>
         value.Length > length ? value[^length..] : value.PadLeft(length, '0');
 
-    private static string DigitsOnly(string value) => new(value.Where(char.IsDigit).ToArray());
+    private static string DigitsOnly(string value) => new(value.Where(char.IsAsciiDigit).ToArray());
 
     private static string NormalizeDescription(string value) => new(value
         .ToUpperInvariant()
@@ -135,6 +206,8 @@ public sealed class WmcOrderFileGenerator
         .ToArray());
 
     private static string ToCents(decimal value) => decimal.Truncate(value * 100m).ToString("0", CultureInfo.InvariantCulture);
+
+    private static string ToWholeNumber(decimal value) => decimal.Truncate(value).ToString("0", CultureInfo.InvariantCulture);
 }
 
 public sealed record WmcOrderFileResult(bool Succeeded, string? Content, IReadOnlyList<string> Errors);

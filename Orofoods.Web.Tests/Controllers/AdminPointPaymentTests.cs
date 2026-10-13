@@ -158,7 +158,7 @@ public sealed class AdminPointPaymentTests
             db,
             service,
             integrationService: null!,
-            new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db)),
+            new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db)),
             point,
             Options.Create(new MercadoPagoPointOptions { Enabled = enabled, Environment = environment, StagingRealEnabled = stagingRealEnabled, ProductionEnabled = productionEnabled, AccessToken = "fake" }),
             paymentOptions,

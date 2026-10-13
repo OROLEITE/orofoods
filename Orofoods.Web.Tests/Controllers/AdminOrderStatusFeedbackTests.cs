@@ -38,7 +38,7 @@ public sealed class AdminOrderStatusFeedbackTests
             new OrderReservationService(db),
             new PaymentEligibilityService(db, eligibility),
             new PaymentService(db, eligibility, new PendingBoletoProvider()));
-        var wmcExport = new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db));
+        var wmcExport = new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
         var controller = new OrdersController(db, service, integrationService: null!, wmcManualExportService: wmcExport, pointPaymentService: null!, Options.Create(new MercadoPagoPointOptions()), Options.Create(new PaymentEligibilityOptions()), hostEnvironment: null!);
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id)], "test")) };
         controller.ControllerContext = new ControllerContext { HttpContext = context };

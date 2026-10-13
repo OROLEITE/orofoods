@@ -28,7 +28,8 @@ public class OrdersController(
     {
         var query = db.Orders.AsNoTracking().AsSplitQuery().Include(x => x.Customer).Include(x => x.PaymentTerm)
             .Include(x => x.Items).ThenInclude(x => x.Product)
-            .Include(x => x.WmcOrderExportState).Include(x => x.WmcExportAudits).AsQueryable();
+            .Include(x => x.WmcOrderExportState).ThenInclude(x => x!.CurrentArtifact)
+            .Include(x => x.WmcExportAudits).AsQueryable();
         if (!string.IsNullOrWhiteSpace(q)) query = query.Where(x => x.Number.Contains(q) || x.Customer!.TradeName.Contains(q));
         if (Enum.TryParse<OrderStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
         var descending = !string.Equals(direction, "asc", StringComparison.OrdinalIgnoreCase);
@@ -223,7 +224,7 @@ public class OrdersController(
         var result = await wmcManualExportService.ExportAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
         if (result.Disposition == WmcManualExportDisposition.Exported)
         {
-            return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", result.FileName!);
+            return WmcFile(result);
         }
 
         if (result.Disposition == WmcManualExportDisposition.NotFound)
@@ -234,6 +235,49 @@ public class OrdersController(
         TempData["WmcManualExportError"] = result.Error ?? "Não foi possível exportar o pedido para o WMC.";
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadWmcTxt(int id, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.DownloadAsync(id, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Downloaded)
+        {
+            return WmcFile(result);
+        }
+        if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
+        TempData["WmcManualExportError"] = result.Error;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectWmcTxt(int id, string? reason, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.RejectAsync(id, reason,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Rejected && result.Error is null)
+            TempData["WmcManualExportMessage"] = "Rejeição registrada. O TXT anterior e as auditorias foram preservados.";
+        else
+            TempData["WmcManualExportError"] = result.Error;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegenerateWmcTxt(int id, string? reason, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.RegenerateRejectedAsync(id, reason,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
+            return WmcFile(result);
+        if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
+        TempData["WmcManualExportError"] = result.Error;
+        return RedirectToAction(nameof(Index));
+    }
+
+    private static FileContentResult WmcFile(WmcManualExportResult result) =>
+        new(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8")
+        {
+            FileDownloadName = result.FileName!
+        };
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfirmWmcImported(int id, CancellationToken cancellationToken)

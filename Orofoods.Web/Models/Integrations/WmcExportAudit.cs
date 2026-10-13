@@ -14,7 +14,9 @@ public enum WmcExportOutcome
     Unknown,
     Generated,
     Available,
-    Failed
+    Failed,
+    Rejected,
+    Regenerated
 }
 
 public class WmcExportAudit

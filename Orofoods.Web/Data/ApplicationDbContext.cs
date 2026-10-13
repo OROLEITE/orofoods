@@ -37,6 +37,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<WmcExportAudit> WmcExportAudits => Set<WmcExportAudit>();
     public DbSet<WmcOrderExportState> WmcOrderExportStates => Set<WmcOrderExportState>();
+    public DbSet<WmcManualExportArtifact> WmcManualExportArtifacts => Set<WmcManualExportArtifact>();
     public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
     public DbSet<WmcInitialLoadReleaseAudit> WmcInitialLoadReleaseAudits => Set<WmcInitialLoadReleaseAudit>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
@@ -310,12 +311,33 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WmcOrderExportState>()
             .ToTable(table => table.HasCheckConstraint(
                 "CK_WmcOrderExportStates_Status",
-                "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Imported', 'Error')"));
+                "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Rejected', 'Imported', 'Error')"));
         builder.Entity<WmcOrderExportState>()
             .HasOne(x => x.Order)
             .WithOne(x => x.WmcOrderExportState)
             .HasForeignKey<WmcOrderExportState>(x => x.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WmcOrderExportState>()
+            .HasOne(x => x.CurrentArtifact)
+            .WithMany()
+            .HasForeignKey(x => x.CurrentArtifactId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<WmcManualExportArtifact>()
+            .HasIndex(x => x.AttemptId)
+            .IsUnique();
+        builder.Entity<WmcManualExportArtifact>()
+            .HasIndex(x => new { x.OrderId, x.CreatedAt });
+        builder.Entity<WmcManualExportArtifact>()
+            .HasOne(x => x.Order)
+            .WithMany(x => x.WmcManualExportArtifacts)
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WmcManualExportArtifact>()
+            .HasOne(x => x.SupersedesArtifact)
+            .WithMany()
+            .HasForeignKey(x => x.SupersedesArtifactId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);
         builder.Entity<Customer>().Property(x => x.CreditLimit).HasPrecision(12, 2);

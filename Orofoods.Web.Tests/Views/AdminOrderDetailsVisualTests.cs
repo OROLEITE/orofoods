@@ -13,13 +13,38 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("ManualExportDiagnostic", controller);
         Assert.Contains("PaymentTerm?.Code", view);
         Assert.Contains("DaysUntilDue", view);
+        Assert.Contains("Customer?.Cnpj", view);
         Assert.Contains("Customer?.WmcCode", view);
+        Assert.Contains("informativo", view);
         Assert.Contains("Product?.WmcCode", view);
         Assert.Contains("Product?.Unit", view);
         Assert.Contains("WmcOrderExportState", controller);
         Assert.Contains("BlockReason", view);
         Assert.Contains("CanExport", view);
         Assert.DoesNotContain("asp-action=\"SendToWmc\"", view);
+    }
+
+    [Fact]
+    public void Admin_wmc_controls_separate_first_export_download_rejection_and_regeneration()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Index.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-orders-list.css"));
+
+        Assert.Contains("[Area(\"Admin\"), Authorize(Roles = \"Administrador\")]", controller);
+        Assert.Contains("asp-action=\"SendToWmc\"", view);
+        Assert.Contains("TXT gerado &mdash; aguardando importa&ccedil;&atilde;o", view);
+        Assert.Contains("asp-action=\"DownloadWmcTxt\"", view);
+        Assert.Contains("CurrentArtifactId is not null", view);
+        Assert.Contains("asp-action=\"RejectWmcTxt\"", view);
+        Assert.Contains("asp-action=\"RegenerateWmcTxt\"", view);
+        Assert.Contains("maxlength=\"1000\" required", view);
+        Assert.Contains("btn-success wmc-send-button", view);
+        Assert.Contains("min-width: 140px", styles);
+        Assert.Contains("background: transparent", styles);
+        Assert.Contains("[HttpGet]", controller);
+        Assert.Contains("[HttpPost, ValidateAntiForgeryToken]", controller);
     }
 
     [Fact]

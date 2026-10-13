@@ -109,7 +109,7 @@ public class WmcFileDropConcurrencyTests
 
     private static WmcFileDropErpOrderIntegration CreateAdapter(ApplicationDbContext db, string outputDirectory) =>
         new(Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = outputDirectory }),
-            new WmcOrderFileGenerator(), new WmcExportAuditService(db));
+            WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
 
     private sealed class ConcurrentAuditReadBarrier : DbCommandInterceptor
     {

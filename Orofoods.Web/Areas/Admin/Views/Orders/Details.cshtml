@@ -31,10 +31,23 @@
         _ => "Aguardando pagamento"
     };
     var wmcManualExportDiagnostic = (WmcManualExportDiagnostic)ViewBag.WmcManualExportDiagnostic;
+    const int historyPreviewCount = 3;
+    void RenderStatusEntry(Orofoods.Web.Models.Orders.OrderStatusHistory entry)
+    {
+        <li class="list-group-item order-history-entry"><div><strong>@entry.Status.ToDisplayName()</strong><small>@(entry.ChangedByUser?.Email ?? "Sistema")</small></div><time>@entry.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time></li>
+    }
+    void RenderWmcEntry(Orofoods.Web.Models.Integrations.WmcExportAudit entry)
+    {
+        <li class="list-group-item order-history-entry">
+            <div><strong>@(entry.Outcome switch { Orofoods.Web.Models.Integrations.WmcExportOutcome.Generated => "TXT gerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Available => "Arquivo disponibilizado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Failed => "Falha na exportação", _ => entry.Succeeded ? "TXT gerado" : "Falha na exportação" })</strong><small>@(entry.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Automatic ? "Automática" : "Manual")</small>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (entry.GeneratedAt is not null) { <small>TXT gerado @entry.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
+            <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+        </li>
+    }
 }
 
 <section class="section admin-order-details-page">
     <div class="container">
+        <div class="order-details-hero">
         <div class="portal-top order-details-header">
             <div><small>@Model.Customer?.TradeName</small><h1>@Model.Number</h1></div>
             <a asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
@@ -43,8 +56,10 @@
         <div class="commercial-bar order-details-summary">
             <div class="order-details-summary-item"><small>STATUS</small><strong><span class="order-detail-chip">@Model.Status.ToDisplayName()</span></strong></div>
             <div class="order-details-summary-item"><small>INTEGRA&#199;&#195;O ERP</small><strong>@Model.IntegrationStatus.ToDisplayName()</strong></div>
-            <div class="order-details-summary-item"><small>ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
+            <div class="order-details-summary-item"><small>PEDIDO ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
+            <div class="order-details-summary-item"><small>EXPORTA&#199;&#195;O WMC</small><strong>@(Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa")</strong></div>
             <div class="order-details-summary-item order-details-summary-item--total"><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div>
+        </div>
         </div>
         @if (TempData["OrderStatusError"] is string statusError)
         {
@@ -60,29 +75,35 @@
         }
         <div class="order-details-layout">
         <section class="order-detail-section order-wmc-diagnostic" aria-labelledby="order-wmc-diagnostic-title" data-wmc-diagnostic-read-only>
-            <header class="order-detail-section-heading"><div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 id="order-wmc-diagnostic-title">Diagn&oacute;stico WMC</h2></div></header>
-            <dl class="row g-2 mb-2">
-                <div class="col-md-6"><dt>Elegibilidade para exporta&ccedil;&atilde;o manual</dt><dd data-wmc-export-eligibility="@(wmcManualExportDiagnostic.CanExport ? "eligible" : "blocked")"><strong>@(wmcManualExportDiagnostic.CanExport ? "Eleg&iacute;vel para exporta&ccedil;&atilde;o manual" : "Bloqueado")</strong></dd></div>
-                <div class="col-md-6"><dt>Condi&ccedil;&atilde;o de pagamento</dt><dd><code>@(Model.PaymentTerm?.Code ?? "N&atilde;o informada")</code> &middot; @(Model.PaymentTerm?.Name ?? "Descri&ccedil;&atilde;o indispon&iacute;vel") &middot; prazo @(Model.PaymentTerm?.DaysUntilDue.ToString() ?? "n&atilde;o informado") dias</dd></div>
-                <div class="col-md-6"><dt>WMC do cliente</dt><dd><code>@(Model.Customer?.WmcCode ?? "N&atilde;o informado")</code></dd></div>
-                <div class="col-md-6"><dt>Estado da exporta&ccedil;&atilde;o manual</dt><dd>@(Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
-                <div class="col-md-6"><dt>Revis&atilde;o manual</dt><dd>@(Model.WmcOrderExportState?.RequiresManualReview == true ? "Necess&aacute;ria" : "N&atilde;o necess&aacute;ria")</dd></div>
-                <div class="col-md-6"><dt>Auditorias WMC</dt><dd>@Model.WmcExportAudits.Count registro(s)</dd></div>
-            </dl>
+            <header class="order-detail-section-heading">
+                <div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 id="order-wmc-diagnostic-title">Diagn&oacute;stico WMC</h2></div>
+                <span class="order-wmc-eligibility order-wmc-eligibility--@(wmcManualExportDiagnostic.CanExport ? "eligible" : "blocked")" data-wmc-export-eligibility="@(wmcManualExportDiagnostic.CanExport ? "eligible" : "blocked")">@(wmcManualExportDiagnostic.CanExport ? "Elegível para exportação manual" : "Bloqueado")</span>
+            </header>
             @if (!wmcManualExportDiagnostic.CanExport)
             {
-                <p class="alert alert-warning mb-2" role="status" data-wmc-export-block-reason>@wmcManualExportDiagnostic.BlockReason</p>
+                <p class="alert alert-warning order-wmc-block-reason" role="status" data-wmc-export-block-reason>@wmcManualExportDiagnostic.BlockReason</p>
             }
             @if (!string.IsNullOrWhiteSpace(Model.WmcOrderExportState?.LastError))
             {
-                <p class="text-danger mb-2"><strong>Último erro registrado:</strong> @Model.WmcOrderExportState.LastError</p>
+                <p class="text-danger order-wmc-last-error"><strong>Último erro registrado:</strong> @Model.WmcOrderExportState.LastError</p>
             }
-            <ul class="list-group list-group-flush" aria-label="Produtos para exporta&ccedil;&atilde;o WMC">
-                @foreach (var item in Model.Items)
-                {
-                    <li class="list-group-item d-flex flex-wrap gap-2"><span>@item.ProductNameSnapshot</span><span>C&oacute;digo WMC: <code>@(item.Product?.WmcCode ?? "N&atilde;o informado")</code></span><span>Unidade: @(item.Product?.Unit ?? "N&atilde;o informada")</span></li>
-                }
-            </ul>
+            <dl class="order-wmc-facts">
+                <div><dt>Estado da exportação manual</dt><dd>@(Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
+                <div><dt>Revisão manual</dt><dd>@(Model.WmcOrderExportState?.RequiresManualReview == true ? "Necessária" : "Não necessária")</dd></div>
+                <div><dt>CNPJ do cliente</dt><dd><code>@(Model.Customer?.Cnpj ?? "Não informado")</code></dd></div>
+                <div><dt>WMC do cliente (informativo)</dt><dd><code>@(Model.Customer?.WmcCode ?? "Não informado")</code></dd></div>
+                <div><dt>Auditorias WMC</dt><dd>@Model.WmcExportAudits.Count registro(s)</dd></div>
+            </dl>
+            <details class="order-wmc-technical">
+                <summary>Informações técnicas</summary>
+                <p class="order-wmc-payment-term"><strong>Condição de pagamento:</strong> <code>@(Model.PaymentTerm?.Code ?? "Não informada")</code> &middot; @(Model.PaymentTerm?.Name ?? "Descrição indisponível") &middot; prazo @(Model.PaymentTerm?.DaysUntilDue.ToString() ?? "não informado") dias</p>
+                <ul class="list-group list-group-flush order-wmc-products" aria-label="Produtos para exporta&ccedil;&atilde;o WMC">
+                    @foreach (var item in Model.Items)
+                    {
+                        <li class="list-group-item"><span>@item.ProductNameSnapshot</span><span>C&oacute;digo WMC: <code>@(item.Product?.WmcCode ?? "Não informado")</code></span><span>Unidade: @(item.Product?.Unit ?? "Não informada")</span></li>
+                    }
+                </ul>
+            </details>
         </section>
         @if (cardOnDelivery)
         {
@@ -236,43 +257,66 @@
 
         <div class="order-history-grid">
             <section class="order-detail-section" aria-labelledby="order-status-history-title">
-                <header class="order-detail-section-heading"><div><small>RASTREABILIDADE</small><h2 id="order-status-history-title">Hist&oacute;rico de status</h2></div></header>
+                <header class="order-detail-section-heading"><div><small>RASTREABILIDADE</small><h2 id="order-status-history-title">Hist&oacute;rico de status</h2></div><span class="order-count-badge">@Model.StatusHistory.Count</span></header>
+                @{ var statusHistory = Model.StatusHistory.OrderByDescending(x => x.ChangedAt).ToList(); }
                 <ol class="list-group order-history-list">
-                    @foreach (var entry in Model.StatusHistory.OrderByDescending(x => x.ChangedAt))
+                    @foreach (var entry in statusHistory.Take(historyPreviewCount))
                     {
-                        <li class="list-group-item order-history-entry"><div><strong>@entry.Status.ToDisplayName()</strong><small>@(entry.ChangedByUser?.Email ?? "Sistema")</small></div><time>@entry.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time></li>
+                        RenderStatusEntry(entry);
                     }
                 </ol>
+                @if (statusHistory.Count > historyPreviewCount)
+                {
+                    <details class="order-history-more">
+                        <summary>Ver todos os @statusHistory.Count registros</summary>
+                        <ol class="list-group order-history-list">
+                            @foreach (var entry in statusHistory.Skip(historyPreviewCount))
+                            {
+                                RenderStatusEntry(entry);
+                            }
+                        </ol>
+                    </details>
+                }
             </section>
 
             <section class="order-detail-section" aria-labelledby="order-wmc-history-title">
-                <header class="order-detail-section-heading"><div><small>INTEGRAÇÃO ERP</small><h2 id="order-wmc-history-title">Hist&oacute;rico de exporta&#231;&otilde;es WMC</h2></div></header>
+                <header class="order-detail-section-heading"><div><small>INTEGRAÇÃO ERP</small><h2 id="order-wmc-history-title">Hist&oacute;rico de exporta&#231;&otilde;es WMC</h2></div><span class="order-count-badge">@Model.WmcExportAudits.Count</span></header>
                 @if (!Model.WmcExportAudits.Any())
                 {
                     <p class="order-empty-state text-muted"><i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>Nenhuma exporta&#231;&#227;o WMC registrada para este pedido.</span></p>
                 }
                 else
                 {
+                    var wmcAudits = Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt).ThenByDescending(x => x.Id).ToList();
                     <ol class="list-group order-history-list">
-                        @foreach (var entry in Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt).ThenByDescending(x => x.Id))
+                        @foreach (var entry in wmcAudits.Take(historyPreviewCount))
                         {
-                            <li class="list-group-item order-history-entry">
-                                <div><strong>@(entry.Outcome switch { Orofoods.Web.Models.Integrations.WmcExportOutcome.Generated => "TXT gerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Available => "Arquivo disponibilizado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Failed => "Falha na exportação", _ => entry.Succeeded ? "TXT gerado" : "Falha na exportação" })</strong><small>@(entry.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Automatic ? "Automática" : "Manual")</small>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (entry.GeneratedAt is not null) { <small>TXT gerado @entry.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
-                                <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
-                            </li>
+                            RenderWmcEntry(entry);
                         }
                     </ol>
+                    @if (wmcAudits.Count > historyPreviewCount)
+                    {
+                        <details class="order-history-more">
+                            <summary>Ver todos os @wmcAudits.Count registros</summary>
+                            <ol class="list-group order-history-list">
+                                @foreach (var entry in wmcAudits.Skip(historyPreviewCount))
+                                {
+                                    RenderWmcEntry(entry);
+                                }
+                            </ol>
+                        </details>
+                    }
                 }
             </section>
         </div>
 
         <section class="order-detail-section order-items-section" aria-labelledby="order-items-title">
-            <header class="order-detail-section-heading"><div><small>COMPOSIÇÃO</small><h2 id="order-items-title">Itens do pedido</h2></div></header>
-            <div class="order-items">
-                <div class="order-items-heading" aria-hidden="true"><span>SKU / produto</span><span>Quantidade</span><span>Preço unitário</span><span>Total</span></div>
+            <header class="order-detail-section-heading"><div><small>COMPOSIÇÃO</small><h2 id="order-items-title">Itens do pedido</h2></div><span class="order-count-badge">@Model.Items.Count</span></header>
+            <div class="order-items" role="table" aria-labelledby="order-items-title">
+                <div class="order-items-heading" role="row"><span role="columnheader">SKU</span><span role="columnheader">Produto</span><span role="columnheader">Quantidade</span><span role="columnheader">Preço unitário</span><span role="columnheader">Total</span></div>
                 @foreach (var item in Model.Items)
                 {
-                    <div class="order-row"><div class="order-item-product"><small>@item.SkuSnapshot</small><h3>@item.ProductNameSnapshot</h3></div><span data-label="Quantidade">@item.Quantity</span><span data-label="Preço unitário">@item.UnitPrice.ToString("C")</span><strong data-label="Total">@item.Subtotal.ToString("C")</strong></div>
+                    <div class="order-row" role="row"><small class="order-item-sku" role="cell">@item.SkuSnapshot</small><span class="order-item-product" role="cell"><h3>@item.ProductNameSnapshot</h3></span><span role="cell" data-label="Quantidade">@item.Quantity</span><span role="cell" data-label="Preço unitário">@item.UnitPrice.ToString("C")</span><strong role="cell" data-label="Total">@item.Subtotal.ToString("C")</strong></div>
                 }
             </div>
         </section>

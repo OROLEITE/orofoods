@@ -43,4 +43,5 @@ public class Order
     public List<Payment> Payments { get; set; } = [];
     public List<WmcExportAudit> WmcExportAudits { get; set; } = [];
     public WmcOrderExportState? WmcOrderExportState { get; set; }
+    public List<WmcManualExportArtifact> WmcManualExportArtifacts { get; set; } = [];
 }

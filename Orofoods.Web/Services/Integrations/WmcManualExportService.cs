@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Integrations;
@@ -15,6 +17,7 @@ public enum WmcManualExportDisposition
     Processing,
     ReviewRequired,
     RecoveredInterrupted,
+    Downloaded,
     NotFound
 }
 
@@ -63,12 +66,182 @@ public sealed class WmcManualExportService(
         var state = claim.State!;
         if (!TryPrepareExport(order, out var export, out var error))
         {
-            await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, false, error, cancellationToken);
+            await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, false, error, null, cancellationToken);
             return new WmcManualExportResult(WmcManualExportDisposition.Rejected, fileName, Error: error);
         }
 
-        await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, true, null, cancellationToken);
+        await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, true, null, export, cancellationToken);
         return new WmcManualExportResult(WmcManualExportDisposition.Exported, fileName, export!.Content);
+    }
+
+    public async Task<WmcManualExportResult> DownloadAsync(int orderId, CancellationToken cancellationToken = default)
+    {
+        var state = await db.WmcOrderExportStates.AsNoTracking()
+            .Include(x => x.CurrentArtifact)
+            .SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
+        var artifact = state?.CurrentArtifact;
+        if (artifact is null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
+                Error: "O arquivo original não está armazenado para download.");
+        }
+
+        var actualHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(artifact.Content)));
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(actualHash), Encoding.ASCII.GetBytes(artifact.ContentSha256)))
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
+                Error: "A integridade do TXT armazenado não pôde ser confirmada.");
+        }
+
+        return new WmcManualExportResult(WmcManualExportDisposition.Downloaded, artifact.FileName, artifact.Content);
+    }
+
+    public async Task<WmcManualExportResult> RejectAsync(
+        int orderId,
+        string? reason,
+        string? userId,
+        string? userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        reason = NormalizeReason(reason);
+        if (reason is null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
+                Error: "Informe o motivo da rejeição (até 1000 caracteres).");
+        }
+
+        var state = await db.WmcOrderExportStates.SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
+        if (state is null || state.Status != WmcOrderExportStatus.Exported || state.RequiresManualReview)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
+                Error: "Somente uma exportação registrada pode ser marcada como rejeitada.");
+        }
+
+        var now = DateTime.UtcNow;
+        state.Status = WmcOrderExportStatus.Rejected;
+        state.LastError = reason;
+        state.UpdatedAt = now;
+        state.Version++;
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await auditService.RecordAttemptAsync(new WmcExportAudit
+            {
+                OrderId = orderId,
+                AttemptId = Guid.NewGuid(),
+                Source = WmcExportSource.Manual,
+                Outcome = WmcExportOutcome.Rejected,
+                ExportedByUserId = userId,
+                ExportedByEmail = userEmail,
+                FileName = state.FileName,
+                Error = reason,
+                GeneratedAt = state.ExportedAt
+            }, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, state.FileName);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Processing,
+                Error: "O estado WMC mudou durante a marcação da rejeição. Atualize e tente novamente.");
+        }
+    }
+
+    public async Task<WmcManualExportResult> RegenerateRejectedAsync(
+        int orderId,
+        string? reason,
+        string? userId,
+        string? userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        reason = NormalizeReason(reason);
+        if (reason is null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
+                Error: "Informe o motivo da regeneração (até 1000 caracteres).");
+        }
+
+        var order = await db.Orders.Include(x => x.Customer).Include(x => x.PaymentTerm)
+            .Include(x => x.Items).ThenInclude(x => x.Product)
+            .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
+        if (order is null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.NotFound);
+        }
+
+        var state = await db.WmcOrderExportStates.Include(x => x.CurrentArtifact)
+            .SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
+        if (state?.Status == WmcOrderExportStatus.Processing)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Processing,
+                Error: "Já existe uma regeneração em processamento para este pedido.");
+        }
+        if (state is null || state.Status != WmcOrderExportStatus.Rejected || state.RequiresManualReview)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
+                Error: "A regeneração só é permitida para um arquivo marcado como rejeitado.");
+        }
+
+        var now = DateTime.UtcNow;
+        state.Status = WmcOrderExportStatus.Processing;
+        state.ProcessingStartedAt = now;
+        state.UpdatedAt = now;
+        state.Version++;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Processing,
+                Error: "Outra ação alterou o estado WMC. Atualize a tela antes de regenerar.");
+        }
+
+        if (!TryPrepareExport(order, out var export, out var error))
+        {
+            state.Status = WmcOrderExportStatus.Rejected;
+            state.ProcessingStartedAt = null;
+            state.LastError = error;
+            state.UpdatedAt = DateTime.UtcNow;
+            state.Version++;
+            await using var failedTransaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            await auditService.RecordAttemptAsync(new WmcExportAudit
+            {
+                OrderId = orderId, AttemptId = Guid.NewGuid(), Source = WmcExportSource.Manual,
+                Outcome = WmcExportOutcome.Failed, ExportedByUserId = userId, ExportedByEmail = userEmail,
+                FileName = state.FileName, Error = $"Regeneração: {reason}. Falha: {error}"
+            }, cancellationToken);
+            await failedTransaction.CommitAsync(cancellationToken);
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, state.FileName, Error: error);
+        }
+
+        var attemptId = Guid.NewGuid();
+        var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var artifact = CreateArtifact(orderId, fileName, export!.Content!, attemptId, userId, userEmail,
+            state.CurrentArtifactId, reason);
+        db.WmcManualExportArtifacts.Add(artifact);
+        await db.SaveChangesAsync(cancellationToken);
+        state.CurrentArtifactId = artifact.Id;
+        state.Status = WmcOrderExportStatus.Exported;
+        state.RequiresManualReview = false;
+        state.ProcessingStartedAt = null;
+        state.FileName = fileName;
+        state.ExportedByUserId = userId;
+        state.ExportedByEmail = userEmail;
+        state.ExportedAt = DateTime.UtcNow;
+        state.LastError = null;
+        state.UpdatedAt = state.ExportedAt.Value;
+        state.Version++;
+        await auditService.RecordAttemptAsync(new WmcExportAudit
+        {
+            OrderId = orderId, AttemptId = attemptId, Source = WmcExportSource.Manual,
+            Outcome = WmcExportOutcome.Regenerated, ExportedByUserId = userId, ExportedByEmail = userEmail,
+            FileName = fileName, Error = reason, GeneratedAt = state.ExportedAt
+        }, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new WmcManualExportResult(WmcManualExportDisposition.Exported, fileName, export.Content);
     }
 
     public bool CanManuallyExport(Order order)
@@ -84,10 +257,21 @@ public sealed class WmcManualExportService(
             return new WmcManualExportDiagnostic(false, "O pedido já foi exportado para o WMC.");
         }
 
+        if (state?.Status == WmcOrderExportStatus.Rejected)
+        {
+            return new WmcManualExportDiagnostic(false, "O TXT anterior foi rejeitado. Use o fluxo administrativo de regeneração.");
+        }
+
         if (state?.RequiresManualReview == true)
         {
             return new WmcManualExportDiagnostic(false,
                 "Confira o histórico anterior e confirme se o arquivo chegou ao WMC antes de continuar.");
+        }
+
+        if (order.WmcExportAudits.Any(audit => audit.Succeeded))
+        {
+            return new WmcManualExportDiagnostic(false,
+                "O histórico contém uma exportação anterior; confirme se o arquivo chegou ao WMC antes de continuar.");
         }
 
         if (state?.Status == WmcOrderExportStatus.Processing)
@@ -247,12 +431,31 @@ public sealed class WmcManualExportService(
             }
         }
 
+        if (state.Status is WmcOrderExportStatus.Pending or WmcOrderExportStatus.Error
+            && await db.WmcExportAudits.AnyAsync(x => x.OrderId == order.Id && x.Succeeded, cancellationToken))
+        {
+            state.Status = WmcOrderExportStatus.Pending;
+            state.RequiresManualReview = true;
+            state.LastError = "O histórico contém uma exportação anterior; confirme se o arquivo chegou ao WMC antes de continuar.";
+            state.UpdatedAt = DateTime.UtcNow;
+            state.Version++;
+            await db.SaveChangesAsync(cancellationToken);
+            return (null, new WmcManualExportResult(WmcManualExportDisposition.ReviewRequired, state.FileName,
+                Error: state.LastError));
+        }
+
         if (state.Status is WmcOrderExportStatus.Exported or WmcOrderExportStatus.Imported)
         {
             await RecordBlockedAttemptAsync(order.Id, userId, userEmail, fileName,
                 "O pedido já possui uma exportação registrada; uma nova exportação foi bloqueada.", cancellationToken);
             return (null, new WmcManualExportResult(WmcManualExportDisposition.Duplicate, state.FileName,
                 Error: "O pedido já foi exportado para o WMC."));
+        }
+
+        if (state.Status == WmcOrderExportStatus.Rejected)
+        {
+            return (null, new WmcManualExportResult(WmcManualExportDisposition.Rejected, state.FileName,
+                Error: "O TXT foi marcado como rejeitado. Use a ação administrativa de regeneração."));
         }
 
         if (state.RequiresManualReview)
@@ -273,7 +476,7 @@ public sealed class WmcManualExportService(
                 state.Version++;
                 try
                 {
-                    await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, false, state.LastError, cancellationToken);
+                    await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, false, state.LastError, null, cancellationToken);
                     return (null, new WmcManualExportResult(WmcManualExportDisposition.RecoveredInterrupted,
                         fileName, Error: state.LastError));
                 }
@@ -321,6 +524,7 @@ public sealed class WmcManualExportService(
         string fileName,
         bool succeeded,
         string? error,
+        WmcOrderFileResult? export,
         CancellationToken cancellationToken)
     {
         state.Status = succeeded ? WmcOrderExportStatus.Exported : WmcOrderExportStatus.Error;
@@ -337,8 +541,50 @@ public sealed class WmcManualExportService(
         state.Version++;
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        await auditService.RecordAsync(orderId, userId, userEmail, fileName, succeeded, error, cancellationToken);
+        var attemptId = Guid.NewGuid();
+        if (succeeded)
+        {
+            var artifact = CreateArtifact(orderId, fileName, export!.Content!, attemptId, userId, userEmail, null, null);
+            db.WmcManualExportArtifacts.Add(artifact);
+            await db.SaveChangesAsync(cancellationToken);
+            state.CurrentArtifactId = artifact.Id;
+        }
+        await auditService.RecordAttemptAsync(new WmcExportAudit
+        {
+            OrderId = orderId,
+            AttemptId = attemptId,
+            Source = WmcExportSource.Manual,
+            Outcome = succeeded ? WmcExportOutcome.Generated : WmcExportOutcome.Failed,
+            ExportedByUserId = userId,
+            ExportedByEmail = userEmail,
+            FileName = fileName,
+            Succeeded = succeeded,
+            Error = error,
+            GeneratedAt = succeeded ? state.ExportedAt : null
+        }, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static WmcManualExportArtifact CreateArtifact(
+        int orderId, string fileName, string content, Guid attemptId, string? userId, string? userEmail,
+        int? supersedesArtifactId, string? regenerationReason) => new()
+    {
+        OrderId = orderId,
+        AttemptId = attemptId,
+        FileName = fileName,
+        Content = content,
+        ContentSha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))),
+        CreatedAt = DateTime.UtcNow,
+        CreatedByUserId = userId,
+        CreatedByEmail = userEmail,
+        SupersedesArtifactId = supersedesArtifactId,
+        RegenerationReason = regenerationReason
+    };
+
+    private static string? NormalizeReason(string? reason)
+    {
+        var normalized = reason?.Trim();
+        return string.IsNullOrWhiteSpace(normalized) || normalized.Length > 1000 ? null : normalized;
     }
 
     private Task RecordBlockedAttemptAsync(

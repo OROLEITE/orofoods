@@ -14,13 +14,27 @@ public class OrderWmcAuditViewTests
     }
 
     [Fact]
+    public void Admin_order_details_use_compact_layout_without_raw_html_entities_in_code_strings()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+
+        Assert.Contains("order-details-hero", view);
+        Assert.Contains("order-wmc-technical", view);
+        Assert.Contains("order-history-more", view);
+        Assert.DoesNotContain("?? \"N&atilde;o", view);
+        Assert.DoesNotContain("\"Eleg&iacute;vel", view);
+        Assert.DoesNotContain("\"Necess&aacute;ria\"", view);
+    }
+
+    [Fact]
     public void Admin_order_monitor_exposes_manual_send_review_and_separate_import_confirmation()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Index.cshtml"));
 
         Assert.Contains("Pendente", view);
-        Assert.Contains("Exportado", view);
+        Assert.Contains("TXT gerado &mdash; aguardando importa&ccedil;&atilde;o", view);
         Assert.Contains("Importado no WMC", view);
         Assert.Contains("Erro", view);
         Assert.Contains("Enviar ao WMC", view);

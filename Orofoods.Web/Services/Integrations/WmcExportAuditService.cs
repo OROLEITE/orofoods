@@ -15,8 +15,9 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
         }
 
         attempt.ExportedAt = DateTime.UtcNow;
-        attempt.Error = SummarizeError(attempt.Error);
-        attempt.Succeeded = attempt.Outcome is WmcExportOutcome.Generated or WmcExportOutcome.Available;
+        attempt.Error = SummarizeError(attempt.Error,
+            attempt.Outcome is WmcExportOutcome.Rejected or WmcExportOutcome.Regenerated ? 1000 : 500);
+        attempt.Succeeded = attempt.Outcome is WmcExportOutcome.Generated or WmcExportOutcome.Available or WmcExportOutcome.Regenerated;
 
         var existing = await db.WmcExportAudits.SingleOrDefaultAsync(
             audit => audit.OrderId == attempt.OrderId && audit.AttemptId == attempt.AttemptId,
@@ -79,7 +80,7 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
         }, cancellationToken);
     }
 
-    private static string? SummarizeError(string? error)
+    private static string? SummarizeError(string? error, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(error))
         {
@@ -87,6 +88,6 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
         }
 
         var summary = Regex.Replace(error, @"\s+", " ").Trim();
-        return summary.Length <= 500 ? summary : summary[..497] + "...";
+        return summary.Length <= maxLength ? summary : summary[..(maxLength - 3)] + "...";
     }
 }
