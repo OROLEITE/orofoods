@@ -1,4 +1,6 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
@@ -84,6 +86,155 @@ public class OrderIntegrationServiceTests
         Assert.Equal(IntegrationStatus.Pending, order.IntegrationStatus);
         Assert.Null(order.LastIntegrationAttempt);
         Assert.Equal("erro anterior", order.IntegrationError);
+    }
+
+    [Fact]
+    public async Task Direct_send_does_not_change_an_order_already_imported_manually_in_wmc()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var attemptedAt = DateTime.UtcNow.AddMinutes(-10);
+        var importedAt = DateTime.UtcNow.AddMinutes(-5);
+        var order = CreateOrderWithWmcState(
+            "ORO-2026-000779",
+            IntegrationStatus.Failed,
+            WmcOrderExportStatus.Imported);
+        order.IntegrationError = "Falha anterior do ERP";
+        order.LastIntegrationAttempt = attemptedAt;
+        order.ExternalOrderId = "WMC_ORO2026000779.txt";
+        order.ErpOrderNumber = "ERP-779";
+        order.WmcOrderExportState!.ImportedAt = importedAt;
+        order.WmcExportAudits.Add(new WmcExportAudit
+        {
+            Outcome = WmcExportOutcome.Imported,
+            Succeeded = true,
+            FileName = "WMC_ORO2026000779.txt",
+            ExportedAt = importedAt
+        });
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var erp = new CountingErpOrderIntegration();
+
+        await new OrderIntegrationService(db, erp).SendAsync(order.Id);
+
+        Assert.Equal(0, erp.SendCount);
+        var persisted = await db.Orders.Include(item => item.WmcOrderExportState).SingleAsync(item => item.Id == order.Id);
+        Assert.Equal(IntegrationStatus.Failed, persisted.IntegrationStatus);
+        Assert.Equal("Falha anterior do ERP", persisted.IntegrationError);
+        Assert.Equal(attemptedAt, persisted.LastIntegrationAttempt);
+        Assert.Equal("WMC_ORO2026000779.txt", persisted.ExternalOrderId);
+        Assert.Equal("ERP-779", persisted.ErpOrderNumber);
+        Assert.Equal(WmcOrderExportStatus.Imported, persisted.WmcOrderExportState!.Status);
+        Assert.Equal(importedAt, persisted.WmcOrderExportState.ImportedAt);
+        var audit = await db.WmcExportAudits.SingleAsync(item => item.OrderId == order.Id);
+        Assert.Equal(WmcExportOutcome.Imported, audit.Outcome);
+        Assert.Equal("WMC_ORO2026000779.txt", audit.FileName);
+    }
+
+    [Fact]
+    public async Task Concurrent_direct_sends_do_not_reprocess_an_imported_wmc_order()
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"order-integration-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+            ForeignKeys = true
+        }.ToString();
+        await using var keeper = new SqliteConnection(connectionString);
+        await keeper.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connectionString).Options;
+        int orderId;
+        await using (var setup = new ApplicationDbContext(options))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            var order = CreateOrderWithWmcState("ORO-2026-000780", IntegrationStatus.Failed, WmcOrderExportStatus.Imported);
+            order.IntegrationError = "Falha histórica";
+            order.LastIntegrationAttempt = DateTime.UtcNow.AddMinutes(-3);
+            order.WmcExportAudits.Add(new WmcExportAudit
+            {
+                Outcome = WmcExportOutcome.Imported,
+                Succeeded = true,
+                FileName = "WMC_ORO2026000780.txt"
+            });
+            setup.Add(order);
+            await setup.SaveChangesAsync();
+            orderId = order.Id;
+        }
+
+        await using var firstDb = new ApplicationDbContext(options);
+        await using var secondDb = new ApplicationDbContext(options);
+        var erp = new CountingErpOrderIntegration();
+
+        await Task.WhenAll(
+            new OrderIntegrationService(firstDb, erp).SendAsync(orderId),
+            new OrderIntegrationService(secondDb, erp).SendAsync(orderId));
+
+        Assert.Equal(0, erp.SendCount);
+        await using var verification = new ApplicationDbContext(options);
+        var persisted = await verification.Orders.Include(item => item.WmcOrderExportState).SingleAsync(item => item.Id == orderId);
+        Assert.Equal(IntegrationStatus.Failed, persisted.IntegrationStatus);
+        Assert.Equal("Falha histórica", persisted.IntegrationError);
+        Assert.NotNull(persisted.LastIntegrationAttempt);
+        Assert.Equal(WmcOrderExportStatus.Imported, persisted.WmcOrderExportState!.Status);
+        Assert.Equal("WMC_ORO2026000780.txt", await verification.WmcExportAudits
+            .Where(item => item.OrderId == orderId)
+            .Select(item => item.FileName)
+            .SingleAsync());
+    }
+
+    [Fact]
+    public async Task Reprocessing_remains_available_before_manual_wmc_import_is_confirmed()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrderWithWmcState(
+            "ORO-2026-000781",
+            IntegrationStatus.Pending,
+            WmcOrderExportStatus.Exported);
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var erp = new CountingErpOrderIntegration();
+
+        await new OrderIntegrationService(db, erp).SendAsync(order.Id);
+
+        Assert.Equal(1, erp.SendCount);
+        Assert.Equal(IntegrationStatus.Succeeded, order.IntegrationStatus);
+        Assert.Equal(WmcOrderExportStatus.Exported, order.WmcOrderExportState!.Status);
+    }
+
+    private static Order CreateOrderWithWmcState(
+        string orderNumber,
+        IntegrationStatus integrationStatus,
+        WmcOrderExportStatus wmcStatus)
+    {
+        var userId = $"creator-{Guid.NewGuid():N}";
+        return new Order
+        {
+            Number = orderNumber,
+            Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" },
+            CreatedByUser = new ApplicationUser
+            {
+                Id = userId,
+                UserName = $"{userId}@test.local",
+                NormalizedUserName = $"{userId}@TEST.LOCAL",
+                Email = $"{userId}@test.local",
+                NormalizedEmail = $"{userId}@TEST.LOCAL"
+            },
+            Status = OrderStatus.Approved,
+            IntegrationStatus = integrationStatus,
+            WmcOrderExportState = new WmcOrderExportState { Status = wmcStatus }
+        };
+    }
+
+    private sealed class CountingErpOrderIntegration : IErpOrderIntegration
+    {
+        private int sendCount;
+        public int SendCount => Volatile.Read(ref sendCount);
+
+        public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default, Guid? attemptId = null)
+        {
+            Interlocked.Increment(ref sendCount);
+            return Task.FromResult(new ErpOrderResult(true, $"ERP-{order.Number}"));
+        }
     }
 
     private sealed class CapturingErpOrderIntegration : IErpOrderIntegration

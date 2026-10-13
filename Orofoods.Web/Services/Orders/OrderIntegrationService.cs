@@ -30,6 +30,8 @@ public sealed class OrderIntegrationService(
         claim = expectedIntegrationStatus is null
             ? claim.Where(order => order.IntegrationStatus != IntegrationStatus.Processing)
             : claim.Where(order => order.IntegrationStatus == expectedIntegrationStatus.Value);
+        claim = claim.Where(order => !db.WmcOrderExportStates.Any(state =>
+            state.OrderId == order.Id && state.Status == WmcOrderExportStatus.Imported));
 
         var claimed = await claim.ExecuteUpdateAsync(setters => setters
             .SetProperty(order => order.IntegrationStatus, IntegrationStatus.Processing)
