@@ -194,5 +194,5 @@ public class WmcFileDropErpOrderIntegrationTests
     }
 
     private static WmcFileDropErpOrderIntegration CreateAdapter(IOptions<WmcFileDropOptions> options, ApplicationDbContext db) =>
-        new(options, new WmcOrderFileGenerator(), new WmcExportAuditService(db));
+        new(options, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
 }

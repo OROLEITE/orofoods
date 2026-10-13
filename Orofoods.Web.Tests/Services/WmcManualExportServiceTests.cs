@@ -366,7 +366,7 @@ public sealed class WmcManualExportServiceTests
     }
 
     private static WmcManualExportService CreateService(ApplicationDbContext db) =>
-        new(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db));
+        new(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
 
     private static async Task<Order> AddEligibleOrderAsync(ApplicationDbContext db, OrderStatus status = OrderStatus.Approved)
     {

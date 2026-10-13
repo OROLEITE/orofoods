@@ -45,7 +45,7 @@ public class WmcManualExportControllerTests
         var controller = new IntegrationsController(
             db,
             null!,
-            new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db)),
+            new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db)),
             null!,
             null!,
             null!,

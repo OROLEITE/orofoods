@@ -64,7 +64,7 @@ public sealed class AdminWmcManualEligibilityTests
         db.Orders.AddRange(eligible, unsupportedPayment, processing);
         await db.SaveChangesAsync();
 
-        var exportService = new WmcManualExportService(db, new WmcOrderFileGenerator(), new WmcExportAuditService(db));
+        var exportService = new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
         var controller = new OrdersController(
             db,
             service: null!,

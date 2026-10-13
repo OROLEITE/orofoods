@@ -294,6 +294,11 @@ else
 builder.Services.AddSingleton<PointPaymentAttemptGate>();
 builder.Services.AddScoped<IPointPaymentOrderConcurrencyLock, PointPaymentOrderConcurrencyLock>();
 builder.Services.AddScoped<IPointPaymentOrchestrationService, PointPaymentOrchestrationService>();
+builder.Services.AddOptions<WmcOrderFileOptions>()
+    .Bind(builder.Configuration.GetSection(WmcOrderFileOptions.SectionName))
+    .Validate(WmcOrderFileOptions.HasValidSupplierCnpj,
+        "WmcOrderFile:SupplierCnpj deve conter exatamente 14 digitos.")
+    .ValidateOnStart();
 builder.Services.AddSingleton<WmcOrderFileGenerator>();
 builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
 builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();
