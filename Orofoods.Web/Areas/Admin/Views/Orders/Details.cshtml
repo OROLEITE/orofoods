@@ -49,16 +49,22 @@
     <div class="container">
         <div class="order-details-hero">
         <div class="portal-top order-details-header">
-            <div><small>@Model.Customer?.TradeName</small><h1>@Model.Number</h1></div>
+            <div class="order-details-title-group">
+                <small>CLIENTE</small>
+                <h1>@Model.Customer?.TradeName</h1>
+                <div class="order-details-order-meta">
+                    <span class="order-details-order-number">Pedido @Model.Number</span>
+                    <span class="order-detail-chip">@Model.Status.ToDisplayName()</span>
+                </div>
+            </div>
             <a asp-action="Index" class="btn btn-outline-dark"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+            <div class="order-details-total"><small>TOTAL DO PEDIDO</small><strong>@Model.Total.ToString("C")</strong></div>
         </div>
 
         <div class="commercial-bar order-details-summary">
-            <div class="order-details-summary-item"><small>STATUS</small><strong><span class="order-detail-chip">@Model.Status.ToDisplayName()</span></strong></div>
             <div class="order-details-summary-item"><small>INTEGRA&#199;&#195;O ERP</small><strong>@Model.IntegrationStatus.ToDisplayName()</strong></div>
             <div class="order-details-summary-item"><small>PEDIDO ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
             <div class="order-details-summary-item"><small>EXPORTA&#199;&#195;O WMC</small><strong>@(Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa")</strong></div>
-            <div class="order-details-summary-item order-details-summary-item--total"><small>TOTAL</small><strong>@Model.Total.ToString("C")</strong></div>
         </div>
         </div>
         @if (TempData["OrderStatusError"] is string statusError)
@@ -117,10 +123,25 @@
         {
             <section class="order-detail-section order-wmc-actions" aria-labelledby="order-wmc-actions-title">
                 <header class="order-detail-section-heading"><div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 id="order-wmc-actions-title">A&ccedil;&otilde;es WMC</h2></div></header>
+                <div class="order-wmc-actions-layout">
+                <div class="order-wmc-action-context">
                 @if (wmcLatestAudit is not null)
                 {
-                    <p class="order-wmc-last-audit"><small>@wmcLatestAudit.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") &middot; @(wmcLatestAudit.ExportedByEmail ?? "usuário desconhecido")@if (wmcLatestAudit.FileName is not null) { <text> &middot; @wmcLatestAudit.FileName</text> }</small></p>
+                    <div class="order-wmc-last-audit" aria-label="Última exportação WMC">
+                        @if (!string.IsNullOrWhiteSpace(wmcLatestAudit.FileName)) { <strong>@wmcLatestAudit.FileName</strong> }
+                        <time>@wmcLatestAudit.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+                        <span>@(wmcLatestAudit.ExportedByEmail ?? "Usuário desconhecido")</span>
+                    </div>
                 }
+                @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Rejected && !wmcState.RequiresManualReview && !string.IsNullOrWhiteSpace(wmcState.LastError))
+                {
+                    <small class="text-danger">@wmcState.LastError</small>
+                }
+                @if (wmcUncertainHistory && wmcState is not null)
+                {
+                    <small>Confirme o resultado anterior antes de qualquer novo envio.</small>
+                }
+                </div>
                 <div class="order-wmc-actions-bar">
                 @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported && !wmcState.RequiresManualReview)
                 {
@@ -128,17 +149,11 @@
                     {
                         <a class="btn btn-sm btn-outline-secondary" asp-action="DownloadWmcTxt" asp-route-id="@Model.Id">Baixar TXT novamente</a>
                     }
-                    <form asp-action="RejectWmcTxt" method="post" class="wmc-rejection-form">
-                        <input type="hidden" name="id" value="@Model.Id" />
-                        <label class="visually-hidden" for="wmc-reject-@Model.Id">Motivo da rejeição</label>
-                        <input id="wmc-reject-@Model.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da rejeição" />
-                        <button class="btn btn-sm btn-outline-danger" type="submit">Registrar rejeição</button>
-                    </form>
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#reject-wmc-modal" aria-haspopup="dialog" aria-controls="reject-wmc-modal">Registrar rejeição</button>
                     <button class="btn btn-sm btn-success" type="button" data-bs-toggle="modal" data-bs-target="#confirm-wmc-import-modal" aria-haspopup="dialog" aria-controls="confirm-wmc-import-modal">Confirmar importação</button>
                 }
                 @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Rejected && !wmcState.RequiresManualReview)
                 {
-                    @if (!string.IsNullOrWhiteSpace(wmcState.LastError)) { <small class="text-danger w-100">@wmcState.LastError</small> }
                     <form asp-action="RegenerateWmcTxt" method="post" class="wmc-regeneration-form">
                         <input type="hidden" name="id" value="@Model.Id" />
                         <label class="visually-hidden" for="wmc-regenerate-@Model.Id">Motivo da regeneração</label>
@@ -154,7 +169,6 @@
                     }
                     else
                     {
-                        <small class="w-100">Confirme o resultado anterior antes de qualquer novo envio.</small>
                         <form asp-action="ConfirmPriorWmcExport" method="post">
                             <input type="hidden" name="id" value="@Model.Id" /><input type="hidden" name="exported" value="true" />
                             <button class="btn btn-sm btn-outline-secondary" type="submit">Confirmar exportado</button>
@@ -169,6 +183,7 @@
                 {
                     <form asp-action="SendToWmc" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-success wmc-send-button" type="submit">Enviar ao WMC</button></form>
                 }
+                </div>
                 </div>
             </section>
         }
@@ -391,6 +406,28 @@
     </div>
     @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported && !wmcState.RequiresManualReview)
     {
+        <div class="modal fade wmc-rejection-modal" id="reject-wmc-modal" tabindex="-1" aria-labelledby="reject-wmc-modal-title" aria-describedby="reject-wmc-modal-message" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="reject-wmc-modal-title">Registrar rejei&ccedil;&atilde;o do TXT</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <form asp-action="RejectWmcTxt" method="post" class="wmc-rejection-modal-form">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <div class="modal-body">
+                            <p id="reject-wmc-modal-message" class="wmc-import-confirm-lead">Informe o motivo da rejei&ccedil;&atilde;o. O registro ser&aacute; inclu&iacute;do na auditoria do pedido.</p>
+                            <label for="wmc-reject-reason-@Model.Id" class="form-label">Motivo da rejei&ccedil;&atilde;o</label>
+                            <textarea id="wmc-reject-reason-@Model.Id" name="reason" class="form-control" rows="4" maxlength="1000" required aria-required="true" aria-describedby="reject-wmc-modal-message"></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-danger">Confirmar rejei&ccedil;&atilde;o</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
         <div class="modal fade wmc-import-confirm-modal" id="confirm-wmc-import-modal" tabindex="-1" aria-labelledby="confirm-wmc-import-modal-title" aria-describedby="confirm-wmc-import-modal-message" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">

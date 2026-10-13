@@ -106,6 +106,50 @@ public class AdminOrderDetailsVisualTests
     }
 
     [Fact]
+    public void Order_details_highlights_customer_and_keeps_order_number_secondary()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.Contains("<small>CLIENTE</small>", view);
+        Assert.Contains("<h1>@Model.Customer?.TradeName</h1>", view);
+        Assert.Contains("class=\"order-details-order-number\"", view);
+        Assert.Contains("class=\"order-details-total\"", view);
+        Assert.Contains("TOTAL DO PEDIDO", view);
+        Assert.Contains(".order-details-order-number", styles);
+        Assert.Contains(".order-details-total", styles);
+        Assert.Contains("@media (max-width: 640px)", styles);
+    }
+
+    [Fact]
+    public void Wmc_rejection_reason_is_requested_in_a_modal_and_actions_share_a_responsive_row()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+        var rejectionModalIndex = view.IndexOf("id=\"reject-wmc-modal\"", StringComparison.Ordinal);
+        var rejectionFormIndex = view.IndexOf("asp-action=\"RejectWmcTxt\" method=\"post\"", StringComparison.Ordinal);
+
+        Assert.Contains("data-bs-target=\"#reject-wmc-modal\"", view);
+        Assert.True(rejectionModalIndex >= 0);
+        Assert.True(rejectionFormIndex > rejectionModalIndex);
+        Assert.Contains("name=\"reason\"", view);
+        Assert.Contains("maxlength=\"1000\" required", view);
+        Assert.DoesNotContain("id=\"wmc-reject-@Model.Id\"", view);
+        Assert.DoesNotContain("placeholder=\"Motivo da rejeição\"", view);
+        Assert.Contains("Cancelar", view);
+        Assert.Contains("Confirmar rejei&ccedil;&atilde;o", view);
+        Assert.Contains("[HttpPost, ValidateAntiForgeryToken]", controller);
+        Assert.Contains(".order-wmc-actions-layout", styles);
+        Assert.Contains(".order-wmc-action-context", styles);
+        Assert.Contains(".order-wmc-actions-bar", styles);
+        Assert.Contains("justify-content: space-between;", styles);
+        Assert.Contains("@media (max-width: 640px)", styles);
+    }
+
+    [Fact]
     public void Order_details_styles_are_page_scoped_compact_and_responsive()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
