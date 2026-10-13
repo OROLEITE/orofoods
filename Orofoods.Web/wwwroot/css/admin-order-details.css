@@ -986,3 +986,151 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         content: none;
     }
 }
+
+.admin-authenticated .admin-order-details-page .order-wmc-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-actions-bar form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-rejection-form .form-control,
+.admin-authenticated .admin-order-details-page .wmc-regeneration-form .form-control {
+    width: 260px;
+    max-width: 100%;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-last-audit {
+    margin: 0 0 8px;
+    color: var(--order-detail-muted);
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-dialog {
+    width: min(100% - 1.5rem, 32rem);
+    max-width: none;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 16px;
+    background: var(--order-detail-surface);
+    color: var(--order-detail-text);
+    box-shadow: 0 24px 64px #0f172a33;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-header,
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-footer {
+    border-color: var(--order-detail-border);
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-title {
+    color: var(--order-detail-text);
+    font-weight: 750;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-lead {
+    margin: 0 0 1rem;
+    color: var(--order-detail-text);
+    font-size: 1rem;
+    font-weight: 650;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+    margin: 0 0 1rem;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-summary > div {
+    min-width: 0;
+    padding: .75rem;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 10px;
+    background: var(--order-detail-surface-secondary);
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-summary dt {
+    margin-bottom: .25rem;
+    color: var(--order-detail-muted);
+    font-size: .72rem;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-summary dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--order-detail-text);
+    font-size: .95rem;
+    font-weight: 750;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-status {
+    display: inline-flex;
+    padding: .2rem .55rem;
+    border: 1px solid #2563EB55;
+    border-radius: 999px;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-message {
+    margin: 0;
+    color: var(--order-detail-muted);
+    font-size: .875rem;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-footer form {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .5rem;
+    width: 100%;
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .btn {
+    min-height: 42px;
+    font-weight: 700;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .wmc-import-confirm-status {
+    border-color: #1D4ED8;
+    background: #172554;
+    color: #93C5FD;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .wmc-import-confirm-modal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+@media (max-width: 575.98px) {
+    .admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-dialog {
+        width: auto;
+        margin: .75rem;
+    }
+
+    .admin-authenticated .admin-order-details-page .wmc-import-confirm-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-footer form {
+        flex-direction: column-reverse;
+    }
+
+    .admin-authenticated .admin-order-details-page .wmc-import-confirm-modal .modal-footer .btn {
+        width: 100%;
+    }
+}

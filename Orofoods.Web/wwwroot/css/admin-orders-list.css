@@ -2,28 +2,6 @@
     max-width: 1480px;
 }
 
-.orders-index-compact .wmc-send-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 140px;
-    min-height: 44px;
-    font-weight: 650;
-}
-
-.orders-index-compact .wmc-send-button:hover,
-.orders-index-compact .wmc-send-button:focus-visible {
-    color: var(--bs-success);
-    background: transparent;
-    border-color: var(--bs-success);
-    box-shadow: 0 0 0 .2rem rgba(var(--bs-success-rgb), .18);
-}
-
-.orders-index-compact .wmc-rejection-form,
-.orders-index-compact .wmc-regeneration-form {
-    max-width: 260px;
-}
-
 .orders-index-compact .admin-page-header {
     align-items: center;
     margin-bottom: 12px;
@@ -78,8 +56,52 @@
 }
 
 .orders-index-compact .orders-table tbody td {
+    height: 52px;
     padding: 9px 12px;
     font-size: 12px;
+    line-height: 1.3;
+    vertical-align: middle;
+}
+
+.orders-index-compact .orders-table tbody td[data-label="Ação"] {
+    white-space: nowrap;
+}
+
+.orders-index-compact .wmc-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .28rem .55rem;
+    border: 1px solid #D9D7D0;
+    border-radius: 999px;
+    background: #F4F3EF;
+    color: #65665F;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.orders-index-compact .wmc-status-badge--exported {
+    border-color: #B9CDE8;
+    background: #EAF1FB;
+    color: #1E4E8C;
+}
+
+.orders-index-compact .wmc-status-badge--imported {
+    border-color: #B7D1BD;
+    background: #E5F0E7;
+    color: #236141;
+}
+
+.orders-index-compact .wmc-status-badge--rejected {
+    border-color: #E3C4C0;
+    background: #F8ECEA;
+    color: #9A4238;
+}
+
+.orders-index-compact .wmc-status-badge--review {
+    border-color: #EAD39F;
+    background: #FCF4DF;
+    color: #80570E;
 }
 
 .orders-index-compact .orders-customer {
@@ -145,6 +167,7 @@
     }
 
     .orders-index-compact .orders-table tbody td {
+        height: auto;
         font-size: 12px;
     }
 
