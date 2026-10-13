@@ -534,7 +534,66 @@ public sealed class WmcManualExportServiceTests
         Assert.Equal("admin-2", state.ImportedByUserId);
         Assert.Equal("importer@orofoods.local", state.ImportedByEmail);
         Assert.NotNull(state.ImportedAt);
-        Assert.Single(await db.WmcExportAudits.Where(x => x.Succeeded).ToListAsync());
+        Assert.Equal(2, await db.WmcExportAudits.CountAsync(x => x.Succeeded));
+        var importAudit = await db.WmcExportAudits.SingleAsync(x => x.Outcome == WmcExportOutcome.Imported);
+        Assert.Equal("admin-2", importAudit.ExportedByUserId);
+        Assert.Equal("importer@orofoods.local", importAudit.ExportedByEmail);
+        Assert.Equal(state.FileName, importAudit.FileName);
+        Assert.True(importAudit.Succeeded);
+    }
+
+    [Fact]
+    public async Task Repeated_import_confirmation_is_idempotent_and_does_not_duplicate_audit()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        var service = CreateService(db);
+        await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        var first = await service.ConfirmImportedAsync(order.Id, "admin-2", "importer@orofoods.local");
+        var importedAt = (await db.WmcOrderExportStates.SingleAsync()).ImportedAt;
+        var firstAuditCount = await db.WmcExportAudits.CountAsync();
+        var retry = await service.ConfirmImportedAsync(order.Id, "admin-2", "importer@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Imported, first.Disposition);
+        Assert.Equal(WmcManualExportDisposition.Imported, retry.Disposition);
+        Assert.Equal(importedAt, (await db.WmcOrderExportStates.SingleAsync()).ImportedAt);
+        Assert.Equal(firstAuditCount, await db.WmcExportAudits.CountAsync());
+        Assert.Single(await db.WmcExportAudits.Where(x => x.Outcome == WmcExportOutcome.Imported).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Concurrent_import_confirmations_commit_one_audit_and_both_observe_imported_state()
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"wmc-import-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+            ForeignKeys = true
+        }.ToString();
+        await using var keeper = new SqliteConnection(connectionString);
+        await keeper.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connectionString).Options;
+        int orderId;
+        await using (var setup = new ApplicationDbContext(options))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            var order = await AddEligibleOrderAsync(setup);
+            orderId = order.Id;
+            await CreateService(setup).ExportAsync(orderId, "admin-1", "admin@orofoods.local");
+        }
+
+        await using var firstDb = new ApplicationDbContext(options);
+        await using var secondDb = new ApplicationDbContext(options);
+        var first = CreateService(firstDb).ConfirmImportedAsync(orderId, "admin-2", "importer@orofoods.local");
+        var second = CreateService(secondDb).ConfirmImportedAsync(orderId, "admin-3", "other-importer@orofoods.local");
+
+        var results = await Task.WhenAll(first, second);
+
+        Assert.All(results, result => Assert.Equal(WmcManualExportDisposition.Imported, result.Disposition));
+        Assert.Single(await firstDb.WmcExportAudits.Where(x => x.Outcome == WmcExportOutcome.Imported).ToListAsync());
+        Assert.Equal(WmcOrderExportStatus.Imported, (await firstDb.WmcOrderExportStates.SingleAsync()).Status);
     }
 
     [Fact]
