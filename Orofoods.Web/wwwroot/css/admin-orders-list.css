@@ -2,6 +2,28 @@
     max-width: 1480px;
 }
 
+.orders-index-compact .wmc-send-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    min-height: 44px;
+    font-weight: 650;
+}
+
+.orders-index-compact .wmc-send-button:hover,
+.orders-index-compact .wmc-send-button:focus-visible {
+    color: var(--bs-success);
+    background: transparent;
+    border-color: var(--bs-success);
+    box-shadow: 0 0 0 .2rem rgba(var(--bs-success-rgb), .18);
+}
+
+.orders-index-compact .wmc-rejection-form,
+.orders-index-compact .wmc-regeneration-form {
+    max-width: 260px;
+}
+
 .orders-index-compact .admin-page-header {
     align-items: center;
     margin-bottom: 12px;

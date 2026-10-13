@@ -5,6 +5,7 @@ public enum WmcOrderExportStatus
     Pending,
     Processing,
     Exported,
+    Rejected,
     Imported,
     Error
 }

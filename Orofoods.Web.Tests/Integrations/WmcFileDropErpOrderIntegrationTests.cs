@@ -33,7 +33,7 @@ public class WmcFileDropErpOrderIntegrationTests
             Total = 100m,
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Status = OrderStatus.Approved,
-            Customer = new Customer { WmcCode = "107072" },
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             Items =
             [
                 new OrderItem
@@ -83,7 +83,7 @@ public class WmcFileDropErpOrderIntegrationTests
             Total = 50m,
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Status = OrderStatus.Approved,
-            Customer = new Customer { WmcCode = "107072" },
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
         };
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -111,7 +111,7 @@ public class WmcFileDropErpOrderIntegrationTests
             CreatedAt = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
             Total = 50m,
             Status = OrderStatus.Approved,
-            Customer = new Customer { WmcCode = "107072" },
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
         };
@@ -138,7 +138,7 @@ public class WmcFileDropErpOrderIntegrationTests
         {
             Number = "ORO-2026-000779",
             Status = OrderStatus.Approved,
-            Customer = new Customer { WmcCode = "107072" },
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega" },
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
         };

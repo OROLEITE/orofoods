@@ -52,6 +52,10 @@ public class WmcProductSyncMigrationTests
         {
             Microsoft.EntityFrameworkCore.Migrations.Operations.AlterColumnOperation alter
                 => $"ALTER {alter.Table}.{alter.Name}: {alter.OldColumn?.ColumnType} -> {alter.ColumnType}",
+            Microsoft.EntityFrameworkCore.Migrations.Operations.DropIndexOperation drop
+                => $"DROP INDEX {drop.Table}.{drop.Name}",
+            Microsoft.EntityFrameworkCore.Migrations.Operations.CreateIndexOperation create
+                => $"CREATE INDEX {create.Table}.{create.Name}",
             _ => operation.GetType().Name
         }));
 

@@ -57,9 +57,10 @@ public sealed class WmcOrderFileGenerator
             errors.Add("WMC_PAYMENT_TERM_UNSUPPORTED");
         }
 
-        if (string.IsNullOrWhiteSpace(order.Customer?.WmcCode))
+        var customerCnpj = DigitsOnly(order.Customer?.Cnpj ?? string.Empty);
+        if (customerCnpj.Length != 14)
         {
-            errors.Add("O codigo WMC do cliente e obrigatorio para exportar o pedido.");
+            errors.Add("WMC_CUSTOMER_CNPJ_INVALID");
         }
 
         foreach (var item in order.Items)
@@ -196,7 +197,7 @@ public sealed class WmcOrderFileGenerator
     private static string FixedLeft(string value, int length) =>
         value.Length > length ? value[^length..] : value.PadLeft(length, '0');
 
-    private static string DigitsOnly(string value) => new(value.Where(char.IsDigit).ToArray());
+    private static string DigitsOnly(string value) => new(value.Where(char.IsAsciiDigit).ToArray());
 
     private static string NormalizeDescription(string value) => new(value
         .ToUpperInvariant()

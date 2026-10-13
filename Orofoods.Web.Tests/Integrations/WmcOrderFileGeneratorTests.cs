@@ -18,7 +18,7 @@ public class WmcOrderFileGeneratorTests
             Number = "ORO-2026-000006",
             CreatedAt = new DateTime(2026, 10, 13, 12, 59, 0, DateTimeKind.Utc),
             RequestedDeliveryDate = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc),
-            Customer = new Customer { WmcCode = "1792", Cnpj = "03.932.292/0001-99" },
+            Customer = new Customer { Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Subtotal = 19.90m,
             Total = 19.90m,
@@ -88,13 +88,63 @@ public class WmcOrderFileGeneratorTests
     }
 
     [Fact]
+    public void Requires_a_valid_customer_cnpj_without_requiring_customer_wmc_code()
+    {
+        var order = new Order
+        {
+            Number = "ORO-2026-000780",
+            CreatedAt = new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc),
+            Customer = new Customer { Cnpj = "03932292000199" },
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
+            Subtotal = 19.90m,
+            Total = 19.90m,
+            Items =
+            [
+                new OrderItem
+                {
+                    Product = new Product { WmcCode = "243680", Unit = "UN" },
+                    ProductNameSnapshot = "Produto homologacao",
+                    Quantity = 1,
+                    UnitPrice = 19.90m,
+                    Subtotal = 19.90m
+                }
+            ]
+        };
+
+        var result = WmcTestOrderFileGenerator.Create().Build(order);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var header = result.Content!.Split(Environment.NewLine)[0];
+        Assert.Equal("03932292000199", header.Substring(180, 14));
+        Assert.Equal("03932292000199", header.Substring(194, 14));
+        Assert.Equal("03932292000199", header.Substring(208, 14));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("12.345.678/0001-9")]
+    [InlineData("12.345.678/0001-999")]
+    public void Rejects_customer_cnpj_that_does_not_normalize_to_14_digits(string? cnpj)
+    {
+        var order = new Order
+        {
+            Customer = new Customer { Cnpj = cnpj! },
+            PaymentTerm = new PaymentTerm { Code = "PIX", DaysUntilDue = 0 },
+            Items = []
+        };
+
+        Assert.Contains("WMC_CUSTOMER_CNPJ_INVALID", WmcTestOrderFileGenerator.Create().Validate(order));
+    }
+
+    [Fact]
     public void Builds_a_fixed_width_homologation_file_for_a_mapped_order()
     {
         var order = new Order
         {
             Number = "ORO-2026-000777",
             CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
-            Customer = new Customer { WmcCode = "107072" },
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             Items =
             [
                 new OrderItem
@@ -122,11 +172,12 @@ public class WmcOrderFileGeneratorTests
     }
 
     [Fact]
-    public void Rejects_order_when_a_wmc_mapping_is_missing()
+    public void Rejects_order_when_a_product_mapping_is_missing()
     {
         var order = new Order
         {
-            Customer = new Customer(),
+            Customer = new Customer { Cnpj = "03.932.292/0001-99" },
+            PaymentTerm = new PaymentTerm { Code = "PIX", DaysUntilDue = 0 },
             Items = [new OrderItem { Product = new Product(), ProductNameSnapshot = "Pao", Quantity = 1 }]
         };
 
@@ -134,7 +185,6 @@ public class WmcOrderFileGeneratorTests
 
         Assert.False(result.Succeeded);
         Assert.Null(result.Content);
-        Assert.Contains(result.Errors, error => error.Contains("cliente", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(result.Errors, error => error.Contains("produto", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -145,7 +195,7 @@ public class WmcOrderFileGeneratorTests
         {
             Number = "ORO-2026-000778",
             CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
-            Customer = new Customer { WmcCode = "107072" },
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", DaysUntilDue = 14 },
             Total = 63.20m,
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 63.20m, Subtotal = 63.20m }]

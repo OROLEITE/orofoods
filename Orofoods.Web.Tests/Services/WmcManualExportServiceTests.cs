@@ -1,5 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
@@ -65,6 +67,207 @@ public sealed class WmcManualExportServiceTests
     }
 
     [Fact]
+    public async Task Manual_export_eligibility_and_diagnostic_use_customer_cnpj_instead_of_wmc_code()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.Customer!.WmcCode = null;
+        var service = CreateService(db);
+
+        Assert.True(service.CanManuallyExport(order));
+        Assert.True(service.DiagnoseManualExport(order).CanExport);
+
+        var export = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Exported, export.Disposition);
+        Assert.Equal("12.345.678/0001-99", order.Customer.Cnpj);
+        Assert.Equal("12345678000199", export.Content!.Split(Environment.NewLine)[0].Substring(180, 14));
+    }
+
+    [Fact]
+    public async Task Successful_export_persists_original_artifact_with_hash_and_shared_audit_attempt()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+
+        var result = await CreateService(db).ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Exported, result.Disposition);
+        var artifact = await db.WmcManualExportArtifacts.SingleAsync();
+        var state = await db.WmcOrderExportStates.SingleAsync();
+        var audit = await db.WmcExportAudits.SingleAsync();
+        Assert.Equal(result.Content, artifact.Content);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(result.Content!))), artifact.ContentSha256);
+        Assert.Equal(artifact.Id, state.CurrentArtifactId);
+        Assert.Equal(artifact.AttemptId, audit.AttemptId);
+        Assert.Equal(WmcOrderExportStatus.Exported, state.Status);
+    }
+
+    [Fact]
+    public async Task Download_returns_verified_original_without_changing_state_or_audits()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        var service = CreateService(db);
+        var generated = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        var stateVersion = (await db.WmcOrderExportStates.SingleAsync()).Version;
+        var auditCount = await db.WmcExportAudits.CountAsync();
+
+        var downloaded = await service.DownloadAsync(order.Id);
+
+        Assert.Equal(WmcManualExportDisposition.Downloaded, downloaded.Disposition);
+        Assert.Equal(generated.FileName, downloaded.FileName);
+        Assert.Equal(generated.Content, downloaded.Content);
+        Assert.Equal(stateVersion, (await db.WmcOrderExportStates.SingleAsync()).Version);
+        Assert.Equal(auditCount, await db.WmcExportAudits.CountAsync());
+    }
+
+    [Fact]
+    public async Task Download_blocks_missing_or_corrupted_artifact_without_writing_state_or_audit()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        var service = CreateService(db);
+        var missing = await service.DownloadAsync(order.Id);
+        Assert.Equal(WmcManualExportDisposition.Rejected, missing.Disposition);
+        Assert.Empty(await db.WmcOrderExportStates.ToListAsync());
+
+        await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        var artifact = await db.WmcManualExportArtifacts.SingleAsync();
+        artifact.Content += "alterado";
+        await db.SaveChangesAsync();
+        var version = (await db.WmcOrderExportStates.SingleAsync()).Version;
+        var auditCount = await db.WmcExportAudits.CountAsync();
+
+        var corrupted = await service.DownloadAsync(order.Id);
+
+        Assert.Equal(WmcManualExportDisposition.Rejected, corrupted.Disposition);
+        Assert.Contains("integridade", corrupted.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(version, (await db.WmcOrderExportStates.SingleAsync()).Version);
+        Assert.Equal(auditCount, await db.WmcExportAudits.CountAsync());
+    }
+
+    [Fact]
+    public async Task Rejected_export_can_only_be_regenerated_with_reason_and_preserves_prior_artifact_and_audit()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        var service = CreateService(db);
+        var first = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        var original = await db.WmcManualExportArtifacts.SingleAsync();
+
+        var missingReason = await service.RejectAsync(order.Id, "  ", "admin-2", "admin2@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, missingReason.Disposition);
+        Assert.Equal(WmcOrderExportStatus.Exported, (await db.WmcOrderExportStates.SingleAsync()).Status);
+
+        var rejected = await service.RejectAsync(order.Id, "Layout rejeitado pelo WMC", "admin-2", "admin2@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, rejected.Disposition);
+        Assert.Equal(WmcOrderExportStatus.Rejected, (await db.WmcOrderExportStates.SingleAsync()).Status);
+        Assert.Equal(2, await db.WmcExportAudits.CountAsync());
+
+        var ordinarySend = await service.ExportAsync(order.Id, "admin-2", "admin2@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, ordinarySend.Disposition);
+        var blockedRegeneration = await service.RegenerateRejectedAsync(order.Id, null, "admin-2", "admin2@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, blockedRegeneration.Disposition);
+        Assert.Equal(1, await db.WmcManualExportArtifacts.CountAsync());
+
+        var regenerated = await service.RegenerateRejectedAsync(order.Id, "Layout corrigido para NeoGrid 3.2", "admin-2", "admin2@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Exported, regenerated.Disposition);
+        var artifacts = await db.WmcManualExportArtifacts.OrderBy(x => x.Id).ToListAsync();
+        Assert.Equal(2, artifacts.Count);
+        Assert.Equal(original.Id, artifacts[1].SupersedesArtifactId);
+        Assert.Equal("Layout corrigido para NeoGrid 3.2", artifacts[1].RegenerationReason);
+        Assert.Equal(first.Content, regenerated.Content);
+        var audits = await db.WmcExportAudits.OrderBy(x => x.ExportedAt).ThenBy(x => x.Id).ToListAsync();
+        Assert.Equal(WmcExportOutcome.Rejected, audits[1].Outcome);
+        Assert.Equal(WmcExportOutcome.Regenerated, audits[2].Outcome);
+        Assert.Equal("Layout corrigido para NeoGrid 3.2", audits[2].Error);
+        Assert.True(audits[2].Succeeded);
+        var state = await db.WmcOrderExportStates.SingleAsync();
+        Assert.Equal(WmcOrderExportStatus.Exported, state.Status);
+        Assert.Equal(artifacts[1].Id, state.CurrentArtifactId);
+        Assert.Null(state.ImportedAt);
+    }
+
+    [Fact]
+    public async Task Concurrent_regeneration_claims_create_only_one_replacement_artifact()
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"wmc-recovery-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+            ForeignKeys = true
+        }.ToString();
+        await using var keeper = new SqliteConnection(connectionString);
+        await keeper.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connectionString).Options;
+        int orderId;
+        await using (var setup = new ApplicationDbContext(options))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            var order = await AddEligibleOrderAsync(setup);
+            orderId = order.Id;
+            await CreateService(setup).ExportAsync(orderId, "admin-1", "admin@orofoods.local");
+            await CreateService(setup).RejectAsync(orderId, "WMC rejeitou o primeiro arquivo", "admin-1", "admin@orofoods.local");
+        }
+
+        await using var firstDb = new ApplicationDbContext(options);
+        await using var secondDb = new ApplicationDbContext(options);
+        var first = CreateService(firstDb).RegenerateRejectedAsync(orderId, "Correção 3.2", "admin-2", "one@orofoods.local");
+        var second = CreateService(secondDb).RegenerateRejectedAsync(orderId, "Correção 3.2", "admin-3", "two@orofoods.local");
+
+        var results = await Task.WhenAll(first, second);
+
+        Assert.Single(results, result => result.Disposition == WmcManualExportDisposition.Exported);
+        Assert.Single(results, result => result.Disposition is WmcManualExportDisposition.Processing or WmcManualExportDisposition.Rejected);
+        Assert.Equal(2, await firstDb.WmcManualExportArtifacts.CountAsync());
+        Assert.Equal(3, await firstDb.WmcExportAudits.CountAsync());
+        Assert.Equal(1, await firstDb.WmcExportAudits.CountAsync(audit => audit.Outcome == WmcExportOutcome.Regenerated));
+        Assert.Equal(WmcOrderExportStatus.Exported, (await firstDb.WmcOrderExportStates.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task Failed_regeneration_keeps_rejection_and_previous_artifact_and_audit_history()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        var service = CreateService(db);
+        await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        var originalArtifact = await db.WmcManualExportArtifacts.SingleAsync();
+        await service.RejectAsync(order.Id, "Arquivo rejeitado", "admin-1", "admin@orofoods.local");
+        var originalAuditCount = await db.WmcExportAudits.CountAsync();
+        order.Total = 0;
+        await db.SaveChangesAsync();
+
+        var result = await service.RegenerateRejectedAsync(order.Id, "Reprocessamento solicitado", "admin-2", "admin2@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Rejected, result.Disposition);
+        Assert.Equal(originalAuditCount + 1, await db.WmcExportAudits.CountAsync());
+        Assert.Equal(1, await db.WmcManualExportArtifacts.CountAsync());
+        var state = await db.WmcOrderExportStates.SingleAsync();
+        Assert.Equal(WmcOrderExportStatus.Rejected, state.Status);
+        Assert.Equal(originalArtifact.Id, state.CurrentArtifactId);
+        var rejectionAudit = await db.WmcExportAudits.SingleAsync(audit => audit.Outcome == WmcExportOutcome.Rejected);
+        Assert.Equal("Arquivo rejeitado", rejectionAudit.Error);
+        Assert.Null(state.ImportedAt);
+    }
+
+    [Fact]
+    public async Task Manual_export_diagnostic_reports_invalid_customer_cnpj()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.Customer!.Cnpj = "12.345.678/0001-9";
+
+        var diagnostic = CreateService(db).DiagnoseManualExport(order);
+
+        Assert.False(diagnostic.CanExport);
+        Assert.Equal("WMC_CUSTOMER_CNPJ_INVALID", diagnostic.BlockReason);
+    }
+
+    [Fact]
     public async Task DiagnoseManualExport_reports_manual_review_state_without_changing_it()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -86,6 +289,34 @@ public sealed class WmcManualExportServiceTests
         Assert.Equal("Confira o histórico anterior e confirme se o arquivo chegou ao WMC antes de continuar.", result.BlockReason);
         Assert.Equal("Histórico incerto", (await db.WmcOrderExportStates.SingleAsync()).LastError);
         Assert.Empty(await db.WmcExportAudits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task DiagnoseManualExport_blocks_successful_legacy_history_even_if_state_says_error()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.WmcOrderExportState = new WmcOrderExportState
+        {
+            OrderId = order.Id,
+            Status = WmcOrderExportStatus.Error,
+            LastError = "falha posterior"
+        };
+        db.WmcOrderExportStates.Add(order.WmcOrderExportState);
+        db.WmcExportAudits.Add(new WmcExportAudit
+        {
+            OrderId = order.Id,
+            AttemptId = Guid.NewGuid(),
+            Outcome = WmcExportOutcome.Generated,
+            Succeeded = true,
+            FileName = "WMC_ORO2026000801.txt"
+        });
+        await db.SaveChangesAsync();
+
+        var diagnostic = CreateService(db).DiagnoseManualExport(order);
+
+        Assert.False(diagnostic.CanExport);
+        Assert.Contains("exportação anterior", diagnostic.BlockReason, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

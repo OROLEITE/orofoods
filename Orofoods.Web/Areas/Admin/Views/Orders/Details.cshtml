@@ -64,7 +64,8 @@
             <dl class="row g-2 mb-2">
                 <div class="col-md-6"><dt>Elegibilidade para exporta&ccedil;&atilde;o manual</dt><dd data-wmc-export-eligibility="@(wmcManualExportDiagnostic.CanExport ? "eligible" : "blocked")"><strong>@(wmcManualExportDiagnostic.CanExport ? "Eleg&iacute;vel para exporta&ccedil;&atilde;o manual" : "Bloqueado")</strong></dd></div>
                 <div class="col-md-6"><dt>Condi&ccedil;&atilde;o de pagamento</dt><dd><code>@(Model.PaymentTerm?.Code ?? "N&atilde;o informada")</code> &middot; @(Model.PaymentTerm?.Name ?? "Descri&ccedil;&atilde;o indispon&iacute;vel") &middot; prazo @(Model.PaymentTerm?.DaysUntilDue.ToString() ?? "n&atilde;o informado") dias</dd></div>
-                <div class="col-md-6"><dt>WMC do cliente</dt><dd><code>@(Model.Customer?.WmcCode ?? "N&atilde;o informado")</code></dd></div>
+                <div class="col-md-6"><dt>CNPJ do cliente</dt><dd><code>@(Model.Customer?.Cnpj ?? "N&atilde;o informado")</code></dd></div>
+                <div class="col-md-6"><dt>C&oacute;digo interno WMC (informativo)</dt><dd><code>@(Model.Customer?.WmcCode ?? "N&atilde;o informado")</code></dd></div>
                 <div class="col-md-6"><dt>Estado da exporta&ccedil;&atilde;o manual</dt><dd>@(Model.WmcOrderExportState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
                 <div class="col-md-6"><dt>Revis&atilde;o manual</dt><dd>@(Model.WmcOrderExportState?.RequiresManualReview == true ? "Necess&aacute;ria" : "N&atilde;o necess&aacute;ria")</dd></div>
                 <div class="col-md-6"><dt>Auditorias WMC</dt><dd>@Model.WmcExportAudits.Count registro(s)</dd></div>

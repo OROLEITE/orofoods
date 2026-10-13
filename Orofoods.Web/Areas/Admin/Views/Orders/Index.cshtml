@@ -50,7 +50,8 @@
                     ? "Pendente - revisar hist&oacute;rico"
                     : state?.Status switch
                     {
-                        WmcOrderExportStatus.Exported => "Exportado",
+                        WmcOrderExportStatus.Exported => "TXT gerado &mdash; aguardando importa&ccedil;&atilde;o",
+                        WmcOrderExportStatus.Rejected => "TXT rejeitado",
                         WmcOrderExportStatus.Imported => "Importado no WMC",
                         WmcOrderExportStatus.Error => "Erro",
                         WmcOrderExportStatus.Processing => "Pendente - processamento",
@@ -73,9 +74,29 @@
                         }
                         @if (state?.Status == WmcOrderExportStatus.Exported && !state.RequiresManualReview)
                         {
+                            @if (state.CurrentArtifactId is not null)
+                            {
+                                <a class="btn btn-sm btn-outline-secondary mt-1" asp-action="DownloadWmcTxt" asp-route-id="@order.Id">Baixar TXT novamente</a>
+                            }
+                            <form asp-action="RejectWmcTxt" method="post" class="mt-1 wmc-rejection-form">
+                                <input type="hidden" name="id" value="@order.Id" />
+                                <label class="visually-hidden" for="wmc-reject-@order.Id">Motivo da rejei&ccedil;&atilde;o</label>
+                                <input id="wmc-reject-@order.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da rejei&ccedil;&atilde;o" />
+                                <button class="btn btn-sm btn-outline-danger mt-1" type="submit">Registrar rejei&ccedil;&atilde;o</button>
+                            </form>
                             <form asp-action="ConfirmWmcImported" method="post" class="mt-1">
                                 <input type="hidden" name="id" value="@order.Id" />
                                 <button class="btn btn-sm btn-outline-success" type="submit" onclick="return confirm('Confirma que este pedido foi importado no WMC?');">Confirmar importa&ccedil;&atilde;o</button>
+                            </form>
+                        }
+                        @if (state?.Status == WmcOrderExportStatus.Rejected && !state.RequiresManualReview)
+                        {
+                            @if (!string.IsNullOrWhiteSpace(state.LastError)) { <small class="d-block text-danger">@state.LastError</small> }
+                            <form asp-action="RegenerateWmcTxt" method="post" class="mt-1 wmc-regeneration-form">
+                                <input type="hidden" name="id" value="@order.Id" />
+                                <label class="visually-hidden" for="wmc-regenerate-@order.Id">Motivo da regenera&ccedil;&atilde;o</label>
+                                <input id="wmc-regenerate-@order.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da regenera&ccedil;&atilde;o" />
+                                <button class="btn btn-sm btn-warning mt-1" type="submit">Regenerar TXT</button>
                             </form>
                         }
                         @if (uncertainHistory)
@@ -99,7 +120,7 @@
                         }
                         else if (canManuallyExport)
                         {
-                            <form asp-action="SendToWmc" method="post" class="mt-1"><input type="hidden" name="id" value="@order.Id" /><button class="btn btn-sm btn-outline-primary" type="submit">Enviar ao WMC</button></form>
+                            <form asp-action="SendToWmc" method="post" class="mt-1"><input type="hidden" name="id" value="@order.Id" /><button class="btn btn-success wmc-send-button" type="submit">Enviar ao WMC</button></form>
                         }
                     </td>
                     <td data-label="Ação" class="text-end"><a class="btn btn-sm btn-order-open" asp-action="Details" asp-route-id="@order.Id">Ver pedido <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></td>

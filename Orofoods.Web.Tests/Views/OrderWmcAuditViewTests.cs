@@ -20,7 +20,7 @@ public class OrderWmcAuditViewTests
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Index.cshtml"));
 
         Assert.Contains("Pendente", view);
-        Assert.Contains("Exportado", view);
+        Assert.Contains("TXT gerado &mdash; aguardando importa&ccedil;&atilde;o", view);
         Assert.Contains("Importado no WMC", view);
         Assert.Contains("Erro", view);
         Assert.Contains("Enviar ao WMC", view);

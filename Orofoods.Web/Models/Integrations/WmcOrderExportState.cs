@@ -12,6 +12,8 @@ public sealed class WmcOrderExportState
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ProcessingStartedAt { get; set; }
     public long Version { get; set; } = 1;
+    public int? CurrentArtifactId { get; set; }
+    public WmcManualExportArtifact? CurrentArtifact { get; set; }
     [MaxLength(450)] public string? ExportedByUserId { get; set; }
     [MaxLength(256)] public string? ExportedByEmail { get; set; }
     public DateTime? ExportedAt { get; set; }
