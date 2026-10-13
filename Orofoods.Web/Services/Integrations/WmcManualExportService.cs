@@ -298,12 +298,18 @@ public sealed class WmcManualExportService(
         CancellationToken cancellationToken = default)
     {
         var state = await db.WmcOrderExportStates.SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
+        if (state?.Status == WmcOrderExportStatus.Imported)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Imported, state.FileName);
+        }
+
         if (state is null || state.Status != WmcOrderExportStatus.Exported || state.RequiresManualReview)
         {
             return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
                 Error: "Confirme a importação somente depois de uma exportação registrada.");
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         state.Status = WmcOrderExportStatus.Imported;
         state.ImportedByUserId = userId;
         state.ImportedByEmail = userEmail;
@@ -313,10 +319,30 @@ public sealed class WmcManualExportService(
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+            await auditService.RecordAttemptAsync(new WmcExportAudit
+            {
+                OrderId = orderId,
+                AttemptId = Guid.NewGuid(),
+                Source = WmcExportSource.Manual,
+                Outcome = WmcExportOutcome.Imported,
+                ExportedByUserId = userId,
+                ExportedByEmail = userEmail,
+                FileName = state.FileName
+            }, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return new WmcManualExportResult(WmcManualExportDisposition.Imported, state.FileName);
         }
         catch (DbUpdateConcurrencyException)
         {
+            await transaction.RollbackAsync(cancellationToken);
+            db.Entry(state).State = EntityState.Detached;
+            var currentState = await db.WmcOrderExportStates.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
+            if (currentState?.Status == WmcOrderExportStatus.Imported)
+            {
+                return new WmcManualExportResult(WmcManualExportDisposition.Imported, currentState.FileName);
+            }
+
             return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
                 Error: "O estado WMC mudou durante a confirmação. Atualize a tela e confira o pedido.");
         }

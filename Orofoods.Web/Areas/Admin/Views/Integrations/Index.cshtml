@@ -58,6 +58,7 @@
                         {
                             WmcExportOutcome.Generated => "TXT gerado",
                             WmcExportOutcome.Available => "Arquivo disponibilizado",
+                            WmcExportOutcome.Imported => "Importado",
                             _ => "Falhou"
                         };
                         var integrationStatusClass = order.IntegrationStatus == IntegrationStatus.Pending && order.Status is OrderStatus.Received or OrderStatus.UnderReview or OrderStatus.Cancelled

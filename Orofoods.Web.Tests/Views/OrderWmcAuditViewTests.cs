@@ -54,6 +54,7 @@ public class OrderWmcAuditViewTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+        var integrationView = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Integrations", "Index.cshtml"));
 
         Assert.DoesNotContain("onclick=\"return confirm(", view);
         Assert.Contains("data-bs-toggle=\"modal\"", view);
@@ -65,6 +66,8 @@ public class OrderWmcAuditViewTests
         Assert.Contains("@Model.Number", view);
         Assert.Contains("TXT gerado — aguardando importação", view);
         Assert.Contains("form.dataset.wmcSubmitting", view);
+        Assert.Contains("WmcExportOutcome.Imported => \"Importação confirmada\"", view);
+        Assert.Contains("WmcExportOutcome.Imported => \"Importado\"", integrationView);
         Assert.Contains("html[data-theme=\"dark\"]", styles);
         Assert.Contains("@media (max-width: 575.98px)", styles);
     }

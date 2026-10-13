@@ -16,9 +16,11 @@ public sealed class AdminWmcManualExportRecoveryTests
         Assert.Equal("Administrador", authorize?.Roles);
 
         AssertMethodHas<ValidateAntiForgeryTokenAttribute>(controller, "SendToWmc");
+        AssertMethodHas<ValidateAntiForgeryTokenAttribute>(controller, "ConfirmWmcImported");
         AssertMethodHas<ValidateAntiForgeryTokenAttribute>(controller, "RejectWmcTxt");
         AssertMethodHas<ValidateAntiForgeryTokenAttribute>(controller, "RegenerateWmcTxt");
         AssertMethodHas<HttpPostAttribute>(controller, "RejectWmcTxt");
+        AssertMethodHas<HttpPostAttribute>(controller, "ConfirmWmcImported");
         AssertMethodHas<HttpPostAttribute>(controller, "RegenerateWmcTxt");
         AssertMethodHas<HttpGetAttribute>(controller, "DownloadWmcTxt");
         Assert.DoesNotContain(typeof(ValidateAntiForgeryTokenAttribute),

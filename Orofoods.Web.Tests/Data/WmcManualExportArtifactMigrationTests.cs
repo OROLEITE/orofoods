@@ -55,6 +55,7 @@ public sealed class WmcManualExportArtifactMigrationTests
         Assert.Equal(1, (int)WmcExportOutcome.Generated);
         Assert.Equal(2, (int)WmcExportOutcome.Available);
         Assert.Equal(3, (int)WmcExportOutcome.Failed);
+        Assert.Equal(6, (int)WmcExportOutcome.Imported);
     }
 
     [Fact]

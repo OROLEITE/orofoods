@@ -17,7 +17,8 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
         attempt.ExportedAt = DateTime.UtcNow;
         attempt.Error = SummarizeError(attempt.Error,
             attempt.Outcome is WmcExportOutcome.Rejected or WmcExportOutcome.Regenerated ? 1000 : 500);
-        attempt.Succeeded = attempt.Outcome is WmcExportOutcome.Generated or WmcExportOutcome.Available or WmcExportOutcome.Regenerated;
+        attempt.Succeeded = attempt.Outcome is WmcExportOutcome.Generated or WmcExportOutcome.Available
+            or WmcExportOutcome.Regenerated or WmcExportOutcome.Imported;
 
         var existing = await db.WmcExportAudits.SingleOrDefaultAsync(
             audit => audit.OrderId == attempt.OrderId && audit.AttemptId == attempt.AttemptId,
