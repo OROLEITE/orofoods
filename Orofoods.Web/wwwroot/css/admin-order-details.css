@@ -604,3 +604,385 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         text-transform: uppercase;
     }
 }
+
+/* Compact redesign: later rules intentionally refine the base layout above. */
+.admin-authenticated .admin-order-details-page {
+    padding: 10px 0 20px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-layout {
+    gap: 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 12px;
+    background: var(--order-detail-surface);
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-header {
+    flex: 0 0 auto;
+    margin: 0;
+    gap: 14px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-header h1 {
+    font-size: clamp(1.2rem, 1.8vw, 1.5rem);
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-header .btn {
+    order: 2;
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
+    display: flex;
+    flex: 1 1 420px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item {
+    flex: 0 1 auto;
+    gap: 2px;
+    padding: 2px 14px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item--total {
+    margin-left: auto;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item strong {
+    font-size: 13px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item--total strong {
+    font-size: 18px;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-card,
+.admin-authenticated .admin-order-details-page .order-point-charge-card,
+.admin-authenticated .admin-order-details-page .order-point-audit,
+.admin-authenticated .admin-order-details-page .order-actions-card,
+.admin-authenticated .admin-order-details-page .order-detail-section {
+    padding: 10px 12px;
+    border-radius: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-section-heading {
+    margin-bottom: 6px;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-section-heading h2 {
+    font-size: 14px;
+}
+
+.admin-authenticated .admin-order-details-page .order-count-badge {
+    min-width: 22px;
+    padding: 1px 7px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 999px;
+    background: var(--order-detail-surface-secondary);
+    color: var(--order-detail-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-eligibility {
+    padding: 3px 10px;
+    border: 1px solid #E5C678;
+    border-radius: 999px;
+    background: #FFF8E5;
+    color: #80570E;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-eligibility--eligible {
+    border-color: #86C89B;
+    background: #EAF6ED;
+    color: #17623A;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-block-reason {
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    border-left: 4px solid #D97706;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-last-error {
+    margin: 0 0 8px;
+    font-size: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px 16px;
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-facts dt,
+.admin-authenticated .admin-order-details-page .order-wmc-facts dd {
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-facts dt {
+    color: var(--order-detail-muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-facts dd {
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-technical,
+.admin-authenticated .admin-order-details-page .order-history-more {
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-technical > summary,
+.admin-authenticated .admin-order-details-page .order-history-more > summary {
+    width: fit-content;
+    color: var(--order-detail-muted);
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-technical > summary:focus-visible,
+.admin-authenticated .admin-order-details-page .order-history-more > summary:focus-visible {
+    outline: 2px solid #2563EB;
+    outline-offset: 2px;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-payment-term {
+    margin: 6px 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-products {
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-products .list-group-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    padding: 4px 0;
+    border-color: var(--order-detail-border);
+    background: transparent;
+}
+
+.admin-authenticated .admin-order-details-page .order-actions-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 24px;
+}
+
+.admin-authenticated .admin-order-details-page .order-actions-card .order-detail-section-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-status-form,
+.admin-authenticated .admin-order-details-page .order-details-wmc-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-status-form label,
+.admin-authenticated .admin-order-details-page .order-details-wmc-form label {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.admin-authenticated .admin-order-details-page .order-action-controls {
+    max-width: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-actions-card .btn,
+.admin-authenticated .admin-order-details-page .order-action-controls .form-select {
+    min-height: 34px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    font-size: 13px;
+}
+
+.admin-authenticated .admin-order-details-page .order-action-warning {
+    margin-top: 8px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-grid {
+    align-items: start;
+    gap: 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-entry {
+    padding: 5px 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-entry > div {
+    flex-direction: row;
+    gap: 2px 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-empty-state {
+    padding: 8px 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-items {
+    width: 100%;
+}
+
+.admin-authenticated .admin-order-details-page .order-items-heading,
+.admin-authenticated .admin-order-details-page .order-row {
+    grid-template-columns: minmax(80px, .5fr) minmax(0, 2.4fr) minmax(70px, .5fr) minmax(110px, .8fr) minmax(110px, .8fr);
+    gap: 10px;
+}
+
+.admin-authenticated .admin-order-details-page .order-items-heading {
+    padding: 5px 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-items-heading > span:nth-child(-n+2) {
+    text-align: left;
+}
+
+.admin-authenticated .admin-order-details-page .order-row {
+    padding: 5px 12px;
+}
+
+.admin-authenticated .admin-order-details-page .order-row > .order-item-product,
+.admin-authenticated .admin-order-details-page .order-row > .order-item-sku {
+    text-align: left;
+}
+
+.admin-authenticated .admin-order-details-page .order-item-product h3 {
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-list {
+    width: 100%;
+}
+
+.admin-authenticated .admin-order-details-page .order-point-audit-entry {
+    padding: 5px 0;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-details-hero {
+    border-color: var(--order-detail-border);
+    background: var(--order-detail-surface);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-eligibility {
+    border-color: #854D0E;
+    background: #422F12;
+    color: #FCD34D;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-eligibility--eligible {
+    border-color: #047857;
+    background: #12352C;
+    color: #6EE7B7;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-block-reason {
+    border-left-color: #F59E0B;
+}
+
+@media (max-width: 900px) {
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
+        flex-basis: 100%;
+        justify-content: flex-start;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item {
+        padding-left: 0;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item + .order-details-summary-item,
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item:nth-child(n+3) {
+        border-top: 0;
+        border-left: 0;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item--total {
+        margin-left: 0;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-wmc-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-header {
+        flex: 1 1 100%;
+        align-items: center;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item + .order-details-summary-item {
+        border-top: 0;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-wmc-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-details-status-form,
+    .admin-authenticated .admin-order-details-page .order-details-wmc-form {
+        align-items: stretch;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-detail-section-heading {
+        align-items: center;
+        flex-direction: row;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-history-entry {
+        align-items: flex-start;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-row > .order-item-sku::before {
+        content: none;
+    }
+}
