@@ -15,7 +15,6 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Authorize(Roles = "Administrador")]
 public class IntegrationsController(
     ApplicationDbContext db,
-    OrderIntegrationService integrationService,
     WmcManualExportService wmcManualExportService,
     WmcSyncCoordinator wmcSyncCoordinator,
     WmcSyncService wmcSyncService,
@@ -30,6 +29,7 @@ public class IntegrationsController(
             .AsNoTracking()
             .Include(order => order.Customer)
             .Include(order => order.WmcExportAudits)
+            .Include(order => order.WmcOrderExportState)
             .AsQueryable();
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -57,15 +57,19 @@ public class IntegrationsController(
         ViewBag.Query = q;
         ViewBag.Status = status;
         ViewBag.WmcStatus = wmcStatus;
-        return View(await query.OrderByDescending(order => order.LastIntegrationAttempt ?? order.CreatedAt).ToListAsync());
+        var orders = await query.OrderByDescending(order => order.LastIntegrationAttempt ?? order.CreatedAt).ToListAsync();
+        ViewData["WmcManualExportEligibleOrderIds"] = orders
+            .Where(wmcManualExportService.CanManuallyExport)
+            .Select(order => order.Id)
+            .ToHashSet();
+        return View(orders);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Reprocess(int id)
+    public Task<IActionResult> Reprocess(int id, CancellationToken cancellationToken = default)
     {
-        await integrationService.SendAsync(id);
-        return RedirectToAction(nameof(Index));
+        return ExportWmc(id, cancellationToken);
     }
 
     [HttpPost]

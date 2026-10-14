@@ -1,7 +1,7 @@
 @using Orofoods.Web.Models.Integrations
 @using Orofoods.Web.Models.Orders
 @model IReadOnlyList<Orofoods.Web.Models.Orders.Order>
-@{ ViewData["Title"] = "Integra&ccedil;&otilde;es ERP"; }
+@{ ViewData["Title"] = "Integra&ccedil;&otilde;es ERP"; var eligibleOrderIds = ViewData["WmcManualExportEligibleOrderIds"] as IReadOnlySet<int> ?? new HashSet<int>(); }
 
 <section class="section admin-integrations-page">
     <div class="container">
@@ -51,6 +51,7 @@
                     @foreach (var order in Model)
                     {
                         var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).ThenByDescending(item => item.Id).FirstOrDefault();
+                        var manualState = order.WmcOrderExportState;
                         var wmcOutcome = lastWmcExport is null || lastWmcExport.Outcome == WmcExportOutcome.Unknown
                             ? (lastWmcExport?.Succeeded == true ? WmcExportOutcome.Generated : WmcExportOutcome.Failed)
                             : lastWmcExport.Outcome;
@@ -92,14 +93,42 @@
                             <td class="erp-nowrap">@(order.LastIntegrationAttempt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</td>
                             <td>@(order.ErpOrderNumber ?? order.ExternalOrderId ?? "Pendente")</td>
                             <td>
-                                @if (lastWmcExport is null)
+                                @if (manualState is not null)
+                                {
+                                    var manualStatusLabel = manualState.Status switch
+                                    {
+                                        WmcOrderExportStatus.Exported => "TXT gerado",
+                                        WmcOrderExportStatus.Imported => "Importa&ccedil;&atilde;o confirmada",
+                                        WmcOrderExportStatus.Processing => "Processando",
+                                        WmcOrderExportStatus.Rejected => "Rejeitado",
+                                        _ => manualState.Status.ToString()
+                                    };
+                                    var manualStatusClass = manualState.Status switch
+                                    {
+                                        WmcOrderExportStatus.Exported or WmcOrderExportStatus.Imported => "erp-status-badge--succeeded",
+                                        WmcOrderExportStatus.Rejected => "erp-status-badge--failed",
+                                        WmcOrderExportStatus.Error => "erp-status-badge--failed",
+                                        WmcOrderExportStatus.Processing => "erp-status-badge--processing",
+                                        _ => "erp-status-badge--pending"
+                                    };
+                                    <span class="erp-status-badge @manualStatusClass">@Html.Raw(manualStatusLabel)</span>
+                                    <small class="d-block">Manual</small>
+                                    @if (!string.IsNullOrWhiteSpace(manualState.LastError))
+                                    {
+                                        <small class="d-block text-danger">@manualState.LastError</small>
+                                    }
+                                }
+                                @if (lastWmcExport is null && order.WmcOrderExportState is null)
                                 {
                                     <span class="text-muted">Nunca</span>
                                 }
-                                else
+                                else if (lastWmcExport is not null)
                                 {
-                                    <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@wmcOutcomeLabel</span>
-                                    <small class="d-block">@(lastWmcExport.Source == WmcExportSource.Automatic ? "Automática" : "Manual")</small>
+                                    @if (manualState is null)
+                                    {
+                                        <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@wmcOutcomeLabel</span>
+                                    }
+                                    @if (manualState is null) { <small class="d-block">@(lastWmcExport.Source == WmcExportSource.Automatic ? "Automática" : "Manual")</small> }
                                     <small class="d-block">@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
                                     @if (lastWmcExport.GeneratedAt is not null)
                                     {
@@ -115,23 +144,19 @@
                                         <small class="d-block text-danger">@lastWmcExport.Error</small>
                                     }
                                 }
+                                @if (manualState is not null && lastWmcExport is null)
+                                {
+                                    <a class="d-block" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">Consultar hist&oacute;rico</a>
+                                }
                             </td>
                             <td class="text-end">
                                 <div class="erp-row-actions">
-                                    @if (order.Status == OrderStatus.Approved)
+                                    @if (order.Status == OrderStatus.Approved && eligibleOrderIds.Contains(order.Id))
                                     {
                                         <form asp-action="ExportWmc" method="post">
                                             <input type="hidden" name="id" value="@order.Id" />
-                                            <input type="hidden" name="attemptId" value="@Guid.NewGuid()" />
                                             <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>
                                         </form>
-                                        @if (order.IntegrationStatus != IntegrationStatus.Processing)
-                                        {
-                                            <form asp-action="Reprocess" method="post">
-                                                <input type="hidden" name="id" value="@order.Id" />
-                                                <button class="btn btn-sm btn-erp-reprocess" type="submit">Reprocessar</button>
-                                            </form>
-                                        }
                                     }
                                 </div>
                             </td>

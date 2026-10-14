@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -16,6 +17,7 @@ using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Tests.Infrastructure;
+using System.Security.Claims;
 
 namespace Orofoods.Web.Tests.Controllers;
 
@@ -31,7 +33,6 @@ public sealed class AdminWmcManualEligibilityTests
         var controller = new OrdersController(
             db,
             service: null!,
-            integrationService: null!,
             new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db)),
             pointPaymentService: null!,
             Options.Create(new MercadoPagoPointOptions()),
@@ -46,6 +47,41 @@ public sealed class AdminWmcManualEligibilityTests
         Assert.True(diagnostic.CanExport);
         Assert.Equal(0, await db.WmcExportAudits.CountAsync());
         Assert.Equal(0, await db.WmcOrderExportStates.CountAsync());
+    }
+
+    [Fact]
+    public async Task Legacy_reprocess_action_uses_the_persistent_manual_export_service()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder("ORO-2026-000905", "PIX");
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+        var controller = new OrdersController(
+            db,
+            service: null!,
+            wmcManualExportService: new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db)),
+            pointPaymentService: null!,
+            Options.Create(new MercadoPagoPointOptions()),
+            Options.Create(new PaymentEligibilityOptions()),
+            hostEnvironment: null!);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.NameIdentifier, "admin-user"),
+                    new Claim(ClaimTypes.Name, "admin@example.test")
+                ], "test"))
+            }
+        };
+
+        var result = await controller.ReprocessIntegration(order.Id);
+
+        Assert.IsType<FileContentResult>(result);
+        Assert.Equal(WmcOrderExportStatus.Exported, (await db.WmcOrderExportStates.SingleAsync()).Status);
+        Assert.Single(await db.WmcManualExportArtifacts.ToListAsync());
+        Assert.Single(await db.WmcExportAudits.Where(audit => audit.Succeeded).ToListAsync());
     }
 
     [Fact]
@@ -68,7 +104,6 @@ public sealed class AdminWmcManualEligibilityTests
         var controller = new OrdersController(
             db,
             service: null!,
-            integrationService: null!,
             wmcManualExportService: exportService,
             pointPaymentService: null!,
             Options.Create(new MercadoPagoPointOptions()),

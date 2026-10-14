@@ -14,9 +14,10 @@ public class IntegrationDashboardViewTests
         Assert.Contains("Reprocess", controller);
         Assert.Contains("ExportWmc", controller);
         Assert.Contains("WmcManualExportService", controller);
+        Assert.Contains("return ExportWmc(id, cancellationToken);", controller);
         Assert.Contains("status", view);
         Assert.Contains("wmcStatus", view);
-        Assert.Contains("Reprocess", view);
+        Assert.DoesNotContain("asp-action=\"Reprocess\"", view);
         Assert.Contains("Exportar WMC", view);
         Assert.Contains("&Uacute;ltima exporta&ccedil;&atilde;o WMC", view);
         Assert.Contains("WmcExportAudits.OrderByDescending", view);
@@ -57,7 +58,15 @@ public class IntegrationDashboardViewTests
         Assert.DoesNotContain("Importado WMC", view, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Importado WMC", orderDetails, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("order.Status == OrderStatus.Approved", view);
-        Assert.Contains("order.IntegrationStatus != IntegrationStatus.Processing", view);
+        Assert.Contains("WmcManualExportEligibleOrderIds", controller);
+        Assert.Contains("WmcOrderExportState", controller);
+        Assert.Contains("eligibleOrderIds.Contains(order.Id)", view);
+        Assert.Contains("Importa&ccedil;&atilde;o confirmada", view);
+        Assert.Contains("WmcOrderExportStatus.Rejected => \"erp-status-badge--failed\"", view);
+        Assert.Contains("WmcOrderExportStatus.Processing => \"erp-status-badge--processing\"", view);
+        Assert.Contains("if (manualState is null)", view);
+        Assert.Contains("manualState is not null && lastWmcExport is null", view);
+        Assert.DoesNotContain("asp-action=\"Reprocess\"", view);
         Assert.Contains("WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id)", controller);
         Assert.Contains("OrderByDescending(item => item.ExportedAt).ThenByDescending(item => item.Id)", view);
         Assert.DoesNotContain("OrderByDescending(audit => audit.ExportedAt).Select", controller);

@@ -330,14 +330,6 @@
                         <button class="btn btn-primary">Atualizar status</button>
                     </div>
                 </form>
-                @if (Model.Status == OrderStatus.Approved && Model.IntegrationStatus != IntegrationStatus.Processing && !wmcImportConfirmed)
-                {
-                    <form asp-action="ReprocessIntegration" method="post" class="order-details-wmc-form">
-                        <input type="hidden" name="id" value="@Model.Id" />
-                        <label>Integração ERP</label>
-                        <button class="btn btn-outline-dark">Reprocessar integra&#231;&#227;o</button>
-                    </form>
-                }
                 @if (!string.IsNullOrWhiteSpace(Model.IntegrationError))
                 {
                     <small class="order-action-feedback text-danger">@Model.IntegrationError</small>

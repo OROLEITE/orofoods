@@ -17,7 +17,6 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 public class OrdersController(
     ApplicationDbContext db,
     AdminOrderService service,
-    OrderIntegrationService integrationService,
     WmcManualExportService wmcManualExportService,
     IPointPaymentOrchestrationService pointPaymentService,
     IOptions<MercadoPagoPointOptions> pointOptions,
@@ -318,9 +317,8 @@ public class OrdersController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> ReprocessIntegration(int id)
+    public Task<IActionResult> ReprocessIntegration(int id, CancellationToken cancellationToken = default)
     {
-        await integrationService.SendAsync(id);
-        return RedirectToAction(nameof(Details), new { id });
+        return SendToWmc(id, cancellationToken);
     }
 }

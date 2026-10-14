@@ -215,11 +215,12 @@ public class AdminDarkThemeContractTests
         Assert.Contains("id=\"orderStatus\"", list);
         foreach (var hook in new[] { "data-payment-status", "data-card-on-delivery-details", "data-point-payment-poll", "data-point-status-label", "data-delivered-payment-guard", "id=\"point-assignment\"", "admin-point-payment.js", "Model.StatusHistory.OrderByDescending", "Model.WmcExportAudits.OrderByDescending", "entry.FileName", "entry.Error", "item.Subtotal" })
             Assert.Contains(hook, detail);
-        foreach (var action in new[] { "UpdateStatus", "ReprocessIntegration", "PollPointCharge", "RefreshPointCharge", "CancelPointCharge", "StartPointCharge" })
+        foreach (var action in new[] { "UpdateStatus", "SendToWmc", "PollPointCharge", "RefreshPointCharge", "CancelPointCharge", "StartPointCharge" })
             Assert.Contains($"asp-action=\"{action}\" method=\"post\"", detail);
+        Assert.DoesNotContain("asp-action=\"ReprocessIntegration\"", detail);
         Assert.Contains("class=\"order-details-status-form\"", detail);
         Assert.Contains("<button class=\"btn btn-primary\">Atualizar status</button>", detail);
-        Assert.Contains("class=\"order-details-wmc-form\"", detail);
+        Assert.Contains("class=\"order-detail-section order-wmc-actions\"", detail);
         Assert.Contains("@Model.IntegrationError", detail);
         Assert.DoesNotContain("class=\"modal", list);
         Assert.Contains("class=\"modal fade wmc-import-confirm-modal", detail);
