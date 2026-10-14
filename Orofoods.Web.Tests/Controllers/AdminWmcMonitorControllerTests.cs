@@ -77,7 +77,6 @@ public class AdminWmcMonitorControllerTests
     {
         var controller = new IntegrationsController(
             db,
-            null!,
             new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db)),
             null!,
             null!,

@@ -57,6 +57,7 @@ public class AdminOrderDetailsVisualTests
     public void Order_details_groups_operational_information_without_changing_actions()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
 
         foreach (var component in new[]
@@ -76,7 +77,8 @@ public class AdminOrderDetailsVisualTests
         }
 
         Assert.Contains("asp-action=\"UpdateStatus\"", view);
-        Assert.Contains("asp-action=\"ReprocessIntegration\"", view);
+        Assert.DoesNotContain("asp-action=\"ReprocessIntegration\"", view);
+        Assert.Contains("return SendToWmc(id, cancellationToken);", controller);
         Assert.Contains("asp-action=\"StartPointCharge\"", view);
         Assert.Contains("asp-action=\"RefreshPointCharge\"", view);
         Assert.Contains("asp-action=\"CancelPointCharge\"", view);
@@ -97,7 +99,7 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("Model.StatusHistory.OrderByDescending(x => x.ChangedAt)", view);
         Assert.Contains("Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt)", view);
         Assert.Contains("Nenhuma exporta&#231;&#227;o WMC registrada para este pedido.", view);
-        Assert.Contains("Integração ERP", view);
+        Assert.DoesNotContain("asp-action=\"ReprocessIntegration\"", view);
         Assert.Contains("item.UnitPrice.ToString(\"C\")", view);
         Assert.Contains("item.Subtotal.ToString(\"C\")", view);
         Assert.Contains("item.Quantity", view);

@@ -107,7 +107,7 @@ public class OrderWmcAuditViewTests
         Assert.Contains("Importa\\u00e7\\u00e3o WMC confirmada", view);
         Assert.Contains("wmcImportConfirmed ? \"imported\"", view);
         Assert.Contains("!wmcManualExportDiagnostic.CanExport && !wmcImportConfirmed", view);
-        Assert.Contains("&& !wmcImportConfirmed", view);
+        Assert.DoesNotContain("asp-action=\"ReprocessIntegration\"", view);
         Assert.Contains("order-wmc-eligibility--imported", styles);
         Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-eligibility--imported", styles);
     }
@@ -116,9 +116,11 @@ public class OrderWmcAuditViewTests
     public void Order_details_only_offer_integration_reprocessing_for_approved_orders_and_break_audit_ties()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
 
-        Assert.Contains("@if (Model.Status == OrderStatus.Approved && Model.IntegrationStatus != IntegrationStatus.Processing && !wmcImportConfirmed)", view);
+        Assert.DoesNotContain("asp-action=\"ReprocessIntegration\"", view);
+        Assert.Contains("return SendToWmc(id, cancellationToken);", controller);
         Assert.Contains("Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt).ThenByDescending(x => x.Id)", view);
     }
 }

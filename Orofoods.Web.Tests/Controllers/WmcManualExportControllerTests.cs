@@ -6,10 +6,13 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
+using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Tests.Infrastructure;
@@ -40,11 +43,50 @@ public class WmcManualExportControllerTests
         Assert.Equal("Somente pedidos aprovados podem ser exportados para o WMC.", controller.TempData["WmcError"]);
     }
 
+    [Fact]
+    public async Task Legacy_reprocess_action_uses_the_persistent_manual_export_service()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = new Order
+        {
+            Number = "ORO-2026-000805",
+            CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" },
+            CreatedByUser = TestDbContextFactory.CreateOrderCreator("wmc-reprocess-user"),
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
+            Status = OrderStatus.Approved,
+            Subtotal = 63.20m,
+            Total = 63.20m,
+            Items =
+            [
+                new OrderItem
+                {
+                    Product = new Product
+                    {
+                        Name = "Produto", Sku = "SKU-805", WmcCode = "610601552", Unit = "UN",
+                        ProductCategory = new ProductCategory { Name = "Categoria", Slug = "wmc-reprocess" }
+                    },
+                    ProductNameSnapshot = "Produto", SkuSnapshot = "SKU-805", Quantity = 1,
+                    UnitPrice = 63.20m, Subtotal = 63.20m
+                }
+            ]
+        };
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.Reprocess(order.Id);
+
+        Assert.IsType<FileContentResult>(result);
+        Assert.Equal(WmcOrderExportStatus.Exported, (await db.WmcOrderExportStates.SingleAsync()).Status);
+        Assert.Single(await db.WmcManualExportArtifacts.ToListAsync());
+        Assert.Single(await db.WmcExportAudits.Where(audit => audit.Succeeded).ToListAsync());
+    }
+
     private static IntegrationsController CreateController(ApplicationDbContext db)
     {
         var controller = new IntegrationsController(
             db,
-            null!,
             new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db)),
             null!,
             null!,
