@@ -366,6 +366,25 @@ public static class SeedData
         }
     }
 
+    public static async Task EnsureSellerRoleAsync(RoleManager<IdentityRole> roleManager)
+    {
+        if (await roleManager.RoleExistsAsync(ApplicationRoles.Seller)) return;
+
+        IdentityResult result;
+        try
+        {
+            result = await roleManager.CreateAsync(new IdentityRole(ApplicationRoles.Seller));
+        }
+        catch (DbUpdateException)
+        {
+            if (await roleManager.RoleExistsAsync(ApplicationRoles.Seller)) return;
+            throw;
+        }
+
+        if (result.Succeeded || await roleManager.RoleExistsAsync(ApplicationRoles.Seller)) return;
+        throw new InvalidOperationException(string.Join("; ", result.Errors.Select(error => error.Description)));
+    }
+
     public static async Task EnsureProductCategoriesAsync(ApplicationDbContext db)
     {
         var categories = new[]

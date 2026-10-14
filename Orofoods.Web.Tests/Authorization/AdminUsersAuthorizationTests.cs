@@ -9,11 +9,27 @@ using Orofoods.Web.Data;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Tests.Infrastructure;
+using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Tests.Authorization;
 
 public class AdminUsersAuthorizationTests
 {
+    [Fact]
+    public async Task Create_user_form_lists_seller_role_after_bootstrap()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var userManager = TestIdentityFactory.CreateUserManager(db);
+        var roleManager = TestIdentityFactory.CreateRoleManager(db);
+        await SeedData.EnsureSellerRoleAsync(roleManager);
+
+        var controller = new UsersController(db, userManager, roleManager, new AdminUserService(db, userManager, roleManager));
+        var view = Assert.IsType<ViewResult>(await controller.Create());
+        var model = Assert.IsType<AdminUserCreateViewModel>(view.Model);
+
+        Assert.Contains(model.Roles, role => role.Value == ApplicationRoles.Seller);
+    }
+
     [Fact]
     public void User_management_controller_is_administrator_only()
     {
