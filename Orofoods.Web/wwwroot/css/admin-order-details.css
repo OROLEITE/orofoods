@@ -10,7 +10,30 @@
 
 .admin-authenticated .admin-order-details-page .order-details-layout {
     display: grid;
-    gap: 14px;
+    grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+    align-items: start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page > .container {
+    box-sizing: border-box;
+    width: calc(100% - 24px);
+    max-width: 1800px;
+    padding-inline: clamp(8px, 1vw, 18px);
+}
+
+.admin-authenticated .admin-order-details-page .order-details-primary,
+.admin-authenticated .admin-order-details-page .order-details-secondary {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    font-size: 13px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-primary > *,
+.admin-authenticated .admin-order-details-page .order-details-secondary > * {
     min-width: 0;
 }
 
@@ -77,6 +100,10 @@
     line-height: 1.2;
 }
 
+.admin-authenticated .admin-order-details-page .order-details-status-strip .order-details-summary-item strong {
+    font-size: 13px;
+}
+
 .admin-authenticated .admin-order-details-page .order-details-summary-item--total strong {
     font-size: 20px;
     letter-spacing: -.4px;
@@ -127,6 +154,69 @@
     line-height: 1.2;
 }
 
+.admin-authenticated .admin-order-details-page .order-detail-section > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-section > summary::after {
+    flex: 0 0 auto;
+    margin-left: 8px;
+    color: var(--order-detail-muted);
+    content: "+";
+    font-size: 18px;
+    line-height: 1;
+}
+
+.admin-authenticated .admin-order-details-page .order-detail-section[open] > summary::after {
+    content: "−";
+}
+
+.admin-authenticated .admin-order-details-page .order-commercial-overview {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-commercial-overview > div {
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-commercial-overview dt,
+.admin-authenticated .admin-order-details-page .order-commercial-overview dd {
+    margin: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-commercial-overview dt {
+    color: var(--order-detail-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-commercial-overview dd {
+    overflow-wrap: anywhere;
+    color: var(--order-detail-text);
+    font-size: 13px;
+}
+
+.admin-authenticated .admin-order-details-page .order-commercial-address,
+.admin-authenticated .admin-order-details-page .order-commercial-notes {
+    grid-column: 1 / -1;
+}
+
+.admin-authenticated .admin-order-details-page .order-commercial-notes dd {
+    white-space: pre-line;
+}
+
+.admin-authenticated .admin-order-details-page .order-payment-overview {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+}
+
 .admin-authenticated .admin-order-details-page .order-payment-status--approved {
     border-color: #86C89B;
     background: #EAF6ED;
@@ -159,7 +249,7 @@
 
 .admin-authenticated .admin-order-details-page .order-payment-details dt {
     color: var(--order-detail-muted);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -167,7 +257,7 @@
     margin-top: 3px;
     overflow-wrap: anywhere;
     color: var(--order-detail-text);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -193,7 +283,7 @@
 }
 
 .admin-authenticated .admin-order-details-page .order-point-audit-list {
-    width: min(88%, 1200px);
+    width: 100%;
 }
 
 .admin-authenticated .admin-order-details-page .order-point-audit-entry,
@@ -253,7 +343,7 @@
 .admin-authenticated .admin-order-details-page .order-point-audit-meta {
     justify-content: flex-start;
     color: var(--order-detail-muted);
-    font-size: 11px;
+    font-size: 12px;
     text-align: left;
 }
 
@@ -263,7 +353,7 @@
 
 .admin-authenticated .admin-order-details-page .order-actions-grid {
     display: grid;
-    grid-template-columns: minmax(0, 520px) minmax(0, 360px);
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     justify-content: start;
 }
@@ -291,7 +381,7 @@
 
 .admin-authenticated .admin-order-details-page .order-action-controls .form-select {
     min-width: 0;
-    max-width: 280px;
+    max-width: none;
     min-height: 40px;
 }
 
@@ -324,7 +414,7 @@
 
 .admin-authenticated .admin-order-details-page .order-history-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
 }
 
@@ -344,7 +434,7 @@
 .admin-authenticated .admin-order-details-page .order-history-entry small,
 .admin-authenticated .admin-order-details-page .order-history-entry time {
     color: var(--order-detail-muted);
-    font-size: 10px;
+    font-size: 11px;
 }
 
 .admin-authenticated .admin-order-details-page .order-history-entry time {
@@ -365,7 +455,7 @@
 }
 
 .admin-authenticated .admin-order-details-page .order-items {
-    width: min(100%, 1080px);
+    width: 100%;
     overflow: hidden;
     border: 1px solid var(--order-detail-border);
     border-radius: 10px;
@@ -374,7 +464,7 @@
 .admin-authenticated .admin-order-details-page .order-items-heading,
 .admin-authenticated .admin-order-details-page .order-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(90px, .55fr) minmax(130px, .8fr) minmax(120px, .75fr);
+    grid-template-columns: minmax(80px, .5fr) minmax(0, 2.4fr) minmax(70px, .5fr) minmax(110px, .8fr) minmax(110px, .8fr);
     align-items: center;
     gap: 12px;
 }
@@ -738,7 +828,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     border-radius: 6px;
     background: var(--order-detail-surface-secondary);
     color: var(--order-detail-muted);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     line-height: 1.4;
     overflow-wrap: anywhere;
@@ -746,7 +836,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 .admin-authenticated .admin-order-details-page .order-wmc-last-error {
     margin: 0 0 8px;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .admin-authenticated .admin-order-details-page .order-wmc-facts {
@@ -763,27 +853,27 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 .admin-authenticated .admin-order-details-page .order-wmc-facts dt {
     color: var(--order-detail-muted);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
 }
 
 .admin-authenticated .admin-order-details-page .order-wmc-facts dd {
     overflow-wrap: anywhere;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
 }
 
 .admin-authenticated .admin-order-details-page .order-wmc-technical,
 .admin-authenticated .admin-order-details-page .order-history-more {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .admin-authenticated .admin-order-details-page .order-wmc-technical > summary,
 .admin-authenticated .admin-order-details-page .order-history-more > summary {
     width: fit-content;
     color: var(--order-detail-muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     cursor: pointer;
 }
@@ -819,13 +909,8 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 }
 
 .admin-authenticated .admin-order-details-page .order-actions-card .order-detail-section-heading {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
+    display: flex;
+    margin-bottom: 6px;
 }
 
 .admin-authenticated .admin-order-details-page .order-details-status-form,
@@ -1241,10 +1326,11 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 }
 
 .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     flex: none;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: stretch;
     gap: 4px 18px;
     width: 100%;
     padding-top: 7px;
@@ -1254,16 +1340,28 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item,
 .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item + .order-details-summary-item {
-    flex: 0 1 auto;
+    flex: none;
     gap: 2px;
-    min-width: 90px;
+    min-width: 0;
     padding: 1px 0;
     border: 0;
 }
 
+@media (max-width: 1024px) {
+    .admin-authenticated .admin-order-details-page .order-details-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-authenticated .admin-order-details-page .order-commercial-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .admin-authenticated .admin-order-details-page .order-wmc-actions-layout {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px 20px;
     min-width: 0;
@@ -1286,9 +1384,10 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-authenticated .admin-order-details-page .order-wmc-actions-bar {
     display: flex;
     flex: 0 0 auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    max-width: 100%;
     gap: 8px;
 }
 
