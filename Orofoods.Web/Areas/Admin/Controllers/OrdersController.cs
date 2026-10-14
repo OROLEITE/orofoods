@@ -22,16 +22,56 @@ public class OrdersController(
     IOptions<MercadoPagoPointOptions> pointOptions,
     IOptions<PaymentEligibilityOptions> paymentOptions,
     IHostEnvironment hostEnvironment,
-    CustomerCnpjSnapshotCorrectionService? customerCnpjSnapshotCorrectionService = null) : Controller
+    CustomerCnpjSnapshotCorrectionService? customerCnpjSnapshotCorrectionService = null,
+    TimeProvider? timeProvider = null) : Controller
 {
-    public async Task<IActionResult> Index(string? q, string? status, string sort = "date", string direction = "desc", int page = 1)
+    private static readonly TimeZoneInfo SaoPauloTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    public async Task<IActionResult> Index(
+        string? q = null,
+        string? status = null,
+        string sort = "date",
+        string direction = "desc",
+        int page = 1,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
+        string? wmcStatus = null,
+        string? scope = null)
     {
-        var query = db.Orders.AsNoTracking().AsSplitQuery().Include(x => x.Customer).Include(x => x.PaymentTerm)
-            .Include(x => x.Items).ThenInclude(x => x.Product)
-            .Include(x => x.WmcOrderExportState).ThenInclude(x => x!.CurrentArtifact)
-            .Include(x => x.WmcExportAudits).AsQueryable();
+        var awaitingActionScope = string.Equals(scope, "awaiting-action", StringComparison.OrdinalIgnoreCase);
+        if (!fromDate.HasValue && !toDate.HasValue && !awaitingActionScope)
+        {
+            var nowUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+            var localToday = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, SaoPauloTimeZone).Date;
+            fromDate = new DateOnly(localToday.Year, localToday.Month, 1);
+            toDate = fromDate.Value.AddMonths(1).AddDays(-1);
+        }
+
+        IQueryable<Order> query = db.Orders.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q)) query = query.Where(x => x.Number.Contains(q) || x.Customer!.TradeName.Contains(q));
         if (Enum.TryParse<OrderStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
+        if (awaitingActionScope) query = query.Where(AdminOrderMonitorQueries.AwaitingAction);
+
+        var invalidDateRange = fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value;
+        if (invalidDateRange)
+        {
+            ModelState.AddModelError(nameof(toDate), "A data final deve ser igual ou posterior à data inicial.");
+            query = query.Where(_ => false);
+        }
+        else
+        {
+            if (fromDate.HasValue) query = query.Where(order => order.CreatedAt >= SaoPauloDateStartUtc(fromDate.Value));
+            if (toDate.HasValue && toDate.Value < DateOnly.MaxValue)
+                query = query.Where(order => order.CreatedAt < SaoPauloDateStartUtc(toDate.Value.AddDays(1)));
+        }
+
+        query = AdminOrderMonitorQueries.ApplyWmcStatus(query, wmcStatus);
+
+        var totalItems = await query.CountAsync();
+        var awaitingActionCount = await query.CountAsync(AdminOrderMonitorQueries.AwaitingAction);
+        var wmcAwaitingConfirmationCount = await query.CountAsync(AdminOrderMonitorQueries.WmcAwaitingConfirmation);
+        var wmcAttentionCount = await query.CountAsync(AdminOrderMonitorQueries.WmcNeedsAttention);
+
         var descending = !string.Equals(direction, "asc", StringComparison.OrdinalIgnoreCase);
         query = (sort.ToLowerInvariant(), descending) switch
         {
@@ -47,14 +87,24 @@ public class OrdersController(
             _ => query.OrderByDescending(x => x.CreatedAt)
         };
 
-        var totalItems = await query.CountAsync();
         var request = new PageRequest(page, 25);
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)request.PageSize));
         if (request.Page > totalPages) request = new PageRequest(totalPages, request.PageSize);
-        var orders = await query.Skip(request.Skip).Take(request.PageSize).ToListAsync();
+        var orders = await query
+            .AsSplitQuery()
+            .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
+            .Include(x => x.Items).ThenInclude(x => x.Product)
+            .Include(x => x.WmcOrderExportState).ThenInclude(x => x!.CurrentArtifact)
+            .Include(x => x.WmcExportAudits)
+            .Skip(request.Skip).Take(request.PageSize).ToListAsync();
 
         ViewData["WmcManualExportEligibleOrderIds"] = orders
             .Where(wmcManualExportService.CanManuallyExport)
+            .Select(order => order.Id)
+            .ToHashSet();
+        ViewData["DeliveredWmcPendingOrderIds"] = orders
+            .Where(order => order.Status == OrderStatus.Delivered && AdminOrderMonitorQueries.HasUnresolvedWmcExport(order))
             .Select(order => order.Id)
             .ToHashSet();
 
@@ -62,8 +112,23 @@ public class OrdersController(
         ViewBag.Status = status;
         ViewBag.Sort = sort;
         ViewBag.Direction = descending ? "desc" : "asc";
+        ViewBag.FromDate = fromDate;
+        ViewBag.ToDate = toDate;
+        ViewBag.WmcStatus = wmcStatus;
+        ViewBag.Scope = awaitingActionScope ? "awaiting-action" : null;
+        ViewBag.DateRangeError = invalidDateRange ? ModelState[nameof(toDate)]?.Errors.FirstOrDefault()?.ErrorMessage : null;
+        ViewBag.TotalOrders = totalItems;
+        ViewBag.AwaitingActionCount = awaitingActionCount;
+        ViewBag.WmcAwaitingConfirmationCount = wmcAwaitingConfirmationCount;
+        ViewBag.WmcAttentionCount = wmcAttentionCount;
         ViewBag.PagedResult = new PagedResult<Order>(orders, request.Page, request.PageSize, totalItems);
         return View(orders);
+    }
+
+    private static DateTime SaoPauloDateStartUtc(DateOnly localDate)
+    {
+        var localMidnight = localDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(localMidnight, SaoPauloTimeZone);
     }
 
     public async Task<IActionResult> Details(int id)
