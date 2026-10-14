@@ -29,6 +29,7 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000777",
+            CustomerCnpjSnapshot = "03932292000199",
             CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
             Total = 100m,
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
@@ -79,6 +80,7 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000778",
+            CustomerCnpjSnapshot = "03932292000199",
             CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
             Total = 50m,
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
@@ -108,6 +110,7 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000780",
+            CustomerCnpjSnapshot = "03932292000199",
             CreatedAt = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
             Total = 50m,
             Status = OrderStatus.Approved,
@@ -137,6 +140,7 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000779",
+            CustomerCnpjSnapshot = "03932292000199",
             Status = OrderStatus.Approved,
             Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega" },
@@ -173,14 +177,15 @@ public class WmcFileDropErpOrderIntegrationTests
     private static Order ApprovedOrder(string number) => new()
     {
         Number = number,
+        CustomerCnpjSnapshot = "03932292000199",
         Status = OrderStatus.Approved,
-        Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", WmcCode = "107072" },
+        Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "03.932.292/0001-99", WmcCode = "107072" },
         Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
     };
 
     private static async Task PersistOrderAsync(ApplicationDbContext db, Order order)
     {
-        order.Customer ??= new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", WmcCode = "107072" };
+        order.Customer ??= new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "03.932.292/0001-99", WmcCode = "107072" };
         order.CreatedByUser = TestDbContextFactory.CreateOrderCreator($"wmc-{Guid.NewGuid():N}");
         var items = order.Items.ToList();
         order.Items.Clear();

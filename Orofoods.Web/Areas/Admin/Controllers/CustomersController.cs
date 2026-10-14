@@ -353,6 +353,8 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             var customer = await db.Customers.Include(x => x.CustomerPaymentTerms).SingleAsync(x => x.Id == input.Id);
             var viewModel = await BuildViewModelAsync(customer);
             viewModel.Status = input.Status;
+            viewModel.Cnpj = input.Cnpj;
+            viewModel.CnpjChangeReason = input.CnpjChangeReason;
             viewModel.MinimumOrder = input.MinimumOrder;
             viewModel.CreditLimit = input.CreditLimit;
             viewModel.CreditOverrideEnabled = input.CreditOverrideEnabled;
@@ -367,9 +369,13 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             return View(viewModel);
         }
 
-        await customerApprovalService.ApplyAsync(new CustomerApprovalRequest
+        var approvalResult = await customerApprovalService.ApplyAsync(new CustomerApprovalRequest
         {
             CustomerId = input.Id,
+            Cnpj = input.Cnpj,
+            CnpjChangeReason = input.CnpjChangeReason,
+            ChangedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            ChangedByEmail = User.FindFirstValue(ClaimTypes.Email),
             Status = input.Status,
             MinimumOrder = input.MinimumOrder,
             CreditLimit = input.CreditLimit,
@@ -383,6 +389,28 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             InternalSalesUserId = input.InternalSalesUserId,
             PaymentTermIds = input.PaymentTermIds
         });
+
+        if (!approvalResult.Succeeded)
+        {
+            ModelState.AddModelError(approvalResult.ErrorField ?? nameof(input.Cnpj), approvalResult.ErrorMessage ?? "Não foi possível salvar o CNPJ.");
+            var customer = await db.Customers.Include(x => x.CustomerPaymentTerms).SingleAsync(x => x.Id == input.Id);
+            var viewModel = await BuildViewModelAsync(customer);
+            viewModel.Status = input.Status;
+            viewModel.Cnpj = input.Cnpj;
+            viewModel.CnpjChangeReason = input.CnpjChangeReason;
+            viewModel.MinimumOrder = input.MinimumOrder;
+            viewModel.CreditLimit = input.CreditLimit;
+            viewModel.CreditOverrideEnabled = input.CreditOverrideEnabled;
+            viewModel.MaximumPaymentTermDays = input.MaximumPaymentTermDays;
+            viewModel.CreditBlocked = input.CreditBlocked;
+            viewModel.CreditNotes = input.CreditNotes;
+            viewModel.WmcCode = input.WmcCode;
+            viewModel.PriceTableId = input.PriceTableId;
+            viewModel.SalesRepresentativeId = input.SalesRepresentativeId;
+            viewModel.InternalSalesUserId = input.InternalSalesUserId;
+            viewModel.PaymentTermIds = input.PaymentTermIds;
+            return View(viewModel);
+        }
 
         TempData["CustomerApprovalSuccess"] = input.Status == CustomerStatus.Approved
             ? "Cliente aprovado e acesso comercial liberado com sucesso."

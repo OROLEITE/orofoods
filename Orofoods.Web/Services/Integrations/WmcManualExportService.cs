@@ -63,6 +63,17 @@ public sealed class WmcManualExportService(
             return claim.Result;
         }
 
+        order = await db.Orders.AsNoTracking()
+            .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
+            .Include(x => x.Items)
+            .ThenInclude(x => x.Product)
+            .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
+        if (order is null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.NotFound);
+        }
+
         var state = claim.State!;
         if (!TryPrepareExport(order, out var export, out var error))
         {

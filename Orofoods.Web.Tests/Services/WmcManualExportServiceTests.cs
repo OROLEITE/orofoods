@@ -80,8 +80,34 @@ public sealed class WmcManualExportServiceTests
         var export = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
 
         Assert.Equal(WmcManualExportDisposition.Exported, export.Disposition);
-        Assert.Equal("12.345.678/0001-99", order.Customer.Cnpj);
-        Assert.Equal("12345678000199", export.Content!.Split(Environment.NewLine)[0].Substring(180, 14));
+        Assert.Equal("03.932.292/0001-99", order.Customer.Cnpj);
+        Assert.Equal("03932292000199", export.Content!.Split(Environment.NewLine)[0].Substring(180, 14));
+    }
+
+    [Fact]
+    public async Task Manual_export_reloads_fiscal_snapshot_after_claiming_processing_state()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TRIGGER "ChangeCustomerCnpjSnapshotAfterExportClaim"
+            AFTER INSERT ON "WmcOrderExportStates"
+            BEGIN
+                UPDATE "Orders"
+                SET "CustomerCnpjSnapshot" = '00.000.000/E08G-12'
+                WHERE "Id" = NEW."OrderId";
+            END;
+            """);
+
+        var export = await CreateService(db).ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Rejected, export.Disposition);
+        Assert.Contains("WMC_CUSTOMER_CNPJ_ALPHANUMERIC_LAYOUT_UNCONFIRMED", export.Error);
+        Assert.Empty(await db.WmcManualExportArtifacts.ToListAsync());
+        Assert.Equal("00.000.000/E08G-12", await db.Orders.AsNoTracking()
+            .Where(candidate => candidate.Id == order.Id)
+            .Select(candidate => candidate.CustomerCnpjSnapshot)
+            .SingleAsync());
     }
 
     [Fact]
@@ -259,12 +285,31 @@ public sealed class WmcManualExportServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var order = await AddEligibleOrderAsync(db);
-        order.Customer!.Cnpj = "12.345.678/0001-9";
+        order.CustomerCnpjSnapshot = "12.345.678/0001-9";
 
         var diagnostic = CreateService(db).DiagnoseManualExport(order);
 
         Assert.False(diagnostic.CanExport);
         Assert.Equal("WMC_CUSTOMER_CNPJ_INVALID", diagnostic.BlockReason);
+    }
+
+    [Fact]
+    public async Task Alphanumeric_cnpj_is_blocked_from_manual_export_until_official_wmc_layout_is_confirmed()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.CustomerCnpjSnapshot = "00.000.000/E08G-12";
+        var service = CreateService(db);
+
+        var diagnostic = service.DiagnoseManualExport(order);
+        var export = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        Assert.False(diagnostic.CanExport);
+        Assert.Equal("WMC_CUSTOMER_CNPJ_ALPHANUMERIC_LAYOUT_UNCONFIRMED", diagnostic.BlockReason);
+        Assert.Equal(WmcManualExportDisposition.Rejected, export.Disposition);
+        Assert.Contains("WMC_CUSTOMER_CNPJ_ALPHANUMERIC_LAYOUT_UNCONFIRMED", export.Error);
+        Assert.Empty(await db.WmcManualExportArtifacts.ToListAsync());
+        Assert.False((await db.WmcOrderExportStates.SingleAsync()).Status == WmcOrderExportStatus.Exported);
     }
 
     [Fact]
@@ -664,9 +709,10 @@ public sealed class WmcManualExportServiceTests
         var order = new Order
         {
             Number = "ORO-2026-000801",
+            CustomerCnpjSnapshot = "03932292000199",
             Status = status,
             CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
-            Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", WmcCode = "107072" },
+            Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "03.932.292/0001-99", WmcCode = "107072" },
             CreatedByUser = creator,
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Total = 63.20m,

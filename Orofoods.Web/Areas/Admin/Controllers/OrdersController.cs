@@ -21,7 +21,8 @@ public class OrdersController(
     IPointPaymentOrchestrationService pointPaymentService,
     IOptions<MercadoPagoPointOptions> pointOptions,
     IOptions<PaymentEligibilityOptions> paymentOptions,
-    IHostEnvironment hostEnvironment) : Controller
+    IHostEnvironment hostEnvironment,
+    CustomerCnpjSnapshotCorrectionService? customerCnpjSnapshotCorrectionService = null) : Controller
 {
     public async Task<IActionResult> Index(string? q, string? status, string sort = "date", string direction = "desc", int page = 1)
     {
@@ -74,6 +75,10 @@ public class OrdersController(
             .Include(x => x.StatusHistory).ThenInclude(x => x.ChangedByUser).Include(x => x.WmcExportAudits).AsSplitQuery().SingleOrDefaultAsync(x => x.Id == id);
         if (order is null) return NotFound();
         ViewBag.WmcManualExportDiagnostic = wmcManualExportService.DiagnoseManualExport(order);
+        ViewBag.CanCorrectCustomerCnpjSnapshot = CustomerCnpjSnapshotCorrectionService.CanCorrectSnapshot(
+            order.CustomerCnpjSnapshot,
+            order.WmcOrderExportState,
+            order.WmcExportAudits);
         var pointEnabled = IsPointEnabled() && order.PaymentTerm?.Code == "CARD_ON_DELIVERY";
         ViewBag.PointPaymentEnabled = pointEnabled;
         ViewBag.PointEligibleAssignments = pointEnabled
@@ -103,6 +108,29 @@ public class OrdersController(
                 .Include(x => x.AdminUser).OrderByDescending(x => x.OccurredAt).Take(20).ToListAsync();
         ViewBag.PointRequestKey = Guid.NewGuid().ToString("N");
         return View(order);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken, Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> CorrectCustomerCnpjSnapshot(int id, string? cnpj, string? reason, CancellationToken cancellationToken = default)
+    {
+        var correctionService = customerCnpjSnapshotCorrectionService ?? new CustomerCnpjSnapshotCorrectionService(db);
+        var result = await correctionService.CorrectAsync(
+            id,
+            cnpj,
+            reason,
+            User.FindFirstValue(ClaimTypes.NameIdentifier),
+            User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name,
+            cancellationToken);
+        if (result.Succeeded)
+        {
+            TempData["CustomerCnpjSnapshotMessage"] = "Snapshot fiscal do pedido atualizado com justificativa e auditoria.";
+        }
+        else
+        {
+            TempData["CustomerCnpjSnapshotError"] = result.ErrorMessage ?? "Não foi possível corrigir o snapshot fiscal do pedido.";
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost, ValidateAntiForgeryToken]

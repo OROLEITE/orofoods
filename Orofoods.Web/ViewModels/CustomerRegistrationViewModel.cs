@@ -67,7 +67,10 @@ public class AdminCustomerApprovalViewModel
     public int Id { get; set; }
     public string LegalName { get; set; } = "";
     public string TradeName { get; set; } = "";
+    [StringLength(18, ErrorMessage = "O CNPJ deve ter no máximo 18 caracteres.")]
     public string Cnpj { get; set; } = "";
+    [StringLength(1000, ErrorMessage = "O motivo deve ter até 1000 caracteres.")]
+    public string? CnpjChangeReason { get; set; }
     public CustomerStatus Status { get; set; }
     public decimal MinimumOrder { get; set; }
     public decimal CreditLimit { get; set; }

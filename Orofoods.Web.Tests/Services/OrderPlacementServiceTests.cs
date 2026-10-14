@@ -33,11 +33,32 @@ public class OrderPlacementServiceTests
         Assert.True(result.Succeeded, string.Join("; ", result.Errors));
         var order = result.Order!;
         Assert.Equal(OrderStatus.Received, order.Status);
+        Assert.Equal(fixture.Customer.Cnpj, order.CustomerCnpjSnapshot);
         Assert.Equal(fixture.SellerUser.Id, order.CreatedByUserId);
         Assert.Equal(fixture.Customer.SalesRepresentativeId, order.SalesRepresentativeId);
         Assert.Equal(fixture.CurrentPrice, Assert.Single(order.Items).UnitPrice);
         Assert.Equal(OrderStatus.Received, Assert.Single(order.StatusHistory).Status);
         Assert.False(fixture.Session.TryGetValue("orofoods-cart-product-ids:seller:7:customer:1", out _));
+    }
+
+    [Fact]
+    public async Task Confirmed_order_keeps_customer_cnpj_snapshot_after_customer_correction()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var originalCnpj = fixture.Customer.Cnpj;
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        fixture.Customer.Cnpj = "00.000.000/E08G-12";
+        await fixture.Db.SaveChangesAsync();
+
+        var persistedOrder = await fixture.Db.Orders.AsNoTracking().SingleAsync(order => order.Id == result.Order!.Id);
+        Assert.Equal(originalCnpj, persistedOrder.CustomerCnpjSnapshot);
     }
 
     [Fact]

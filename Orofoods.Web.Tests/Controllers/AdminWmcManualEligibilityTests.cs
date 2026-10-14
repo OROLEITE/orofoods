@@ -119,12 +119,18 @@ public sealed class AdminWmcManualEligibilityTests
         Assert.DoesNotContain(processing.Id, eligibleIds);
     }
 
-    private static Order CreateOrder(string number, string paymentCode) => new()
+    private static Order CreateOrder(string number, string paymentCode)
     {
+        var cnpj = number.EndsWith("902", StringComparison.Ordinal) ? "00.000.000/E08G-12"
+            : number.EndsWith("903", StringComparison.Ordinal) ? "12.ABC.345/01DE-35"
+            : "03.932.292/0001-99";
+        return new Order
+        {
         Number = number,
+        CustomerCnpjSnapshot = cnpj,
         Status = OrderStatus.Approved,
         CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
-        Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = $"12.345.678/0001-{number[^2..]}", WmcCode = "107072" },
+        Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = cnpj, WmcCode = "107072" },
         CreatedByUser = TestDbContextFactory.CreateOrderCreator($"creator-{number}"),
         PaymentTerm = new PaymentTerm { Code = paymentCode, Name = paymentCode, DaysUntilDue = 0 },
         Total = 63.20m,
@@ -148,7 +154,8 @@ public sealed class AdminWmcManualEligibilityTests
                 Subtotal = 63.20m
             }
         ]
-    };
+        };
+    }
 
     private sealed class TestHostEnvironment : IHostEnvironment
     {

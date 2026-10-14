@@ -40,11 +40,12 @@ public class WmcFileDropConcurrencyTests
                 order = new Order
                 {
                     Number = "ORO-2026-009901",
+                    CustomerCnpjSnapshot = "03932292000199",
                     CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
                     Total = 12m,
                     PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
                     Status = OrderStatus.Approved,
-                    Customer = new Customer { LegalName = "Cliente de teste", TradeName = "Teste", Cnpj = "12345678000199", WmcCode = "107072" },
+                    Customer = new Customer { LegalName = "Cliente de teste", TradeName = "Teste", Cnpj = "03.932.292/0001-99", WmcCode = "107072" },
                     CreatedByUser = TestDbContextFactory.CreateOrderCreator("wmc-concurrency-test"),
                     Items =
                     [

@@ -588,6 +588,56 @@ namespace Orofoods.Web.Data.Migrations
                     b.ToTable("CustomerAddresses");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Customers.CustomerCnpjAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChangedByEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChangedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NewCnpj")
+                        .IsRequired()
+                        .HasMaxLength(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PreviousCnpj")
+                        .HasMaxLength(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId", "ChangedAt");
+
+                    b.HasIndex("OrderId", "ChangedAt");
+
+                    b.ToTable("CustomerCnpjAudits");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Customers.SalesRepresentative", b =>
                 {
                     b.Property<int>("Id")
@@ -713,6 +763,10 @@ namespace Orofoods.Web.Data.Migrations
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("CustomerCnpjSnapshot")
+                        .HasMaxLength(18)
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("SalesRepresentativeId")
                         .HasColumnType("INTEGER");
@@ -1220,6 +1274,24 @@ namespace Orofoods.Web.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Customers.CustomerCnpjAudit", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Identity.ApplicationUser", b =>
