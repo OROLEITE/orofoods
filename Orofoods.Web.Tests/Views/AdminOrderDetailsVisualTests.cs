@@ -211,4 +211,24 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("font-size: 13px;", styles);
         Assert.Contains("min-width: 0;", styles);
     }
+
+    [Fact]
+    public void Wmc_actions_bound_long_filenames_and_keep_customer_cnpj_compact()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.Contains("<strong title=\"@wmcLatestAudit.FileName\">@wmcLatestAudit.FileName</strong>", view);
+        Assert.Contains("class=\"order-wmc-last-audit-meta\"", view);
+        Assert.Contains("title=\"@(wmcLatestAudit.ExportedByEmail ??", view);
+        Assert.Contains("class=\"order-wmc-fact-cnpj\"", view);
+        Assert.Contains("class=\"order-wmc-cnpj\"", view);
+        Assert.Matches(@"(?s)\.order-wmc-actions-layout\s*\{(?=[^}]*display:\s*grid)(?=[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\))(?=[^}]*min-width:\s*0)[^}]*\}", styles);
+        Assert.Matches(@"(?s)\.order-wmc-last-audit strong\s*\{(?=[^}]*min-width:\s*0)(?=[^}]*overflow:\s*hidden)(?=[^}]*text-overflow:\s*ellipsis)(?=[^}]*white-space:\s*nowrap)[^}]*\}", styles);
+        Assert.Matches(@"(?s)\.order-wmc-fact-cnpj\s*\{(?=[^}]*grid-column:\s*1\s*/\s*-1)[^}]*\}", styles);
+        Assert.Matches(@"(?s)\.order-wmc-cnpj\s*\{(?=[^}]*max-width:\s*100%)(?=[^}]*white-space:\s*nowrap)(?=[^}]*overflow:\s*hidden)[^}]*\}", styles);
+        Assert.Contains("grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);", styles);
+        Assert.Contains("@media (max-width: 1024px)", styles);
+    }
 }

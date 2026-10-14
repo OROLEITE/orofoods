@@ -303,7 +303,7 @@
             <dl class="order-wmc-facts">
                 <div><dt>Estado da exportação manual</dt><dd>@(wmcImportConfirmed ? "Importa\u00e7\u00e3o WMC confirmada" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT gerado" : wmcState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
                 <div><dt>Revisão manual</dt><dd>@(Model.WmcOrderExportState?.RequiresManualReview == true ? "Necessária" : "Não necessária")</dd></div>
-                <div><dt>CNPJ do cliente</dt><dd><code>@(Model.Customer?.Cnpj ?? "Não informado")</code></dd></div>
+                <div class="order-wmc-fact-cnpj"><dt>CNPJ do cliente</dt><dd><code class="order-wmc-cnpj">@(Model.Customer?.Cnpj ?? "Não informado")</code></dd></div>
                 <div><dt>WMC do cliente (informativo)</dt><dd><code>@(Model.Customer?.WmcCode ?? "Não informado")</code></dd></div>
                 <div><dt>Auditorias WMC</dt><dd>@Model.WmcExportAudits.Count registro(s)</dd></div>
             </dl>
@@ -334,9 +334,11 @@
                 @if (wmcLatestAudit is not null)
                 {
                     <div class="order-wmc-last-audit" aria-label="Última exportação WMC">
-                        @if (!string.IsNullOrWhiteSpace(wmcLatestAudit.FileName)) { <strong>@wmcLatestAudit.FileName</strong> }
-                        <time>@wmcLatestAudit.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
-                        <span>@(wmcLatestAudit.ExportedByEmail ?? "Usuário desconhecido")</span>
+                        @if (!string.IsNullOrWhiteSpace(wmcLatestAudit.FileName)) { <strong title="@wmcLatestAudit.FileName">@wmcLatestAudit.FileName</strong> }
+                        <div class="order-wmc-last-audit-meta">
+                            <time>@wmcLatestAudit.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+                            <span title="@(wmcLatestAudit.ExportedByEmail ?? "Usuário desconhecido")">@(wmcLatestAudit.ExportedByEmail ?? "Usuário desconhecido")</span>
+                        </div>
                     </div>
                 }
                 @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Rejected && !wmcState.RequiresManualReview && !string.IsNullOrWhiteSpace(wmcState.LastError))
