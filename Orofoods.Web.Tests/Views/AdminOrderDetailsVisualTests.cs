@@ -193,6 +193,11 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("order-details-status-strip", view);
         Assert.Contains("order-details-primary", view);
         Assert.Contains("order-details-secondary", view);
+        var secondaryStart = view.IndexOf("<aside class=\"order-details-secondary\"", StringComparison.Ordinal);
+        var secondaryEnd = view.IndexOf("</aside>", secondaryStart, StringComparison.Ordinal);
+        var orderActionsStart = view.IndexOf("<section class=\"order-actions-card\"", StringComparison.Ordinal);
+        Assert.True(orderActionsStart > secondaryStart && orderActionsStart < secondaryEnd,
+            "General order actions should be placed in the secondary actions column.");
         Assert.Contains("order-commercial-facts", view);
         Assert.Contains("order-payment-overview", view);
         Assert.Contains("<details class=\"order-detail-section order-cnpj-snapshot", view);

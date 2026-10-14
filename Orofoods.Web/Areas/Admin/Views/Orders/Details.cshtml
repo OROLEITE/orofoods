@@ -217,6 +217,9 @@
                     }
                 </section>
         }
+
+    </main>
+    <aside class="order-details-secondary" aria-label="Integração, auditoria e diagnóstico">
         <section class="order-actions-card" aria-labelledby="order-actions-title">
             <header class="order-detail-section-heading"><div><small>OPERAÇÃO</small><h2 id="order-actions-title">Ações do pedido</h2></div></header>
             <div class="order-actions-grid">
@@ -250,8 +253,6 @@
                 <p class="alert alert-warning order-action-warning" data-delivered-payment-guard>Pagamento na entrega ainda não foi aprovado.</p>
             }
         </section>
-    </main>
-    <aside class="order-details-secondary" aria-label="Integração, auditoria e diagnóstico">
         <details class="order-detail-section order-cnpj-snapshot" aria-labelledby="order-cnpj-snapshot-title" data-customer-cnpj-snapshot @(cnpjSnapshotHasFeedback ? "open" : "")>
             <summary class="order-detail-section-heading">
                 <div><small>DADOS FISCAIS DO PEDIDO</small><h2 id="order-cnpj-snapshot-title">Snapshot de CNPJ</h2></div>
