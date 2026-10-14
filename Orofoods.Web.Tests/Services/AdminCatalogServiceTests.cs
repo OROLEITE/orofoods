@@ -71,4 +71,39 @@ public class AdminCatalogServiceTests
 
         Assert.Equal("610601552", product.WmcCode);
     }
+
+    [Fact]
+    public async Task Allows_product_to_keep_its_own_wmc_code_when_editing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Paes", Slug = "paes", IsActive = true };
+        var existing = new Product
+        {
+            Sku = "STG-TEST-0001",
+            WmcCode = "243680",
+            Name = "Produto de homologacao",
+            ProductCategory = category,
+            Brand = "Teste",
+            Unit = "UN"
+        };
+        db.AddRange(category, existing);
+        await db.SaveChangesAsync();
+        var sut = new AdminCatalogService(db);
+
+        var updated = await sut.SaveProductAsync(new Product
+        {
+            Id = existing.Id,
+            Sku = existing.Sku,
+            WmcCode = "243680",
+            Name = "Produto de homologacao atualizado",
+            ProductCategoryId = category.Id,
+            Brand = "Teste",
+            Unit = "UN"
+        });
+
+        Assert.Equal(existing.Id, updated.Id);
+        Assert.Equal("243680", updated.WmcCode);
+        Assert.Equal("Produto de homologacao atualizado", updated.Name);
+        Assert.Single(await db.Products.ToListAsync());
+    }
 }
