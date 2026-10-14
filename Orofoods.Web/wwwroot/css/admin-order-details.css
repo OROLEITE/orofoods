@@ -5,14 +5,17 @@
     --order-detail-border: #DDE3E8;
     --order-detail-text: #27312D;
     --order-detail-muted: #64748B;
-    padding: 18px 0 32px;
+    --order-detail-info: #075985;
+    --order-detail-info-accent: #38BDF8;
+    --order-detail-primary: #2563EB;
+    padding: 10px 0 20px;
 }
 
 .admin-authenticated .admin-order-details-page .order-details-layout {
     display: grid;
-    grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
 }
 
@@ -414,8 +417,84 @@
 
 .admin-authenticated .admin-order-details-page .order-history-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 10px;
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-grid > * {
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-history-band {
+    width: 100%;
+    min-width: 0;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 12px;
+    background: var(--order-detail-surface);
+}
+
+.admin-authenticated .admin-order-details-page .order-history-band-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    margin: 0;
+    cursor: pointer;
+    list-style: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-band-heading::-webkit-details-marker {
+    display: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-band-heading::after {
+    content: "⌄";
+    flex: 0 0 auto;
+    color: var(--order-detail-info);
+    font-size: 18px;
+    line-height: 1;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-history-band[open] > .order-history-band-heading::after {
+    content: "⌃";
+}
+
+.admin-authenticated .admin-order-details-page .order-history-band-caption {
+    min-width: 0;
+    color: var(--order-detail-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: right;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-panel {
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 9px;
+    background: var(--order-detail-surface-secondary);
+}
+
+.admin-authenticated .admin-order-details-page .order-history-panel > summary {
+    min-width: 0;
+    cursor: pointer;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-panel > summary h2 {
+    font-size: 13px;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-panel > :not(summary) {
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .order-history-panel code {
+    color: var(--order-detail-text);
 }
 
 .admin-authenticated .admin-order-details-page .order-history-entry {
@@ -524,6 +603,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     --order-detail-border: #334155;
     --order-detail-text: #E5E7EB;
     --order-detail-muted: #A8B6C9;
+    --order-detail-info: #38BDF8;
 }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-payment-card,
@@ -599,9 +679,12 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         border-top: 1px solid var(--order-detail-border);
     }
 
-    .admin-authenticated .admin-order-details-page .order-history-grid,
     .admin-authenticated .admin-order-details-page .order-actions-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-history-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -612,10 +695,6 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
     .admin-authenticated .admin-order-details-page .order-details-header {
         align-items: flex-start;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-header .btn {
-        flex: 0 0 auto;
     }
 
     .admin-authenticated .admin-order-details-page .order-details-summary,
@@ -693,73 +772,6 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         letter-spacing: .4px;
         text-transform: uppercase;
     }
-}
-
-/* Compact redesign: later rules intentionally refine the base layout above. */
-.admin-authenticated .admin-order-details-page {
-    padding: 10px 0 20px;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-layout {
-    gap: 10px;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 20px;
-    margin-bottom: 10px;
-    padding: 10px 14px;
-    border: 1px solid var(--order-detail-border);
-    border-radius: 12px;
-    background: var(--order-detail-surface);
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-header {
-    flex: 0 0 auto;
-    margin: 0;
-    gap: 14px;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-header h1 {
-    font-size: clamp(1.2rem, 1.8vw, 1.5rem);
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-header .btn {
-    order: 2;
-    padding: 4px 10px;
-    font-size: 12px;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
-    display: flex;
-    flex: 1 1 420px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item {
-    flex: 0 1 auto;
-    gap: 2px;
-    padding: 2px 14px;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item--total {
-    margin-left: auto;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item strong {
-    font-size: 13px;
-}
-
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item--total strong {
-    font-size: 18px;
 }
 
 .admin-authenticated .admin-order-details-page .order-payment-card,
@@ -876,6 +888,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     text-overflow: ellipsis;
     white-space: nowrap;
     vertical-align: bottom;
+    color: var(--order-detail-text);
 }
 
 .admin-authenticated .admin-order-details-page .order-wmc-technical,
@@ -957,11 +970,6 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     margin-top: 8px;
 }
 
-.admin-authenticated .admin-order-details-page .order-history-grid {
-    align-items: start;
-    gap: 10px;
-}
-
 .admin-authenticated .admin-order-details-page .order-history-entry {
     padding: 5px 0;
 }
@@ -1019,6 +1027,36 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     background: var(--order-detail-surface);
 }
 
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-information-missing i {
+    background: #0C4A6E;
+    color: #BAE6FD;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-download-button {
+    border-color: #38BDF8 !important;
+    background: #0C4A6E !important;
+    color: #E0F2FE !important;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-reject-button {
+    border-color: #F87171 !important;
+    background: #451A1A !important;
+    color: #FECACA !important;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-confirm-button {
+    border-color: #34D399 !important;
+    background: #065F46 !important;
+    color: #D1FAE5 !important;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page :is(button, .btn):disabled,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .btn.disabled {
+    border-color: #475569 !important;
+    background: #334155 !important;
+    color: #CBD5E1 !important;
+}
+
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-wmc-eligibility {
     border-color: #854D0E;
     background: #422F12;
@@ -1048,46 +1086,12 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 }
 
 @media (max-width: 900px) {
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
-        flex-basis: 100%;
-        justify-content: flex-start;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item {
-        padding-left: 0;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item + .order-details-summary-item,
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item:nth-child(n+3) {
-        border-top: 0;
-        border-left: 0;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item--total {
-        margin-left: 0;
-    }
-
     .admin-authenticated .admin-order-details-page .order-wmc-facts {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 640px) {
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-header {
-        flex: 1 1 100%;
-        align-items: center;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item + .order-details-summary-item {
-        border-top: 0;
-    }
-
     .admin-authenticated .admin-order-details-page .order-wmc-facts {
         grid-template-columns: 1fr;
     }
@@ -1120,8 +1124,13 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 .admin-authenticated .admin-order-details-page .order-wmc-actions-bar {
     display: flex;
+    flex: 0 1 auto;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     gap: 8px;
 }
 
@@ -1266,20 +1275,66 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     }
 }
 
-/* Header hierarchy and WMC action alignment for the compact order detail. */
+/* Header, navigation, and status summary for the compact order detail. */
 .admin-authenticated .admin-order-details-page .order-details-hero {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    gap: 6px 16px;
+    gap: 7px;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 12px;
+    background: var(--order-detail-surface);
+}
+
+.admin-authenticated .admin-order-details-page .order-details-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    margin: 0;
+    color: var(--order-detail-muted);
+    font-size: 12px;
+    line-height: 1.25;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-breadcrumb a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--order-detail-info);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-breadcrumb a:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-breadcrumb a:focus-visible,
+.admin-authenticated .admin-order-details-page .order-details-history-band > summary:focus-visible {
+    outline: 2px solid var(--order-detail-info-accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+}
+
+.admin-authenticated .admin-order-details-page .order-details-breadcrumb a i {
+    color: var(--order-detail-info);
+}
+
+.admin-authenticated .admin-order-details-page .order-details-breadcrumb-separator {
+    color: var(--order-detail-muted);
 }
 
 .admin-authenticated .admin-order-details-page .order-details-hero .order-details-header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px 18px;
+    gap: 8px 16px;
     min-width: 0;
+    margin: 0;
 }
 
 .admin-authenticated .admin-order-details-page .order-details-title-group {
@@ -1299,7 +1354,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 .admin-authenticated .admin-order-details-page .order-details-hero .order-details-header h1 {
     margin: 2px 0 4px;
-    font-size: clamp(1.45rem, 2.2vw, 1.9rem);
+    font-size: clamp(1.2rem, 1.8vw, 1.5rem);
     line-height: 1.12;
     overflow-wrap: anywhere;
 }
@@ -1317,15 +1372,8 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     line-height: 1.25;
 }
 
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-header > .btn {
-    grid-column: 2;
-    grid-row: 1;
-    order: initial;
-    justify-self: end;
-}
-
 .admin-authenticated .admin-order-details-page .order-details-total {
-    grid-column: 3;
+    grid-column: 2;
     grid-row: 1;
     min-width: 110px;
     text-align: right;
@@ -1343,25 +1391,48 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    flex: none;
-    flex-wrap: wrap;
-    justify-content: stretch;
-    gap: 4px 18px;
+    gap: 4px 14px;
+    min-width: 0;
     width: 100%;
-    padding-top: 7px;
+    margin: 0;
+    padding: 6px 0 0;
     border: 0;
     border-top: 1px solid var(--order-detail-border);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item,
-.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item + .order-details-summary-item {
-    flex: none;
-    gap: 2px;
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item {
     min-width: 0;
+    gap: 2px;
     padding: 1px 0;
     border: 0;
 }
 
+.admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item strong {
+    font-size: 13px;
+}
+
+.admin-authenticated .admin-order-details-page .order-information-missing {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--order-detail-info);
+    font-weight: 600;
+}
+
+.admin-authenticated .admin-order-details-page .order-information-missing i {
+    display: inline-grid;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    place-items: center;
+    border-radius: 50%;
+    background: #E0F2FE;
+    color: #075985;
+    font-size: 11px;
+}
 @media (max-width: 1024px) {
     .admin-authenticated .admin-order-details-page .order-details-layout {
         grid-template-columns: minmax(0, 1fr);
@@ -1394,24 +1465,81 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     overflow-wrap: anywhere;
 }
 
-.admin-authenticated .admin-order-details-page .order-wmc-actions-bar {
-    display: flex;
-    flex: 0 1 auto;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-start;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    gap: 8px;
-}
-
 .admin-authenticated .admin-order-details-page .order-wmc-actions-bar > a,
 .admin-authenticated .admin-order-details-page .order-wmc-actions-bar > button,
 .admin-authenticated .admin-order-details-page .order-wmc-actions-bar > form {
+    flex: 0 0 auto;
     min-width: 0;
     max-width: 100%;
-    white-space: normal;
+    white-space: nowrap;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-actions-bar .btn,
+.admin-authenticated .admin-order-details-page .order-actions-card .btn-primary {
+    min-height: 38px;
+    border-color: var(--order-detail-primary);
+    background-color: var(--order-detail-primary);
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-actions-bar .btn-primary:hover,
+.admin-authenticated .admin-order-details-page .order-actions-card .btn-primary:hover {
+    border-color: #1D4ED8;
+    background-color: #1D4ED8;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-download-button {
+    border-color: var(--order-detail-info-accent) !important;
+    background: #E0F2FE !important;
+    color: #075985 !important;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-download-button:hover {
+    border-color: #0284C7 !important;
+    background: #BAE6FD !important;
+    color: #0C4A6E !important;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-reject-button {
+    border-color: #EF4444 !important;
+    background: #FEF2F2 !important;
+    color: #B91C1C !important;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-reject-button:hover {
+    background: #FEE2E2 !important;
+    color: #991B1B !important;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-confirm-button {
+    border-color: #047857 !important;
+    background: #047857 !important;
+    color: #FFFFFF !important;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .order-wmc-confirm-button:hover {
+    border-color: #065F46 !important;
+    background: #065F46 !important;
+}
+
+.admin-authenticated .admin-order-details-page :is(button, .btn):disabled,
+.admin-authenticated .admin-order-details-page .btn.disabled {
+    border-color: #CBD5E1 !important;
+    background: #E2E8F0 !important;
+    color: #475569 !important;
+    opacity: .72;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.admin-authenticated .admin-order-details-page :is(button, .btn):focus-visible,
+.admin-authenticated .admin-order-details-page a.btn:focus-visible {
+    outline: 3px solid #38BDF8;
+    outline-offset: 2px;
 }
 
 .admin-authenticated .admin-order-details-page .order-wmc-last-audit {
@@ -1513,44 +1641,16 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     filter: invert(1) grayscale(100%) brightness(200%);
 }
 
-@media (max-width: 900px) {
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
-        flex-basis: auto;
-    }
-}
-
 @media (max-width: 640px) {
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-header {
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: start;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-title-group {
-        grid-column: 1 / -1;
-        grid-row: 1;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-header > .btn {
-        grid-column: 2;
-        grid-row: 2;
-        align-self: end;
-    }
-
     .admin-authenticated .admin-order-details-page .order-details-total {
-        grid-column: 1;
-        grid-row: 2;
         min-width: 0;
-        text-align: left;
+        text-align: right;
     }
 
     .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px 12px;
-    }
-
-    .admin-authenticated .admin-order-details-page .order-details-hero .order-details-summary-item {
-        min-width: 0;
     }
 
     .admin-authenticated .admin-order-details-page .order-wmc-actions-layout {
@@ -1563,7 +1663,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
     .admin-authenticated .admin-order-details-page .order-wmc-actions-bar {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         gap: 8px;
         width: 100%;
     }
@@ -1581,6 +1681,21 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
     .admin-authenticated .admin-order-details-page .order-wmc-actions-bar > form:not(.wmc-regeneration-form) button {
         width: 100%;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-history-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-authenticated .admin-order-details-page .order-history-band-heading {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 4px 10px;
+    }
+
+    .admin-authenticated .admin-order-details-page .order-history-band-caption {
+        flex: 1 1 100%;
+        text-align: left;
     }
 
     .admin-authenticated .admin-order-details-page .wmc-regeneration-form {

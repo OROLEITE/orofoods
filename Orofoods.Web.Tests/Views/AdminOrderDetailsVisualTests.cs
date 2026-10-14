@@ -47,7 +47,8 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("\"Importado\"", view);
         Assert.Contains("CurrentArtifactId is not null", details);
         Assert.Contains("maxlength=\"1000\" required", details);
-        Assert.Contains("btn-success wmc-send-button", details);
+        Assert.Contains("btn-primary wmc-send-button", details);
+        Assert.Contains("btn-success order-wmc-confirm-button", details);
         Assert.Contains("height: 52px", styles);
         Assert.Contains("[HttpGet]", controller);
         Assert.Contains("[HttpPost, ValidateAntiForgeryToken]", controller);
@@ -171,7 +172,7 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("background: #FFF8E5;", styles);
         Assert.Contains("background: #422F12;", styles);
         Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-payment-card", styles);
-        Assert.Contains("grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);", styles);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr));", styles);
         Assert.Contains("justify-content: flex-start;", styles);
         Assert.DoesNotContain("grid-template-columns: minmax(0, 520px) minmax(0, 360px);", styles);
         Assert.DoesNotContain("max-width: 280px;", styles);
@@ -184,7 +185,7 @@ public class AdminOrderDetailsVisualTests
     }
 
     [Fact]
-    public void Admin_order_details_use_a_wide_two_column_layout_and_collapsible_secondary_panels()
+    public void Admin_order_details_keep_operations_right_and_move_histories_to_a_full_width_expander()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
@@ -193,23 +194,57 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("order-details-status-strip", view);
         Assert.Contains("order-details-primary", view);
         Assert.Contains("order-details-secondary", view);
+        Assert.Contains("<details class=\"order-detail-section order-details-history-band\"", view);
         var secondaryStart = view.IndexOf("<aside class=\"order-details-secondary\"", StringComparison.Ordinal);
         var secondaryEnd = view.IndexOf("</aside>", secondaryStart, StringComparison.Ordinal);
         var orderActionsStart = view.IndexOf("<section class=\"order-actions-card\"", StringComparison.Ordinal);
+        var historyBandStart = view.IndexOf("<details class=\"order-detail-section order-details-history-band\"", StringComparison.Ordinal);
         Assert.True(orderActionsStart > secondaryStart && orderActionsStart < secondaryEnd,
             "General order actions should be placed in the secondary actions column.");
+        Assert.True(historyBandStart > secondaryEnd,
+            "Status, WMC export, and fiscal snapshot history should appear in the full-width band below the two columns.");
         Assert.Contains("order-commercial-facts", view);
         Assert.Contains("order-payment-overview", view);
-        Assert.Contains("<details class=\"order-detail-section order-cnpj-snapshot", view);
+        Assert.Contains("<details class=\"order-history-panel order-cnpj-snapshot", view);
         Assert.Contains("<details class=\"order-detail-section order-point-audit", view);
-        Assert.Contains("<details class=\"order-detail-section order-history-panel", view);
+        Assert.Contains("<details class=\"order-history-panel", view);
+        Assert.Contains("<details class=\"order-history-panel\" aria-labelledby=\"order-status-history-title\">", view);
+        Assert.Contains("<details class=\"order-history-panel\" aria-labelledby=\"order-wmc-history-title\">", view);
+        Assert.True(view.IndexOf("order-status-history-title", historyBandStart, StringComparison.Ordinal) > secondaryEnd);
+        Assert.True(view.IndexOf("order-wmc-history-title", historyBandStart, StringComparison.Ordinal) > secondaryEnd);
+        Assert.True(view.IndexOf("data-customer-cnpj-snapshot", historyBandStart, StringComparison.Ordinal) > secondaryEnd);
         Assert.Contains("<details class=\"order-wmc-technical\"", view);
-        Assert.Contains("grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);", styles);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr));", styles);
         Assert.Contains("width: calc(100% - 24px);", styles);
         Assert.Contains("max-width: 1800px;", styles);
         Assert.Contains("@media (max-width: 1024px)", styles);
         Assert.Contains("font-size: 13px;", styles);
         Assert.Contains("min-width: 0;", styles);
+    }
+
+    [Fact]
+    public void Order_details_have_compact_breadcrumb_and_responsive_wmc_action_colors()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.Contains("<nav class=\"order-details-breadcrumb\"", view);
+        Assert.Contains("<a asp-action=\"Index\"", view);
+        Assert.Contains("Pedidos", view);
+        Assert.Contains("aria-current=\"page\">Detalhes</span>", view);
+        Assert.DoesNotContain("Voltar</a>", view);
+        Assert.Contains("class=\"order-information-missing\"", view);
+        Assert.Contains("fa-circle-info", view);
+        Assert.Contains("order-wmc-download-button", view);
+        Assert.Contains("order-wmc-reject-button", view);
+        Assert.Contains("order-wmc-confirm-button", view);
+        Assert.Matches(@"(?s)\.order-wmc-actions-bar\s*\{(?=[^}]*display:\s*flex)(?=[^}]*flex-wrap:\s*wrap)[^}]*\}", styles);
+        Assert.Matches(@"(?s)\.admin-authenticated \.admin-order-details-page \.order-wmc-actions-bar > a,\s*\.admin-authenticated \.admin-order-details-page \.order-wmc-actions-bar > button,\s*\.admin-authenticated \.admin-order-details-page \.order-wmc-actions-bar > form\s*\{(?=[^}]*flex:\s*0 0 auto)(?=[^}]*white-space:\s*nowrap)[^}]*\}", styles);
+        Assert.Contains("#38BDF8", styles);
+        Assert.Contains("#2563EB", styles);
+        Assert.Contains(":disabled", styles);
+        Assert.Contains("@media (max-width: 640px)", styles);
     }
 
     [Fact]
@@ -228,7 +263,7 @@ public class AdminOrderDetailsVisualTests
         Assert.Matches(@"(?s)\.order-wmc-last-audit strong\s*\{(?=[^}]*min-width:\s*0)(?=[^}]*overflow:\s*hidden)(?=[^}]*text-overflow:\s*ellipsis)(?=[^}]*white-space:\s*nowrap)[^}]*\}", styles);
         Assert.Matches(@"(?s)\.order-wmc-fact-cnpj\s*\{(?=[^}]*grid-column:\s*1\s*/\s*-1)[^}]*\}", styles);
         Assert.Matches(@"(?s)\.order-wmc-cnpj\s*\{(?=[^}]*max-width:\s*100%)(?=[^}]*white-space:\s*nowrap)(?=[^}]*overflow:\s*hidden)[^}]*\}", styles);
-        Assert.Contains("grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);", styles);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr));", styles);
         Assert.Contains("@media (max-width: 1024px)", styles);
     }
 }
