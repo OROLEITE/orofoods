@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Pricing;
+using Orofoods.Web.Services.Customers;
 
 namespace Orofoods.Web.Integrations.Erp.Wmc;
 
@@ -32,9 +33,11 @@ public sealed class WmcOrderFileGenerator
             return new WmcOrderFileResult(false, null, errors);
         }
 
+        _ = TryGetExportableCustomerCnpj(order, out var customerCnpj, out _);
+
         var lines = new List<string>
         {
-            BuildHeader(order, supplierCnpj),
+            BuildHeader(order, supplierCnpj, customerCnpj!),
             BuildPaymentRecord021(order),
             BuildDiscountChargesRecord(order)
         };
@@ -57,10 +60,9 @@ public sealed class WmcOrderFileGenerator
             errors.Add("WMC_PAYMENT_TERM_UNSUPPORTED");
         }
 
-        var customerCnpj = DigitsOnly(order.Customer?.Cnpj ?? string.Empty);
-        if (customerCnpj.Length != 14)
+        if (!TryGetExportableCustomerCnpj(order, out _, out var customerCnpjError))
         {
-            errors.Add("WMC_CUSTOMER_CNPJ_INVALID");
+            errors.Add(customerCnpjError!);
         }
 
         foreach (var item in order.Items)
@@ -74,7 +76,32 @@ public sealed class WmcOrderFileGenerator
         return errors;
     }
 
-    private static string BuildHeader(Order order, string supplierCnpj)
+    private static bool TryGetExportableCustomerCnpj(Order order, out string? normalizedCnpj, out string? error)
+    {
+        normalizedCnpj = null;
+        if (string.IsNullOrWhiteSpace(order.CustomerCnpjSnapshot))
+        {
+            error = "WMC_CUSTOMER_CNPJ_SNAPSHOT_MISSING";
+            return false;
+        }
+
+        if (!CnpjValidator.TryNormalize(order.CustomerCnpjSnapshot, out normalizedCnpj))
+        {
+            error = "WMC_CUSTOMER_CNPJ_INVALID";
+            return false;
+        }
+
+        if (normalizedCnpj!.Take(12).Any(char.IsAsciiLetter))
+        {
+            error = "WMC_CUSTOMER_CNPJ_ALPHANUMERIC_LAYOUT_UNCONFIRMED";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private static string BuildHeader(Order order, string supplierCnpj, string normalizedCustomerCnpj)
     {
         var orderReference = DigitsOnly(order.Number);
         var createdAt = order.CreatedAt == default ? DateTime.UtcNow : order.CreatedAt;
@@ -88,7 +115,7 @@ public sealed class WmcOrderFileGenerator
         payload.Append(deliveryDate.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture));
         payload.Append(Spaces(82));
         payload.Append(supplierCnpj);
-        var customerCnpj = FixedLeft(DigitsOnly(order.Customer!.Cnpj), 14);
+        var customerCnpj = FixedLeft(normalizedCustomerCnpj, 14);
         payload.Append(customerCnpj);
         payload.Append(customerCnpj);
         payload.Append(customerCnpj);

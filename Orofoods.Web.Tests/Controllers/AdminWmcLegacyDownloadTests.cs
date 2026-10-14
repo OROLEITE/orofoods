@@ -25,13 +25,14 @@ public sealed class AdminWmcLegacyDownloadTests
         var order = new Order
         {
             Number = "ORO-2026-008881",
+            CustomerCnpjSnapshot = "03932292000199",
             Status = OrderStatus.Approved,
             CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
             Customer = new Customer
             {
                 LegalName = "Cliente Ltda",
                 TradeName = "Cliente",
-                Cnpj = "12345678000199",
+                Cnpj = "03.932.292/0001-99",
                 WmcCode = "107072"
             },
             CreatedByUser = TestDbContextFactory.CreateOrderCreator("legacy-route-order-creator"),

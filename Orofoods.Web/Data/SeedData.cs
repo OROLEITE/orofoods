@@ -284,6 +284,7 @@ public static class SeedData
             {
                 Number = "ORO-2026-001245",
                 CustomerId = approvedCustomer.Id,
+                CustomerCnpjSnapshot = approvedCustomer.Cnpj,
                 CreatedByUserId = buyer.Id,
                 DeliveryAddressId = approvedCustomer.Addresses.First().Id,
                 RequestedDeliveryDate = DateTime.UtcNow.Date.AddDays(-4),

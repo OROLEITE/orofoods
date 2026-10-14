@@ -31,6 +31,7 @@
         _ => "Aguardando pagamento"
     };
     var wmcManualExportDiagnostic = (WmcManualExportDiagnostic)ViewBag.WmcManualExportDiagnostic;
+    var canCorrectCustomerCnpjSnapshot = ViewBag.CanCorrectCustomerCnpjSnapshot is bool canCorrectSnapshot && canCorrectSnapshot;
     var wmcState = Model.WmcOrderExportState;
     var wmcImportConfirmed = wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Imported;
     var wmcAwaitingImportConfirmation = wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported
@@ -83,7 +84,40 @@
         {
             <div class="alert alert-success mt-3" role="status">@pointMessage</div>
         }
+        @if (TempData["CustomerCnpjSnapshotError"] is string cnpjSnapshotError)
+        {
+            <div class="alert alert-warning mt-3" role="alert">@cnpjSnapshotError</div>
+        }
+        @if (TempData["CustomerCnpjSnapshotMessage"] is string cnpjSnapshotMessage)
+        {
+            <div class="alert alert-success mt-3" role="status">@cnpjSnapshotMessage</div>
+        }
         <div class="order-details-layout">
+        <section class="order-detail-section order-cnpj-snapshot" aria-labelledby="order-cnpj-snapshot-title" data-customer-cnpj-snapshot>
+            <header class="order-detail-section-heading">
+                <div><small>DADOS FISCAIS DO PEDIDO</small><h2 id="order-cnpj-snapshot-title">Snapshot de CNPJ</h2></div>
+            </header>
+            <p>CNPJ registrado no pedido: <code>@(Model.CustomerCnpjSnapshot ?? "Snapshot não registrado")</code></p>
+            @if (canCorrectCustomerCnpjSnapshot)
+            {
+                <form asp-action="CorrectCustomerCnpjSnapshot" method="post" class="row g-2 align-items-end" data-cnpj-snapshot-correction>
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <div class="col-12 col-md-5">
+                        <label class="form-label" for="customer-cnpj-snapshot-@Model.Id">CNPJ fiscal correto</label>
+                        <input class="form-control" id="customer-cnpj-snapshot-@Model.Id" name="cnpj" value="@Model.CustomerCnpjSnapshot" maxlength="18" autocomplete="off" required />
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="form-label" for="customer-cnpj-snapshot-reason-@Model.Id">Justificativa obrigatória</label>
+                        <input class="form-control" id="customer-cnpj-snapshot-reason-@Model.Id" name="reason" maxlength="1000" required />
+                    </div>
+                    <div class="col-12 col-md-2"><button class="btn btn-outline-primary w-100" type="submit">Corrigir snapshot</button></div>
+                </form>
+            }
+            else
+            {
+                <p class="text-muted mb-0">Snapshots fiscais válidos permanecem preservados. Pedidos com exportação WMC confirmada exigem um procedimento separado de retificação.</p>
+            }
+        </section>
         <section class="order-detail-section order-wmc-diagnostic" aria-labelledby="order-wmc-diagnostic-title" data-wmc-diagnostic-read-only>
             <header class="order-detail-section-heading">
                 <div><small>INTEGRA&Ccedil;&Atilde;O ERP</small><h2 id="order-wmc-diagnostic-title">Diagn&oacute;stico WMC</h2></div>

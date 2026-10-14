@@ -50,8 +50,9 @@ public class WmcManualExportControllerTests
         var order = new Order
         {
             Number = "ORO-2026-000805",
+            CustomerCnpjSnapshot = "03932292000199",
             CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
-            Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" },
+            Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "03.932.292/0001-99" },
             CreatedByUser = TestDbContextFactory.CreateOrderCreator("wmc-reprocess-user"),
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Status = OrderStatus.Approved,

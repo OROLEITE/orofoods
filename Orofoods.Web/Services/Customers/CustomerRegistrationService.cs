@@ -10,7 +10,13 @@ public class CustomerRegistrationService(ApplicationDbContext db, UserManager<Ap
         CustomerRegistrationRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (await db.Customers.AnyAsync(x => x.Cnpj == request.Cnpj, cancellationToken))
+        if (!CnpjValidator.TryNormalize(request.Cnpj, out var normalizedCnpj))
+        {
+            throw new InvalidOperationException("Informe um CNPJ válido com 14 posições e dígitos verificadores corretos.");
+        }
+
+        var existingCnpjs = await db.Customers.AsNoTracking().Select(x => x.Cnpj).ToListAsync(cancellationToken);
+        if (existingCnpjs.Any(value => CnpjValidator.TryNormalize(value, out var existingCnpj) && existingCnpj == normalizedCnpj))
         {
             throw new InvalidOperationException("Este CNPJ já está cadastrado.");
         }
@@ -19,7 +25,7 @@ public class CustomerRegistrationService(ApplicationDbContext db, UserManager<Ap
         {
             LegalName = request.LegalName,
             TradeName = request.TradeName,
-            Cnpj = request.Cnpj,
+            Cnpj = CnpjValidator.Format(normalizedCnpj),
             StateRegistration = request.StateRegistration,
             ResponsibleName = request.ResponsibleName,
             ResponsibleDocument = request.ResponsibleDocument,

@@ -27,7 +27,35 @@
 
         <form method="post" class="customer-approval-layout">
             <input asp-for="Id" type="hidden" />
+            <div asp-validation-summary="All" class="text-danger" role="alert"></div>
             <main class="customer-approval-form">
+                <section class="registration-card">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-id-card" aria-hidden="true"></i></span><div><small>00. Identificação fiscal</small><h2>CNPJ do cliente</h2></div></header>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            @if (User.IsInRole("Administrador"))
+                            {
+                                <label asp-for="Cnpj" class="form-label">CNPJ</label>
+                                <input asp-for="Cnpj" class="form-control" maxlength="18" autocomplete="off" aria-describedby="customer-cnpj-help" />
+                                <span asp-validation-for="Cnpj" class="text-danger"></span>
+                                <small id="customer-cnpj-help" class="customer-field-help">Aceita CNPJ numérico ou alfanumérico; a alteração exige justificativa.</small>
+                            }
+                            else
+                            {
+                                <label class="form-label">CNPJ</label>
+                                <p class="form-control-plaintext mb-0">@Model.Cnpj</p>
+                            }
+                        </div>
+                        @if (User.IsInRole("Administrador"))
+                        {
+                            <div class="col-12">
+                                <label asp-for="CnpjChangeReason" class="form-label">Justificativa da alteração</label>
+                                <textarea asp-for="CnpjChangeReason" class="form-control" rows="2" maxlength="1000"></textarea>
+                                <span asp-validation-for="CnpjChangeReason" class="text-danger"></span>
+                            </div>
+                        }
+                    </div>
+                </section>
                 <section class="registration-card">
                     <header class="registration-card-heading"><span><i class="fa-solid fa-circle-check" aria-hidden="true"></i></span><div><small>01. Libera&ccedil;&atilde;o</small><h2>Defina o acesso comercial</h2></div></header>
                     <div class="row g-3">

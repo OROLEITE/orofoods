@@ -18,6 +18,7 @@ public class WmcOrderFileGeneratorTests
             Number = "ORO-2026-000006",
             CreatedAt = new DateTime(2026, 10, 13, 12, 59, 0, DateTimeKind.Utc),
             RequestedDeliveryDate = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = customerCnpj,
             Customer = new Customer { Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Subtotal = 19.90m,
@@ -94,6 +95,7 @@ public class WmcOrderFileGeneratorTests
         {
             Number = "ORO-2026-000780",
             CreatedAt = new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
             Customer = new Customer { Cnpj = "03932292000199" },
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Subtotal = 19.90m,
@@ -121,14 +123,13 @@ public class WmcOrderFileGeneratorTests
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("")]
     [InlineData("12.345.678/0001-9")]
     [InlineData("12.345.678/0001-999")]
     public void Rejects_customer_cnpj_that_does_not_normalize_to_14_digits(string? cnpj)
     {
         var order = new Order
         {
+            CustomerCnpjSnapshot = cnpj,
             Customer = new Customer { Cnpj = cnpj! },
             PaymentTerm = new PaymentTerm { Code = "PIX", DaysUntilDue = 0 },
             Items = []
@@ -138,12 +139,63 @@ public class WmcOrderFileGeneratorTests
     }
 
     [Fact]
+    public void Blocks_alphanumeric_customer_cnpj_until_wmc_layout_is_confirmed()
+    {
+        var order = new Order
+        {
+            CustomerCnpjSnapshot = "00.000.000/E08G-12",
+            Customer = new Customer { Cnpj = "03.932.292/0001-99" },
+            PaymentTerm = new PaymentTerm { Code = "PIX", DaysUntilDue = 0 },
+            Items = []
+        };
+
+        var errors = WmcTestOrderFileGenerator.Create().Validate(order);
+
+        Assert.Contains("WMC_CUSTOMER_CNPJ_ALPHANUMERIC_LAYOUT_UNCONFIRMED", errors);
+    }
+
+    [Fact]
+    public void Requires_snapshot_instead_of_using_current_customer_cnpj()
+    {
+        var order = new Order
+        {
+            Customer = new Customer { Cnpj = "03.932.292/0001-99" },
+            PaymentTerm = new PaymentTerm { Code = "PIX", DaysUntilDue = 0 },
+            Items = []
+        };
+
+        Assert.Contains("WMC_CUSTOMER_CNPJ_SNAPSHOT_MISSING", WmcTestOrderFileGenerator.Create().Validate(order));
+    }
+
+    [Fact]
+    public void Uses_order_snapshot_when_current_customer_cnpj_changes()
+    {
+        var order = new Order
+        {
+            Number = "ORO-2026-000781",
+            CreatedAt = new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
+            Customer = new Customer { Cnpj = "00.000.000/E08G-12" },
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
+            Items = [new OrderItem { Product = new Product { WmcCode = "243680", Unit = "UN" }, ProductNameSnapshot = "Produto", Quantity = 1, UnitPrice = 1m, Subtotal = 1m }],
+            Total = 1m,
+            Subtotal = 1m
+        };
+
+        var result = WmcTestOrderFileGenerator.Create().Build(order);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal("03932292000199", result.Content!.Split(Environment.NewLine)[0].Substring(180, 14));
+    }
+
+    [Fact]
     public void Builds_a_fixed_width_homologation_file_for_a_mapped_order()
     {
         var order = new Order
         {
             Number = "ORO-2026-000777",
             CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
             Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             Items =
             [
@@ -176,6 +228,7 @@ public class WmcOrderFileGeneratorTests
     {
         var order = new Order
         {
+            CustomerCnpjSnapshot = "03932292000199",
             Customer = new Customer { Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "PIX", DaysUntilDue = 0 },
             Items = [new OrderItem { Product = new Product(), ProductNameSnapshot = "Pao", Quantity = 1 }]
@@ -195,6 +248,7 @@ public class WmcOrderFileGeneratorTests
         {
             Number = "ORO-2026-000778",
             CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
             Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", DaysUntilDue = 14 },
             Total = 63.20m,
@@ -226,6 +280,7 @@ public class WmcOrderFileGeneratorTests
         {
             Number = "ORO-2026-000779",
             CreatedAt = new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
             Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
             Subtotal = 19.90m,

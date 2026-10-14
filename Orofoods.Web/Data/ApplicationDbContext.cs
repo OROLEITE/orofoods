@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Delivery;
@@ -25,6 +26,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<PriceTableItem> PriceTableItems => Set<PriceTableItem>();
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<CustomerPaymentTerm> CustomerPaymentTerms => Set<CustomerPaymentTerm>();
+    public DbSet<CustomerCnpjAudit> CustomerCnpjAudits => Set<CustomerCnpjAudit>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PointPaymentAuditEvent> PointPaymentAuditEvents => Set<PointPaymentAuditEvent>();
@@ -76,6 +78,19 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<Customer>()
             .HasIndex(x => x.Cnpj)
             .IsUnique();
+
+        builder.Entity<CustomerCnpjAudit>().HasIndex(x => new { x.CustomerId, x.ChangedAt });
+        builder.Entity<CustomerCnpjAudit>().HasIndex(x => new { x.OrderId, x.ChangedAt });
+        builder.Entity<CustomerCnpjAudit>()
+            .HasOne(x => x.Customer)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CustomerCnpjAudit>()
+            .HasOne(x => x.Order)
+            .WithMany()
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Customer>()
             .HasOne(x => x.PriceTable)

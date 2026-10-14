@@ -12,6 +12,7 @@ using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Integrations;
+using Orofoods.Web.Services.Customers;
 
 namespace Orofoods.Web.Tests.Services;
 
@@ -136,16 +137,18 @@ public sealed class WmcManualExportPostgresIntegrationTests
             NormalizedEmail = $"{userId}@TEST.LOCAL",
             IsActive = true
         };
+        var normalizedCustomerCnpj = CreateValidNumericCnpj($"12345678{orderNumber[^4..]}");
         var order = new Order
         {
             Number = orderNumber,
+            CustomerCnpjSnapshot = normalizedCustomerCnpj,
             Status = OrderStatus.Approved,
             CreatedAt = DateTime.UtcNow,
             Customer = new Customer
             {
                 LegalName = "Local WMC Test Ltda",
                 TradeName = "Local WMC Test",
-                Cnpj = $"12345678{orderNumber[^4..]}99",
+                Cnpj = CnpjValidator.Format(normalizedCustomerCnpj),
                 WmcCode = "107072"
             },
             CreatedByUser = creator,
@@ -176,6 +179,26 @@ public sealed class WmcManualExportPostgresIntegrationTests
         db.Orders.Add(order);
         await db.SaveChangesAsync();
         return order;
+    }
+
+    private static string CreateValidNumericCnpj(string baseDigits)
+    {
+        static int Calculate(ReadOnlySpan<char> value)
+        {
+            var sum = 0;
+            var weight = 2;
+            for (var index = value.Length - 1; index >= 0; index--)
+            {
+                sum += (value[index] - '0') * weight;
+                weight = weight == 9 ? 2 : weight + 1;
+            }
+
+            var remainder = sum % 11;
+            return remainder is 0 or 1 ? 0 : 11 - remainder;
+        }
+
+        var firstDigit = Calculate(baseDigits);
+        return baseDigits + firstDigit + Calculate(baseDigits + firstDigit);
     }
 
     private sealed class ExportedStateReadBarrier : DbCommandInterceptor
