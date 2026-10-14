@@ -430,6 +430,8 @@ using (var scope = app.Services.CreateScope())
     else
     {
         await db.Database.MigrateAsync();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        await SeedData.EnsureSellerRoleAsync(roleManager);
     }
 }
 

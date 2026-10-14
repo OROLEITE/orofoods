@@ -11,6 +11,24 @@ namespace Orofoods.Web.Tests.Services;
 public class AdminUserServiceTests
 {
     [Fact]
+    public async Task Create_seller_user_links_the_active_sales_representative()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var seller = await fixture.AddSellerAsync("Vendedor ativo");
+        Assert.True(seller.IsActive);
+
+        var result = await fixture.Sut.CreateAsync(new CreateAdminUserInput(
+            "Vendedor ativo", "vendedor@test.local", "Valid!Pass123", ApplicationRoles.Seller, true, null, seller.Id));
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors.Select(x => x.Description)));
+        var created = await fixture.UserManager.FindByEmailAsync("vendedor@test.local");
+        Assert.NotNull(created);
+        Assert.True(created!.IsActive);
+        Assert.Equal(seller.Id, created.SalesRepresentativeId);
+        Assert.True(await fixture.UserManager.IsInRoleAsync(created, ApplicationRoles.Seller));
+    }
+
+    [Fact]
     public async Task Create_uses_Identity_and_assigns_existing_role_and_links()
     {
         await using var fixture = await Fixture.CreateAsync();
