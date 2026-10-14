@@ -13,11 +13,19 @@ public class AdminCatalogService(ApplicationDbContext db)
             throw new InvalidOperationException("Ja existe um produto com esse SKU.");
         }
 
+        var wmcCode = string.IsNullOrWhiteSpace(input.WmcCode) ? null : input.WmcCode.Trim();
+        if (wmcCode is not null && await db.Products.AnyAsync(
+                x => x.Id != input.Id && x.WmcCode != null && x.WmcCode.Trim().ToLower() == wmcCode.ToLowerInvariant(),
+                cancellationToken))
+        {
+            throw new InvalidOperationException("Ja existe um produto com esse codigo WMC.");
+        }
+
         var product = input.Id == 0
             ? new Product()
             : await db.Products.SingleAsync(x => x.Id == input.Id, cancellationToken);
         product.Sku = sku;
-        product.WmcCode = string.IsNullOrWhiteSpace(input.WmcCode) ? null : input.WmcCode.Trim();
+        product.WmcCode = wmcCode;
         product.Name = input.Name.Trim();
         product.ProductCategoryId = input.ProductCategoryId;
         product.Brand = input.Brand.Trim();
