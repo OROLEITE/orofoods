@@ -97,7 +97,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: #E5E7EB;
 }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .orders-number {
-    color: var(--admin-dark-text);
+    color: #38BDF8;
 }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-orders-page .orders-table tbody tr {
     border-color: var(--admin-dark-border);

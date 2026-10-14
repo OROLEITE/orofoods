@@ -128,6 +128,12 @@
     vertical-align: middle;
 }
 
+.orders-index-compact .orders-number {
+    color: #075985;
+    font-size: 14px;
+    font-weight: 600;
+}
+
 .orders-index-compact .orders-row--delivered-wmc-pending {
     box-shadow: inset 3px 0 #D99018;
 }
