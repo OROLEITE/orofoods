@@ -171,15 +171,39 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("background: #FFF8E5;", styles);
         Assert.Contains("background: #422F12;", styles);
         Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-order-details-page .order-payment-card", styles);
-        Assert.Contains("grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);", styles);
+        Assert.Contains("grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);", styles);
         Assert.Contains("justify-content: flex-start;", styles);
-        Assert.Contains("grid-template-columns: minmax(0, 520px) minmax(0, 360px);", styles);
-        Assert.Contains("max-width: 280px;", styles);
-        Assert.Contains("width: min(100%, 1080px);", styles);
-        Assert.Contains("width: min(88%, 1200px);", styles);
+        Assert.DoesNotContain("grid-template-columns: minmax(0, 520px) minmax(0, 360px);", styles);
+        Assert.DoesNotContain("max-width: 280px;", styles);
+        Assert.DoesNotContain("width: min(100%, 1080px);", styles);
+        Assert.DoesNotContain("width: min(88%, 1200px);", styles);
         Assert.Matches(@"\.admin-authenticated \.admin-order-details-page \.order-point-audit-main\s*\{\s*align-items:\s*flex-start;\s*flex-direction:\s*column;", styles);
         Assert.Contains("width: 100%;", styles);
-        Assert.Contains("grid-template-columns: minmax(0, 1.7fr) minmax(90px, .55fr) minmax(130px, .8fr) minmax(120px, .75fr);", styles);
+        Assert.Contains("grid-template-columns: minmax(80px, .5fr) minmax(0, 2.4fr) minmax(70px, .5fr) minmax(110px, .8fr) minmax(110px, .8fr);", styles);
         Assert.Contains("admin-order-details.css", File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml")));
+    }
+
+    [Fact]
+    public void Admin_order_details_use_a_wide_two_column_layout_and_collapsible_secondary_panels()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.Contains("order-details-status-strip", view);
+        Assert.Contains("order-details-primary", view);
+        Assert.Contains("order-details-secondary", view);
+        Assert.Contains("order-commercial-facts", view);
+        Assert.Contains("order-payment-overview", view);
+        Assert.Contains("<details class=\"order-detail-section order-cnpj-snapshot", view);
+        Assert.Contains("<details class=\"order-detail-section order-point-audit", view);
+        Assert.Contains("<details class=\"order-detail-section order-history-panel", view);
+        Assert.Contains("<details class=\"order-wmc-technical\"", view);
+        Assert.Contains("grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);", styles);
+        Assert.Contains("width: calc(100% - 24px);", styles);
+        Assert.Contains("max-width: 1800px;", styles);
+        Assert.Contains("@media (max-width: 1024px)", styles);
+        Assert.Contains("font-size: 13px;", styles);
+        Assert.Contains("min-width: 0;", styles);
     }
 }
