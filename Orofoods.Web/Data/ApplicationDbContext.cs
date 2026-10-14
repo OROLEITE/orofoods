@@ -42,6 +42,8 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<WmcInitialLoadReleaseAudit> WmcInitialLoadReleaseAudits => Set<WmcInitialLoadReleaseAudit>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
+    public DbSet<SellerOrderDraft> SellerOrderDrafts => Set<SellerOrderDraft>();
+    public DbSet<SellerOrderDraftItem> SellerOrderDraftItems => Set<SellerOrderDraftItem>();
     public DbSet<CommercialActivity> CommercialActivities => Set<CommercialActivity>();
     public DbSet<CrmOpportunity> CrmOpportunities => Set<CrmOpportunity>();
     public DbSet<CrmOpportunityHistory> CrmOpportunityHistories => Set<CrmOpportunityHistory>();
@@ -120,6 +122,72 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
 
         builder.Entity<SavedOrderItem>()
             .HasIndex(x => new { x.SavedOrderId, x.ProductId })
+            .IsUnique();
+
+        builder.Entity<SellerOrderDraft>(entity =>
+        {
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
+            entity.Property(x => x.Version).IsConcurrencyToken().HasDefaultValue(1);
+            entity.Property(x => x.Notes).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreateRequestKey })
+                .IsUnique()
+                .HasDatabaseName("IX_SellerOrderDrafts_OwnerUserId_CreateRequestKey");
+            entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.UpdatedAt });
+            entity.HasIndex(x => new { x.SalesRepresentativeId, x.CustomerId, x.Status, x.UpdatedAt })
+                .HasDatabaseName("IX_SellerDrafts_Rep_Customer_Status_Updated");
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_SellerOrderDrafts_Status", "\"Status\" IN ('Draft', 'Submitted')");
+                table.HasCheckConstraint("CK_SellerOrderDrafts_Version", "\"Version\" > 0");
+            });
+            entity.HasOne(x => x.OwnerUser)
+                .WithMany()
+                .HasForeignKey(x => x.OwnerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.SalesRepresentative)
+                .WithMany()
+                .HasForeignKey(x => x.SalesRepresentativeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer)
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.DeliveryAddress)
+                .WithMany()
+                .HasForeignKey(x => x.DeliveryAddressId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.PaymentTerm)
+                .WithMany()
+                .HasForeignKey(x => x.PaymentTermId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(x => x.Items)
+                .WithOne(x => x.SellerOrderDraft)
+                .HasForeignKey(x => x.SellerOrderDraftId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.SubmittedOrder)
+                .WithOne(x => x.SellerOrderDraft)
+                .HasForeignKey<Order>(x => x.SellerOrderDraftId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SellerOrderDraftItem>(entity =>
+        {
+            entity.HasIndex(x => new { x.SellerOrderDraftId, x.ProductId }).IsUnique();
+            entity.Property(x => x.RequestedDiscountAmount).HasPrecision(12, 2);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_SellerOrderDraftItems_Quantity", "\"Quantity\" > 0");
+                table.HasCheckConstraint("CK_SellerOrderDraftItems_RequestedDiscountAmount", "\"RequestedDiscountAmount\" >= 0");
+            });
+            entity.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Order>()
+            .HasIndex(x => x.SellerOrderDraftId)
+            .HasDatabaseName("IX_Orders_SellerOrderDraftId")
             .IsUnique();
 
         builder.Entity<CommercialActivity>()

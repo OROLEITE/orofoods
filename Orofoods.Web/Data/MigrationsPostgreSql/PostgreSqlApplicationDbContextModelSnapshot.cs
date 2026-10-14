@@ -1177,12 +1177,12 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<Guid?>("AttemptId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Error")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid?>("AttemptId")
-                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("ExportedAt")
                         .HasColumnType("timestamp without time zone");
@@ -1216,12 +1216,183 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrderId", "ExportedAt");
-
                     b.HasIndex("OrderId", "AttemptId")
                         .IsUnique();
 
+                    b.HasIndex("OrderId", "ExportedAt");
+
                     b.ToTable("WmcExportAudits");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcInitialLoadReleaseAudit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AdminUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("ReleasedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WmcCode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "ReleasedAtUtc");
+
+                    b.ToTable("WmcInitialLoadReleaseAudits");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedByEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RegenerationReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("SupersedesArtifactId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttemptId")
+                        .IsUnique();
+
+                    b.HasIndex("SupersedesArtifactId");
+
+                    b.HasIndex("OrderId", "CreatedAt");
+
+                    b.ToTable("WmcManualExportArtifacts");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
+                {
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CurrentArtifactId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ExportedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExportedByEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ExportedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTime?>("ImportedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ImportedByEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ImportedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("ProcessingStartedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("RequiresManualReview")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReviewedByEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("OrderId");
+
+                    b.HasIndex("CurrentArtifactId");
+
+                    b.ToTable("WmcOrderExportStates", t =>
+                        {
+                            t.HasCheckConstraint("CK_WmcOrderExportStates_Status", "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Rejected', 'Imported', 'Error')");
+                        });
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcSyncRun", b =>
@@ -1283,67 +1454,6 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("Status", "StartedAt");
 
                     b.ToTable("WmcSyncRuns");
-                });
-
-            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcInitialLoadReleaseAudit", b =>
-                {
-                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("bigint");
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-                    b.Property<string>("AdminUserId").IsRequired().HasMaxLength(450).HasColumnType("character varying(450)");
-                    b.Property<int>("ProductId").HasColumnType("integer");
-                    b.Property<string>("Reason").IsRequired().HasMaxLength(300).HasColumnType("character varying(300)");
-                    b.Property<DateTimeOffset>("ReleasedAtUtc").HasColumnType("timestamp with time zone");
-                    b.Property<string>("WmcCode").IsRequired().HasMaxLength(30).HasColumnType("character varying(30)");
-                    b.HasKey("Id");
-                    b.HasIndex("ProductId", "ReleasedAtUtc");
-                    b.ToTable("WmcInitialLoadReleaseAudits");
-                });
-
-            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
-                {
-                    b.Property<int>("OrderId").HasColumnType("integer");
-                    b.Property<int?>("CurrentArtifactId").HasColumnType("integer");
-                    b.Property<string>("ExportedByEmail").HasMaxLength(256).HasColumnType("character varying(256)");
-                    b.Property<string>("ExportedByUserId").HasMaxLength(450).HasColumnType("character varying(450)");
-                    b.Property<DateTime?>("ExportedAt").HasColumnType("timestamp without time zone");
-                    b.Property<string>("FileName").HasMaxLength(160).HasColumnType("character varying(160)");
-                    b.Property<string>("ImportedByEmail").HasMaxLength(256).HasColumnType("character varying(256)");
-                    b.Property<string>("ImportedByUserId").HasMaxLength(450).HasColumnType("character varying(450)");
-                    b.Property<DateTime?>("ImportedAt").HasColumnType("timestamp without time zone");
-                    b.Property<string>("LastError").HasMaxLength(2000).HasColumnType("character varying(2000)");
-                    b.Property<DateTime?>("ProcessingStartedAt").HasColumnType("timestamp without time zone");
-                    b.Property<bool>("RequiresManualReview").HasColumnType("boolean");
-                    b.Property<string>("ReviewedByEmail").HasMaxLength(256).HasColumnType("character varying(256)");
-                    b.Property<string>("ReviewedByUserId").HasMaxLength(450).HasColumnType("character varying(450)");
-                    b.Property<DateTime?>("ReviewedAt").HasColumnType("timestamp without time zone");
-                    b.Property<string>("Status").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)");
-                    b.Property<DateTime>("UpdatedAt").HasColumnType("timestamp without time zone");
-                    b.Property<long>("Version").IsConcurrencyToken().HasColumnType("bigint");
-                    b.HasKey("OrderId");
-                    b.HasIndex("CurrentArtifactId");
-                    b.ToTable("WmcOrderExportStates", (string)null, t =>
-                        t.HasCheckConstraint("CK_WmcOrderExportStates_Status", "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Rejected', 'Imported', 'Error')"));
-                });
-
-            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", b =>
-                {
-                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("integer");
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-                    b.Property<Guid>("AttemptId").HasColumnType("uuid");
-                    b.Property<string>("Content").IsRequired().HasColumnType("text");
-                    b.Property<string>("ContentSha256").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
-                    b.Property<DateTime>("CreatedAt").HasColumnType("timestamp without time zone");
-                    b.Property<string>("CreatedByEmail").HasMaxLength(256).HasColumnType("character varying(256)");
-                    b.Property<string>("CreatedByUserId").HasMaxLength(450).HasColumnType("character varying(450)");
-                    b.Property<string>("FileName").IsRequired().HasMaxLength(160).HasColumnType("character varying(160)");
-                    b.Property<int>("OrderId").HasColumnType("integer");
-                    b.Property<string>("RegenerationReason").HasMaxLength(1000).HasColumnType("character varying(1000)");
-                    b.Property<int?>("SupersedesArtifactId").HasColumnType("integer");
-                    b.HasKey("Id");
-                    b.HasIndex("AttemptId").IsUnique();
-                    b.HasIndex("OrderId", "CreatedAt");
-                    b.HasIndex("SupersedesArtifactId");
-                    b.ToTable("WmcManualExportArtifacts");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Inventory.InventoryAdjustment", b =>
@@ -1426,6 +1536,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("IsManuallyAdjusted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("ProductId")
                         .HasColumnType("integer");
 
@@ -1434,9 +1547,6 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.Property<int>("QuantityReserved")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("IsManuallyAdjusted")
-                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
@@ -1521,6 +1631,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<int?>("SalesRepresentativeId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SellerOrderDraftId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -1541,6 +1654,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("PaymentTermId");
 
                     b.HasIndex("SalesRepresentativeId");
+
+                    b.HasIndex("SellerOrderDraftId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Orders_SellerOrderDraftId");
 
                     b.HasIndex("CustomerId", "CheckoutAttemptKey")
                         .IsUnique()
@@ -1677,6 +1794,124 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .IsUnique();
 
                     b.ToTable("SavedOrderItems");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Orders.SellerOrderDraft", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CreateRequestKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("DeliveryAddressId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<int?>("PaymentTermId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RequestedDeliveryDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("SalesRepresentativeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .IsConcurrencyToken()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("DeliveryAddressId");
+
+                    b.HasIndex("PaymentTermId");
+
+                    b.HasIndex("OwnerUserId", "CreateRequestKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SellerOrderDrafts_OwnerUserId_CreateRequestKey");
+
+                    b.HasIndex("OwnerUserId", "Status", "UpdatedAt");
+
+                    b.HasIndex("SalesRepresentativeId", "CustomerId", "Status", "UpdatedAt")
+                        .HasDatabaseName("IX_SellerDrafts_Rep_Customer_Status_Updated");
+
+                    b.ToTable("SellerOrderDrafts", t =>
+                        {
+                            t.HasCheckConstraint("CK_SellerOrderDrafts_Status", "\"Status\" IN ('Draft', 'Submitted')");
+
+                            t.HasCheckConstraint("CK_SellerOrderDrafts_Version", "\"Version\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Orders.SellerOrderDraftItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("RequestedDiscountAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<int>("SellerOrderDraftId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SellerOrderDraftId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("SellerOrderDraftItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_SellerOrderDraftItems_Quantity", "\"Quantity\" > 0");
+
+                            t.HasCheckConstraint("CK_SellerOrderDraftItems_RequestedDiscountAmount", "\"RequestedDiscountAmount\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Payments.DriverPaymentTerminalAssignment", b =>
@@ -2358,15 +2593,22 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("Order");
                 });
 
-            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", b =>
                 {
                     b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
-                        .WithOne("WmcOrderExportState")
-                        .HasForeignKey("Orofoods.Web.Models.Integrations.WmcOrderExportState", "OrderId")
+                        .WithMany("WmcManualExportArtifacts")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", "SupersedesArtifact")
+                        .WithMany()
+                        .HasForeignKey("SupersedesArtifactId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Order");
+
+                    b.Navigation("SupersedesArtifact");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
@@ -2375,22 +2617,16 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .WithMany()
                         .HasForeignKey("CurrentArtifactId")
                         .OnDelete(DeleteBehavior.SetNull);
-                    b.Navigation("CurrentArtifact");
-                });
 
-            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", b =>
-                {
                     b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
-                        .WithMany("WmcManualExportArtifacts")
-                        .HasForeignKey("OrderId")
+                        .WithOne("WmcOrderExportState")
+                        .HasForeignKey("Orofoods.Web.Models.Integrations.WmcOrderExportState", "OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                    b.HasOne("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", "SupersedesArtifact")
-                        .WithMany()
-                        .HasForeignKey("SupersedesArtifactId")
-                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CurrentArtifact");
+
                     b.Navigation("Order");
-                    b.Navigation("SupersedesArtifact");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Inventory.InventoryAdjustment", b =>
@@ -2461,6 +2697,11 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasForeignKey("SalesRepresentativeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Orofoods.Web.Models.Orders.SellerOrderDraft", "SellerOrderDraft")
+                        .WithOne("SubmittedOrder")
+                        .HasForeignKey("Orofoods.Web.Models.Orders.Order", "SellerOrderDraftId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Customer");
@@ -2470,6 +2711,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("PaymentTerm");
 
                     b.Navigation("SalesRepresentative");
+
+                    b.Navigation("SellerOrderDraft");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Orders.OrderItem", b =>
@@ -2537,6 +2780,66 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("Product");
 
                     b.Navigation("SavedOrder");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Orders.SellerOrderDraft", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Customers.CustomerAddress", "DeliveryAddress")
+                        .WithMany()
+                        .HasForeignKey("DeliveryAddressId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Pricing.PaymentTerm", "PaymentTerm")
+                        .WithMany()
+                        .HasForeignKey("PaymentTermId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Orofoods.Web.Models.Customers.SalesRepresentative", "SalesRepresentative")
+                        .WithMany()
+                        .HasForeignKey("SalesRepresentativeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("DeliveryAddress");
+
+                    b.Navigation("OwnerUser");
+
+                    b.Navigation("PaymentTerm");
+
+                    b.Navigation("SalesRepresentative");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Orders.SellerOrderDraftItem", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Catalog.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Orders.SellerOrderDraft", "SellerOrderDraft")
+                        .WithMany("Items")
+                        .HasForeignKey("SellerOrderDraftId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("SellerOrderDraft");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Payments.DriverPaymentTerminalAssignment", b =>
@@ -2723,6 +3026,13 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
             modelBuilder.Entity("Orofoods.Web.Models.Orders.SavedOrder", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Orders.SellerOrderDraft", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("SubmittedOrder");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Payments.PaymentTerminal", b =>

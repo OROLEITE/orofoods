@@ -58,6 +58,61 @@ public class SellerCatalogServiceTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task Catalog_searches_by_ean_and_limits_results_to_requested_page()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "33.333.333/0001-33", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        db.AddRange(representative, seller, customer);
+        var products = Enumerable.Range(1, 25).Select(index =>
+        {
+            var product = Product($"SKU-{index:00}", $"Produto {index:00}", true);
+            product.Ean = $"789000000{index.ToString("D5")}";
+            return product;
+        }).ToArray();
+        db.Products.AddRange(products);
+        await db.SaveChangesAsync();
+        db.ProductInventories.AddRange(products.Select(product => new ProductInventory { ProductId = product.Id, QuantityOnHand = 10 }));
+        await db.SaveChangesAsync();
+        Assert.Equal("78900000000001", products[0].Ean);
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        var secondPage = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, "789000000", page: 2, pageSize: 20);
+        var eanMatch = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, "78900000000001", page: 1, pageSize: 20);
+
+        Assert.NotNull(secondPage);
+        Assert.Equal(2, secondPage.Page);
+        Assert.Equal(2, secondPage.TotalPages);
+        Assert.Equal(5, secondPage.Products.Count);
+        Assert.Single(Assert.IsType<SellerCatalogViewModel>(eanMatch).Products);
+    }
+
+    [Fact]
+    public async Task Catalog_clamps_page_size_to_prevent_unbounded_product_results()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "44.444.444/0001-44", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        db.AddRange(representative, seller, customer);
+        var products = Enumerable.Range(1, 30).Select(index => Product($"SKU-{index:00}", $"Produto {index:00}", true)).ToArray();
+        db.Products.AddRange(products);
+        await db.SaveChangesAsync();
+        db.ProductInventories.AddRange(products.Select(product => new ProductInventory { ProductId = product.Id, QuantityOnHand = 10 }));
+        await db.SaveChangesAsync();
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        var legacyCatalog = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null);
+        var result = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null, page: 1, pageSize: 1000);
+
+        Assert.NotNull(result);
+        Assert.Equal(20, result.Products.Count);
+        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(30, Assert.IsType<SellerCatalogViewModel>(legacyCatalog).Products.Count);
+    }
+
     private static Product Product(string sku, string name, bool active) => new()
     {
         Sku = sku,

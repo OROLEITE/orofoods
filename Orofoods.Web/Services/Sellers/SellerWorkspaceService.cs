@@ -64,6 +64,44 @@ public sealed class SellerWorkspaceService(
         };
     }
 
+    public async Task<SellerCustomerSearchPage?> SearchCustomersForOrderDraftAsync(
+        ClaimsPrincipal user,
+        string? query,
+        int page = 1,
+        CancellationToken cancellationToken = default)
+    {
+        var representative = await accessService.GetActiveRepresentativeAsync(user, cancellationToken);
+        if (representative is null)
+        {
+            return null;
+        }
+
+        page = Math.Clamp(page, 1, 100_000_000);
+        const int pageSize = 20;
+        var customers = GetPortfolioQuery(representative.Id);
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            query = query.Trim();
+            var normalizedCnpjQuery = new string(query.Where(char.IsLetterOrDigit).ToArray());
+            customers = customers.Where(x =>
+                x.TradeName.Contains(query) ||
+                x.LegalName.Contains(query) ||
+                (normalizedCnpjQuery.Length > 0 && x.Cnpj.Replace(".", "").Replace("/", "").Replace("-", "").Contains(normalizedCnpjQuery)) ||
+                (x.WmcCode != null && x.WmcCode.Contains(query)));
+        }
+
+        var totalCount = await customers.CountAsync(cancellationToken);
+        var results = await customers
+            .OrderBy(x => x.TradeName)
+            .ThenBy(x => x.Id)
+            .Skip((int)Math.Min((long)(page - 1) * pageSize, int.MaxValue))
+            .Take(pageSize)
+            .Select(ToRowExpression())
+            .ToListAsync(cancellationToken);
+
+        return new SellerCustomerSearchPage(query, page, pageSize, totalCount, results);
+    }
+
     public async Task<SellerCustomerWorkspaceViewModel?> GetCustomerWorkspaceAsync(
         ClaimsPrincipal user,
         int customerId,
@@ -118,4 +156,14 @@ public sealed class SellerWorkspaceService(
         customer.TradeName,
         customer.Addresses.Where(address => address.IsActive).Select(address => address.City + "/" + address.State).FirstOrDefault() ?? "-",
         customer.Status);
+}
+
+public sealed record SellerCustomerSearchPage(
+    string? Query,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    IReadOnlyList<SellerCustomerRow> Customers)
+{
+    public int TotalPages => TotalCount == 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
 }
