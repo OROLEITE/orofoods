@@ -115,9 +115,8 @@
     --seller-sidebar: #102A4C;
     --seller-sidebar-text: #E7EEF8;
     --seller-sidebar-muted: #B9C8DA;
-    --seller-action: #2563EB;
-    --seller-action-hover: #1D4ED8;
-    --seller-gold: #E4B451;
+    --seller-action: #0E7490;
+    --seller-action-hover: #0B5D75;
     --seller-icon: #2563EB;
     --seller-focus: #1D4ED8;
     width: 100%;
@@ -424,18 +423,6 @@
     color: #FFFFFF;
 }
 
-.seller-button--gold {
-    border-color: #D7A743;
-    background: var(--seller-gold);
-    color: #172033;
-}
-
-.seller-button--gold:hover {
-    border-color: #C4922E;
-    background: #EFC86F;
-    color: #172033;
-}
-
 .seller-button--secondary {
     border-color: var(--seller-border);
     background: var(--seller-surface);
@@ -677,9 +664,8 @@ html[data-theme="dark"] body.seller-app-page .seller-app-shell {
     --seller-sidebar: #081A30;
     --seller-sidebar-text: #E6EDF7;
     --seller-sidebar-muted: #B2C2D6;
-    --seller-action: #3B82F6;
-    --seller-action-hover: #2563EB;
-    --seller-gold: #D5A84E;
+    --seller-action: #0E7490;
+    --seller-action-hover: #0B5D75;
     --seller-icon: #38BDF8;
     --seller-focus: #38BDF8;
 }
@@ -704,9 +690,8 @@ html[data-theme="dark"] body.seller-app-page .seller-dashboard__eyebrow {
         --seller-sidebar: #081A30;
         --seller-sidebar-text: #E6EDF7;
         --seller-sidebar-muted: #B2C2D6;
-        --seller-action: #3B82F6;
-        --seller-action-hover: #2563EB;
-        --seller-gold: #D5A84E;
+        --seller-action: #0E7490;
+        --seller-action-hover: #0B5D75;
         --seller-icon: #38BDF8;
         --seller-focus: #38BDF8;
     }
@@ -849,5 +834,231 @@ html[data-theme="dark"] body.seller-app-page .seller-dashboard__eyebrow {
     .seller-button,
     .seller-dashboard__customer-card {
         transition: none;
+    }
+}
+
+/* Keep the shared institutional header dark only inside the authenticated seller app. */
+body.seller-app-page .site-header-modern {
+    border-bottom: 1px solid #334155;
+    background: #111827;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .navbar,
+body.seller-app-page .site-header-modern .navbar.bg-white,
+body.seller-app-page .site-header-modern .navbar-collapse {
+    background: #111827 !important;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .main-nav .nav-link {
+    color: #CBD5E1;
+}
+
+body.seller-app-page .site-header-modern .main-nav .nav-link:hover,
+body.seller-app-page .site-header-modern .main-nav .nav-link:focus-visible,
+body.seller-app-page .site-header-modern .main-nav .nav-link.active {
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .main-nav .nav-link:focus-visible,
+body.seller-app-page .site-header-modern .account-trigger:focus-visible,
+body.seller-app-page .site-header-modern .navbar-toggler:focus-visible {
+    outline: 2px solid #60A5FA;
+    outline-offset: 2px;
+}
+
+body.seller-app-page .site-header-modern .navbar-toggler {
+    border-color: #475569;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .navbar-toggler-icon {
+    filter: invert(1);
+}
+
+body.seller-app-page .site-header-modern .header-account {
+    border-color: #334155;
+}
+
+body.seller-app-page .site-header-modern .account-trigger {
+    border-color: #334155;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .account-trigger:hover,
+body.seller-app-page .site-header-modern .account-trigger:focus-visible,
+body.seller-app-page .site-header-modern .account-trigger.show {
+    border-color: #475569;
+    background: #273449;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .account-avatar {
+    background: #334155;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .account-context {
+    color: #CBD5E1;
+}
+
+body.seller-app-page .site-header-modern .account-menu {
+    border-color: #334155;
+    background: #111827;
+    color: #F8FAFC;
+}
+
+body.seller-app-page .site-header-modern .account-menu .dropdown-item {
+    color: #E2E8F0;
+}
+
+body.seller-app-page .site-header-modern .account-menu .dropdown-item:hover,
+body.seller-app-page .site-header-modern .account-menu .dropdown-item:focus {
+    background: #1E293B;
+    color: #FFFFFF;
+}
+
+body.seller-app-page .site-header-modern .account-menu .dropdown-item:focus-visible {
+    outline: 2px solid #60A5FA;
+    outline-offset: -2px;
+}
+
+/* Use the same cyan action color across seller primary and former gold buttons. */
+body.seller-app-page .seller-button--primary,
+body.seller-app-page .btn-gold,
+body.seller-app-page .seller-order-drafts__primary,
+body.seller-app-page .seller-order-drafts__save {
+    border-color: #0E7490;
+    background: #0E7490;
+    color: #FFFFFF;
+}
+
+body.seller-app-page .seller-button--primary:hover,
+body.seller-app-page .btn-gold:hover,
+body.seller-app-page .seller-order-drafts__primary:hover,
+body.seller-app-page .seller-order-drafts__save:hover {
+    border-color: #0B5D75;
+    background: #0B5D75;
+    color: #FFFFFF;
+}
+
+body.seller-app-page .seller-button--primary:focus-visible,
+body.seller-app-page .btn-gold:focus-visible,
+body.seller-app-page .seller-order-drafts__primary:focus-visible,
+body.seller-app-page .seller-order-drafts__save:focus-visible {
+    outline: 2px solid #F8FAFC;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px #0F172A;
+}
+
+body.seller-app-page .seller-button--primary:disabled,
+body.seller-app-page .btn-gold:disabled,
+body.seller-app-page .seller-order-drafts__primary:disabled,
+body.seller-app-page .seller-order-drafts__save:disabled,
+body.seller-app-page .seller-button--primary[aria-disabled="true"],
+body.seller-app-page .btn-gold[aria-disabled="true"] {
+    border-color: #64748B;
+    background: #64748B;
+    color: #F8FAFC;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+body.seller-app-page .customer-search__form-row {
+    align-items: stretch;
+    gap: .5rem;
+}
+
+body.seller-app-page .customer-search__form-row .btn-gold {
+    min-width: 130px;
+    min-height: 44px;
+}
+
+body.seller-app-page .seller-order-drafts__search-row {
+    align-items: stretch;
+    gap: .5rem;
+}
+
+body.seller-app-page .seller-order-drafts__search-row .seller-order-drafts__primary {
+    min-width: 130px;
+    min-height: 46px;
+}
+
+@media (max-width: 767.98px) {
+    body.seller-app-page .seller-order-drafts__search-row {
+        flex-direction: column;
+    }
+
+    body.seller-app-page .seller-order-drafts__search-row .seller-order-drafts__primary {
+        width: 100%;
+    }
+}
+
+html[data-theme="dark"] body.seller-app-page .seller-order-drafts__eyebrow,
+html[data-theme="dark"] body.seller-app-page .seller-order-drafts__breadcrumbs a {
+    color: #93C5FD;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) body.seller-app-page .seller-order-drafts__eyebrow,
+    html:not([data-theme="light"]) body.seller-app-page .seller-order-drafts__breadcrumbs a {
+        color: #93C5FD;
+    }
+
+    html:not([data-theme="light"]) body.seller-app-page .seller-order-drafts__customer-option:hover,
+    html:not([data-theme="light"]) body.seller-app-page .seller-order-drafts__customer-option:focus-visible {
+        color: #F8FAFC;
+    }
+}
+
+html[data-theme="dark"] body.seller-app-page .seller-order-drafts__customer-option:hover,
+html[data-theme="dark"] body.seller-app-page .seller-order-drafts__customer-option:focus-visible {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.seller-app-page .seller-app-main .section .eyebrow {
+    color: #F1D48F;
+}
+
+html[data-theme="dark"] body.seller-app-page .seller-app-main .section .text-muted {
+    color: #AAB9CC !important;
+}
+
+html[data-theme="dark"] body.seller-app-page .seller-app-main .section .btn-outline-dark {
+    border-color: #64748B;
+    background: transparent;
+    color: #E2E8F0;
+}
+
+html[data-theme="dark"] body.seller-app-page .seller-app-main .section .btn-outline-dark:hover,
+html[data-theme="dark"] body.seller-app-page .seller-app-main .section .btn-outline-dark:focus-visible {
+    border-color: #94A3B8;
+    background: #1E293B;
+    color: #FFFFFF;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-main .section .eyebrow {
+        color: #F1D48F;
+    }
+
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-main .section .text-muted {
+        color: #AAB9CC !important;
+    }
+
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-main .section .btn-outline-dark {
+        border-color: #64748B;
+        background: transparent;
+        color: #E2E8F0;
+    }
+
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-main .section .btn-outline-dark:hover,
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-main .section .btn-outline-dark:focus-visible {
+        border-color: #94A3B8;
+        background: #1E293B;
+        color: #FFFFFF;
     }
 }

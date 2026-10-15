@@ -45,4 +45,57 @@ public sealed class SellerPortalVisualContractTests
         Assert.Contains("@media (max-width: 575.98px)", searchStyles);
         Assert.Contains("@media (min-width: 768px)", shellStyles);
     }
+
+    [Fact]
+    public void Seller_header_and_search_actions_use_the_scoped_dark_cyan_visual_contract()
+    {
+        var shellStyles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css"));
+        var publicHeader = File.ReadAllText(Path.Combine(ProjectRoot, "Views", "Shared", "_SiteHeader.cshtml"));
+
+        Assert.Contains("body.seller-app-page .site-header-modern .navbar", shellStyles);
+        Assert.Contains("#111827", shellStyles);
+        Assert.Contains("body.seller-app-page .site-header-modern .main-nav .nav-link", shellStyles);
+        Assert.Contains("#CBD5E1", shellStyles);
+        Assert.Contains("body.seller-app-page .customer-search__form-row .btn", shellStyles);
+        Assert.Contains("body.seller-app-page .seller-order-drafts__search-row .seller-order-drafts__primary", shellStyles);
+        Assert.Contains("#0E7490", shellStyles);
+        Assert.Contains("#0B5D75", shellStyles);
+        Assert.Contains("body.seller-app-page .btn-gold:focus-visible", shellStyles);
+        Assert.Contains("body.seller-app-page .btn-gold:disabled", shellStyles);
+        Assert.Contains("body.seller-app-page .seller-app-main .section .text-muted", shellStyles);
+        Assert.Contains("navbar-light bg-white", publicHeader);
+    }
+
+    [Fact]
+    public void Seller_dashboard_keeps_order_and_draft_actions_and_leaves_wallet_in_sidebar()
+    {
+        var dashboard = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "Dashboard", "Index.cshtml"));
+        var sellerLayout = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "_SellerLayout.cshtml"));
+
+        Assert.Contains("Digitar pedido", dashboard);
+        Assert.Contains("Meus rascunhos", dashboard);
+        Assert.DoesNotContain("seller-button--gold", dashboard);
+        Assert.DoesNotContain("Ver carteira", dashboard);
+        Assert.Contains("asp-controller=\"Customers\" asp-action=\"Index\"", sellerLayout);
+    }
+
+    [Fact]
+    public void Access_center_uses_portal_action_labels_without_icons()
+    {
+        var accessView = File.ReadAllText(Path.Combine(ProjectRoot, "Views", "AdminPortalAccess", "Index.cshtml"));
+        var accessStyles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "admin-portal-access.css"));
+
+        Assert.Equal(2, accessView.Split("Abrir portal").Length - 1);
+        Assert.Contains(">Abrir painel</a>", accessView);
+        Assert.DoesNotContain("Selecionar cliente</a>", accessView);
+        Assert.DoesNotContain("Selecionar vendedor</a>", accessView);
+        Assert.DoesNotContain("Abrir portal <i", accessView);
+        Assert.Contains("btn-portal-action", accessView);
+        Assert.Contains("#0E7490", accessStyles);
+        Assert.Contains("#0B5D75", accessStyles);
+        Assert.Contains("min-height: 44px", accessStyles);
+        Assert.Contains(".btn-portal-action:hover", accessStyles);
+        Assert.Contains(".btn-portal-action:focus-visible", accessStyles);
+        Assert.Contains(".btn-portal-action:disabled", accessStyles);
+    }
 }
