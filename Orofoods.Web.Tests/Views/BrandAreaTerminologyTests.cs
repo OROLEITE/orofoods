@@ -10,9 +10,11 @@ public class BrandAreaTerminologyTests
         var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
         var portal = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Dashboard.cshtml"));
         var portalLayout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PortalLayout.cshtml"));
+        var accessCenter = File.ReadAllText(Path.Combine(projectPath, "Views", "AdminPortalAccess", "Index.cshtml"));
         var admin = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Dashboard", "Index.cshtml"));
 
-        Assert.Contains("Acessar portal de cliente", header);
+        Assert.DoesNotContain("Acessar portal de cliente", header);
+        Assert.Contains("Portal Cliente", accessCenter);
         Assert.DoesNotContain("JPL", layout);
         Assert.Contains("PORTAL DO CLIENTE", portalLayout);
         Assert.Contains("Administra&#231;&#227;o Orofoods", admin);

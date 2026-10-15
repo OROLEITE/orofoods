@@ -26,4 +26,18 @@ public class AdminPortalAccessViewTests
         Assert.Contains("href=\"/Admin/Portais\"", navigation);
         Assert.Contains("Central de Acesso", navigation);
     }
+
+    [Fact]
+    public void Access_center_cards_and_audit_use_compact_spacing_and_theme_tokens()
+    {
+        var view = File.ReadAllText(Path.Combine(ProjectPath, "Views", "AdminPortalAccess", "Index.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "admin-portal-access.css"));
+
+        Assert.Equal(3, view.Split("class=\"card h-100 p-3\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("class=\"card p-3 mt-3\"", view);
+        Assert.Contains("admin-portal-access-page .card.p-3", styles);
+        Assert.Contains("color: var(--access-muted)", styles);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated .admin-portal-access-page", styles);
+        Assert.Contains("@media (max-width: 575.98px)", styles);
+    }
 }

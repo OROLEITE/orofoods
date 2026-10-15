@@ -77,9 +77,8 @@ public class AuthenticatedNavigationTests
         Assert.Contains("Url.Action(\"Index\", \"Dashboard\", new { area = \"Admin\" })", header);
         Assert.Contains("Url.Action(\"Index\", \"Commercial\", new { area = \"Admin\" })", header);
         Assert.Contains("Url.Action(\"Dashboard\", \"Portal\", new { area = \"\" })", header);
-        Assert.Contains("if (isAdministrator)", header);
-        Assert.Contains("asp-action=\"SelectCustomer\"", header);
-        Assert.Contains("Acessar portal de cliente", header);
+        Assert.Matches("@if \\(!isAdministrator\\)\\s*\\{\\s*<li><a class=\\\"dropdown-item\\\" href=\\\"@panelUrl\\\"", header);
+        Assert.DoesNotContain("Acessar portal de cliente", header);
     }
 
     [Fact]

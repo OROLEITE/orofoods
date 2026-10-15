@@ -127,7 +127,7 @@
 }
 
 .seller-app-sidebar.offcanvas-md {
-    --bs-offcanvas-width: min(19rem, 86vw);
+    --bs-offcanvas-width: min(17.5rem, 86vw);
     --bs-offcanvas-bg: var(--seller-sidebar);
     --bs-offcanvas-color: var(--seller-sidebar-text);
     color: var(--seller-sidebar-text);
@@ -161,8 +161,8 @@
 .seller-app-sidebar-body.offcanvas-body {
     display: flex;
     flex-direction: column;
-    gap: 1.1rem;
-    padding: 1.25rem 1rem 1rem;
+    gap: .8rem;
+    padding: 1rem .8rem .8rem;
     overflow-y: auto;
     color: var(--seller-sidebar-text);
     background: var(--seller-sidebar) !important;
@@ -212,19 +212,19 @@
 
 .seller-app-nav {
     display: grid;
-    gap: .35rem;
+    gap: .2rem;
 }
 
 .seller-app-nav a {
     display: flex;
     align-items: center;
-    gap: .8rem;
-    min-height: 48px;
-    padding: .65rem .75rem;
+    gap: .65rem;
+    min-height: 40px;
+    padding: .45rem .65rem;
     border: 1px solid transparent;
     border-radius: .7rem;
     color: var(--seller-sidebar-muted);
-    font-size: .9rem;
+    font-size: .85rem;
     font-weight: 650;
     text-decoration: none;
     transition: background-color .16s ease, color .16s ease, border-color .16s ease;
@@ -597,9 +597,8 @@
 
 .seller-app-admin-context {
     display: grid;
-    gap: .35rem;
-    margin-top: auto;
-    padding: .8rem;
+    gap: .2rem;
+    padding: .55rem .65rem;
     border: 1px solid rgb(255 255 255 / 18%);
     border-radius: .75rem;
     background: rgb(255 255 255 / 7%);
@@ -617,28 +616,22 @@
 .seller-app-admin-context > strong {
     overflow-wrap: anywhere;
     color: #FFFFFF;
-    font-size: .9rem;
+    font-size: .84rem;
 }
 
-.seller-app-admin-context a {
-    display: block;
-    min-height: 36px;
-    padding: .45rem .5rem;
-    border-radius: .45rem;
-    color: var(--seller-sidebar-text);
+.seller-app-admin-group {
+    display: grid;
+    gap: .35rem;
+    margin-top: auto;
+}
+
+.seller-app-admin-nav a {
+    min-height: 38px;
     font-size: .8rem;
-    text-decoration: none;
 }
 
-.seller-app-admin-context a:hover,
-.seller-app-admin-context a:focus-visible {
-    background: rgb(255 255 255 / 12%);
-    color: #FFFFFF;
-}
-
-.seller-app-admin-context a:focus-visible {
-    outline: 2px solid var(--seller-focus);
-    outline-offset: 2px;
+.seller-app-admin-nav a i {
+    font-size: .9rem;
 }
 
 .seller-dashboard__admin-context {
@@ -653,6 +646,32 @@
     font-size: .75rem;
     font-weight: 650;
     overflow-wrap: anywhere;
+}
+
+.seller-app-main {
+    padding-bottom: 1.4rem;
+}
+
+.seller-app-main > .section {
+    padding-block: .8rem 1.4rem;
+}
+
+.seller-app-main .row {
+    --bs-gutter-x: .85rem;
+    --bs-gutter-y: .85rem;
+}
+
+.seller-app-main :is(.form-control, .form-select, .btn) {
+    min-height: 40px;
+}
+
+.seller-app-main h1 {
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+.seller-dashboard {
+    gap: 1.05rem;
+    padding-block: 1rem 1.5rem;
 }
 
 html[data-theme="dark"] body.seller-app-page .seller-app-shell {
@@ -715,7 +734,7 @@ html[data-theme="dark"] body.seller-app-page .seller-dashboard__eyebrow {
 @media (min-width: 768px) {
     .seller-app-page {
         --seller-header-height: 64px;
-        --seller-sidebar-width: 236px;
+        --seller-sidebar-width: 220px;
     }
 
     .seller-app-shell {
@@ -741,7 +760,7 @@ html[data-theme="dark"] body.seller-app-page .seller-dashboard__eyebrow {
 
     .seller-app-sidebar-body.offcanvas-body {
         min-height: 100%;
-        padding: 1.35rem .9rem;
+        padding: 1rem .75rem;
         overflow-y: visible;
     }
 
@@ -757,7 +776,7 @@ html[data-theme="dark"] body.seller-app-page .seller-dashboard__eyebrow {
     .seller-app-main {
         min-height: calc(100vh - var(--seller-header-height));
         min-height: calc(100dvh - var(--seller-header-height));
-        padding-inline: clamp(1.25rem, 2vw, 2.25rem);
+        padding-inline: clamp(1rem, 1.7vw, 1.75rem);
     }
 
     .seller-dashboard__header {
@@ -778,6 +797,8 @@ html[data-theme="dark"] body.seller-app-page .seller-dashboard__eyebrow {
 }
 
 @media (max-width: 767.98px) {
+    .seller-app-page .seller-app-nav a { min-height: 44px; }
+
     .seller-app-main {
         padding-inline: 1rem;
     }
