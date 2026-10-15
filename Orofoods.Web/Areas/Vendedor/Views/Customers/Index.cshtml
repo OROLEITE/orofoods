@@ -25,7 +25,7 @@
                        aria-autocomplete="list" aria-controls="customer-search-results" data-customer-search-input />
                 <button class="btn btn-gold" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
             </div>
-            <div class="customer-search__results customer-search__cards row g-3" id="customer-search-results" role="listbox"
+            <div class="customer-search__results customer-search__cards row g-3" id="customer-search-results" role="list"
                  aria-label="Clientes da carteira" data-customer-search-results>
                 @foreach (var customer in Model.Customers)
                 {

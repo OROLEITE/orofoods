@@ -17,8 +17,15 @@
         let pendingQuery = null;
         let renderedQuery = null;
         let currentQuery = normalize(input.value);
+        results.setAttribute("role", mode === "select" ? "listbox" : "list");
+        input.setAttribute("aria-expanded", "false");
 
         const setStatus = message => { status.textContent = message; };
+        const setExpanded = expanded => input.setAttribute("aria-expanded", String(expanded));
+        const clearResults = () => {
+            results.replaceChildren();
+            setExpanded(false);
+        };
         const clearSelection = () => {
             if (selectedId) selectedId.value = "";
             if (submit) submit.disabled = true;
@@ -61,7 +68,7 @@
                 element.setAttribute("aria-selected", "false");
             } else {
                 element.className = mode === "cards" ? "customer-search__card" : "customer-search__option";
-                element.setAttribute("role", "option");
+                element.setAttribute("role", "listitem");
                 const template = root.dataset.linkUrlTemplate || "#";
                 element.href = template.replace("__id__", encodeURIComponent(item.id));
             }
@@ -73,9 +80,11 @@
         };
 
         const renderResults = items => {
-            results.replaceChildren();
-            items.slice(0, 20).forEach(item => results.append(createSuggestion(item)));
-            return items.length;
+            clearResults();
+            const boundedItems = items.slice(0, 20);
+            boundedItems.forEach(item => results.append(createSuggestion(item)));
+            setExpanded(boundedItems.length > 0);
+            return boundedItems.length;
         };
 
         const runSearch = async query => {
@@ -118,7 +127,7 @@
                 clearPendingSearch();
                 currentQuery = "";
                 renderedQuery = null;
-                results.replaceChildren();
+                clearResults();
                 clearSelection();
                 setStatus("Digite pelo menos um caractere para pesquisar.");
                 return;
@@ -129,7 +138,7 @@
             clearSelection();
             clearPendingSearch();
             renderedQuery = null;
-            results.replaceChildren();
+            clearResults();
             if (immediate) {
                 void runSearch(query);
             } else {
@@ -143,6 +152,7 @@
         };
 
         const serverRenderedQuery = normalize(root.dataset.serverRenderedQuery || "");
+        setExpanded(results.children.length > 0);
         if (serverRenderedQuery && serverRenderedQuery === currentQuery) {
             renderedQuery = currentQuery;
         } else if (!currentQuery) {
@@ -166,7 +176,7 @@
             } else if (event.key === "Escape") {
                 clearPendingSearch();
                 renderedQuery = null;
-                results.replaceChildren();
+                clearResults();
                 clearSelection();
                 setStatus("Sugestões fechadas.");
                 input.focus();
@@ -188,7 +198,7 @@
             if (event.key === "Escape") {
                 clearPendingSearch();
                 renderedQuery = null;
-                results.replaceChildren();
+                clearResults();
                 clearSelection();
                 setStatus("Sugestões fechadas.");
                 input.focus();

@@ -14,12 +14,14 @@ public sealed class CustomerSearchViewTests
         Assert.Contains("data-search-url=\"/Vendedor/Clientes/Buscar\"", wallet);
         Assert.Contains("data-search-mode=\"cards\"", wallet);
         Assert.Contains("data-customer-search-results", wallet);
+        Assert.Contains("role=\"list\"", wallet);
         Assert.Contains("~/js/customer-search.js", wallet);
         Assert.Contains("~/css/customer-search.css", wallet);
         Assert.Contains("data-customer-search", editor);
         Assert.Contains("data-search-url=\"/Vendedor/Rascunhos/Clientes\"", editor);
         Assert.Contains("data-search-mode=\"links\"", editor);
         Assert.Contains("data-customer-search-status", editor);
+        Assert.Contains("role=\"list\"", editor);
         Assert.Contains("~/js/customer-search.js", editor);
         Assert.Contains("~/css/customer-search.css", editor);
     }
@@ -36,6 +38,9 @@ public sealed class CustomerSearchViewTests
         Assert.Contains("AbortController", script);
         Assert.Contains("thisRequest !== requestNumber", script);
         Assert.Contains("textContent", script);
+        Assert.Contains("aria-expanded", script);
+        Assert.DoesNotContain("innerHTML", script);
+        Assert.Contains("query.length < 1", script);
         Assert.Contains("aria-selected", script);
         Assert.Contains("ArrowDown", script);
         Assert.Contains("Escape", script);
