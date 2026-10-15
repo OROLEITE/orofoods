@@ -33,6 +33,7 @@ using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure;
 using Orofoods.Web.Infrastructure.Logging;
+using Orofoods.Web.Identity;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -180,6 +181,8 @@ builder.Services.AddSingleton<SellerOrderDraftQuoteProtector>();
 builder.Services.AddScoped<SellerCheckoutService>();
 builder.Services.AddScoped<SellerOrderHistoryService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
+builder.Services.AddScoped<AdminSellerContextService>();
+builder.Services.AddScoped<AdminPortalAccessAuditService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerCnpjSnapshotCorrectionService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
@@ -332,7 +335,7 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
     options.AddPolicy(
         OrofoodsPolicies.LinkedSalesRepresentative,
-        policy => policy.RequireAuthenticatedUser().RequireRole("Vendedor").AddRequirements(new LinkedSalesRepresentativeRequirement()));
+        policy => policy.RequireAuthenticatedUser().AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -373,6 +376,7 @@ app.UseRouting();
 app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
+app.UseMiddleware<AdminSellerContextMiddleware>();
 app.UseMiddleware<AuthenticatedResponseCacheMiddleware>();
 app.UseAuthorization();
 

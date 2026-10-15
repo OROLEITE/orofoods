@@ -3125,6 +3125,42 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.Navigation("Items");
                 });
+            modelBuilder.Entity("Orofoods.Web.Models.Identity.AdminPortalAccessAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<string>("AccessType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+                    b.Property<string>("AdministratorEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+                    b.Property<string>("AdministratorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+                    b.Property<DateTime>("SelectedAt")
+                        .HasColumnType("timestamp without time zone");
+                    b.Property<int>("TargetId")
+                        .HasColumnType("integer");
+                    b.Property<string>("TargetName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+                    b.HasKey("Id");
+                    b.HasIndex("AccessType", "TargetId", "SelectedAt");
+                    b.HasIndex("AdministratorUserId", "SelectedAt");
+                    b.ToTable("AdminPortalAccessAudits");
+                });
 #pragma warning restore 612, 618
         }
     }

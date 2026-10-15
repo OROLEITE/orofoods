@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Controllers;
@@ -29,6 +30,40 @@ public class PortalControllerCatalogTests
         public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<PaymentGatewayOrder> RefundAsync(RefundPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    [Fact]
+    public async Task Administrator_customer_selection_is_scoped_and_audited()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda",
+            TradeName = "Cliente Auditoria",
+            Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved,
+            IsActive = true
+        };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        var controller = CreateController(db, session);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "admin-user"),
+            new Claim(ClaimTypes.Email, "admin@orofoods.local"),
+            new Claim(ClaimTypes.Role, "Administrador")
+        ], "test"));
+
+        var result = await controller.SelectCustomer(customer.Id, "/Portal/Dashboard");
+
+        Assert.Equal("/Portal/Dashboard", Assert.IsType<LocalRedirectResult>(result).Url);
+        Assert.Equal(customer.Id, new AdminCustomerContextService().GetSelectedCustomerId(session, "admin-user"));
+        var audit = await db.AdminPortalAccessAudits.SingleAsync();
+        Assert.Equal("admin-user", audit.AdministratorUserId);
+        Assert.Equal(AdminPortalAccessType.Customer, audit.AccessType);
+        Assert.Equal(customer.Id, audit.TargetId);
+        Assert.Equal(customer.TradeName, audit.TargetName);
     }
 
     [Fact]
@@ -199,7 +234,8 @@ public class PortalControllerCatalogTests
                 TimeProvider.System,
                 NullLogger<PaymentOrchestrationService>.Instance),
             Options.Create(new MercadoPagoOptions()),
-            new AssistedOrderService(db, priceService, new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())), new OrderReservationService(db)));
+            new AssistedOrderService(db, priceService, new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())), new OrderReservationService(db)),
+            new AdminPortalAccessAuditService(db));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

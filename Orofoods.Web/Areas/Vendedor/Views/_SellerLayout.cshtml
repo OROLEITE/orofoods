@@ -55,6 +55,14 @@
                     <i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>Meus rascunhos</span>
                 </a>
             </nav>
+            @if (User.IsInRole("Administrador"))
+            {
+                <div class="seller-app-admin-context">
+                    <span>Acesso administrativo</span>
+                    <a href="/Admin/Portais/SelecionarVendedor">Trocar vendedor</a>
+                    <a href="/Admin/Portais">Portal Cliente</a>
+                </div>
+            }
         </div>
     </aside>
 

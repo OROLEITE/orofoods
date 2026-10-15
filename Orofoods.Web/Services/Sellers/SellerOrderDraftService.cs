@@ -129,13 +129,14 @@ public sealed class SellerOrderDraftService(
         CancellationToken cancellationToken = default)
     {
         var ownerUserId = GetUserId(user);
+        var isAdministrator = user.IsInRole(Models.Identity.ApplicationRoles.Administrator);
         if (ownerUserId is null || draftId <= 0)
         {
             return null;
         }
 
         var identity = await db.SellerOrderDrafts.AsNoTracking()
-            .Where(x => x.Id == draftId && x.OwnerUserId == ownerUserId)
+            .Where(x => x.Id == draftId && (isAdministrator || x.OwnerUserId == ownerUserId))
             .Select(x => new { x.CustomerId, x.SalesRepresentativeId })
             .SingleOrDefaultAsync(cancellationToken);
         if (identity is null)
@@ -155,7 +156,9 @@ public sealed class SellerOrderDraftService(
             .Include(x => x.DeliveryAddress)
             .Include(x => x.PaymentTerm)
             .Include(x => x.SubmittedOrder)
-            .SingleOrDefaultAsync(x => x.Id == draftId && x.OwnerUserId == ownerUserId, cancellationToken);
+            .SingleOrDefaultAsync(x => x.Id == draftId
+                && (isAdministrator || x.OwnerUserId == ownerUserId)
+                && x.SalesRepresentativeId == identity.SalesRepresentativeId, cancellationToken);
         return draft is null ? null : await ToViewAsync(draft, cancellationToken);
     }
 
@@ -164,6 +167,7 @@ public sealed class SellerOrderDraftService(
         CancellationToken cancellationToken = default)
     {
         var ownerUserId = GetUserId(user);
+        var isAdministrator = user.IsInRole(Models.Identity.ApplicationRoles.Administrator);
         var representative = await accessService.GetActiveRepresentativeAsync(user, cancellationToken);
         if (ownerUserId is null || representative is null)
         {
@@ -171,7 +175,7 @@ public sealed class SellerOrderDraftService(
         }
 
         var drafts = await db.SellerOrderDrafts.AsNoTracking()
-            .Where(x => x.OwnerUserId == ownerUserId &&
+            .Where(x => (isAdministrator || x.OwnerUserId == ownerUserId) &&
                 x.SalesRepresentativeId == representative.Id &&
                 x.Customer != null && x.Customer.IsActive &&
                 x.Customer.Status == Models.Customers.CustomerStatus.Approved &&
@@ -352,13 +356,14 @@ public sealed class SellerOrderDraftService(
         CancellationToken cancellationToken)
     {
         var ownerUserId = GetUserId(user);
+        var isAdministrator = user.IsInRole(Models.Identity.ApplicationRoles.Administrator);
         if (ownerUserId is null || draftId <= 0)
         {
             return (null, Failure(SellerOrderDraftErrorCodes.DraftNotFound, "Rascunho não encontrado."));
         }
 
         var identity = await db.SellerOrderDrafts.AsNoTracking()
-            .Where(x => x.Id == draftId && x.OwnerUserId == ownerUserId)
+            .Where(x => x.Id == draftId && (isAdministrator || x.OwnerUserId == ownerUserId))
             .Select(x => new { x.CustomerId, x.SalesRepresentativeId })
             .SingleOrDefaultAsync(cancellationToken);
         if (identity is null)
@@ -374,7 +379,9 @@ public sealed class SellerOrderDraftService(
 
         var draft = await db.SellerOrderDrafts
             .Include(x => x.Items)
-            .SingleOrDefaultAsync(x => x.Id == draftId && x.OwnerUserId == ownerUserId && x.SalesRepresentativeId == identity.SalesRepresentativeId,
+            .SingleOrDefaultAsync(x => x.Id == draftId
+                && (isAdministrator || x.OwnerUserId == ownerUserId)
+                && x.SalesRepresentativeId == identity.SalesRepresentativeId,
                 cancellationToken);
         return draft is null
             ? (null, Failure(SellerOrderDraftErrorCodes.DraftNotFound, "Rascunho não encontrado."))
@@ -506,7 +513,8 @@ public sealed class SellerOrderDraftService(
     }
 
     private static string? GetUserId(ClaimsPrincipal user) =>
-        user.IsInRole(Models.Identity.ApplicationRoles.Seller)
+        (user.IsInRole(Models.Identity.ApplicationRoles.Seller)
+            || user.IsInRole(Models.Identity.ApplicationRoles.Administrator))
             ? user.FindFirstValue(ClaimTypes.NameIdentifier)
             : null;
 

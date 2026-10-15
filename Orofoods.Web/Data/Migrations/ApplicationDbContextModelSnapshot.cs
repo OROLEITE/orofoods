@@ -1548,6 +1548,22 @@ namespace Orofoods.Web.Data.Migrations
 
                     b.Navigation("Items");
                 });
+            modelBuilder.Entity("Orofoods.Web.Models.Identity.AdminPortalAccessAudit", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("AccessType").IsRequired().HasMaxLength(32).HasColumnType("TEXT");
+                    b.Property<string>("AdministratorEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("AdministratorUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<string>("IpAddress").HasMaxLength(45).HasColumnType("TEXT");
+                    b.Property<DateTime>("SelectedAt").HasColumnType("TEXT");
+                    b.Property<int>("TargetId").HasColumnType("INTEGER");
+                    b.Property<string>("TargetName").IsRequired().HasMaxLength(200).HasColumnType("TEXT");
+                    b.Property<string>("UserAgent").HasMaxLength(512).HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("AccessType", "TargetId", "SelectedAt");
+                    b.HasIndex("AdministratorUserId", "SelectedAt");
+                    b.ToTable("AdminPortalAccessAudits");
+                });
 #pragma warning restore 612, 618
         }
     }

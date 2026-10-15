@@ -27,6 +27,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<CustomerPaymentTerm> CustomerPaymentTerms => Set<CustomerPaymentTerm>();
     public DbSet<CustomerCnpjAudit> CustomerCnpjAudits => Set<CustomerCnpjAudit>();
+    public DbSet<AdminPortalAccessAudit> AdminPortalAccessAudits => Set<AdminPortalAccessAudit>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PointPaymentAuditEvent> PointPaymentAuditEvents => Set<PointPaymentAuditEvent>();
@@ -56,6 +57,18 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<AdminPortalAccessAudit>(entity =>
+        {
+            entity.Property(x => x.AccessType).HasConversion<string>().HasMaxLength(32);
+            entity.Property(x => x.AdministratorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.AdministratorEmail).HasMaxLength(256);
+            entity.Property(x => x.TargetName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.IpAddress).HasMaxLength(45);
+            entity.Property(x => x.UserAgent).HasMaxLength(512);
+            entity.HasIndex(x => new { x.AdministratorUserId, x.SelectedAt });
+            entity.HasIndex(x => new { x.AccessType, x.TargetId, x.SelectedAt });
+        });
 
         // Preserve the established PostgreSQL Identity schema widths across EF provider upgrades.
         builder.Entity<IdentityUserLogin<string>>().Property(x => x.LoginProvider).HasMaxLength(128);

@@ -19,6 +19,28 @@ namespace Orofoods.Web.Tests.Services;
 public sealed class SellerOrderDraftServiceTests
 {
     [Fact]
+    public async Task Administrator_selected_for_a_seller_can_list_and_reopen_that_sellers_drafts()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, fixture.ValidInput());
+        Assert.True(created.Succeeded, created.ErrorMessage);
+        var administrator = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "admin-user"),
+            new Claim(ClaimTypes.Role, ApplicationRoles.Administrator),
+            new Claim(AdminSellerContextService.SelectedRepresentativeClaimType, fixture.Representative.Id.ToString())
+        ], "test"));
+
+        var drafts = await fixture.Service.ListAsync(administrator);
+        var reopened = await fixture.Service.GetAsync(administrator, created.Draft!.Id);
+
+        Assert.Equal(created.Draft.Id, Assert.Single(drafts).Id);
+        Assert.NotNull(reopened);
+        Assert.Equal(fixture.Seller.Id, reopened.OwnerUserId);
+        Assert.Equal(fixture.Representative.Id, reopened.SalesRepresentativeId);
+    }
+
+    [Fact]
     public async Task Create_and_reopen_persists_a_draft_with_current_customer_price_without_creating_an_order_or_reservation()
     {
         await using var fixture = await DraftFixture.CreateAsync();

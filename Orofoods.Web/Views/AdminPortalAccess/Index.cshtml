@@ -1,0 +1,56 @@
+@model IReadOnlyList<Orofoods.Web.Models.Identity.AdminPortalAccessAudit>
+@{
+    ViewData["Title"] = "Acesso aos portais";
+    Layout = "_AdminLayout";
+}
+
+<section class="admin-page admin-portal-access-page">
+    <header class="admin-page-header">
+        <div><span class="eyebrow">ACESSO ADMINISTRATIVO</span><h1>Portais Cliente e Vendedor</h1><p>Entre nos portais com sua sessão administrativa e escolha o contexto de trabalho.</p></div>
+    </header>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <article class="card h-100 p-4">
+                <h2 class="h4">Portal Cliente</h2>
+                <p>Consulte catálogo, condições comerciais, carrinho e pedidos de um cliente aprovado.</p>
+                <a class="btn btn-gold mt-auto align-self-start" href="/Portal/SelectCustomer">Selecionar cliente</a>
+            </article>
+        </div>
+        <div class="col-md-6">
+            <article class="card h-100 p-4">
+                <h2 class="h4">Portal Vendedor</h2>
+                <p>Acesse a carteira, catálogo, pedidos e rascunhos de um vendedor ativo.</p>
+                <a class="btn btn-gold mt-auto align-self-start" href="/Admin/Portais/SelecionarVendedor">Selecionar vendedor</a>
+            </article>
+        </div>
+    </div>
+    <section class="card p-4 mt-4" aria-labelledby="portal-access-audit-title">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div><h2 class="h4 mb-1" id="portal-access-audit-title">Acessos recentes</h2><p class="text-muted mb-0">Últimas 100 seleções de contexto nos portais.</p></div>
+        </div>
+        @if (Model.Count == 0)
+        {
+            <p class="text-muted mb-0">Ainda não há acessos registrados.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Data e hora</th><th>Administrador</th><th>Portal</th><th>Contexto selecionado</th><th>Origem</th></tr></thead>
+                    <tbody>
+                        @foreach (var audit in Model)
+                        {
+                            <tr>
+                                <td>@audit.SelectedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                <td>@(audit.AdministratorEmail ?? audit.AdministratorUserId)</td>
+                                <td>@(audit.AccessType == Orofoods.Web.Models.Identity.AdminPortalAccessType.Customer ? "Cliente" : "Vendedor")</td>
+                                <td>@audit.TargetName <span class="text-muted">(#@audit.TargetId)</span></td>
+                                <td>@(audit.IpAddress ?? "Não informado")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</section>
