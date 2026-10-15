@@ -6,6 +6,23 @@ public sealed class SellerPortalVisualContractTests
 
     private static string CompactCss(string css) => System.Text.RegularExpressions.Regex.Replace(css, @"\s+", string.Empty);
 
+    private static double ContrastRatio(string foreground, string background)
+    {
+        static double Luminance(string color)
+        {
+            var channels = Enumerable.Range(0, 3)
+                .Select(index => Convert.ToInt32(color.Substring(1 + index * 2, 2), 16) / 255d)
+                .Select(channel => channel <= 0.04045 ? channel / 12.92 : Math.Pow((channel + 0.055) / 1.055, 2.4))
+                .ToArray();
+
+            return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+        }
+
+        var first = Luminance(foreground);
+        var second = Luminance(background);
+        return (Math.Max(first, second) + .05) / (Math.Min(first, second) + .05);
+    }
+
     [Fact]
     public void Admin_portal_routes_share_the_admin_theme_and_local_access_styles()
     {
@@ -66,6 +83,30 @@ public sealed class SellerPortalVisualContractTests
         Assert.Contains("body.seller-app-page .btn-gold:disabled", shellStyles);
         Assert.Contains("body.seller-app-page .seller-app-main .section .text-muted", shellStyles);
         Assert.Contains("navbar-light bg-white", publicHeader);
+    }
+
+    [Fact]
+    public void Access_center_audit_caption_uses_wcag_aa_text_in_dark_mode_and_keeps_light_muted_color()
+    {
+        var accessView = File.ReadAllText(Path.Combine(ProjectRoot, "Views", "AdminPortalAccess", "Index.cshtml"));
+        var accessStyles = CompactCss(File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "admin-portal-access.css")));
+
+        Assert.Contains("class=\"portal-access-audit-caption mb-0\"", accessView);
+        Assert.Contains(".admin-authenticated.admin-portal-access-page.portal-access-audit-caption{color:var(--access-muted);}", accessStyles);
+        Assert.Contains("html[data-theme=\"dark\"]body.admin-authenticated.admin-portal-access-page.portal-access-audit-caption{color:#E5E7EB;}", accessStyles);
+        Assert.Contains("--access-muted:#64748B;", accessStyles);
+        Assert.True(ContrastRatio("#E5E7EB", "#111827") >= 4.5);
+    }
+
+    [Fact]
+    public void Seller_desktop_header_links_use_wcag_aa_text_in_dark_normal_hover_focus_and_active_states()
+    {
+        var sellerStyles = CompactCss(File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css")));
+
+        Assert.Contains("@media(min-width:992px){html[data-theme=\"dark\"]body.seller-app-page.site-header-modern.main-nav.nav-link{color:#F8FAFC!important;}", sellerStyles);
+        Assert.Contains("html[data-theme=\"dark\"]body.seller-app-page.site-header-modern.main-nav.nav-link:hover,html[data-theme=\"dark\"]body.seller-app-page.site-header-modern.main-nav.nav-link:focus-visible,html[data-theme=\"dark\"]body.seller-app-page.site-header-modern.main-nav.nav-link.active{color:#F8FAFC!important;}", sellerStyles);
+        Assert.True(ContrastRatio("#F8FAFC", "#111827") >= 4.5);
+        Assert.True(ContrastRatio("#F8FAFC", "#1E293B") >= 4.5);
     }
 
     [Fact]

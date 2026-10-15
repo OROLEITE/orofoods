@@ -38,6 +38,10 @@
     color: var(--access-muted);
 }
 
+.admin-authenticated .admin-portal-access-page .portal-access-audit-caption {
+    color: var(--access-muted);
+}
+
 .admin-authenticated .admin-portal-access-page .table-responsive {
     border: 1px solid var(--access-border);
     border-radius: .6rem;
@@ -133,6 +137,10 @@ html[data-theme="dark"] body.admin-authenticated .admin-portal-access-page {
     --access-muted: #AAB9CC;
     --access-border: #334155;
     --access-accent: #60A5FA;
+}
+
+html[data-theme="dark"] body.admin-authenticated .admin-portal-access-page .portal-access-audit-caption {
+    color: #E5E7EB;
 }
 
 html[data-theme="light"] body.admin-authenticated .admin-portal-access-page {
