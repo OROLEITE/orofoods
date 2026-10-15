@@ -9,9 +9,9 @@
     var crmActive = controller is "Commercial" or "Customers" or "Opportunities" or "Notifications" or "WhatsApp";
     var operationActive = controller is "Orders" or "Products" or "Inventory" or "Drivers" or "PaymentTerminals" or "DriverPaymentTerminalAssignments";
     var registrationsActive = controller is "Categories" or "PriceTables" or "PaymentTerms";
-    var teamActive = controller is "SalesRepresentatives" or "Users";
+    var teamActive = controller == "SalesRepresentatives";
     var managementActive = controller == "Reports";
-    var systemActive = controller == "Integrations";
+    var systemActive = controller is "Integrations" or "Users";
     string Active(string value) => controller == value ? "active" : string.Empty;
 }
 
@@ -74,7 +74,6 @@
             <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-Team" data-admin-nav-group aria-expanded="@teamActive.ToString().ToLowerInvariant()" aria-controls="@prefix-Team" aria-label="Alternar menu Equipe" title="Equipe"><span><i class="fa-solid fa-users" aria-hidden="true"></i><span class="admin-nav-label">Equipe</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>
             <div id="@prefix-Team" class="admin-nav-submenu collapse @(teamActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@teamActive.ToString().ToLowerInvariant()">
                 <a class="admin-nav-link admin-nav-link--nested @Active("SalesRepresentatives")" asp-area="Admin" asp-controller="SalesRepresentatives" asp-action="Index"><i class="fa-solid fa-user-tie" aria-hidden="true"></i><span>Vendedores</span></a>
-                <a class="admin-nav-link admin-nav-link--nested @Active("Users")" asp-area="Admin" asp-controller="Users" asp-action="Index"><i class="fa-solid fa-users-gear" aria-hidden="true"></i><span>Usuários</span></a>
             </div>
         </div>
 
@@ -86,8 +85,9 @@
         </div>
 
         <div class="admin-nav-cluster @(systemActive ? "is-active" : string.Empty)">
-            <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-System" data-admin-nav-group aria-expanded="@systemActive.ToString().ToLowerInvariant()" aria-controls="@prefix-System" aria-label="Alternar menu Sistema" title="Sistema"><span><i class="fa-solid fa-gear" aria-hidden="true"></i><span class="admin-nav-label">Sistema</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>
-            <div id="@prefix-System" class="admin-nav-submenu collapse @(systemActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@systemActive.ToString().ToLowerInvariant()">
+            <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-Settings" data-admin-nav-group aria-expanded="@systemActive.ToString().ToLowerInvariant()" aria-controls="@prefix-Settings" aria-label="Alternar menu Configurações" title="Configurações"><span><i class="fa-solid fa-gear" aria-hidden="true"></i><span class="admin-nav-label">Configurações</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>
+            <div id="@prefix-Settings" class="admin-nav-submenu collapse @(systemActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@systemActive.ToString().ToLowerInvariant()">
+                <a class="admin-nav-link admin-nav-link--nested @Active("Users")" asp-area="Admin" asp-controller="Users" asp-action="Index"><i class="fa-solid fa-users-gear" aria-hidden="true"></i><span>Usuários e Acessos</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Integrations")" asp-area="Admin" asp-controller="Integrations" asp-action="Index"><i class="fa-solid fa-plug" aria-hidden="true"></i><span>Integrações</span></a>
             </div>
         </div>

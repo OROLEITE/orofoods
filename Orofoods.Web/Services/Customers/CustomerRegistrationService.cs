@@ -57,6 +57,7 @@ public class CustomerRegistrationService(ApplicationDbContext db, UserManager<Ap
         {
             UserName = request.Email,
             Email = request.Email,
+            FullName = request.ResponsibleName,
             CustomerId = customer.Id,
             IsActive = true
         };

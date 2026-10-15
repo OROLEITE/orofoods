@@ -50,6 +50,7 @@ public class CustomerRegistrationServiceTests
         Assert.Single(customer.Addresses);
         Assert.True(customer.Addresses[0].IsPrimary);
         Assert.Equal(customer.Id, user!.CustomerId);
+        Assert.Equal(request.ResponsibleName, user.FullName);
         Assert.True(user.IsActive);
         Assert.True(await userManager.IsInRoleAsync(user, "Cliente"));
     }

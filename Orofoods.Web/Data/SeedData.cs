@@ -330,6 +330,7 @@ public static class SeedData
             {
                 UserName = email,
                 Email = email,
+                FullName = email,
                 EmailConfirmed = true,
                 CustomerId = customerId,
                 SalesRepresentativeId = salesRepresentativeId,

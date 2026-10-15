@@ -141,7 +141,10 @@ var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationExcep
 builder.Services.AddAuthentication().AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"], ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"], ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), ValidateLifetime = true };
+    options.Events.OnTokenValidated = context => context.HttpContext.RequestServices
+        .GetRequiredService<ApiTokenSecurityStampValidator>().ValidateAsync(context);
 });
+builder.Services.AddScoped<ApiTokenSecurityStampValidator>();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("api", limiter =>
@@ -225,6 +228,7 @@ builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
 builder.Services.AddScoped<AdminCommercialService>();
 builder.Services.AddScoped<AdminUserService>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ApiTokenService>();
 builder.Services.AddScoped<OrderIntegrationService>();
@@ -376,6 +380,7 @@ app.UseRouting();
 app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
+app.UseMiddleware<MustChangePasswordMiddleware>();
 app.UseMiddleware<AdminSellerContextMiddleware>();
 app.UseMiddleware<AuthenticatedResponseCacheMiddleware>();
 app.UseAuthorization();
