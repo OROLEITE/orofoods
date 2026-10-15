@@ -19,9 +19,6 @@
             <a class="seller-button seller-button--primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New">
                 <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span>Digitar pedido</span>
             </a>
-            <a class="seller-button seller-button--gold" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">
-                <i class="fa-solid fa-building" aria-hidden="true"></i><span>Minha carteira</span>
-            </a>
             <a class="seller-button seller-button--secondary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">
                 <i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>Meus rascunhos</span>
             </a>
@@ -45,9 +42,6 @@
                 <p class="seller-dashboard__eyebrow">RELACIONAMENTO</p>
                 <h2 id="seller-portfolio-title">Clientes em destaque</h2>
             </div>
-            <a class="seller-dashboard__text-link" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">
-                Ver carteira <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            </a>
         </div>
 
         @if (Model.Customers.Count == 0)
