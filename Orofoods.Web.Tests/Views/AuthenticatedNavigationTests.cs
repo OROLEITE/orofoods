@@ -97,11 +97,11 @@ public class AuthenticatedNavigationTests
         Assert.Contains("asp-area=\"\" asp-controller=\"Home\" asp-action=\"Contact\"", header);
         Assert.Contains("aria-current=\"@(isProductsActive ? \"page\" : null)\"", header);
 
-        Assert.Contains("body.portal-authenticated .site-header-modern .site-logo", headerStyles);
+        Assert.Contains("body.portal-authenticated .site-header-modern .site-logo", portalNavigationStyles);
         Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo", headerStyles);
         Assert.Contains(".admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active", headerStyles);
         Assert.Contains("--authenticated-nav-active: #0E7490;", headerStyles);
-        Assert.Contains("html[data-theme=\"dark\"] body.portal-authenticated", headerStyles);
+        Assert.Contains("html[data-theme=\"dark\"] body.portal-authenticated", portalNavigationStyles);
         Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))", headerStyles);
         Assert.Contains(".site-header-modern .main-nav .nav-link:hover", headerStyles);
         Assert.Contains(".site-header-modern .main-nav .nav-link:focus-visible", headerStyles);
@@ -215,7 +215,7 @@ public class AuthenticatedNavigationTests
         Assert.DoesNotContain("--portal-sidebar-width", density);
         Assert.DoesNotContain("245px", density);
         Assert.DoesNotContain("264px", navigation);
-        Assert.DoesNotContain("80px", navigation);
+        Assert.DoesNotContain("--portal-sidebar-width: 80px", navigation);
         Assert.DoesNotContain("--portal-sidebar-width", catalog);
         Assert.DoesNotContain("grid-template-columns:var(--portal-sidebar-width)", density);
         Assert.DoesNotContain(".portal-app-sidebar{", shell);

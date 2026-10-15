@@ -267,33 +267,31 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     border-color: #334155;
 }
 
-/* Authenticated logo sizing and active navigation stay separate from public pages. */
-body.portal-authenticated,
-body.admin-authenticated:not(:has(.whatsapp-inbox-page)) {
+/* Admin logo sizing and active navigation stay inside the authenticated shell. */
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern {
     --authenticated-nav-active: #0E7490;
 }
 
-html[data-theme="dark"] body.portal-authenticated,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) {
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern {
     --authenticated-nav-active: #38BDF8;
 }
 
-body.portal-authenticated .site-header-modern .site-logo,
-body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
     width: auto;
     height: 42px;
     max-width: min(100%, 180px);
     object-fit: contain;
 }
 
-body.portal-authenticated .site-header-modern .main-nav .nav-link.active,
-body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active {
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active {
     box-shadow: inset 0 -2px 0 var(--authenticated-nav-active);
 }
 
 @media (max-width: 575.98px) {
-    body.portal-authenticated .site-header-modern .site-logo,
-    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
+    html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo,
+    html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
         height: 38px;
     }
 }

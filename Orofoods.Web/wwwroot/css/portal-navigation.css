@@ -175,6 +175,31 @@
     color: #38BDF8;
 }
 
+body.portal-authenticated .site-header-modern,
+body.portal-customer-select .site-header-modern {
+    --authenticated-nav-active: #0E7490;
+}
+
+html[data-theme="dark"] body.portal-authenticated .site-header-modern,
+html[data-theme="dark"] body.portal-customer-select .site-header-modern {
+    --authenticated-nav-active: #38BDF8;
+}
+
+body.portal-authenticated .site-header-modern .site-logo,
+body.portal-customer-select .site-header-modern .site-logo {
+    width: auto;
+    height: 42px;
+    max-width: min(100%, 180px);
+    object-fit: contain;
+}
+
+@media (max-width: 575.98px) {
+    body.portal-authenticated .site-header-modern .site-logo,
+    body.portal-customer-select .site-header-modern .site-logo {
+        height: 38px;
+    }
+}
+
 .portal-app-content {
     grid-column: 2;
     width: 100%;

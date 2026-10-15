@@ -234,3 +234,68 @@ html:not([data-theme="dark"]) .commercial-calendar-filters .btn-primary:focus-vi
 .admin-authenticated .assisted-order-page #assisted-submit > i {
     color: inherit;
 }
+
+.admin-authenticated .customer-list-page .customer-list-table .admin-primary-action,
+.admin-authenticated .admin-seller-edit-page .admin-primary-action,
+.admin-authenticated .admin-integrations-page .erp-row-actions .btn-erp-export,
+.admin-authenticated .admin-inventory-page .admin-inventory-adjustment .admin-edit-action {
+    min-height: 42px;
+    border: 1px solid #0E7490;
+    background: #0E7490;
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.admin-authenticated .customer-list-page .customer-list-table .admin-primary-action:hover,
+.admin-authenticated .admin-seller-edit-page .admin-primary-action:hover,
+.admin-authenticated .admin-integrations-page .erp-row-actions .btn-erp-export:hover,
+.admin-authenticated .admin-inventory-page .admin-inventory-adjustment .admin-edit-action:hover,
+.admin-authenticated .customer-list-page .customer-list-table .admin-primary-action:active,
+.admin-authenticated .admin-seller-edit-page .admin-primary-action:active,
+.admin-authenticated .admin-integrations-page .erp-row-actions .btn-erp-export:active,
+.admin-authenticated .admin-inventory-page .admin-inventory-adjustment .admin-edit-action:active {
+    border-color: #155E75;
+    background: #155E75;
+    color: #FFFFFF;
+}
+
+.admin-authenticated .customer-list-page .customer-list-table .admin-primary-action:focus-visible,
+.admin-authenticated .admin-seller-edit-page .admin-primary-action:focus-visible,
+.admin-authenticated .admin-integrations-page .erp-row-actions .btn-erp-export:focus-visible,
+.admin-authenticated .admin-inventory-page .admin-inventory-adjustment .admin-edit-action:focus-visible {
+    outline: 3px solid #0E7490;
+    outline-offset: 2px;
+}
+
+.admin-authenticated .customer-list-page .customer-list-table .admin-primary-action:disabled,
+.admin-authenticated .admin-seller-edit-page .admin-primary-action:disabled,
+.admin-authenticated .admin-integrations-page .erp-row-actions .btn-erp-export:disabled,
+.admin-authenticated .admin-inventory-page .admin-inventory-adjustment .admin-edit-action:disabled {
+    border-color: #CBD5E1;
+    background: #E2E8F0;
+    color: #475569;
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-row-actions .btn-erp-export,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .admin-edit-action {
+    border-color: #0E7490;
+    background: #0E7490;
+    color: #FFFFFF;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-row-actions .btn-erp-export:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-row-actions .btn-erp-export:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .admin-edit-action:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .admin-edit-action:focus-visible {
+    border-color: #155E75;
+    background: #155E75;
+    color: #FFFFFF;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-row-actions .btn-erp-export:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .admin-edit-action:focus-visible {
+    outline: 3px solid #38BDF8;
+    outline-offset: 2px;
+}

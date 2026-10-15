@@ -776,3 +776,99 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     outline-offset: 2px;
     box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
 }
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-page-header {
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-table-card {
+    border-radius: 12px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-table > thead > tr > th {
+    height: 42px;
+    padding: 9px 12px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-table > tbody > tr > td {
+    padding: 8px 12px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment {
+    min-width: 0;
+    align-items: center;
+    gap: 7px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .form-control,
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment .btn {
+    min-height: 44px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-container {
+    max-width: 1080px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-hero {
+    margin-bottom: 12px;
+    padding: 16px 20px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-card {
+    gap: 12px 16px;
+    margin: 0;
+    padding: 18px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-card .form-control,
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-card .form-select {
+    min-height: 44px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid #E5DED2;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions .btn {
+    min-width: 132px;
+    min-height: 44px;
+}
+
+@media (max-width: 767px) {
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-page-header {
+        align-items: stretch;
+    }
+
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-page-header > a {
+        align-self: flex-start;
+        min-height: 44px;
+    }
+
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-inventory-page .admin-inventory-adjustment {
+        width: 100%;
+    }
+
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-hero,
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-card {
+        padding: 14px;
+    }
+
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions {
+        flex-wrap: wrap;
+    }
+
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions .btn {
+        flex: 1 1 136px;
+    }
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions {
+    border-color: #334155;
+}
