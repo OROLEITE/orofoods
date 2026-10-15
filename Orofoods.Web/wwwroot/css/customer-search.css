@@ -128,6 +128,29 @@ html[data-theme="dark"] .customer-search .form-control {
     color-scheme: dark;
 }
 
+.customer-search--wallet {
+    max-width: 980px;
+}
+
+.customer-search--wallet .customer-search__form-row .btn {
+    min-width: 130px;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) .customer-search {
+        --customer-search-bg: #0B1220;
+        --customer-search-surface: #111827;
+        --customer-search-text: #F8FAFC;
+        --customer-search-muted: #A7B3C5;
+        --customer-search-border: #475569;
+        --customer-search-accent: #60A5FA;
+    }
+
+    html:not([data-theme="light"]) .customer-search .form-control {
+        color-scheme: dark;
+    }
+}
+
 @media (max-width: 575.98px) {
     .customer-search__form-row {
         grid-template-columns: minmax(0, 1fr);

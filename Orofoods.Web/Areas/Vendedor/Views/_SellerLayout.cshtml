@@ -1,3 +1,4 @@
+@inject Orofoods.Web.Services.Identity.SalesRepresentativeAccessService RepresentativeAccessService
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["LayoutBodyHasMain"] = true;
@@ -23,6 +24,10 @@
         "OrderDrafts" => "drafts",
         _ => string.Empty
     };
+    var isAdministrator = User.IsInRole("Administrador");
+    var selectedRepresentative = isAdministrator
+        ? await RepresentativeAccessService.GetActiveRepresentativeAsync(User)
+        : null;
 }
 
 @section Head {
@@ -55,12 +60,15 @@
                     <i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>Meus rascunhos</span>
                 </a>
             </nav>
-            @if (User.IsInRole("Administrador"))
+            @if (isAdministrator)
             {
                 <div class="seller-app-admin-context">
                     <span>Acesso administrativo</span>
+                    <strong>@(selectedRepresentative?.Name ?? "Vendedor não selecionado")</strong>
+                    <a href="/Admin/Dashboard">Painel Administrativo</a>
+                    <a href="/Admin/Portais">Central de Acesso</a>
                     <a href="/Admin/Portais/SelecionarVendedor">Trocar vendedor</a>
-                    <a href="/Admin/Portais">Portal Cliente</a>
+                    <a href="/Portal/SelectCustomer">Portal do Cliente</a>
                 </div>
             }
         </div>

@@ -1,0 +1,86 @@
+.admin-authenticated .admin-portal-access-page {
+    --access-bg: #F8FAFC;
+    --access-surface: #FFFFFF;
+    --access-text: #0F172A;
+    --access-muted: #64748B;
+    --access-border: #CBD5E1;
+    --access-accent: #2563EB;
+    width: 100%;
+    max-width: 1500px;
+    margin-inline: auto;
+    padding: clamp(.75rem, 2vw, 1.5rem);
+    color: var(--access-text);
+}
+
+.admin-authenticated .admin-portal-access-page .admin-page-header {
+    margin-bottom: 1.1rem;
+}
+
+.admin-authenticated .admin-portal-access-page .admin-page-header h1,
+.admin-authenticated .admin-portal-access-page .card h2 {
+    color: var(--access-text);
+}
+
+.admin-authenticated .admin-portal-access-page .card {
+    border-color: var(--access-border);
+    border-radius: .85rem;
+    background: var(--access-surface);
+    color: var(--access-text);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
+}
+
+.admin-authenticated .admin-portal-access-page .card p {
+    color: var(--access-muted);
+}
+
+.admin-authenticated .admin-portal-access-page .btn-gold {
+    min-height: 42px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-portal-access-page .btn-gold:focus-visible,
+.admin-authenticated .admin-portal-access-page .back-link:focus-visible {
+    outline: 2px solid var(--access-accent);
+    outline-offset: 3px;
+}
+
+.admin-authenticated .admin-portal-access-page .table {
+    --bs-table-bg: var(--access-surface);
+    --bs-table-color: var(--access-text);
+    --bs-table-border-color: var(--access-border);
+    margin-bottom: 0;
+}
+
+.admin-authenticated .admin-portal-access-page .table th {
+    color: var(--access-muted);
+    font-size: .75rem;
+    text-transform: uppercase;
+}
+
+html[data-theme="dark"] body.admin-authenticated .admin-portal-access-page {
+    --access-bg: #0B1220;
+    --access-surface: #111827;
+    --access-text: #F8FAFC;
+    --access-muted: #AAB9CC;
+    --access-border: #334155;
+    --access-accent: #60A5FA;
+}
+
+html[data-theme="light"] body.admin-authenticated .admin-portal-access-page {
+    --access-bg: #F8FAFC;
+    --access-surface: #FFFFFF;
+    --access-text: #0F172A;
+    --access-muted: #64748B;
+    --access-border: #CBD5E1;
+    --access-accent: #2563EB;
+}
+
+@media (max-width: 575.98px) {
+    .admin-authenticated .admin-portal-access-page {
+        padding-inline: .75rem;
+    }
+
+    .admin-authenticated .admin-portal-access-page .card {
+        padding: 1rem !important;
+    }
+}

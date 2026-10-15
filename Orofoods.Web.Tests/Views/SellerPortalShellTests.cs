@@ -47,7 +47,23 @@ public class SellerPortalShellTests
 
         Assert.Contains("class=\"seller-dashboard\"", dashboard);
         Assert.Contains("Model.ActiveCustomerCount", dashboard);
+        Assert.Contains("Acesso administrativo · @Model.SellerName", dashboard);
         Assert.Contains("asp-controller=\"Customers\"", dashboard);
         Assert.Contains("asp-controller=\"OrderDrafts\"", dashboard);
+    }
+
+    [Fact]
+    public void Admin_seller_shell_displays_the_selected_seller_and_safe_context_destinations()
+    {
+        var layout = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "_SellerLayout.cshtml"));
+
+        Assert.Contains("SalesRepresentativeAccessService", layout);
+        Assert.Contains("GetActiveRepresentativeAsync(User)", layout);
+        Assert.Contains("selectedRepresentative?.Name", layout);
+        Assert.Contains("Painel Administrativo", layout);
+        Assert.Contains("Central de Acesso", layout);
+        Assert.Contains("Trocar vendedor", layout);
+        Assert.Contains("Portal do Cliente", layout);
+        Assert.Contains("/Portal/SelectCustomer", layout);
     }
 }
