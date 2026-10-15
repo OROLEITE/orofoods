@@ -247,7 +247,10 @@ public class AdminDarkThemeContractTests
         var script = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "whatsapp-composer.js"));
         var whatsappStyles = ReadStyles("whatsapp-composer.css");
 
-        Assert.Contains("data-theme=\"@(isAdminArea ? \"dark\" : null)\"", layout);
+        var rootElement = Regex.Match(layout, @"<html\b[^>]*>").Value;
+        Assert.Contains("data-theme", rootElement);
+        Assert.Contains("isAdminExperience", rootElement);
+        Assert.Matches(@"var\s+isAdminExperience\s*=\s*isAdminArea\s*\|\|\s*isAdminShell\s*;", layout);
         Assert.DoesNotContain("orofoods.crm.theme", layout);
         Assert.DoesNotContain("whatsapp-theme-toggle", view);
         Assert.DoesNotContain("whatsapp-theme-toggle", script);
