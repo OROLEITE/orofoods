@@ -136,8 +136,8 @@
                                 </div>
                                 <label class="visually-hidden" for="product-search">Pesquisar produtos</label>
                                 <div class="seller-order-drafts__search-row seller-order-drafts__product-search-row">
-                                    <input id="product-search" class="form-control" type="search" maxlength="100" autocomplete="off" placeholder="Ex.: pão de queijo, SKU ou EAN" aria-controls="product-results" />
-                                    <button id="product-search-button" class="btn seller-order-drafts__outline" type="button"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="visually-hidden">Buscar produtos</span></button>
+                                    <input id="product-search" class="form-control" type="search" maxlength="100" autocomplete="off" placeholder="Ex.: pão de queijo, SKU, código WMC ou EAN" aria-controls="product-results" />
+                                    <button id="product-search-button" class="btn seller-order-drafts__primary" type="button"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="visually-hidden">Buscar produtos</span></button>
                                 </div>
                                 <div id="product-search-status" class="seller-order-drafts__search-status" role="status" aria-live="polite">Digite para pesquisar produtos disponíveis para este cliente.</div>
                                 <div id="product-results" class="seller-order-drafts__product-results" aria-live="polite"></div>
@@ -264,7 +264,6 @@
                     </div>
 
                     <div class="seller-order-drafts__actions" data-sticky-actions>
-                        <a class="btn seller-order-drafts__outline" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">Cancelar</a>
                         <div class="seller-order-drafts__action-main">
                             <button id="save-draft-button" class="btn seller-order-drafts__save" type="submit">
                                 <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Salvar rascunho
@@ -272,6 +271,7 @@
                             <button id="submit-seller-order-button" class="btn seller-order-drafts__send" type="submit" form="seller-order-submit-form" disabled aria-disabled="true" title="Aguarde a validação da cotação do servidor">
                                 <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar pedido
                             </button>
+                            <a class="btn seller-order-drafts__outline seller-order-drafts__cancel" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">Cancelar</a>
                         </div>
                     </div>
                 </form>

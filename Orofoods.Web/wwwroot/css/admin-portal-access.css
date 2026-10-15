@@ -30,7 +30,7 @@
 }
 
 .admin-authenticated .admin-portal-access-page .card.p-3 {
-    padding: .9rem !important;
+    padding: .75rem !important;
 }
 
 .admin-authenticated .admin-portal-access-page .card p,
@@ -39,7 +39,7 @@
 }
 
 .admin-authenticated .admin-portal-access-page .admin-page-header {
-    margin-bottom: .75rem;
+    margin-bottom: .55rem;
 }
 
 .admin-authenticated .admin-portal-access-page .table-responsive {
@@ -58,8 +58,49 @@
 }
 
 .admin-authenticated .admin-portal-access-page .btn-gold {
-    min-height: 42px;
+    min-height: 40px;
+    padding: .45rem .8rem;
     font-weight: 700;
+    background: #0E7490;
+    border: 1px solid #0E7490;
+    color: #fff;
+    text-decoration: none;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.admin-authenticated .admin-portal-access-page .btn-gold:hover {
+    background: #0B6178;
+    border-color: #0B6178;
+    color: #fff;
+}
+
+.admin-authenticated .admin-portal-access-page .btn-gold:disabled {
+    background: #64748B;
+    border-color: #64748B;
+    color: #fff;
+    opacity: 1;
+}
+
+.admin-authenticated .admin-portal-access-page .card.admin-portal-access__seller-form {
+    display: grid;
+    justify-items: start;
+    gap: .2rem;
+    padding: .85rem 1rem !important;
+}
+
+.admin-authenticated .admin-portal-access-page .admin-portal-access__seller-form .form-label {
+    margin-bottom: .25rem;
+}
+
+.admin-authenticated .admin-portal-access-page .admin-portal-access__seller-form .form-select {
+    width: 100%;
+    min-height: 40px;
+    padding-block: .4rem;
+    font-size: .95rem;
+}
+
+.admin-authenticated .admin-portal-access-page .admin-portal-access__seller-form .form-text {
+    margin: .2rem 0 .35rem;
 }
 
 .admin-authenticated .admin-portal-access-page .btn-gold:focus-visible,

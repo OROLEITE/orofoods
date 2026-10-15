@@ -11,7 +11,7 @@
     <header class="admin-page-header mt-3">
         <div><span class="eyebrow">CONTEXTO DE VENDAS</span><h1>Escolha o vendedor</h1><p>A sessão administrativa continuará ativa. O acesso e o vendedor selecionado serão registrados.</p></div>
     </header>
-    <form method="post" class="card p-4" asp-antiforgery="true">
+    <form method="post" class="card p-3 admin-portal-access__seller-form" asp-antiforgery="true">
         <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
         <input type="hidden" name="returnUrl" value="@returnUrl" />
         <label class="form-label" for="representativeId">Vendedor ativo</label>
@@ -23,6 +23,6 @@
             }
         </select>
         <p class="form-text">A carteira respeita os clientes ativos e aprovados vinculados ao vendedor.</p>
-        <button class="btn btn-gold align-self-start" type="submit"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Abrir portal do vendedor</button>
+        <button class="btn btn-gold admin-portal-access__submit" type="submit">Abrir portal</button>
     </form>
 </section>
