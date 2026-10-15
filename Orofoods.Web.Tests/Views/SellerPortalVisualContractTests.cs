@@ -85,9 +85,10 @@ public sealed class SellerPortalVisualContractTests
 
         Assert.Equal(2, accessCenter.Split("Abrir portal</a>", StringSplitOptions.None).Length - 1);
         Assert.Contains("Abrir painel", accessCenter);
+        Assert.Equal(3, accessCenter.Split("class=\"btn btn-portal-action mt-auto align-self-start\"", StringSplitOptions.None).Length - 1);
         Assert.Contains("Abrir portal</button>", sellerContext);
         Assert.DoesNotContain("fa-arrow-right-to-bracket", sellerContext);
-        Assert.Contains(".admin-authenticated .admin-portal-access-page .btn-gold", accessStylesFile);
+        Assert.Contains(".admin-authenticated .admin-portal-access-page .btn-portal-action", accessStylesFile);
         Assert.Contains("background:#0E7490;border:1pxsolid#0E7490;color:#fff;", accessStyles);
         Assert.Contains(".admin-portal-access-page .card.admin-portal-access__seller-form", accessStylesFile);
         Assert.Contains("padding:.85rem1rem!important;", accessStyles);

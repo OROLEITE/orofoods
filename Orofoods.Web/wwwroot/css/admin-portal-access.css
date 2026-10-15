@@ -57,7 +57,7 @@
     vertical-align: middle;
 }
 
-.admin-authenticated .admin-portal-access-page .btn-gold {
+.admin-authenticated .admin-portal-access-page .btn-portal-action {
     min-height: 40px;
     padding: .45rem .8rem;
     font-weight: 700;
@@ -68,13 +68,13 @@
     transition: background-color .15s ease, border-color .15s ease;
 }
 
-.admin-authenticated .admin-portal-access-page .btn-gold:hover {
+.admin-authenticated .admin-portal-access-page .btn-portal-action:hover {
     background: #0B6178;
     border-color: #0B6178;
     color: #fff;
 }
 
-.admin-authenticated .admin-portal-access-page .btn-gold:disabled {
+.admin-authenticated .admin-portal-access-page .btn-portal-action:disabled {
     background: #64748B;
     border-color: #64748B;
     color: #fff;
@@ -103,7 +103,7 @@
     margin: .2rem 0 .35rem;
 }
 
-.admin-authenticated .admin-portal-access-page .btn-gold:focus-visible,
+.admin-authenticated .admin-portal-access-page .btn-portal-action:focus-visible,
 .admin-authenticated .admin-portal-access-page .back-link:focus-visible {
     outline: 2px solid var(--access-accent);
     outline-offset: 3px;
