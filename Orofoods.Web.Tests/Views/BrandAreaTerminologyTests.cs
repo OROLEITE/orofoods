@@ -19,6 +19,7 @@ public class BrandAreaTerminologyTests
         Assert.Contains("PORTAL DO CLIENTE", portalLayout);
         Assert.Contains("Administra&#231;&#227;o Orofoods", admin);
         Assert.DoesNotContain("JPL", admin);
-        Assert.Contains("class=\"btn btn-dark portal-primary-action\" asp-action=\"Catalog\"", portal);
+        Assert.Contains("class=\"btn btn-gold portal-primary-action\" asp-action=\"Catalog\"", portal);
+        Assert.Contains("Digitar pedido", portal);
     }
 }
