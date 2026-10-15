@@ -33,6 +33,7 @@ using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure;
 using Orofoods.Web.Infrastructure.Logging;
+using Orofoods.Web.Identity;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -140,7 +141,10 @@ var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationExcep
 builder.Services.AddAuthentication().AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"], ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"], ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), ValidateLifetime = true };
+    options.Events.OnTokenValidated = context => context.HttpContext.RequestServices
+        .GetRequiredService<ApiTokenSecurityStampValidator>().ValidateAsync(context);
 });
+builder.Services.AddScoped<ApiTokenSecurityStampValidator>();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("api", limiter =>
@@ -180,6 +184,8 @@ builder.Services.AddSingleton<SellerOrderDraftQuoteProtector>();
 builder.Services.AddScoped<SellerCheckoutService>();
 builder.Services.AddScoped<SellerOrderHistoryService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
+builder.Services.AddScoped<AdminSellerContextService>();
+builder.Services.AddScoped<AdminPortalAccessAuditService>();
 builder.Services.AddScoped<CustomerApprovalService>();
 builder.Services.AddScoped<CustomerCnpjSnapshotCorrectionService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
@@ -222,6 +228,7 @@ builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
 builder.Services.AddScoped<AdminCommercialService>();
 builder.Services.AddScoped<AdminUserService>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ApiTokenService>();
 builder.Services.AddScoped<OrderIntegrationService>();
@@ -332,7 +339,7 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
     options.AddPolicy(
         OrofoodsPolicies.LinkedSalesRepresentative,
-        policy => policy.RequireAuthenticatedUser().RequireRole("Vendedor").AddRequirements(new LinkedSalesRepresentativeRequirement()));
+        policy => policy.RequireAuthenticatedUser().AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -373,6 +380,8 @@ app.UseRouting();
 app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
+app.UseMiddleware<MustChangePasswordMiddleware>();
+app.UseMiddleware<AdminSellerContextMiddleware>();
 app.UseMiddleware<AuthenticatedResponseCacheMiddleware>();
 app.UseAuthorization();
 

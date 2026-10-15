@@ -23,11 +23,6 @@ public class UsersController(
     public async Task<IActionResult> Index(string? query, string? role, bool? isActive)
     {
         var usersQuery = db.Users.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(query))
-        {
-            var search = query.Trim();
-            usersQuery = usersQuery.Where(user => user.UserName!.Contains(search) || user.Email!.Contains(search));
-        }
         if (isActive.HasValue) usersQuery = usersQuery.Where(user => user.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(role))
         {
@@ -38,13 +33,31 @@ public class UsersController(
                          select user;
         }
 
-        var users = await usersQuery
-            .Include(user => user.Customer)
-            .Include(user => user.SalesRepresentative)
-            .OrderBy(user => user.UserName)
-            .Take(MaxRows)
+        var candidates = await usersQuery
+            .OrderBy(user => user.FullName)
+            .Select(user => new
+            {
+                user.Id,
+                user.FullName,
+                user.UserName,
+                user.Email,
+                user.ConcurrencyStamp,
+                user.IsActive,
+                Customer = user.Customer == null ? null : user.Customer.TradeName,
+                SalesRepresentative = user.SalesRepresentative == null ? null : user.SalesRepresentative.Name
+            })
             .ToListAsync();
-        var userIds = users.Select(user => user.Id).ToArray();
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var search = query.Trim();
+            candidates = candidates.Where(user =>
+                    user.FullName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || (user.UserName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (user.Email?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+        }
+        candidates = candidates.Take(MaxRows).ToList();
+        var userIds = candidates.Select(user => user.Id).ToArray();
         var roleAssignments = await (from userRole in db.UserRoles.AsNoTracking()
                                      join identityRole in db.Roles.AsNoTracking() on userRole.RoleId equals identityRole.Id
                                      where userIds.Contains(userRole.UserId)
@@ -52,11 +65,16 @@ public class UsersController(
             .ToListAsync();
         var rolesByUser = roleAssignments.GroupBy(item => item.UserId)
             .ToDictionary(group => group.Key, group => group.Select(item => item.Name).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? "Sem perfil");
-        var rows = users.Select(user => new AdminUserRow(
-            user,
+        var rows = candidates.Select(user => new AdminUserRow(
+            user.Id,
+            user.FullName,
+            user.UserName ?? "",
+            user.Email ?? "",
+            user.ConcurrencyStamp ?? "",
+            user.IsActive,
             rolesByUser.GetValueOrDefault(user.Id, "Sem perfil"),
-            user.Customer?.TradeName,
-            user.SalesRepresentative?.Name)).ToList();
+            user.Customer,
+            user.SalesRepresentative)).ToList();
 
         return View(new AdminUserListViewModel
         {
@@ -87,7 +105,7 @@ public class UsersController(
 
         var result = await service.CreateAsync(new CreateAdminUserInput(
             input.Name, input.Email, input.Password, input.Role, input.IsActive,
-            input.CustomerId, input.SalesRepresentativeId));
+            input.CustomerId, input.SalesRepresentativeId, input.UserName, input.MustChangePassword));
         if (!result.Succeeded)
         {
             AddIdentityErrors(result);
@@ -119,7 +137,7 @@ public class UsersController(
 
         var result = await service.UpdateAsync(new UpdateAdminUserInput(
             input.Id, input.Name, input.Email, input.Role, input.IsActive,
-            input.CustomerId, input.SalesRepresentativeId, input.ConcurrencyStamp));
+            input.CustomerId, input.SalesRepresentativeId, input.ConcurrencyStamp, input.UserName));
         if (!result.Succeeded)
         {
             AddIdentityErrors(result);
@@ -161,7 +179,7 @@ public class UsersController(
     {
         var user = await userManager.FindByIdAsync(id);
         if (user is null) return NotFound();
-        return View(new AdminUserResetPasswordViewModel { Id = user.Id, Name = user.UserName ?? "", Email = user.Email ?? "" });
+        return View(new AdminUserResetPasswordViewModel { Id = user.Id, Name = user.FullName, Email = user.Email ?? "" });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -172,22 +190,37 @@ public class UsersController(
         if (!input.ConfirmReset) ModelState.AddModelError(nameof(input.ConfirmReset), "Confirme que deseja redefinir a senha deste usuário.");
         if (!ModelState.IsValid)
         {
-            input.Name = user.UserName ?? "";
+            input.Name = user.FullName;
             input.Email = user.Email ?? "";
             return View(input);
         }
 
-        var result = await service.ResetPasswordAsync(user.Id, input.Password);
+        var result = await service.ResetPasswordAsync(user.Id, input.Password, input.MustChangePassword);
         if (!result.Succeeded)
         {
             AddIdentityErrors(result);
-            input.Name = user.UserName ?? "";
+            input.Name = user.FullName;
             input.Email = user.Email ?? "";
             return View(input);
         }
 
         TempData["SuccessMessage"] = "Senha redefinida com sucesso.";
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> History(string id)
+    {
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        return View(new AdminUserHistoryViewModel
+        {
+            UserId = user.Id,
+            Name = user.FullName,
+            UserName = user.UserName ?? "",
+            Email = user.Email ?? "",
+            Events = await service.GetHistoryAsync(user.Id)
+        });
     }
 
     private async Task<IActionResult> FinishStatusChangeAsync(IdentityResult result)
@@ -204,7 +237,8 @@ public class UsersController(
         var model = new AdminUserEditViewModel
         {
             Id = user.Id,
-            Name = user.UserName ?? "",
+            Name = user.FullName,
+            UserName = user.UserName ?? "",
             Email = user.Email ?? "",
             ConcurrencyStamp = user.ConcurrencyStamp ?? "",
             IsActive = user.IsActive,

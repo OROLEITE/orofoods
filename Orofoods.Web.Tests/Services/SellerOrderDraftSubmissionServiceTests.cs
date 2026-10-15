@@ -23,6 +23,29 @@ namespace Orofoods.Web.Tests.Services;
 public sealed class SellerOrderDraftSubmissionServiceTests
 {
     [Fact]
+    public async Task Administrator_selected_for_a_seller_can_submit_its_draft_and_order_records_the_administrator()
+    {
+        await using var fixture = await SubmissionFixture.CreateAsync();
+        var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
+        fixture.Db.Users.Add(new ApplicationUser { Id = "admin-user", UserName = "admin-user", IsActive = true });
+        await fixture.Db.SaveChangesAsync();
+        var administrator = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "admin-user"),
+            new Claim(ClaimTypes.Role, ApplicationRoles.Administrator),
+            new Claim(AdminSellerContextService.SelectedRepresentativeClaimType, fixture.Representative.Id.ToString())
+        ], "test"));
+        var quote = await fixture.CreateQuoteTokenAsync(administrator, draft);
+
+        var result = await fixture.Service.SubmitAsync(administrator, draft.Id, draft.Version, quote);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        var order = await fixture.Db.Orders.SingleAsync(x => x.SellerOrderDraftId == draft.Id);
+        Assert.Equal("admin-user", order.CreatedByUserId);
+        Assert.Equal(fixture.Representative.Id, order.SalesRepresentativeId);
+    }
+
+    [Fact]
     public async Task Submit_creates_one_received_order_links_the_draft_and_reserves_every_item_at_current_prices()
     {
         await using var fixture = await SubmissionFixture.CreateAsync();

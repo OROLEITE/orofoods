@@ -27,6 +27,8 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<CustomerPaymentTerm> CustomerPaymentTerms => Set<CustomerPaymentTerm>();
     public DbSet<CustomerCnpjAudit> CustomerCnpjAudits => Set<CustomerCnpjAudit>();
+    public DbSet<AdminPortalAccessAudit> AdminPortalAccessAudits => Set<AdminPortalAccessAudit>();
+    public DbSet<AdminUserChangeAudit> AdminUserChangeAudits => Set<AdminUserChangeAudit>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PointPaymentAuditEvent> PointPaymentAuditEvents => Set<PointPaymentAuditEvent>();
@@ -56,6 +58,32 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<AdminPortalAccessAudit>(entity =>
+        {
+            entity.Property(x => x.AccessType).HasConversion<string>().HasMaxLength(32);
+            entity.Property(x => x.AdministratorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.AdministratorEmail).HasMaxLength(256);
+            entity.Property(x => x.TargetName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.IpAddress).HasMaxLength(45);
+            entity.Property(x => x.UserAgent).HasMaxLength(512);
+            entity.HasIndex(x => new { x.AdministratorUserId, x.SelectedAt });
+            entity.HasIndex(x => new { x.AccessType, x.TargetId, x.SelectedAt });
+        });
+
+        builder.Entity<AdminUserChangeAudit>(entity =>
+        {
+            entity.Property(x => x.ActorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ActorName).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.TargetUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.TargetName).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.Action).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Summary).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(x => new { x.TargetUserId, x.ChangedAt });
+            entity.HasIndex(x => new { x.ActorUserId, x.ChangedAt });
+        });
+
+        builder.Entity<ApplicationUser>().Property(x => x.FullName).HasMaxLength(256).IsRequired();
 
         // Preserve the established PostgreSQL Identity schema widths across EF provider upgrades.
         builder.Entity<IdentityUserLogin<string>>().Property(x => x.LoginProvider).HasMaxLength(128);

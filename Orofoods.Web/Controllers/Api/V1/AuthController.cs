@@ -19,7 +19,7 @@ public class AuthController(
     public async Task<ActionResult<ApiTokenResult>> Token(TokenRequest request)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
-        if (user is null || !user.IsActive) return Unauthorized();
+        if (user is null || !user.IsActive || user.MustChangePassword) return Unauthorized();
 
         var signInResult = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
         if (!signInResult.Succeeded) return Unauthorized();

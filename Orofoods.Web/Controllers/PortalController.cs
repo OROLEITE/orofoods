@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +32,8 @@ public class PortalController(
     IPaymentEligibilityService paymentEligibilityService,
     PaymentOrchestrationService paymentOrchestrationService,
     IOptions<MercadoPagoOptions> mercadoPagoOptions,
-    AssistedOrderService assistedOrderService) : Controller
+    AssistedOrderService assistedOrderService,
+    AdminPortalAccessAuditService? adminPortalAccessAuditService = null) : Controller
 {
     private static readonly TimeZoneInfo BrazilTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
@@ -40,11 +42,12 @@ public class PortalController(
         context.ActionDescriptor.RouteValues.TryGetValue("action", out var action);
         if (User.IsInRole("Administrador") && !string.Equals(action, nameof(SelectCustomer), StringComparison.Ordinal))
         {
-            var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session);
+            var administratorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session, administratorUserId);
             var customer = customerId is null ? null : await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value);
             if (customer is null)
             {
-                adminCustomerContextService.Clear(HttpContext.Session);
+                adminCustomerContextService.Clear(HttpContext.Session, administratorUserId);
                 context.Result = RedirectToAction(nameof(SelectCustomer), new { returnUrl = Request.Path + Request.QueryString });
                 return;
             }
@@ -57,7 +60,7 @@ public class PortalController(
     [HttpGet]
     public async Task<IActionResult> SelectCustomer(string? returnUrl)
     {
-        ViewBag.ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(Dashboard));
+        ViewBag.ReturnUrl = SafeReturnUrl(returnUrl, "/Portal/Dashboard");
         return View(await db.Customers
             .Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved)
             .OrderBy(customer => customer.TradeName)
@@ -69,15 +72,34 @@ public class PortalController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SelectCustomer(int customerId, string? returnUrl)
     {
-        if (await customerAccessService.GetApprovedCustomerByIdAsync(customerId) is null)
+        var customer = await customerAccessService.GetApprovedCustomerByIdAsync(customerId);
+        if (customer is null)
         {
             ModelState.AddModelError(string.Empty, "Selecione um cliente ativo e aprovado.");
-            ViewBag.ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(Dashboard));
+            ViewBag.ReturnUrl = SafeReturnUrl(returnUrl, "/Portal/Dashboard");
             return View(await db.Customers.Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved).OrderBy(customer => customer.TradeName).ToListAsync());
         }
 
-        adminCustomerContextService.SetSelectedCustomerId(HttpContext.Session, customerId);
-        return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : Url.Action(nameof(Dashboard))!);
+        var administratorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(administratorUserId))
+        {
+            return Forbid();
+        }
+
+        if (adminPortalAccessAuditService is not null && customer is not null)
+        {
+            await adminPortalAccessAuditService.RecordSelectionAsync(
+                administratorUserId,
+                User.FindFirstValue(ClaimTypes.Email),
+                Orofoods.Web.Models.Identity.AdminPortalAccessType.Customer,
+                customer.Id,
+                customer.TradeName,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Request.Headers.UserAgent.ToString());
+        }
+        adminCustomerContextService.SetSelectedCustomerId(HttpContext.Session, administratorUserId, customerId);
+
+        return LocalRedirect(SafeReturnUrl(returnUrl, "/Portal/Dashboard"));
     }
 
     public async Task<IActionResult> Dashboard()
@@ -309,6 +331,14 @@ public class PortalController(
         Request.Headers["X-Requested-With"],
         "XMLHttpRequest",
         StringComparison.OrdinalIgnoreCase);
+
+    private static string SafeReturnUrl(string? returnUrl, string fallback) =>
+        !string.IsNullOrWhiteSpace(returnUrl)
+        && (returnUrl.StartsWith('/') && !returnUrl.StartsWith("//", StringComparison.Ordinal)
+            || returnUrl.StartsWith("~/", StringComparison.Ordinal))
+        && !returnUrl.Contains('\\')
+            ? returnUrl
+            : fallback;
 
     public async Task<IActionResult> Checkout()
     {
@@ -592,7 +622,9 @@ public class PortalController(
         Customer? customer = null;
         if (User.IsInRole("Administrador"))
         {
-            var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session);
+            var customerId = adminCustomerContextService.GetSelectedCustomerId(
+                HttpContext.Session,
+                User.FindFirstValue(ClaimTypes.NameIdentifier));
             if (customerId is not null)
             {
                 var selectedCustomer = await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value);

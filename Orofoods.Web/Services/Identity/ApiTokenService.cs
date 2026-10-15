@@ -14,6 +14,10 @@ public sealed class ApiTokenService(IConfiguration configuration, UserManager<Ap
         var key = configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT não configurado.");
         var roles = await userManager.GetRolesAsync(user);
         var claims = new List<Claim> { new(JwtRegisteredClaimNames.Sub, user.Id), new(JwtRegisteredClaimNames.Email, user.Email ?? "") };
+        var securityStamp = await userManager.GetSecurityStampAsync(user);
+        if (string.IsNullOrWhiteSpace(securityStamp))
+            throw new InvalidOperationException("API token requires a security stamp.");
+        claims.Add(new Claim(ApiTokenSecurityStampValidator.SecurityStampClaimType, securityStamp));
         if (user.CustomerId is int customerId) claims.Add(new Claim("customer_id", customerId.ToString()));
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
         var expires = DateTime.UtcNow.AddHours(8);

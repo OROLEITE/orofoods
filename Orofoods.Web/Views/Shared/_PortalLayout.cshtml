@@ -27,7 +27,19 @@
             <a class="@(activeSection == "favorites" ? "active" : null)" asp-controller="Portal" asp-action="Favorites"><span class="portal-nav-icon"><i class="fa-solid fa-heart" aria-hidden="true"></i></span><span class="portal-nav-label">Favoritos</span></a>
             <a class="@(activeSection == "cart" ? "active" : null)" asp-controller="Portal" asp-action="Cart"><span class="portal-nav-icon"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></span><span class="portal-nav-label">Carrinho</span></a>
         </nav>
-        <div class="side-help"><span>Precisa de ajuda?</span><a asp-controller="Home" asp-action="Contact">Falar com a Orofoods</a></div>
+        <div class="side-help">
+            @if (User.IsInRole("Administrador"))
+            {
+                <span>Acesso administrativo</span>
+                <a href="/Portal/SelectCustomer">Trocar cliente</a>
+                <a href="/Admin/Portais">Abrir Portal Vendedor</a>
+            }
+            else
+            {
+                <span>Precisa de ajuda?</span>
+                <a asp-controller="Home" asp-action="Contact">Falar com a Orofoods</a>
+            }
+        </div>
     </aside>
     <div class="portal-app-content">
         <div class="portal-app-toolbar">

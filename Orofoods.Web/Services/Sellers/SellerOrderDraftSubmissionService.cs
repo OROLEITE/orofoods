@@ -27,9 +27,10 @@ public sealed class SellerOrderDraftSubmissionService(
         string? quoteToken,
         CancellationToken cancellationToken = default)
     {
-        var ownerUserId = user.IsInRole(ApplicationRoles.Seller)
+        var ownerUserId = user.IsInRole(ApplicationRoles.Seller) || user.IsInRole(ApplicationRoles.Administrator)
             ? user.FindFirstValue(ClaimTypes.NameIdentifier)
             : null;
+        var isAdministrator = user.IsInRole(ApplicationRoles.Administrator);
         if (string.IsNullOrWhiteSpace(ownerUserId) || draftId <= 0)
         {
             return Failure(SellerOrderDraftErrorCodes.DraftNotFound, "Rascunho não encontrado.");
@@ -42,7 +43,8 @@ public sealed class SellerOrderDraftSubmissionService(
             var draft = await db.SellerOrderDrafts
                 .Include(x => x.Items)
                 .Include(x => x.SubmittedOrder)
-                .SingleOrDefaultAsync(x => x.Id == draftId && x.OwnerUserId == ownerUserId, cancellationToken);
+                .SingleOrDefaultAsync(x => x.Id == draftId
+                    && (isAdministrator || x.OwnerUserId == ownerUserId), cancellationToken);
             if (draft is null)
             {
                 return await AbortAsync(SellerOrderDraftErrorCodes.DraftNotFound, "Rascunho não encontrado.");
@@ -267,7 +269,8 @@ public sealed class SellerOrderDraftSubmissionService(
     {
         var draft = await db.SellerOrderDrafts.AsNoTracking()
             .Include(x => x.SubmittedOrder)
-            .SingleOrDefaultAsync(x => x.Id == draftId && x.OwnerUserId == ownerUserId
+            .SingleOrDefaultAsync(x => x.Id == draftId
+                && (user.IsInRole(ApplicationRoles.Administrator) || x.OwnerUserId == ownerUserId)
                 && x.Status == SellerOrderDraftStatus.Submitted, cancellationToken);
         if (draft?.SubmittedOrder is null)
         {

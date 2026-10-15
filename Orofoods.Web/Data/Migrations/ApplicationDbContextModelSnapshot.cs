@@ -686,10 +686,18 @@ namespace Orofoods.Web.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("MustChangePassword")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("LockoutEnabled")
@@ -1547,6 +1555,37 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("Customers");
 
                     b.Navigation("Items");
+                });
+            modelBuilder.Entity("Orofoods.Web.Models.Identity.AdminPortalAccessAudit", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("AccessType").IsRequired().HasMaxLength(32).HasColumnType("TEXT");
+                    b.Property<string>("AdministratorEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("AdministratorUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<string>("IpAddress").HasMaxLength(45).HasColumnType("TEXT");
+                    b.Property<DateTime>("SelectedAt").HasColumnType("TEXT");
+                    b.Property<int>("TargetId").HasColumnType("INTEGER");
+                    b.Property<string>("TargetName").IsRequired().HasMaxLength(200).HasColumnType("TEXT");
+                    b.Property<string>("UserAgent").HasMaxLength(512).HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("AccessType", "TargetId", "SelectedAt");
+                    b.HasIndex("AdministratorUserId", "SelectedAt");
+                    b.ToTable("AdminPortalAccessAudits");
+                });
+            modelBuilder.Entity("Orofoods.Web.Models.Identity.AdminUserChangeAudit", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("Action").IsRequired().HasMaxLength(64).HasColumnType("TEXT");
+                    b.Property<string>("ActorName").IsRequired().HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("ActorUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<DateTime>("ChangedAt").HasColumnType("TEXT");
+                    b.Property<string>("Summary").IsRequired().HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<string>("TargetName").IsRequired().HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("TargetUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("ActorUserId", "ChangedAt");
+                    b.HasIndex("TargetUserId", "ChangedAt");
+                    b.ToTable("AdminUserChangeAudits");
                 });
 #pragma warning restore 612, 618
         }
