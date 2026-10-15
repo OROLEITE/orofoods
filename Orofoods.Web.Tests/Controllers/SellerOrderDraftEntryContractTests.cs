@@ -56,7 +56,7 @@ public sealed class SellerOrderDraftEntryContractTests
         Assert.Contains("#FFFFFF", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#E2E8F0", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#2563EB", css, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("#059669", css, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#0E7490", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#DC2626", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("@media", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("env(safe-area-inset-bottom)", css, StringComparison.OrdinalIgnoreCase);

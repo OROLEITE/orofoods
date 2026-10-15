@@ -4,6 +4,8 @@ public sealed class SellerPortalVisualContractTests
 {
     private static string ProjectRoot => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
 
+    private static string CompactCss(string css) => System.Text.RegularExpressions.Regex.Replace(css, @"\s+", string.Empty);
+
     [Fact]
     public void Admin_portal_routes_share_the_admin_theme_and_local_access_styles()
     {
@@ -124,5 +126,73 @@ public sealed class SellerPortalVisualContractTests
         Assert.Contains(".seller-order-drafts__send:disabled { background:#64748B; border-color:#64748B; color:#FFFFFF; opacity:1;", draftStyles);
         Assert.Contains("html[data-theme=\"dark\"] .seller-order-drafts", draftStyles);
         Assert.Contains("html[data-theme=\"light\"] .seller-order-drafts", draftStyles);
+    }
+
+    [Fact]
+    public void Access_center_uses_cyan_portal_actions_and_compacts_the_seller_context_form()
+    {
+        var accessCenter = File.ReadAllText(Path.Combine(ProjectRoot, "Views", "AdminPortalAccess", "Index.cshtml"));
+        var sellerContext = File.ReadAllText(Path.Combine(ProjectRoot, "Views", "AdminPortalAccess", "SelectSeller.cshtml"));
+        var accessStylesFile = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "admin-portal-access.css"));
+        var accessStyles = CompactCss(accessStylesFile);
+
+        Assert.Equal(2, accessCenter.Split("Abrir portal</a>", StringSplitOptions.None).Length - 1);
+        Assert.Contains("Abrir painel", accessCenter);
+        Assert.Equal(3, accessCenter.Split("class=\"btn btn-portal-action mt-auto align-self-start\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("Abrir portal</button>", sellerContext);
+        Assert.DoesNotContain("fa-arrow-right-to-bracket", sellerContext);
+        Assert.Contains(".admin-authenticated .admin-portal-access-page .btn-portal-action", accessStylesFile);
+        Assert.Contains("min-height:44px;padding:.6rem.9rem;border:1pxsolid#0E7490;border-radius:.65rem;background:#0E7490;color:#FFFFFF;", accessStyles);
+        Assert.Contains(".admin-authenticated.admin-portal-access-page.btn-portal-action:hover{border-color:#0B5D75;background:#0B5D75;color:#FFFFFF;", accessStyles);
+        Assert.Contains(".admin-authenticated.admin-portal-access-page.btn-gold:focus-visible", accessStyles);
+        Assert.Contains(".admin-portal-access-page .btn-portal-action[aria-disabled=\"true\"]", accessStylesFile);
+        Assert.Contains(".admin-portal-access-page .card.admin-portal-access__seller-form", accessStylesFile);
+        Assert.Contains("padding:.85rem1rem!important;", accessStyles);
+    }
+
+    [Fact]
+    public void Seller_order_editor_compacts_layout_and_keeps_responsive_actions_after_the_summary()
+    {
+        var editor = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+        var draftStylesFile = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-order-drafts.css"));
+        var draftStyles = CompactCss(draftStylesFile);
+
+        Assert.True(editor.IndexOf("seller-order-drafts__summary", StringComparison.Ordinal)
+            < editor.IndexOf("data-sticky-actions", StringComparison.Ordinal));
+        Assert.Contains("--draft-action:#0E7490;", draftStyles);
+        Assert.Contains(".seller-order-drafts__primary,.seller-order-drafts__save,.seller-order-drafts__send{background:var(--draft-action);", draftStyles);
+        Assert.Contains(".seller-order-drafts__product-search-row .form-control", draftStylesFile);
+        Assert.Contains("min-height:40px;", draftStyles);
+        Assert.Contains(".seller-order-drafts__actions{display:flex;justify-content:flex-end;", draftStyles);
+        Assert.Contains("seller-order-drafts__cancel", editor);
+        Assert.Contains(".seller-order-drafts__cancel", draftStylesFile);
+        Assert.Contains("@media(max-width:767.98px)", draftStyles);
+        Assert.Contains("grid-template-columns:1fr1fr;", draftStyles);
+        Assert.Contains("@media(max-width:359.98px)", draftStyles);
+        Assert.Contains("min-height:44px;", draftStyles);
+        Assert.Contains("grid-template-columns:repeat(2,minmax(0,1fr));", draftStyles);
+    }
+
+    [Fact]
+    public void Seller_product_search_results_are_compact_responsive_and_keep_prices_legible_in_dark_theme()
+    {
+        var script = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "js", "seller-order-drafts.js"));
+        var draftStylesFile = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-order-drafts.css"));
+        var draftStyles = CompactCss(draftStylesFile);
+        var editor = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+        var addProductStart = script.IndexOf("function addProduct(product)", StringComparison.Ordinal);
+        var removeProductStart = script.IndexOf("function removeProduct(productId)", StringComparison.Ordinal);
+        var addProduct = script[addProductStart..removeProductStart];
+
+        Assert.Contains("seller-order-drafts__product-identity", script);
+        Assert.Contains("seller-order-drafts__product-details", script);
+        Assert.Contains("btn seller-order-drafts__primary", script);
+        Assert.DoesNotContain("searchInput.value", addProduct);
+        Assert.Contains("WMC ou EAN", editor);
+        Assert.Contains("html[data-theme=\"dark\"] .seller-order-drafts__product-price", draftStylesFile);
+        Assert.Contains("html[data-theme=\"dark\"].seller-order-drafts__product-price,html[data-theme=\"dark\"].seller-order-drafts__unit-price{color:#FFFFFF;}", draftStyles);
+        Assert.Contains("grid-template-columns:minmax(0,2fr)minmax(115px,.8fr)autoauto;", draftStyles);
+        Assert.Contains("grid-template-columns:minmax(0,1fr)auto;", draftStyles);
+        Assert.Contains(".seller-order-drafts__product-card .btn { grid-column:1/-1; justify-self:stretch; min-height:44px; }", draftStylesFile);
     }
 }

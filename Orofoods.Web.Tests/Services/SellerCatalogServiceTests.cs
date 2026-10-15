@@ -90,6 +90,41 @@ public class SellerCatalogServiceTests
     }
 
     [Fact]
+    public async Task Catalog_search_is_case_and_accent_insensitive_across_name_sku_wmc_code_and_ean()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "55.555.555/0001-55", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        var baudUcco = Product("SKU-BAUDUCCO-390", "BAUDUCCO PÃO GRÃOS CLÁSSICOS 390G", true);
+        baudUcco.WmcCode = "WMC-BAU-390";
+        baudUcco.Ean = "7891234567890";
+        baudUcco.IsWmcActive = true;
+        baudUcco.WmcStockAvailable = true;
+        baudUcco.WmcInitialLoadReady = true;
+        baudUcco.Description = "Pão de grãos para o café da manhã.";
+        var unavailableBaudUcco = Product("SKU-BAUDUCCO-NO-STOCK", baudUcco.Name, true);
+        unavailableBaudUcco.WmcCode = baudUcco.WmcCode;
+        unavailableBaudUcco.IsWmcActive = true;
+        unavailableBaudUcco.WmcStockAvailable = true;
+        unavailableBaudUcco.WmcInitialLoadReady = true;
+        db.AddRange(representative, seller, customer, baudUcco);
+        db.Products.Add(unavailableBaudUcco);
+        await db.SaveChangesAsync();
+        db.ProductInventories.AddRange(
+            new ProductInventory { ProductId = baudUcco.Id, QuantityOnHand = 10 },
+            new ProductInventory { ProductId = unavailableBaudUcco.Id, QuantityOnHand = 0 });
+        await db.SaveChangesAsync();
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        foreach (var query in new[] { "bau", "BAU", "WMC-bau", "graos clas", "sku-bauducco", "912345678" })
+        {
+            var catalog = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, query, page: 1);
+            Assert.Equal(baudUcco.Id, Assert.Single(Assert.IsType<SellerCatalogViewModel>(catalog).Products).Id);
+        }
+    }
+
+    [Fact]
     public async Task Catalog_clamps_page_size_to_prevent_unbounded_product_results()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

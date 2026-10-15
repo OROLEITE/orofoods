@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Services.Identity;
@@ -39,26 +41,60 @@ public sealed class SellerCatalogService(
         pageSize = Math.Clamp(pageSize, 1, MaximumPageSize);
         IQueryable<Models.Catalog.Product> productsQuery = BuildSelectableProductsQuery();
 
+        int totalCount;
+        List<Models.Catalog.Product> products;
         if (!string.IsNullOrWhiteSpace(query))
         {
             query = query.Trim();
-            productsQuery = productsQuery.Where(x =>
-                x.Name.Contains(query) ||
-                x.Sku.Contains(query) ||
-                x.Description.Contains(query) ||
-                (isPagedSearch && x.Ean != null && x.Ean.Contains(query)));
-        }
+            var normalizedQuery = NormalizeSearchText(query);
+            var candidates = await productsQuery
+                .Select(product => new ProductSearchCandidate(
+                    product.Id,
+                    product.Name,
+                    product.Sku,
+                    product.Description,
+                    product.WmcCode,
+                    product.Ean))
+                .ToListAsync(cancellationToken);
+            var matchingIds = candidates
+                .Where(candidate => MatchesSearch(candidate, normalizedQuery))
+                .OrderBy(candidate => candidate.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(candidate => candidate.Sku, StringComparer.OrdinalIgnoreCase)
+                .Select(candidate => candidate.Id)
+                .ToArray();
 
-        var totalCount = await productsQuery.CountAsync(cancellationToken);
-        IQueryable<Models.Catalog.Product> orderedProducts = productsQuery
-            .OrderBy(x => x.Name)
-            .ThenBy(x => x.Sku);
-        if (isPagedSearch)
-        {
-            var skip = (int)Math.Min((long)(currentPage - 1) * pageSize, int.MaxValue);
-            orderedProducts = orderedProducts.Skip(skip).Take(pageSize);
+            totalCount = matchingIds.Length;
+            var skip = isPagedSearch ? (int)Math.Min((long)(currentPage - 1) * pageSize, int.MaxValue) : 0;
+            var pageIds = isPagedSearch ? matchingIds.Skip(skip).Take(pageSize).ToArray() : matchingIds;
+            if (pageIds.Length == 0)
+            {
+                products = [];
+            }
+            else
+            {
+                var orderById = pageIds.Select((id, index) => (id, index)).ToDictionary(item => item.id, item => item.index);
+                products = await productsQuery
+                    .Where(product => pageIds.Contains(product.Id))
+                    .Include(product => product.Images)
+                    .ToListAsync(cancellationToken);
+                products = products
+                    .OrderBy(product => orderById.GetValueOrDefault(product.Id, int.MaxValue))
+                    .ToList();
+            }
         }
-        var products = await orderedProducts.Include(x => x.Images).ToListAsync(cancellationToken);
+        else
+        {
+            totalCount = await productsQuery.CountAsync(cancellationToken);
+            IQueryable<Models.Catalog.Product> orderedProducts = productsQuery
+                .OrderBy(product => product.Name)
+                .ThenBy(product => product.Sku);
+            if (isPagedSearch)
+            {
+                var skip = (int)Math.Min((long)(currentPage - 1) * pageSize, int.MaxValue);
+                orderedProducts = orderedProducts.Skip(skip).Take(pageSize);
+            }
+            products = await orderedProducts.Include(product => product.Images).ToListAsync(cancellationToken);
+        }
         var prices = await priceService.GetPricesAsync(customerId, products.Select(x => x.Id), cancellationToken);
 
         return new SellerCatalogViewModel
@@ -150,6 +186,19 @@ public sealed class SellerCatalogService(
                 inventory.ProductId == x.Id &&
                 inventory.QuantityOnHand - inventory.QuantityReserved >= x.MinimumCases));
 
+    private static bool MatchesSearch(ProductSearchCandidate product, string normalizedQuery) =>
+        NormalizeSearchText(product.Name).Contains(normalizedQuery, StringComparison.Ordinal) ||
+        NormalizeSearchText(product.Sku).Contains(normalizedQuery, StringComparison.Ordinal) ||
+        NormalizeSearchText(product.Description).Contains(normalizedQuery, StringComparison.Ordinal) ||
+        (product.WmcCode is not null && NormalizeSearchText(product.WmcCode).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+        (product.Ean is not null && NormalizeSearchText(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal));
+
+    private static string NormalizeSearchText(string value) => string.Concat(
+            value.Normalize(NormalizationForm.FormD)
+                .Where(character => CharUnicodeInfo.GetUnicodeCategory(character) is not (
+                    UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark)))
+        .ToUpperInvariant();
+
     private static IReadOnlyList<SellerCatalogProductRow> ToRows(
         IEnumerable<Models.Catalog.Product> products,
         IReadOnlyDictionary<int, decimal> prices) => products.Select(product => new SellerCatalogProductRow(
@@ -162,4 +211,12 @@ public sealed class SellerCatalogService(
             product.MinimumCases,
             product.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).Select(image => (int?)image.Id).FirstOrDefault(),
             product.Ean)).ToArray();
+
+    private sealed record ProductSearchCandidate(
+        int Id,
+        string Name,
+        string Sku,
+        string Description,
+        string? WmcCode,
+        string? Ean);
 }

@@ -249,12 +249,16 @@
         const selectedIds = new Set(itemRows().map(row => Number(row.dataset.productId)));
         products.forEach(product => {
             const card = makeNode('article', 'seller-order-drafts__product-card');
-            card.append(makeNode('span', 'seller-order-drafts__product-code', `${product.sku}${product.ean ? ` · EAN ${product.ean}` : ''}`));
-            card.append(makeNode('h3', '', product.name));
-            card.append(makeNode('span', 'seller-order-drafts__product-unit', product.unitDescription));
+            const identity = makeNode('div', 'seller-order-drafts__product-identity');
+            identity.append(makeNode('span', 'seller-order-drafts__product-code', `${product.sku}${product.ean ? ` · EAN ${product.ean}` : ''}`));
+            identity.append(makeNode('h3', '', product.name));
+            card.append(identity);
+            const details = makeNode('div', 'seller-order-drafts__product-details');
+            details.append(makeNode('span', 'seller-order-drafts__product-unit', product.unitDescription));
+            details.append(makeNode('span', 'seller-order-drafts__product-minimum', `Mínimo: ${product.minimumCases} caixa(s)`));
+            card.append(details);
             card.append(makeNode('strong', 'seller-order-drafts__product-price', money.format(product.unitPrice)));
-            card.append(makeNode('span', 'seller-order-drafts__product-minimum', `Mínimo: ${product.minimumCases} caixa(s)`));
-            const button = makeNode('button', 'btn seller-order-drafts__outline', selectedIds.has(product.id) ? 'Adicionar mais' : 'Adicionar');
+            const button = makeNode('button', 'btn seller-order-drafts__primary', selectedIds.has(product.id) ? 'Adicionar mais' : 'Adicionar');
             button.type = 'button';
             button.dataset.addProduct = '';
             button.addEventListener('click', () => addProduct(product));
