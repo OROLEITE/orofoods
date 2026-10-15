@@ -62,13 +62,18 @@
             </nav>
             @if (isAdministrator)
             {
-                <div class="seller-app-admin-context">
-                    <span>Acesso administrativo</span>
-                    <strong>@(selectedRepresentative?.Name ?? "Vendedor não selecionado")</strong>
-                    <a href="/Admin/Dashboard">Painel Administrativo</a>
-                    <a href="/Admin/Portais">Central de Acesso</a>
-                    <a href="/Admin/Portais/SelecionarVendedor">Trocar vendedor</a>
-                    <a href="/Portal/SelectCustomer">Portal do Cliente</a>
+                <div class="seller-app-admin-group">
+                    <div class="seller-app-admin-context">
+                        <span>Acesso administrativo</span>
+                        <strong>@(selectedRepresentative?.Name ?? "Vendedor não selecionado")</strong>
+                    </div>
+                    <p class="seller-app-sidebar-caption">ADMINISTRAÇÃO</p>
+                    <nav class="seller-app-nav seller-app-admin-nav" aria-label="Acesso administrativo">
+                        <a href="/Admin/Dashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span>Painel Administrativo</span></a>
+                        <a href="/Admin/Portais"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Central de Acesso</span></a>
+                        <a href="/Admin/Portais/SelecionarVendedor"><i class="fa-solid fa-users-gear" aria-hidden="true"></i><span>Trocar vendedor</span></a>
+                        <a href="/Portal/SelectCustomer"><i class="fa-solid fa-building-user" aria-hidden="true"></i><span>Portal do Cliente</span></a>
+                    </nav>
                 </div>
             }
         </div>

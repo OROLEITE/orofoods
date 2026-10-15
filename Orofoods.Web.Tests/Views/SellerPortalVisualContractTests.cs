@@ -45,4 +45,31 @@ public sealed class SellerPortalVisualContractTests
         Assert.Contains("@media (max-width: 575.98px)", searchStyles);
         Assert.Contains("@media (min-width: 768px)", shellStyles);
     }
+
+    [Fact]
+    public void Seller_portal_density_and_order_editor_keep_the_summary_after_the_form_on_narrow_screens()
+    {
+        var shellStyles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css"));
+        var draftStyles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-order-drafts.css"));
+        var editor = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+
+        Assert.Contains("padding-block: .8rem 1.4rem", shellStyles);
+        Assert.Contains("--seller-sidebar-width: 220px", shellStyles);
+        Assert.Contains("@media (min-width: 992px)", draftStyles);
+        Assert.Contains(".seller-order-drafts__summary { position:static; order:1; }", draftStyles);
+        Assert.Contains("min-height:40px", draftStyles);
+        Assert.Contains("grid-template-columns:1fr 1fr", draftStyles);
+        Assert.Contains("rows=\"2\"", editor);
+    }
+
+    [Fact]
+    public void Seller_order_editor_keeps_neutral_cancel_contrasting_disabled_send_and_both_themes()
+    {
+        var draftStyles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-order-drafts.css"));
+
+        Assert.Contains(".seller-order-drafts__outline { background:var(--draft-card); border:1px solid var(--draft-border); color:var(--draft-muted);", draftStyles);
+        Assert.Contains(".seller-order-drafts__send:disabled { background:#64748B; border-color:#64748B; color:#FFFFFF; opacity:1;", draftStyles);
+        Assert.Contains("html[data-theme=\"dark\"] .seller-order-drafts", draftStyles);
+        Assert.Contains("html[data-theme=\"light\"] .seller-order-drafts", draftStyles);
+    }
 }

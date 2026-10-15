@@ -8,7 +8,7 @@
     width: 100%;
     max-width: 1500px;
     margin-inline: auto;
-    padding: clamp(.75rem, 2vw, 1.5rem);
+    padding: clamp(.65rem, 1.4vw, 1rem);
     color: var(--access-text);
 }
 
@@ -29,8 +29,32 @@
     box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
 }
 
-.admin-authenticated .admin-portal-access-page .card p {
+.admin-authenticated .admin-portal-access-page .card.p-3 {
+    padding: .9rem !important;
+}
+
+.admin-authenticated .admin-portal-access-page .card p,
+.admin-authenticated .admin-portal-access-page .text-muted {
     color: var(--access-muted);
+}
+
+.admin-authenticated .admin-portal-access-page .admin-page-header {
+    margin-bottom: .75rem;
+}
+
+.admin-authenticated .admin-portal-access-page .table-responsive {
+    border: 1px solid var(--access-border);
+    border-radius: .6rem;
+}
+
+.admin-authenticated .admin-portal-access-page .table {
+    min-width: 720px;
+}
+
+.admin-authenticated .admin-portal-access-page .table th,
+.admin-authenticated .admin-portal-access-page .table td {
+    padding: .55rem .65rem;
+    vertical-align: middle;
 }
 
 .admin-authenticated .admin-portal-access-page .btn-gold {
@@ -80,7 +104,7 @@ html[data-theme="light"] body.admin-authenticated .admin-portal-access-page {
         padding-inline: .75rem;
     }
 
-    .admin-authenticated .admin-portal-access-page .card {
-        padding: 1rem !important;
+    .admin-authenticated .admin-portal-access-page .card.p-3 {
+        padding: .8rem !important;
     }
 }

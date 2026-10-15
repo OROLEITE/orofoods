@@ -31,10 +31,10 @@
 .seller-order-drafts__primary,.seller-order-drafts__outline,.seller-order-drafts__save,.seller-order-drafts__send { min-height:44px; border-radius:9px; font-weight:750; }
 .seller-order-drafts__primary,.seller-order-drafts__save { background:var(--draft-blue); border:1px solid var(--draft-blue); color:#fff; }
 .seller-order-drafts__primary:hover,.seller-order-drafts__save:hover { background:#101080; border-color:#101080; color:#fff; }
-.seller-order-drafts__outline { background:var(--draft-card); border:1px solid var(--draft-border); color:var(--draft-blue); }
-.seller-order-drafts__outline:hover { border-color:var(--draft-selected); color:var(--draft-selected); background:var(--draft-soft-blue); }
+.seller-order-drafts__outline { background:var(--draft-card); border:1px solid var(--draft-border); color:var(--draft-muted); }
+.seller-order-drafts__outline:hover { border-color:var(--draft-muted); color:var(--draft-text); background:var(--draft-soft-blue); }
 .seller-order-drafts__send { background:var(--draft-send); border:1px solid var(--draft-send); color:#fff; }
-.seller-order-drafts__send:disabled { background:var(--draft-send); border-color:var(--draft-send); color:#fff; opacity:.48; cursor:not-allowed; }
+.seller-order-drafts__send:disabled { background:#64748B; border-color:#64748B; color:#FFFFFF; opacity:1; cursor:not-allowed; }
 .seller-order-drafts__card,.seller-order-drafts__empty { background:var(--draft-card); border:1px solid var(--draft-border); border-radius:14px; box-shadow:0 5px 18px rgb(15 23 42 / 3%); }
 .seller-order-drafts__card { padding:1.25rem; }
 .seller-order-drafts__customer-picker { max-width:850px; }
@@ -129,12 +129,21 @@
 .seller-order-drafts__draft-total strong { color:var(--draft-blue); }
 
 @media (max-width: 900px) {
-    .seller-order-drafts__editor-grid { grid-template-columns:minmax(0,1fr) 270px; }
     .seller-order-drafts__item { grid-template-columns:minmax(0,1fr) 145px 105px; gap:.6rem; }
 }
 
+@media (min-width: 992px) {
+    .seller-order-drafts__editor-grid { grid-template-columns:minmax(0,1fr) 300px; }
+    .seller-order-drafts__summary { position:sticky; top:1rem; order:0; }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .seller-order-drafts__editor-grid { grid-template-columns:1fr; }
+    .seller-order-drafts__summary { position:static; order:1; }
+}
+
 @media (max-width: 767.98px) {
-    .seller-order-drafts { padding-top:1rem; padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
+    .seller-order-drafts { padding-top:.8rem; padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
     .seller-order-drafts__header,.seller-order-drafts__header--editor { align-items:flex-start; flex-direction:column; margin-bottom:1rem; }
     .seller-order-drafts__header--editor > div { width:100%; min-width:0; }
     .seller-order-drafts__header--editor h1 { overflow-wrap:anywhere; }
@@ -142,7 +151,7 @@
     .seller-order-drafts__card { padding:1rem; border-radius:12px; }
     .seller-order-drafts__editor-grid { display:flex; flex-direction:column; gap:.8rem; }
     .seller-order-drafts__editor-main,.seller-order-drafts__summary { width:100%; }
-    .seller-order-drafts__summary { position:static; order:-1; }
+    .seller-order-drafts__summary { position:static; order:1; }
     .seller-order-drafts__summary-card { padding:.8rem .95rem; }
     .seller-order-drafts__summary-card h2 { font-size:1rem; margin-bottom:.4rem; }
     .seller-order-drafts__summary-line { padding:.32rem 0; }
@@ -163,12 +172,50 @@
     .seller-order-drafts__actions { position:fixed; z-index:1030; left:0; right:0; bottom:0; display:flex; justify-content:flex-end; padding:.65rem max(1rem, env(safe-area-inset-right)) calc(.65rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); border-top:1px solid var(--draft-border); background:var(--draft-card); box-shadow:0 -8px 22px rgb(15 23 42 / 9%); }
     .seller-order-drafts__actions>.btn { display:none; }
     .seller-order-drafts__action-main { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
-    .seller-order-drafts__actions .btn { width:100%; min-height:48px; padding:.55rem .45rem; font-size:.85rem; }
+    .seller-order-drafts__actions .btn { width:100%; min-height:40px; height:40px; padding:.4rem .45rem; font-size:.82rem; }
     .seller-order-drafts__stage-note { text-align:left; padding-bottom:.4rem; }
     .seller-order-drafts__draft-card { grid-template-columns:minmax(0,1fr) auto; gap:.6rem; }
     .seller-order-drafts__draft-total { grid-column:1; grid-row:2; text-align:left; }
     .seller-order-drafts__draft-card>.btn { grid-column:2; grid-row:1/3; }
 }
+
+.seller-order-drafts__header { margin-bottom:1rem; }
+.seller-order-drafts__card { padding:1rem; border-radius:12px; }
+.seller-order-drafts__editor-main { gap:.75rem; }
+.seller-order-drafts__summary-card { padding:.9rem; }
+.seller-order-drafts__summary-card h2 { margin:.15rem 0 .7rem; }
+.seller-order-drafts__section-heading { margin-bottom:.75rem; }
+.seller-order-drafts__product-results { gap:.5rem; }
+.seller-order-drafts__product-card { gap:.25rem; padding:.65rem; }
+.seller-order-drafts__item { gap:.65rem; padding:.7rem; }
+.seller-order-drafts__fields-grid { gap:.75rem; }
+.seller-order-drafts__fields-grid .form-select,
+.seller-order-drafts__fields-grid .form-control,
+.seller-order-drafts__quantity,
+.seller-order-drafts__primary,
+.seller-order-drafts__outline,
+.seller-order-drafts__save,
+.seller-order-drafts__send { min-height:40px; }
+.seller-order-drafts__notes-field textarea.form-control { min-height:3rem; max-height:9rem; resize:vertical; }
+.seller-order-drafts__actions { margin-top:.75rem; }
+.seller-order-drafts__actions .btn { min-height:40px; }
+
+html[data-theme="light"] .seller-order-drafts {
+    --draft-bg:#F4F7FC;
+    --draft-card:#FFFFFF;
+    --draft-border:#E2E8F0;
+    --draft-text:#172033;
+    --draft-muted:#64748B;
+    --draft-soft-blue:#EFF6FF;
+}
+
+html[data-theme="light"] .seller-order-drafts__header h1,
+html[data-theme="light"] .seller-order-drafts__card h2,
+html[data-theme="light"] .seller-order-drafts__empty h2,
+html[data-theme="light"] .seller-order-drafts__summary-total strong { color:#000066; }
+
+html[data-theme="light"] .seller-order-drafts input::placeholder,
+html[data-theme="light"] .seller-order-drafts textarea::placeholder { color:#64748B; opacity:1; }
 
 html.is-keyboard-open .seller-order-drafts__actions { display:none; }
 

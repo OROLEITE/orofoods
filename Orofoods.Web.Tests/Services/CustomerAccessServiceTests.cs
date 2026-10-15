@@ -53,6 +53,33 @@ public class CustomerAccessServiceTests
     }
 
     [Fact]
+    public async Task Customer_suggestions_accept_a_single_character_and_keep_approval_filters()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var approved = new Customer
+        {
+            LegalName = "Burger House Ltda", TradeName = "Burger House", Cnpj = "51.735.297/0001-74",
+            Status = CustomerStatus.Approved, IsActive = true
+        };
+        var pending = new Customer
+        {
+            LegalName = "Balcão Pendente Ltda", TradeName = "Balcão Pendente", Cnpj = "22.222.222/0001-22",
+            Status = CustomerStatus.Pending, IsActive = true
+        };
+        var inactive = new Customer
+        {
+            LegalName = "Bar Inativo Ltda", TradeName = "Bar Inativo", Cnpj = "11.111.111/0001-11",
+            Status = CustomerStatus.Approved, IsActive = false
+        };
+        db.AddRange(approved, pending, inactive);
+        await db.SaveChangesAsync();
+
+        var suggestions = await new CustomerAccessService(db).SearchApprovedCustomerSuggestionsAsync("B", 20);
+
+        Assert.Equal(approved.Id, Assert.Single(suggestions).Id);
+    }
+
+    [Fact]
     public async Task Customer_suggestions_are_capped_at_twenty()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

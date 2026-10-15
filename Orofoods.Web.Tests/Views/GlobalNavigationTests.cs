@@ -20,9 +20,11 @@ public class GlobalNavigationTests
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var adminLayout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_AdminLayout.cshtml"));
         var adminStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-shell.css"));
 
-        Assert.Contains("@if (!isCustomerExperience && !isPortalCustomerSelect && !isAdminArea)", layout);
+        Assert.Contains("ViewData[\"BodyClass\"] = \"admin-authenticated\"", adminLayout);
+        Assert.Contains("@if (!isCustomerExperience && !isPortalCustomerSelect && !isAdminExperience)", layout);
         Assert.DoesNotContain(".page-context-bar", adminStyles);
     }
 
