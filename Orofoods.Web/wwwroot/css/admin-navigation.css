@@ -4,7 +4,7 @@
     --admin-sidebar-bg: var(--nav-sidebar-bg);
     --admin-sidebar-text: var(--nav-text-active);
     --admin-sidebar-muted: var(--nav-text);
-    --admin-sidebar-accent: var(--gold);
+    --admin-sidebar-accent: #38BDF8;
 }
 
 .admin-authenticated .site-header-modern {

@@ -156,7 +156,7 @@
     left: 0;
     width: 3px;
     border-radius: 0 2px 2px 0;
-    background: var(--gold);
+    background: #38BDF8;
     content: '';
 }
 
@@ -172,7 +172,7 @@
 }
 
 .portal-app-nav a.active .portal-nav-icon {
-    color: var(--gold);
+    color: #38BDF8;
 }
 
 .portal-app-content {
