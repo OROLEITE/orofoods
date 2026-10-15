@@ -89,7 +89,10 @@ public sealed class SellerPortalVisualContractTests
         Assert.Contains("Abrir portal</button>", sellerContext);
         Assert.DoesNotContain("fa-arrow-right-to-bracket", sellerContext);
         Assert.Contains(".admin-authenticated .admin-portal-access-page .btn-portal-action", accessStylesFile);
-        Assert.Contains("background:#0E7490;border:1pxsolid#0E7490;color:#fff;", accessStyles);
+        Assert.Contains("min-height:44px;padding:.6rem.9rem;border:1pxsolid#0E7490;border-radius:.65rem;background:#0E7490;color:#FFFFFF;", accessStyles);
+        Assert.Contains(".admin-authenticated.admin-portal-access-page.btn-portal-action:hover{border-color:#0B5D75;background:#0B5D75;color:#FFFFFF;", accessStyles);
+        Assert.Contains(".admin-authenticated.admin-portal-access-page.btn-gold:focus-visible", accessStyles);
+        Assert.Contains(".admin-portal-access-page .btn-portal-action[aria-disabled=\"true\"]", accessStylesFile);
         Assert.Contains(".admin-portal-access-page .card.admin-portal-access__seller-form", accessStylesFile);
         Assert.Contains("padding:.85rem1rem!important;", accessStyles);
     }
