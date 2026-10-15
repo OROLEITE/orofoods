@@ -4,51 +4,68 @@
     ViewData["BodyClass"] = "seller-area-page";
 }
 
-<section class="section">
-    <div class="container">
-        <header class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
-            <div>
-                <span class="eyebrow"><span></span> Operação comercial</span>
-                <h1>Olá, @Model.SellerName</h1>
-                <p class="text-muted mb-0">Acompanhe sua carteira de clientes.</p>
-            </div>
-            <a class="btn btn-gold" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">
-                <i class="fa-solid fa-building" aria-hidden="true"></i> Minha carteira
+<section class="seller-dashboard" aria-labelledby="seller-dashboard-title">
+    <header class="seller-dashboard__header">
+        <div class="seller-dashboard__intro">
+            <p class="seller-dashboard__eyebrow">OPERAÇÃO COMERCIAL</p>
+            <h1 id="seller-dashboard-title">Olá, @Model.SellerName</h1>
+            <p class="seller-dashboard__subtitle">Acompanhe sua carteira e continue suas vendas.</p>
+        </div>
+        <nav class="seller-dashboard__actions" aria-label="Atalhos comerciais">
+            <a class="seller-button seller-button--primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span>Digitar pedido</span>
             </a>
-            <a class="btn btn-outline-primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">
-                <i class="fa-regular fa-file-lines" aria-hidden="true"></i> Pedidos em rascunho
+            <a class="seller-button seller-button--gold" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">
+                <i class="fa-solid fa-building" aria-hidden="true"></i><span>Minha carteira</span>
             </a>
-        </header>
+            <a class="seller-button seller-button--secondary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">
+                <i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>Meus rascunhos</span>
+            </a>
+        </nav>
+    </header>
 
-        <div class="row g-3 mb-4">
-            <div class="col-sm-6 col-lg-4">
-                <article class="summary-card h-100">
-                    <small>CLIENTES ATIVOS</small>
-                    <strong>@Model.ActiveCustomerCount</strong>
-                    <span>na sua carteira</span>
-                </article>
+    <div class="seller-dashboard__metrics" aria-label="Indicadores da carteira">
+        <article class="seller-dashboard__metric">
+            <span class="seller-dashboard__metric-icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+            <div><span>Clientes ativos</span><strong>@Model.ActiveCustomerCount</strong><small>Na sua carteira</small></div>
+        </article>
+        <article class="seller-dashboard__metric">
+            <span class="seller-dashboard__metric-icon" aria-hidden="true"><i class="fa-solid fa-address-card"></i></span>
+            <div><span>Clientes em destaque</span><strong>@Model.Customers.Take(6).Count()</strong><small>Acessos rápidos neste painel</small></div>
+        </article>
+    </div>
+
+    <section class="seller-dashboard__portfolio" aria-labelledby="seller-portfolio-title">
+        <div class="seller-dashboard__section-heading">
+            <div>
+                <p class="seller-dashboard__eyebrow">RELACIONAMENTO</p>
+                <h2 id="seller-portfolio-title">Clientes em destaque</h2>
             </div>
+            <a class="seller-dashboard__text-link" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">
+                Ver carteira <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            </a>
         </div>
 
-        <section aria-labelledby="portfolio-heading">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 id="portfolio-heading" class="h4 mb-0">Minha carteira</h2>
-                <a asp-area="Vendedor" asp-controller="Customers" asp-action="Index">Ver todos</a>
-            </div>
-            <div class="row g-3">
+        @if (Model.Customers.Count == 0)
+        {
+            <div class="seller-dashboard__empty" role="status">Nenhum cliente disponível para exibição no painel.</div>
+        }
+        else
+        {
+            <div class="seller-dashboard__customer-grid">
                 @foreach (var customer in Model.Customers.Take(6))
                 {
-                    <div class="col-md-6 col-xl-4">
-                        <a class="text-decoration-none" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id">
-                            <article class="summary-card h-100">
-                                <small>@customer.Code</small>
-                                <h3 class="h5 text-dark mt-2">@customer.Name</h3>
-                                <span>@customer.City</span>
-                            </article>
-                        </a>
-                    </div>
+                    <a class="seller-dashboard__customer-card" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id" aria-label="Abrir workspace de @customer.Name">
+                        <span class="seller-dashboard__customer-icon" aria-hidden="true"><i class="fa-solid fa-building"></i></span>
+                        <span class="seller-dashboard__customer-info">
+                            <small>@customer.Code</small>
+                            <strong>@customer.Name</strong>
+                            <span>@customer.City</span>
+                        </span>
+                        <i class="seller-dashboard__customer-arrow fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
                 }
             </div>
-        </section>
-    </div>
+        }
+    </section>
 </section>
