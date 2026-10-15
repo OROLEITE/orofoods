@@ -102,6 +102,47 @@ public sealed class SellerWorkspaceService(
         return new SellerCustomerSearchPage(query, page, pageSize, totalCount, results);
     }
 
+    public async Task<IReadOnlyList<CustomerSearchSuggestion>?> SearchCustomerSuggestionsAsync(
+        ClaimsPrincipal user,
+        string? query,
+        int maxResults,
+        CancellationToken cancellationToken = default)
+    {
+        var representative = await accessService.GetActiveRepresentativeAsync(user, cancellationToken);
+        if (representative is null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
+        query = query.Trim().ToLowerInvariant();
+        var normalizedCnpjQuery = new string(query.Where(char.IsLetterOrDigit).ToArray());
+        var limit = Math.Clamp(maxResults, 1, 20);
+
+        return await GetPortfolioQuery(representative.Id)
+            .Where(customer =>
+                customer.TradeName.ToLower().Contains(query) ||
+                customer.LegalName.ToLower().Contains(query) ||
+                (normalizedCnpjQuery.Length > 0 && customer.Cnpj.Replace(".", "").Replace("/", "").Replace("-", "").Contains(normalizedCnpjQuery)) ||
+                (customer.WmcCode != null && customer.WmcCode.ToLower().Contains(query)))
+            .OrderBy(customer => customer.TradeName)
+            .ThenBy(customer => customer.Id)
+            .Take(limit)
+            .Select(customer => new CustomerSearchSuggestion(
+                customer.Id,
+                customer.TradeName,
+                customer.LegalName,
+                customer.Cnpj,
+                customer.WmcCode,
+                customer.Addresses.Where(address => address.IsActive).OrderByDescending(address => address.IsPrimary)
+                    .Select(address => address.City).FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<SellerCustomerWorkspaceViewModel?> GetCustomerWorkspaceAsync(
         ClaimsPrincipal user,
         int customerId,

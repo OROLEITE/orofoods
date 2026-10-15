@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,7 @@ public sealed class AdminPortalAccessControllerTests
         var session = new TestSession();
         var controller = new AdminPortalAccessController(
             db,
+            new CustomerAccessService(db),
             new AdminSellerContextService(),
             new AdminPortalAccessAuditService(db));
         controller.ControllerContext = new ControllerContext
@@ -61,7 +63,7 @@ public sealed class AdminPortalAccessControllerTests
         await db.SaveChangesAsync();
 
         var session = new TestSession();
-        var controller = new AdminPortalAccessController(db, new AdminSellerContextService(), new AdminPortalAccessAuditService(db));
+        var controller = new AdminPortalAccessController(db, new CustomerAccessService(db), new AdminSellerContextService(), new AdminPortalAccessAuditService(db));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
@@ -77,6 +79,34 @@ public sealed class AdminPortalAccessControllerTests
         Assert.IsType<ViewResult>(result);
         Assert.Null(new AdminSellerContextService().GetSelectedRepresentativeId(session, "admin-user"));
         Assert.Empty(await db.AdminPortalAccessAudits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Customer_search_endpoint_returns_only_active_approved_suggestions_and_is_admin_protected()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var approved = new Customer
+        {
+            LegalName = "Cliente Aprovado Ltda", TradeName = "Cliente Aprovado", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true
+        };
+        var pending = new Customer
+        {
+            LegalName = "Cliente Pendente Ltda", TradeName = "Cliente Pendente", Cnpj = "98.765.432/0001-99",
+            Status = CustomerStatus.Pending, IsActive = true
+        };
+        db.AddRange(approved, pending);
+        await db.SaveChangesAsync();
+        var controller = new AdminPortalAccessController(
+            db, new CustomerAccessService(db), new AdminSellerContextService(), new AdminPortalAccessAuditService(db));
+
+        var result = await controller.SearchCustomers("Cliente", CancellationToken.None);
+
+        var json = Assert.IsType<JsonResult>(result);
+        var suggestions = Assert.IsAssignableFrom<IReadOnlyList<CustomerSearchSuggestion>>(json.Value);
+        Assert.Equal(approved.Id, Assert.Single(suggestions).Id);
+        var authorize = Assert.Single(typeof(AdminPortalAccessController).GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>());
+        Assert.Equal(ApplicationRoles.Administrator, authorize.Roles);
     }
 
     private sealed class TestSession : ISession

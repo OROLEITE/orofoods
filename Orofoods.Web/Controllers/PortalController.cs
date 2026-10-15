@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Identity;
@@ -61,10 +62,7 @@ public class PortalController(
     public async Task<IActionResult> SelectCustomer(string? returnUrl)
     {
         ViewBag.ReturnUrl = SafeReturnUrl(returnUrl, "/Portal/Dashboard");
-        return View(await db.Customers
-            .Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved)
-            .OrderBy(customer => customer.TradeName)
-            .ToListAsync());
+        return View(Array.Empty<Customer>());
     }
 
     [Authorize(Roles = "Administrador")]
@@ -77,7 +75,7 @@ public class PortalController(
         {
             ModelState.AddModelError(string.Empty, "Selecione um cliente ativo e aprovado.");
             ViewBag.ReturnUrl = SafeReturnUrl(returnUrl, "/Portal/Dashboard");
-            return View(await db.Customers.Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved).OrderBy(customer => customer.TradeName).ToListAsync());
+            return View(Array.Empty<Customer>());
         }
 
         var administratorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
