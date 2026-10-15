@@ -890,6 +890,19 @@ body.seller-app-page .site-header-modern .navbar-toggler:focus-visible {
     outline-offset: 2px;
 }
 
+/* site.css uses a global !important nav-link color; keep the authenticated seller desktop header legible in dark mode. */
+@media (min-width: 992px) {
+    html[data-theme="dark"] body.seller-app-page .site-header-modern .main-nav .nav-link {
+        color: #F8FAFC !important;
+    }
+
+    html[data-theme="dark"] body.seller-app-page .site-header-modern .main-nav .nav-link:hover,
+    html[data-theme="dark"] body.seller-app-page .site-header-modern .main-nav .nav-link:focus-visible,
+    html[data-theme="dark"] body.seller-app-page .site-header-modern .main-nav .nav-link.active {
+        color: #F8FAFC !important;
+    }
+}
+
 body.seller-app-page .site-header-modern .navbar-toggler {
     border-color: #475569;
     color: #F8FAFC;
