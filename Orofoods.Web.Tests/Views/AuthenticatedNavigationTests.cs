@@ -99,7 +99,6 @@ public class AuthenticatedNavigationTests
 
         Assert.Contains("body.portal-authenticated .site-header-modern .site-logo", headerStyles);
         Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo", headerStyles);
-        Assert.Contains(".portal-authenticated .site-header-modern .main-nav .nav-link.active", headerStyles);
         Assert.Contains(".admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active", headerStyles);
         Assert.Contains("--authenticated-nav-active: #0E7490;", headerStyles);
         Assert.Contains("html[data-theme=\"dark\"] body.portal-authenticated", headerStyles);

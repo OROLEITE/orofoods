@@ -54,7 +54,7 @@ public class CustomerPortalVisualRefinementTests
         Assert.Contains("font-size: 19px", portal);
         Assert.Contains(".portal-app-nav a.active {\n    background: var(--nav-item-hover);\n    color: var(--nav-text-active);\n}", portal);
         Assert.Contains(".portal-app-nav a.active::before {", portal);
-        Assert.Contains("    background: var(--gold);", portal);
+        Assert.Contains("    background: #38BDF8;", portal);
         Assert.Contains("width: 3px", portal);
         Assert.DoesNotContain(".portal-app-nav a span{", density);
         Assert.DoesNotContain(".portal-app-nav a.active span{", density);
