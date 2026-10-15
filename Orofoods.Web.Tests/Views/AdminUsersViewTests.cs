@@ -25,6 +25,21 @@ public class AdminUsersViewTests
     }
 
     [Fact]
+    public void Actions_menu_keeps_existing_links_and_is_visible_when_open()
+    {
+        var view = ReadView("Index.cshtml");
+        var styles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "admin-users.css"));
+
+        Assert.Contains("<a asp-action=\"History\"", view);
+        Assert.Contains("<a asp-action=\"Edit\"", view);
+        Assert.Contains("<a asp-action=\"ResetPassword\"", view);
+        Assert.Contains(".admin-users-table-wrap:has(.admin-users-actions[open])", styles);
+        Assert.Contains(".admin-table-card:has(.admin-users-actions[open])", styles);
+        Assert.Contains(".admin-users-table td:has(.admin-users-actions[open])", styles);
+        Assert.Contains(".admin-users-actions summary:focus-visible", styles);
+    }
+
+    [Fact]
     public void Create_and_edit_views_group_fields_and_keep_antiforgery()
     {
         var create = ReadView("Create.cshtml");
