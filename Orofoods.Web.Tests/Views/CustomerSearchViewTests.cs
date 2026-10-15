@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Jint;
+
 namespace Orofoods.Web.Tests.Views;
 
 public sealed class CustomerSearchViewTests
@@ -45,5 +48,66 @@ public sealed class CustomerSearchViewTests
         Assert.Contains("ArrowDown", script);
         Assert.Contains("Escape", script);
         Assert.Contains("data-customer-search-submit", script);
+    }
+
+    [Fact]
+    public async Task First_typed_character_schedules_authorized_customer_search()
+    {
+        var scriptPath = Path.Combine(ProjectPath, "wwwroot", "js", "customer-search.js");
+        var script = File.ReadAllText(scriptPath);
+        const string harness = """
+            var inputListeners = {};
+            var scheduled = [];
+            var requests = [];
+            var input = { value: "", setAttribute() {}, addEventListener(name, callback) { inputListeners[name] = callback; }, focus() {} };
+            var status = { textContent: "" };
+            var results = {
+                children: [], setAttribute() {}, replaceChildren() { this.children = []; }, append(item) { this.children.push(item); },
+                querySelector() { return this.children[0] || null; }, querySelectorAll() { return this.children; }, addEventListener() {}
+            };
+            var root = {
+                dataset: { searchMode: "select", searchUrl: "/Admin/Portais/Clientes" },
+                querySelector(selector) {
+                    return selector === "[data-customer-search-input]" ? input
+                        : selector === "[data-customer-search-results]" ? results
+                        : selector === "[data-customer-search-status]" ? status : null;
+                },
+                matches(selector) { return selector === "form"; }
+            };
+            globalThis.document = { querySelectorAll() { return [root]; } };
+            globalThis.window = {
+                location: { origin: "https://orofoods.test" },
+                setTimeout(callback, delay) { scheduled.push({ callback, delay }); return scheduled.length; },
+                clearTimeout() {}
+            };
+            globalThis.URL = function (path, origin) {
+                this.searchParams = { set(name, value) { requests.push({ path, origin, name, value }); } };
+            };
+            globalThis.AbortController = function () {
+                this.signal = { aborted: false };
+                this.abort = () => { this.signal.aborted = true; };
+            };
+            globalThis.fetch = async () => ({ ok: true, json: async () => [] });
+            __SCRIPT__
+            (async () => {
+                input.value = "M";
+                inputListeners.input();
+                const debounce = scheduled[0].delay;
+                scheduled[0].callback();
+                for (let index = 0; index < 5; index++) await Promise.resolve();
+                return JSON.stringify({ debounce, requests, status: status.textContent });
+            })();
+            """;
+
+        var result = await new Engine().EvaluateAsync(harness.Replace("__SCRIPT__", script, StringComparison.Ordinal));
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.Equal(300, state.GetProperty("debounce").GetInt32());
+        var request = Assert.Single(state.GetProperty("requests").EnumerateArray());
+        Assert.Equal("/Admin/Portais/Clientes", request.GetProperty("path").GetString());
+        Assert.Equal("q", request.GetProperty("name").GetString());
+        Assert.Equal("M", request.GetProperty("value").GetString());
+        Assert.Equal("Nenhum cliente autorizado encontrado.", state.GetProperty("status").GetString());
     }
 }

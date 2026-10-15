@@ -65,5 +65,19 @@ public class SellerPortalShellTests
         Assert.Contains("Trocar vendedor", layout);
         Assert.Contains("Portal do Cliente", layout);
         Assert.Contains("/Portal/SelectCustomer", layout);
+        Assert.Contains("seller-app-admin-nav", layout);
+        Assert.Contains("aria-label=\"Acesso administrativo\"", layout);
+        Assert.Contains("fa-table-cells-large\" aria-hidden=\"true\"></i><span>Central de Acesso", layout);
+    }
+
+    [Fact]
+    public void Seller_sidebar_uses_compact_navigation_dimensions()
+    {
+        var styles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css"));
+
+        Assert.Contains("--seller-sidebar-width: 220px", styles);
+        Assert.Contains(".seller-app-nav a {", styles);
+        Assert.Contains("min-height: 40px", styles);
+        Assert.Contains(".seller-app-page .seller-app-nav a { min-height: 44px; }", styles);
     }
 }
