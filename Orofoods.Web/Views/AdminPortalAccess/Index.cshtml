@@ -1,22 +1,29 @@
 @model IReadOnlyList<Orofoods.Web.Models.Identity.AdminPortalAccessAudit>
 @{
-    ViewData["Title"] = "Acesso aos portais";
+    ViewData["Title"] = "Central de Acesso";
     Layout = "_AdminLayout";
 }
 
 <section class="admin-page admin-portal-access-page">
     <header class="admin-page-header">
-        <div><span class="eyebrow">ACESSO ADMINISTRATIVO</span><h1>Portais Cliente e Vendedor</h1><p>Entre nos portais com sua sessão administrativa e escolha o contexto de trabalho.</p></div>
+        <div><span class="eyebrow">ACESSO ADMINISTRATIVO</span><h1>Central de Acesso</h1><p>Entre nos portais com sua sessão administrativa e escolha o contexto de trabalho.</p></div>
     </header>
     <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
+            <article class="card h-100 p-4">
+                <h2 class="h4">Painel Administrativo</h2>
+                <p>Acesse as configurações e ferramentas administrativas.</p>
+                <a class="btn btn-gold mt-auto align-self-start" href="/Admin/Dashboard">Abrir painel</a>
+            </article>
+        </div>
+        <div class="col-md-4">
             <article class="card h-100 p-4">
                 <h2 class="h4">Portal Cliente</h2>
                 <p>Consulte catálogo, condições comerciais, carrinho e pedidos de um cliente aprovado.</p>
                 <a class="btn btn-gold mt-auto align-self-start" href="/Portal/SelectCustomer">Selecionar cliente</a>
             </article>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <article class="card h-100 p-4">
                 <h2 class="h4">Portal Vendedor</h2>
                 <p>Acesse a carteira, catálogo, pedidos e rascunhos de um vendedor ativo.</p>

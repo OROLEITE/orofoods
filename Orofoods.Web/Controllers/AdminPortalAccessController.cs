@@ -12,12 +12,17 @@ namespace Orofoods.Web.Controllers;
 [Route("Admin/Portais")]
 public sealed class AdminPortalAccessController(
     ApplicationDbContext db,
+    CustomerAccessService customerAccessService,
     AdminSellerContextService sellerContextService,
     AdminPortalAccessAuditService auditService) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken) =>
         View(await auditService.GetRecentAsync(cancellationToken));
+
+    [HttpGet("Clientes")]
+    public async Task<IActionResult> SearchCustomers(string? q, CancellationToken cancellationToken) =>
+        Json(await customerAccessService.SearchApprovedCustomerSuggestionsAsync(q, 20, cancellationToken));
 
     [HttpGet("SelecionarVendedor")]
     public async Task<IActionResult> SelectSeller(string? returnUrl)

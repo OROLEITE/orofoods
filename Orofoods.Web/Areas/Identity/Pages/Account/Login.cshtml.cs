@@ -109,7 +109,7 @@ public class LoginModel(
             var isCustomer = await _userManager.IsInRoleAsync(user, ApplicationRoles.Customer);
             var isOperator = await _userManager.IsInRoleAsync(user, ApplicationRoles.Operator);
             var homeUrl = Url.Content("~/");
-            var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
+            const string adminAccessCenterUrl = "/Admin/Portais";
             var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
             const string operatorCrmUrl = "/Admin/WhatsApp";
             var hasLocalReturnUrl = !string.IsNullOrWhiteSpace(returnUrl)
@@ -123,7 +123,7 @@ public class LoginModel(
                     return LocalRedirect(returnUrl!);
                 }
 
-                return LocalRedirect(adminDashboardUrl);
+                return LocalRedirect(adminAccessCenterUrl);
             }
 
             if (isOperator)

@@ -68,6 +68,13 @@ public sealed class OrderDraftsController(
         return editor is null ? Forbid() : View("Editor", editor);
     }
 
+    [HttpGet("/Vendedor/Rascunhos/Clientes")]
+    public async Task<IActionResult> SearchCustomers(string? q, CancellationToken cancellationToken = default)
+    {
+        var suggestions = await workspaceService.SearchCustomerSuggestionsAsync(User, q, 20, cancellationToken);
+        return suggestions is null ? Forbid() : Json(suggestions);
+    }
+
     [HttpGet("/Vendedor/Rascunhos/Produtos")]
     public async Task<IActionResult> SearchProducts(
         int customerId,

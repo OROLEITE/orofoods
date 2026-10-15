@@ -10,6 +10,10 @@
             <p class="seller-dashboard__eyebrow">OPERAÇÃO COMERCIAL</p>
             <h1 id="seller-dashboard-title">Olá, @Model.SellerName</h1>
             <p class="seller-dashboard__subtitle">Acompanhe sua carteira e continue suas vendas.</p>
+@if (User.IsInRole("Administrador"))
+{
+    <span class="seller-dashboard__admin-context">Acesso administrativo · @Model.SellerName</span>
+}
         </div>
         <nav class="seller-dashboard__actions" aria-label="Atalhos comerciais">
             <a class="seller-button seller-button--primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New">

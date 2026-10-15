@@ -16,6 +16,13 @@ public sealed class CustomersController(SellerWorkspaceService workspaceService)
         return customers is null ? Forbid() : View(customers);
     }
 
+    [HttpGet("/Vendedor/Clientes/Buscar")]
+    public async Task<IActionResult> Search(string? q, CancellationToken cancellationToken)
+    {
+        var suggestions = await workspaceService.SearchCustomerSuggestionsAsync(User, q, 20, cancellationToken);
+        return suggestions is null ? Forbid() : Json(suggestions);
+    }
+
     [HttpGet("/Vendedor/Clientes/{id:int}")]
     public async Task<IActionResult> Details(int id, CancellationToken cancellationToken)
     {

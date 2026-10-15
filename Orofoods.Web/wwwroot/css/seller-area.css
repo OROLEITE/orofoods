@@ -608,6 +608,66 @@
     background: var(--seller-surface);
 }
 
+.seller-app-admin-context {
+    display: grid;
+    gap: .35rem;
+    margin-top: auto;
+    padding: .8rem;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: .75rem;
+    background: rgb(255 255 255 / 7%);
+    color: var(--seller-sidebar-text);
+}
+
+.seller-app-admin-context > span {
+    color: var(--seller-sidebar-muted);
+    font-size: .68rem;
+    font-weight: 750;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.seller-app-admin-context > strong {
+    overflow-wrap: anywhere;
+    color: #FFFFFF;
+    font-size: .9rem;
+}
+
+.seller-app-admin-context a {
+    display: block;
+    min-height: 36px;
+    padding: .45rem .5rem;
+    border-radius: .45rem;
+    color: var(--seller-sidebar-text);
+    font-size: .8rem;
+    text-decoration: none;
+}
+
+.seller-app-admin-context a:hover,
+.seller-app-admin-context a:focus-visible {
+    background: rgb(255 255 255 / 12%);
+    color: #FFFFFF;
+}
+
+.seller-app-admin-context a:focus-visible {
+    outline: 2px solid var(--seller-focus);
+    outline-offset: 2px;
+}
+
+.seller-dashboard__admin-context {
+    display: inline-flex;
+    max-width: 100%;
+    margin-top: .45rem;
+    padding: .3rem .6rem;
+    border: 1px solid var(--seller-border);
+    border-radius: 999px;
+    background: var(--seller-surface);
+    color: var(--seller-muted);
+    font-size: .75rem;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
 html[data-theme="dark"] body.seller-app-page .seller-app-shell {
     --seller-canvas: #0B1220;
     --seller-surface: #121E30;
@@ -632,6 +692,39 @@ html[data-theme="dark"] body.seller-app-page .seller-dashboard__customer-icon {
 
 html[data-theme="dark"] body.seller-app-page .seller-dashboard__eyebrow {
     color: #E7BF67;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-shell {
+        --seller-canvas: #0B1220;
+        --seller-surface: #121E30;
+        --seller-text: #E6EDF7;
+        --seller-muted: #AAB9CC;
+        --seller-border: #2A3A50;
+        --seller-sidebar: #081A30;
+        --seller-sidebar-text: #E6EDF7;
+        --seller-sidebar-muted: #B2C2D6;
+        --seller-action: #3B82F6;
+        --seller-action-hover: #2563EB;
+        --seller-gold: #D5A84E;
+        --seller-icon: #38BDF8;
+        --seller-focus: #38BDF8;
+    }
+
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-nav a i,
+    html:not([data-theme="light"]) body.seller-app-page .seller-dashboard__metric-icon,
+    html:not([data-theme="light"]) body.seller-app-page .seller-dashboard__customer-icon {
+        color: #38BDF8;
+    }
+
+    html:not([data-theme="light"]) body.seller-app-page .seller-dashboard__eyebrow {
+        color: #E7BF67;
+    }
+
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-admin-context {
+        border-color: rgb(255 255 255 / 15%);
+        background: rgb(255 255 255 / 6%);
+    }
 }
 
 @media (min-width: 768px) {

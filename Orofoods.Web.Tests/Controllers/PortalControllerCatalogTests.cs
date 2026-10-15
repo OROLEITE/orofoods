@@ -67,6 +67,29 @@ public class PortalControllerCatalogTests
     }
 
     [Fact]
+    public async Task Invalid_customer_selection_does_not_load_the_customer_directory_or_write_context()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.Customers.Add(new Customer
+        {
+            LegalName = "Cliente Aprovado Ltda", TradeName = "Cliente Aprovado", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true
+        });
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        var controller = CreateController(db, session);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [new Claim(ClaimTypes.NameIdentifier, "admin-user"), new Claim(ClaimTypes.Role, "Administrador")], "test"));
+
+        var result = await controller.SelectCustomer(-1, "/Portal/Dashboard");
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<Customer>>(view.Model));
+        Assert.Null(new AdminCustomerContextService().GetSelectedCustomerId(session, "admin-user"));
+        Assert.Empty(await db.AdminPortalAccessAudits.ToListAsync());
+    }
+
+    [Fact]
     public async Task Catalog_exposes_the_total_number_of_cases_in_the_cart()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
