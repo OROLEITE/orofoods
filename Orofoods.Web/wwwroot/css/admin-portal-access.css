@@ -13,7 +13,7 @@
 }
 
 .admin-authenticated .admin-portal-access-page .admin-page-header {
-    margin-bottom: .75rem;
+    margin-bottom: .55rem;
 }
 
 .admin-authenticated .admin-portal-access-page .admin-page-header h1,
@@ -111,10 +111,6 @@
 
 .admin-authenticated .admin-portal-access-page .admin-portal-access__seller-form .form-text {
     margin: .2rem 0 .35rem;
-}
-
-.admin-authenticated .admin-portal-access-page .admin-page-header {
-    margin-bottom: .55rem;
 }
 
 .admin-authenticated .admin-portal-access-page .table {
