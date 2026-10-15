@@ -15,27 +15,52 @@
             <a class="btn btn-outline-dark" asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
         </header>
 
-        <form method="get" class="row g-2 mb-4" role="search">
-            <div class="col-md-9"><label class="visually-hidden" for="customer-search">Buscar cliente</label><input id="customer-search" class="form-control" name="q" value="@Model.Query" placeholder="Buscar por nome ou código" /></div>
-            <div class="col-md-3"><button class="btn btn-gold w-100" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button></div>
-        </form>
-
-        <div class="row g-3">
-            @foreach (var customer in Model.Customers)
-            {
-                <div class="col-md-6 col-xl-4">
-                    <article class="summary-card h-100">
-                        <small>@customer.Code</small>
-                        <h2 class="h5 mt-2">@customer.Name</h2>
-                        <p class="text-muted mb-3">@customer.City · @customer.Status</p>
-                        <a class="btn btn-outline-dark btn-sm" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id">Abrir workspace</a>
+        <form method="get" class="customer-search customer-search--wallet mb-4" role="search"
+              data-customer-search data-search-url="/Vendedor/Clientes/Buscar" data-search-mode="cards"
+              data-link-url-template="/Vendedor/Clientes/__id__" data-server-rendered-query="@Model.Query">
+            <label for="customer-search">Buscar por nome, CNPJ ou código WMC</label>
+            <div class="customer-search__form-row">
+                <input id="customer-search" class="form-control" type="search" name="q" value="@Model.Query"
+                       maxlength="100" autocomplete="organization" placeholder="Digite ao menos um caractere"
+                       aria-autocomplete="list" aria-controls="customer-search-results" data-customer-search-input />
+                <button class="btn btn-gold" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
+            </div>
+            <div class="customer-search__results customer-search__cards row g-3" id="customer-search-results" role="listbox"
+                 aria-label="Clientes da carteira" data-customer-search-results>
+                @foreach (var customer in Model.Customers)
+                {
+                    <article class="col-md-6 col-xl-4">
+                        <a class="customer-search__card summary-card h-100" asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id">
+                            <small>@customer.Code</small>
+                            <h2 class="h5 mt-2">@customer.Name</h2>
+                            <p class="mb-0">@customer.City · @customer.Status</p>
+                            <span class="customer-search__card-action">Abrir workspace <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
+                        </a>
                     </article>
-                </div>
-            }
-        </div>
-        @if (Model.Customers.Count == 0)
-        {
-            <p class="text-muted mt-4">Nenhum cliente encontrado na sua carteira.</p>
-        }
+                }
+            </div>
+            <div class="customer-search__status" role="status" aria-live="polite" data-customer-search-status>
+                @if (string.IsNullOrWhiteSpace(Model.Query))
+                {
+                    <span>Digite pelo menos um caractere para pesquisar sua carteira.</span>
+                }
+                else if (Model.Customers.Count == 0)
+                {
+                    <span>Nenhum cliente autorizado encontrado.</span>
+                }
+                else
+                {
+                    <span>@Model.Customers.Count cliente(s) encontrado(s).</span>
+                }
+            </div>
+        </form>
     </div>
 </section>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/customer-search.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/customer-search.js" asp-append-version="true"></script>
+}

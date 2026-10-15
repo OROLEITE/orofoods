@@ -7,6 +7,7 @@
 
 @section Head {
     <link rel="stylesheet" href="~/css/seller-order-drafts.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/customer-search.css" asp-append-version="true" />
 }
 
 <section class="section seller-order-drafts">
@@ -27,51 +28,44 @@
                     <p class="seller-order-drafts__muted mb-0">A busca mostra apenas clientes ativos e aprovados da sua carteira.</p>
                 </div>
             </header>
-            <section class="seller-order-drafts__card seller-order-drafts__customer-picker" aria-labelledby="customer-search-heading">
-                <h2 id="customer-search-heading">Buscar cliente</h2>
-                <form method="get" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" class="seller-order-drafts__search-form" role="search">
-                    <label for="customer-query">Nome, CNPJ ou código WMC</label>
-                    <div class="seller-order-drafts__search-row">
-                        <input id="customer-query" class="form-control" type="search" name="q" value="@Model.CustomerSearch" maxlength="100" autocomplete="organization" />
-                        <button class="btn seller-order-drafts__primary" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
-                    </div>
-                </form>
-                @if (string.IsNullOrWhiteSpace(Model.CustomerSearch))
-                {
-                    <p class="seller-order-drafts__muted mt-3 mb-0">Digite parte do nome ou código para localizar um cliente autorizado.</p>
-                }
-                else if (Model.CustomerResults.Count == 0)
-                {
-                    <p class="seller-order-drafts__empty-inline" role="status">Nenhum cliente autorizado encontrado.</p>
-                }
-                else
-                {
-                    <div class="seller-order-drafts__customer-results">
-                        @foreach (var customer in Model.CustomerResults)
-                        {
-                            <a class="seller-order-drafts__customer-option" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@customer.Id">
-                                <span class="seller-order-drafts__customer-mark" aria-hidden="true"><i class="fa-solid fa-building"></i></span>
-                                <span class="seller-order-drafts__customer-info"><strong>@customer.Name</strong><small>@customer.Code <span aria-hidden="true">·</span> @customer.City</small></span>
-                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
-                            </a>
-                        }
-                    </div>
-                    @if (Model.CustomerTotalPages > 1)
-                    {
-                        <nav class="seller-order-drafts__pagination" aria-label="Páginas de clientes">
-                            @if (Model.CustomerPage > 1)
-                            {
-                                <a asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-q="@Model.CustomerSearch" asp-route-page="@(Model.CustomerPage - 1)">Anterior</a>
-                            }
-                            <span>Página @Model.CustomerPage de @Model.CustomerTotalPages</span>
-                            @if (Model.CustomerPage < Model.CustomerTotalPages)
-                            {
-                                <a asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-q="@Model.CustomerSearch" asp-route-page="@(Model.CustomerPage + 1)">Próxima</a>
-                            }
-                        </nav>
-                    }
-                }
-            </section>
+            <section class="seller-order-drafts__card seller-order-drafts__customer-picker customer-search" aria-labelledby="customer-search-heading"
+         data-customer-search data-search-url="/Vendedor/Rascunhos/Clientes" data-search-mode="links"
+         data-link-url-template="/Vendedor/Rascunhos/Novo?customerId=__id__" data-server-rendered-query="@Model.CustomerSearch">
+    <h2 id="customer-search-heading">Buscar cliente</h2>
+    <form method="get" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" class="seller-order-drafts__search-form" role="search">
+        <label for="customer-query">Nome, CNPJ ou código WMC</label>
+        <div class="seller-order-drafts__search-row">
+            <input id="customer-query" class="form-control" type="search" name="q" value="@Model.CustomerSearch" maxlength="100" autocomplete="organization"
+                   aria-autocomplete="list" aria-controls="customer-search-results" data-customer-search-input />
+            <button class="btn seller-order-drafts__primary" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
+        </div>
+    </form>
+    <div class="customer-search__results seller-order-drafts__customer-results" id="customer-search-results" role="listbox"
+         aria-label="Clientes autorizados" data-customer-search-results>
+        @foreach (var customer in Model.CustomerResults)
+        {
+            <a class="seller-order-drafts__customer-option" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@customer.Id">
+                <span class="seller-order-drafts__customer-mark" aria-hidden="true"><i class="fa-solid fa-building"></i></span>
+                <span class="seller-order-drafts__customer-info"><strong>@customer.Name</strong><small>@customer.Code <span aria-hidden="true">·</span> @customer.City</small></span>
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            </a>
+        }
+    </div>
+    <div class="customer-search__status" role="status" aria-live="polite" data-customer-search-status>
+        @if (string.IsNullOrWhiteSpace(Model.CustomerSearch))
+        {
+            <span>Digite pelo menos um caractere para localizar um cliente autorizado.</span>
+        }
+        else if (Model.CustomerResults.Count == 0)
+        {
+            <span>Nenhum cliente autorizado encontrado.</span>
+        }
+        else
+        {
+            <span>@Model.CustomerResults.Count cliente(s) encontrado(s).</span>
+        }
+    </div>
+</section>
         }
         else
         {
@@ -305,6 +299,10 @@
 </section>
 
 @section Scripts {
+    @if (Model.CustomerId <= 0)
+    {
+        <script src="~/js/customer-search.js" asp-append-version="true"></script>
+    }
     @if (Model.CustomerId > 0 && isEditable)
     {
         <script src="~/js/seller-order-drafts.js" asp-append-version="true"></script>

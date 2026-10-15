@@ -11,6 +11,34 @@ namespace Orofoods.Web.Tests.Services;
 public sealed class SellerWorkspaceServiceTests
 {
     [Fact]
+    public async Task Wallet_search_does_not_load_the_customer_directory_and_caps_search_results()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "wallet-search", UserName = "wallet-search", IsActive = true, SalesRepresentative = representative };
+        db.AddRange(representative, seller);
+        for (var index = 0; index < 25; index++)
+        {
+            db.Customers.Add(new Customer
+            {
+                LegalName = $"Cliente {index:D2} Ltda", TradeName = $"Cliente {index:D2}",
+                Cnpj = $"{index:D2}.123.456/0001-78", Status = CustomerStatus.Approved,
+                IsActive = true, SalesRepresentative = representative
+            });
+        }
+        await db.SaveChangesAsync();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, seller.Id), new Claim(ClaimTypes.Role, ApplicationRoles.Seller)], "test"));
+        var service = new SellerWorkspaceService(db, new SalesRepresentativeAccessService(db));
+
+        var initial = await service.SearchCustomersAsync(principal, null);
+        var results = await service.SearchCustomersAsync(principal, "Cliente");
+
+        Assert.Empty(initial!.Customers);
+        Assert.Equal(20, results!.Customers.Count);
+    }
+
+    [Fact]
     public async Task Customer_suggestions_use_the_authenticated_seller_portfolio_and_require_admin_context()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -85,10 +113,15 @@ public sealed class SellerWorkspaceServiceTests
             [new Claim(ClaimTypes.NameIdentifier, seller.Id), new Claim(ClaimTypes.Role, ApplicationRoles.Seller)], "test"));
         var result = await new SellerWorkspaceService(db, new SalesRepresentativeAccessService(db))
             .SearchCustomersForOrderDraftAsync(principal, "51735297000174");
+        var initial = await new SellerWorkspaceService(db, new SalesRepresentativeAccessService(db))
+            .SearchCustomersForOrderDraftAsync(principal, null);
 
         Assert.NotNull(result);
         var match = Assert.Single(result.Customers);
         Assert.Equal(ownCustomer.Id, match.Id);
         Assert.Equal("AUTO POSTO", match.Name.ToUpperInvariant());
+        Assert.NotNull(initial);
+        Assert.Empty(initial.Customers);
+        Assert.Equal(0, initial.TotalCount);
     }
 }
