@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -21,7 +22,9 @@ public class IntegrationsController(
     IOptions<WmcSyncOptions> wmcSyncOptions,
     IWmcBrandReader wmcBrandReader,
     WmcProductPreviewService wmcProductPreviewService,
-    ILogger<IntegrationsController> logger) : Controller
+    ILogger<IntegrationsController> logger,
+    IHostEnvironment hostEnvironment,
+    WmcBimboStagingImportService wmcBimboStagingImportService) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -146,6 +149,30 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcBimboImport(CancellationToken cancellationToken)
+    {
+        if (!hostEnvironment.IsStaging())
+        {
+            return Forbid();
+        }
+
+        var actorUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(actorUserId))
+        {
+            return Forbid();
+        }
+
+        var result = await wmcBimboStagingImportService.ImportAsync(actorUserId, cancellationToken);
+        var response = new WmcBimboImportResponse(
+            result.Succeeded,
+            result.ImportedWmcCodes.Count,
+            result.SkippedWmcCodes.Count,
+            result.ErrorSummary);
+        return result.Succeeded ? Ok(response) : Conflict(response);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> WmcSyncNow(CancellationToken cancellationToken)
     {
         if (!wmcSyncOptions.Value.Enabled)
@@ -160,3 +187,9 @@ public class IntegrationsController(
         return RedirectToAction(nameof(Wmc));
     }
 }
+
+public sealed record WmcBimboImportResponse(
+    bool Succeeded,
+    int ImportedProducts,
+    int SkippedProducts,
+    string? ErrorCode);

@@ -1126,6 +1126,22 @@ namespace Orofoods.Web.Data.Migrations
                     b.ToTable("WmcInitialLoadReleaseAudits");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcProductImportRun", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("ActorUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<short>("BrandCode").HasColumnType("INTEGER");
+                    b.Property<DateTimeOffset?>("CompletedAtUtc").HasColumnType("TEXT");
+                    b.Property<string>("ErrorSummary").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<string>("ImportedProductCodes").IsRequired().HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<string>("Outcome").IsRequired().HasMaxLength(20).HasColumnType("TEXT");
+                    b.Property<string>("SkippedProductCodes").IsRequired().HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("StartedAtUtc").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("BrandCode", "StartedAtUtc");
+                    b.ToTable("WmcProductImportRuns");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
                 {
                     b.Property<int>("OrderId").HasColumnType("INTEGER");

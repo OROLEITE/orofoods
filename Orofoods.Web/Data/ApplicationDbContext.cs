@@ -44,6 +44,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<WmcManualExportArtifact> WmcManualExportArtifacts => Set<WmcManualExportArtifact>();
     public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
     public DbSet<WmcInitialLoadReleaseAudit> WmcInitialLoadReleaseAudits => Set<WmcInitialLoadReleaseAudit>();
+    public DbSet<WmcProductImportRun> WmcProductImportRuns => Set<WmcProductImportRun>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
     public DbSet<SellerOrderDraft> SellerOrderDrafts => Set<SellerOrderDraft>();
@@ -471,6 +472,16 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WmcSyncRun>().Property(x => x.FailedStage).HasMaxLength(40);
         builder.Entity<WmcSyncRun>().Property(x => x.ErrorMessage).HasMaxLength(2000);
         builder.Entity<WmcSyncRun>().HasIndex(x => new { x.Status, x.StartedAt });
+
+        builder.Entity<WmcProductImportRun>(entity =>
+        {
+            entity.Property(x => x.ActorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.Outcome).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.ImportedProductCodes).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.SkippedProductCodes).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.ErrorSummary).HasMaxLength(2000);
+            entity.HasIndex(x => new { x.BrandCode, x.StartedAtUtc });
+        });
         builder.Entity<WmcInitialLoadReleaseAudit>().HasKey(x => x.Id);
         builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.WmcCode).HasMaxLength(30).IsRequired();
         builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.AdminUserId).HasMaxLength(450).IsRequired();

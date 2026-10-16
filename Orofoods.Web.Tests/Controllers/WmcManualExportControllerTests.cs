@@ -94,6 +94,8 @@ public class WmcManualExportControllerTests
             null!,
             null!,
             null!,
+            null!,
+            null!,
             null!);
         var context = new DefaultHttpContext
         {
