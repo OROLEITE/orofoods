@@ -11,17 +11,32 @@ public class HomeController(ApplicationDbContext db) : Controller
 {
     public async Task<IActionResult> Index()
     {
-        var products = await db.Products
+        var publicProducts = db.Products
             .AsNoTracking()
-            .Where(product => product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)))
-            .Include(product => product.ProductCategory)
-            .Include(product => product.Images)
-            .OrderByDescending(product => product.IsFeatured)
-            .ThenBy(product => product.Name)
+            .Where(product => product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)));
+
+        var categories = await db.ProductCategories
+            .AsNoTracking()
+            .Where(category => category.IsActive && publicProducts.Any(product => product.ProductCategoryId == category.Id))
+            .OrderBy(category => category.SortOrder)
+            .ThenBy(category => category.Name)
             .Take(8)
             .ToListAsync();
 
-        return View(products);
+        var products = await publicProducts
+            .Include(product => product.ProductCategory)
+            .Include(product => product.Images)
+            .OrderByDescending(product => product.Brand == "BIMBO" && product.Images.Any())
+            .ThenByDescending(product => product.IsFeatured)
+            .ThenBy(product => product.Name)
+            .Take(4)
+            .ToListAsync();
+
+        return View(new PublicHomeViewModel
+        {
+            Categories = categories,
+            Products = products
+        });
     }
 
     public IActionResult Privacy()

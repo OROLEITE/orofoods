@@ -1,16 +1,14 @@
-@model IReadOnlyList<Orofoods.Web.Models.Catalog.Product>
+@model Orofoods.Web.ViewModels.PublicHomeViewModel
 @{
-    ViewData["Title"] = "Orofoods | Pães congelados para food service";
-    var highlights = Model.Take(3).ToList();
-    var featuredProducts = Model.Take(4).ToList();
+    ViewData["Title"] = "Orofoods | Distribuição para food service";
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var isAdministrator = User.IsInRole("Administrador");
     var isSalesRepresentative = User.IsInRole("Vendedor");
     var isCommercialManager = User.IsInRole("GerenteComercial");
-    var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog";
     var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
-    var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog";
     var loginDashboardUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FDashboard";
+    var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog";
+    var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog";
     var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
     var sellerDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Vendedor" }) ?? "/Vendedor";
     var commercialDashboardUrl = Url.Action("Index", "Commercial", new { area = "Admin" }) ?? "/Admin/Commercial";
@@ -19,66 +17,115 @@
         : isSalesRepresentative ? sellerDashboardUrl
         : isCommercialManager ? commercialDashboardUrl
         : customerDashboardUrl;
-    var orderUrl = !isAuthenticated ? loginCatalogUrl
-        : isAdministrator ? adminDashboardUrl
-        : isSalesRepresentative ? sellerDashboardUrl
-        : isCommercialManager ? commercialDashboardUrl
-        : customerCatalogUrl;
 }
 
-@if (TempData["RegistrationSuccess"] is string registrationSuccess)
-{
-    <div class="container pt-4"><div class="alert alert-success mb-0" role="status">@registrationSuccess</div></div>
-}
+<div class="public-home">
+    @if (TempData["RegistrationSuccess"] is string registrationSuccess)
+    {
+        <div class="container pt-3"><div class="alert alert-success mb-0" role="status">@registrationSuccess</div></div>
+    }
 
-<section class="home-showcase">
-    <div id="productShowcase" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6500">
-        <div class="carousel-indicators">
-            @for (var index = 0; index < highlights.Count; index++)
-            {
-                <button type="button" data-bs-target="#productShowcase" data-bs-slide-to="@index" class="@(index == 0 ? "active" : "")" aria-label="Produto em destaque @(index + 1)"></button>
-            }
+    <section class="public-home-hero" aria-labelledby="public-home-title">
+        <div class="container public-home-hero-grid">
+            <div class="public-home-hero-copy">
+                <p class="public-home-eyebrow"><span aria-hidden="true"></span> Distribuição B2B para food service</p>
+                <h1 id="public-home-title">Mais previsibilidade para a cozinha da sua operação.</h1>
+                <p class="public-home-hero-description">Uma parceria de abastecimento para hamburguerias, lanchonetes e restaurantes que precisam manter o ritmo todos os dias.</p>
+                <div class="public-home-hero-actions">
+                    @if (isAuthenticated)
+                    {
+                        <a class="btn public-home-primary-action" href="@portalUrl">Acessar meu portal</a>
+                    }
+                    else
+                    {
+                        <a class="btn public-home-primary-action" asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a>
+                    }
+                    <a class="btn public-home-secondary-action" asp-controller="Home" asp-action="Products">Explorar catálogo</a>
+                </div>
+                @if (!isAuthenticated)
+                {
+                    <p class="public-home-login-note">Já é cliente? <a href="@loginCatalogUrl">Entrar no portal</a></p>
+                }
+            </div>
+            <div class="public-home-hero-image public-home-bimbo-banner-placeholder" role="img" aria-label="Ilustração neutra de pão; não representa embalagem ou SKU específico">
+                <span class="public-home-bimbo-banner-illustration" aria-hidden="true"><i class="fa-solid fa-bread-slice"></i></span>
+                <div class="public-home-hero-caption"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Atendimento pensado para empresas</span></div>
+            </div>
         </div>
-        <div class="carousel-inner">
-            @if (highlights.Count == 0)
+    </section>
+
+    @if (Model.Categories.Count > 0)
+    {
+        <section class="public-home-category-section" aria-labelledby="public-home-categories-title">
+            <div class="container">
+                <div class="public-home-section-heading public-home-category-heading">
+                    <div>
+                        <p class="public-home-eyebrow"><span aria-hidden="true"></span> Navegue pelo catálogo</p>
+                        <h2 id="public-home-categories-title">Categorias disponíveis</h2>
+                    </div>
+                    <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Ver todos os produtos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                </div>
+                <div class="public-home-categories">
+                    @foreach (var category in Model.Categories)
+                    {
+                        <a class="public-home-category-card" asp-controller="Home" asp-action="Products" asp-route-category="@category.Slug">
+                            <span class="public-home-category-icon"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+                            <span>@category.Name</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square public-home-category-arrow" aria-hidden="true"></i>
+                        </a>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+
+    <section class="public-home-featured" id="produtos" aria-labelledby="public-home-featured-title">
+        <div class="container">
+            <div class="public-home-section-heading">
+                <div>
+                    <p class="public-home-eyebrow"><span aria-hidden="true"></span> Seleção Orofoods</p>
+                    <h2 id="public-home-featured-title">Produtos para sua operação</h2>
+                    <p class="public-home-section-description">Conheça os itens disponíveis no catálogo público e encontre opções para o dia a dia da sua cozinha.</p>
+                </div>
+                <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Explorar catálogo <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+            </div>
+
+            @if (Model.Products.Count == 0)
             {
-                <div class="carousel-item active"><div class="showcase-empty container"><p class="eyebrow light"><span></span> Orofoods</p><h1>Produtos selecionados para sua opera&ccedil;&atilde;o.</h1></div></div>
-            }
-            @for (var index = 0; index < highlights.Count; index++)
-            {
-                var product = highlights[index];
-                var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
-                <div class="carousel-item @(index == 0 ? "active" : "")">
-                    <article class="showcase-slide showcase-slide--renewed" style="--product-accent:@product.Accent">
-                        <div class="showcase-copy container" style="padding-left:max(32px,calc((100vw - 1180px)/2))"><div>
-                            <p class="eyebrow light"><span></span> @product.Brand | @product.Category</p>
-                            <p class="showcase-overline">P&Atilde;ES CONGELADOS PARA FOOD SERVICE</p>
-                            <h1>@product.Name</h1>
-                            <p class="showcase-description">@product.Description</p>
-                            <div class="showcase-actions"><a class="btn btn-gold btn-lg" href="@orderUrl">Fazer pedido <i class="fa-solid fa-arrow-right ms-2" aria-hidden="true"></i></a><a class="showcase-link" asp-controller="Home" asp-action="Products">Ver linha completa <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div>
-                            <p class="showcase-note"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Acesso comercial para empresas cadastradas.</p>
-                        </div></div>
-                        <div class="showcase-media">@if (image is not null) { <img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@image.AltText" /> } else { <span>@product.Brand</span> }</div>
-                    </article>
+                <div class="public-home-empty" role="status">
+                    <i class="fa-regular fa-rectangle-list" aria-hidden="true"></i>
+                    <p>Estamos preparando a seleção de produtos. Consulte o catálogo completo em breve.</p>
+                    <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Abrir catálogo</a>
                 </div>
             }
+            else
+            {
+                <div class="public-home-product-grid">
+                    @foreach (var product in Model.Products)
+                    {
+                        var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
+                        <article class="public-home-product-card">
+                            <a class="public-home-product-media" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Conhecer @product.Name">
+                                @if (image is not null)
+                                {
+                                    <img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@(string.IsNullOrWhiteSpace(image.AltText) ? product.Name : image.AltText)" loading="lazy" decoding="async" />
+                                }
+                                else
+                                {
+                                    <span class="public-home-product-placeholder"><i class="fa-regular fa-image" aria-hidden="true"></i><span>Imagem indisponível</span></span>
+                                }
+                            </a>
+                            <div class="public-home-product-body">
+                                <p class="public-home-product-brand">@product.Brand</p>
+                                <h3><a asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">@product.Name</a></h3>
+                                <p class="public-home-product-unit">@product.UnitDescription</p>
+                                <a class="public-home-product-action" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">Conhecer produto <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+
         </div>
-        @if (highlights.Count > 1)
-        {
-            <button class="carousel-control-prev" type="button" data-bs-target="#productShowcase" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span><span class="visually-hidden">Anterior</span></button>
-            <button class="carousel-control-next" type="button" data-bs-target="#productShowcase" data-bs-slide="next"><span class="carousel-control-next-icon"></span><span class="visually-hidden">Pr&oacute;ximo</span></button>
-        }
-    </div>
-</section>
-
-<section class="home-command-bar" aria-label="Diferenciais Orofoods"><div class="container"><div><i class="fa-solid fa-snowflake" aria-hidden="true"></i><span>Produtos congelados</span></div><div><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span>Pedido por caixa</span></div><div><i class="fa-solid fa-truck-fast" aria-hidden="true"></i><span>Entrega programada</span></div><a href="@portalUrl">Acessar portal <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div></section>
-
-<section class="section home-catalog" id="produtos"><div class="container"><div class="section-heading home-catalog-heading"><div><div class="eyebrow"><span></span> Cat&aacute;logo Orofoods</div><h2>O p&atilde;o certo,<br />no ritmo da sua cozinha.</h2></div><div><p>Uma sele&ccedil;&atilde;o pr&aacute;tica para opera&ccedil;&otilde;es que precisam de padr&atilde;o a cada pedido.</p><a class="text-link" asp-controller="Home" asp-action="Products">Explorar todos os produtos <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i></a></div></div><div class="home-feature-grid">
-@foreach (var product in featuredProducts)
-{
-    var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
-    <a class="home-product-card" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Ver produto @product.Name"><div class="home-product-image" style="--product-accent:@product.Accent">@if (image is not null) { <img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@image.AltText" /> } else { <span>@product.Brand</span> }<small>@product.Category</small></div><div class="home-product-body"><p>@product.Brand</p><h3>@product.Name</h3><span>@product.UnitDescription</span><strong>Ver produto <b>+</b></strong></div></a>
-}
-</div><div class="home-catalog-cta"><div><div class="eyebrow"><span></span> Compra B2B simplificada</div><h2>J&aacute; compra com a Orofoods?</h2><p>Entre para repetir pedidos, consultar sua tabela comercial e acompanhar as entregas.</p></div><div class="home-catalog-cta-actions"><a class="btn btn-dark" href="@portalUrl">@(isAuthenticated ? "Meu painel" : "Entrar")</a><a class="btn btn-outline-dark" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar empresa</a></div></div></div></section>
-
-<section class="home-operation"><div class="container home-operation-grid"><div class="home-operation-copy"><div class="eyebrow light"><span></span> Parceiro de opera&ccedil;&atilde;o</div><h2>Mais previsibilidade para quem n&atilde;o pode parar.</h2><p>Da escolha do produto &agrave; reposi&ccedil;&atilde;o programada, a Orofoods organiza uma compra recorrente, simples e transparente.</p><a class="btn btn-gold" asp-controller="Home" asp-action="HowItWorks">Como funciona <i class="fa-solid fa-arrow-right ms-2" aria-hidden="true"></i></a></div><div class="home-operation-points"><div><i class="fa-solid fa-layer-group" aria-hidden="true"></i><strong>Cat&aacute;logo objetivo</strong><span>Itens selecionados para alto giro.</span></div><div><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i><strong>Condi&ccedil;&otilde;es por empresa</strong><span>Pre&ccedil;os e pagamentos conforme cadastro.</span></div><div><i class="fa-solid fa-people-group" aria-hidden="true"></i><strong>Atendimento pr&oacute;ximo</strong><span>Suporte para acompanhar sua opera&ccedil;&atilde;o.</span></div></div></div></section>
+    </section>
+</div>

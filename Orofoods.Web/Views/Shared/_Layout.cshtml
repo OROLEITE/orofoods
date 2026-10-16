@@ -16,9 +16,10 @@
     var isSellerExperience = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         .Contains("seller-area-page", StringComparer.Ordinal);
+    var isPublicHomePage = string.IsNullOrEmpty(currentArea) && currentController == "Home" && currentAction == "Index";
     var isCustomerExperience = isPortalExperience || currentArea == "Identity" ||
         (string.IsNullOrEmpty(currentArea) && (currentController == "Home" || currentController == "CustomerRegistration" || (currentController == "Portal" && currentAction != "SelectCustomer")));
-    var bodyClass = string.Join(" ", new[] { ViewData["BodyClass"]?.ToString(), isCustomerExperience ? "customer-experience" : null }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    var bodyClass = string.Join(" ", new[] { ViewData["BodyClass"]?.ToString(), isCustomerExperience ? "customer-experience" : null, isPublicHomePage ? "public-home-page" : null }.Where(value => !string.IsNullOrWhiteSpace(value)));
     var layoutBodyHasMain = ViewData["LayoutBodyHasMain"] is true;
 }
 <!DOCTYPE html>
