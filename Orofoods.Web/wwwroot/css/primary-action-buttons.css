@@ -299,3 +299,111 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     outline: 3px solid #38BDF8;
     outline-offset: 2px;
 }
+
+:root {
+    --action-search: #0E7490;
+    --action-search-hover: #0B5D75;
+    --action-search-active: #084C61;
+    --action-search-foreground: #FFFFFF;
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn, button, input[type="button"], input[type="submit"], input[type="reset"]) {
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn, button, input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not(.disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn, button, input[type="button"], input[type="submit"], input[type="reset"]):is(:disabled, .disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
+    transition: none;
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn, button, input[type="button"], input[type="submit"], input[type="reset"]):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--action-primary) 55%, transparent);
+    outline-offset: 2px;
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn-primary, .btn-gold, .admin-primary-action, .admin-users-primary, .seller-button--primary, .seller-order-drafts__primary, .seller-order-drafts__save, .seller-order-drafts__send):not(.btn-search):not(:disabled):not(.disabled):not([aria-disabled="true"]) {
+    --bs-btn-color: var(--action-primary-foreground);
+    --bs-btn-bg: var(--action-primary);
+    --bs-btn-border-color: var(--action-primary);
+    --bs-btn-hover-color: var(--action-primary-foreground);
+    --bs-btn-hover-bg: var(--action-primary-hover);
+    --bs-btn-hover-border-color: var(--action-primary-hover);
+    --bs-btn-active-color: var(--action-primary-foreground);
+    --bs-btn-active-bg: var(--action-primary-active);
+    --bs-btn-active-border-color: var(--action-primary-active);
+    border-color: var(--action-primary);
+    background-color: var(--action-primary);
+    color: var(--action-primary-foreground);
+}
+
+@media (hover: hover) {
+    html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn, button, input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not(.disabled):not([aria-disabled="true"]):hover {
+        box-shadow: 0 2px 7px rgba(15, 23, 42, .16);
+    }
+
+    html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn-primary, .btn-gold, .admin-primary-action, .admin-users-primary, .seller-button--primary, .seller-order-drafts__primary, .seller-order-drafts__save, .seller-order-drafts__send):not(.btn-search):not(:disabled):not(.disabled):not([aria-disabled="true"]):hover {
+        border-color: var(--action-primary-hover);
+        background-color: var(--action-primary-hover);
+        color: var(--action-primary-foreground);
+    }
+
+    html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) .btn-search:not(:disabled):not(.disabled):not([aria-disabled="true"]):hover {
+        border-color: var(--action-search-hover);
+        background-color: var(--action-search-hover);
+        color: var(--action-search-foreground);
+    }
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn-primary, .btn-gold, .admin-primary-action, .admin-users-primary, .seller-button--primary, .seller-order-drafts__primary, .seller-order-drafts__save, .seller-order-drafts__send):not(.btn-search):not(:disabled):not(.disabled):not([aria-disabled="true"]):active {
+    border-color: var(--action-primary-active);
+    background-color: var(--action-primary-active);
+    color: var(--action-primary-foreground);
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) .btn-search {
+    --bs-btn-color: var(--action-search-foreground);
+    --bs-btn-bg: var(--action-search);
+    --bs-btn-border-color: var(--action-search);
+    --bs-btn-hover-color: var(--action-search-foreground);
+    --bs-btn-hover-bg: var(--action-search-hover);
+    --bs-btn-hover-border-color: var(--action-search-hover);
+    --bs-btn-active-color: var(--action-search-foreground);
+    --bs-btn-active-bg: var(--action-search-active);
+    --bs-btn-active-border-color: var(--action-search-active);
+    --bs-btn-disabled-color: var(--action-primary-disabled-foreground);
+    --bs-btn-disabled-bg: var(--action-primary-disabled-bg);
+    --bs-btn-disabled-border-color: var(--action-primary-disabled-border);
+    border-color: var(--action-search);
+    background-color: var(--action-search);
+    color: var(--action-search-foreground);
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) .btn-search:active:not(:disabled):not(.disabled):not([aria-disabled="true"]) {
+    border-color: var(--action-search-active);
+    background-color: var(--action-search-active);
+    color: var(--action-search-foreground);
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) .btn-search:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--action-search) 50%, transparent);
+    outline-offset: 2px;
+}
+
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn-primary, .btn-gold, .admin-primary-action, .admin-users-primary, .seller-button--primary, .seller-order-drafts__primary, .seller-order-drafts__save, .seller-order-drafts__send):is(:disabled, .disabled, [aria-disabled="true"]),
+html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) .btn-search:is(:disabled, .disabled, [aria-disabled="true"]) {
+    border-color: var(--action-primary-disabled-border);
+    background-color: var(--action-primary-disabled-bg);
+    color: var(--action-primary-disabled-foreground);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html body:is(.admin-authenticated, .portal-authenticated, .seller-app-page, .portal-customer-select) :is(.btn, button, input[type="button"], input[type="submit"], input[type="reset"]) {
+        transition: none !important;
+    }
+}

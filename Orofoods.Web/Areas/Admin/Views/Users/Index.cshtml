@@ -11,7 +11,7 @@
         <div><label for="query">Buscar por nome, e-mail ou login</label><input id="query" name="query" value="@Model.Query" class="form-control" placeholder="Nome, e-mail ou login" /></div>
         <div><label for="role">Perfil</label><select id="role" name="role" asp-items="Model.Roles" class="form-select"><option value="">Todos os perfis</option></select></div>
         <div><label for="isActive">Status</label><select id="isActive" name="isActive" class="form-select"><option value="">Todos</option><option value="true" selected="@(Model.IsActive == true)">Ativo</option><option value="false" selected="@(Model.IsActive == false)">Inativo</option></select></div>
-        <div class="admin-users-filter-actions"><button class="btn admin-users-primary" type="submit">Filtrar</button><a asp-action="Index" class="btn admin-users-secondary">Limpar</a></div>
+        <div class="admin-users-filter-actions"><button class="btn admin-users-primary btn-search" type="submit">Filtrar</button><a asp-action="Index" class="btn admin-users-secondary">Limpar</a></div>
     </form>
     <div class="admin-users-table-wrap admin-table-card"><table class="table admin-users-table admin-table align-middle">
         <thead><tr><th>Nome</th><th>E-mail</th><th>Login</th><th>Perfil</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Ações</th></tr></thead>
