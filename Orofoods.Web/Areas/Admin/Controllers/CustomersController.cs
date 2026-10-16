@@ -412,7 +412,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             return View(viewModel);
         }
 
-        TempData["CustomerApprovalSuccess"] = input.Status == CustomerStatus.Approved
+        TempData["CustomerApprovalSuccess"] = approve
             ? "Cliente aprovado e acesso comercial liberado com sucesso."
             : "Configurações comerciais salvas com sucesso.";
         return RedirectToAction(nameof(Index));
