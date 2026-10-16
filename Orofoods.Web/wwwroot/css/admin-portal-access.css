@@ -16,6 +16,10 @@
     margin-bottom: .55rem;
 }
 
+.admin-authenticated .admin-portal-access-page .portal-access-subtitle {
+    color: var(--access-muted);
+}
+
 .admin-authenticated .admin-portal-access-page .admin-page-header h1,
 .admin-authenticated .admin-portal-access-page .card h2 {
     color: var(--access-text);
@@ -43,6 +47,9 @@
 }
 
 .admin-authenticated .admin-portal-access-page .table-responsive {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
     border: 1px solid var(--access-border);
     border-radius: .6rem;
 }
@@ -140,6 +147,10 @@ html[data-theme="dark"] body.admin-authenticated .admin-portal-access-page {
 }
 
 html[data-theme="dark"] body.admin-authenticated .admin-portal-access-page .portal-access-audit-caption {
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated .admin-portal-access-page .portal-access-subtitle {
     color: #E5E7EB;
 }
 

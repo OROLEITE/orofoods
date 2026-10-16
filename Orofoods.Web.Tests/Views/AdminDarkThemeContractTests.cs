@@ -961,10 +961,18 @@ public class AdminDarkThemeContractTests
                         (stylesheet is "admin-navigation.css" or "header.css" && IsScopedAdminLightSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
                         (stylesheet is "admin-customers.css" or "admin-integrations.css" or "admin-registrations.css" or "admin-shell.css" &&
                          IsScopedAdminCommonSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
+                        IsPermittedScopedPublicHeaderRule(rule.Selector, stylesheet) ||
                         IsPermittedScopedCustomerOpportunityLayoutRule(rule.Selector, stylesheet),
                 $"Additional/changed {stylesheet} rule requires both gates, WhatsApp exclusion, and positive component/page scope: {rule.Selector}");
         }
     }
+
+    private static bool IsPermittedScopedPublicHeaderRule(string selector, string stylesheet) =>
+        stylesheet == "header.css" &&
+        selector.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page)", StringComparison.Ordinal) &&
+        selector.Contains(".site-header-modern .main-nav .nav-link", StringComparison.Ordinal) &&
+        (selector.StartsWith("html:not([data-theme=\"dark\"]) body:not", StringComparison.Ordinal) ||
+         selector.StartsWith("html[data-theme=\"dark\"] body:not", StringComparison.Ordinal));
 
     private static bool IsPermittedScopedCustomerOpportunityLayoutRule(string selector, string stylesheet) =>
         stylesheet == "admin-customers.css" &&

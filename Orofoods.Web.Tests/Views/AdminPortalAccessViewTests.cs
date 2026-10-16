@@ -40,4 +40,16 @@ public class AdminPortalAccessViewTests
         Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated .admin-portal-access-page", styles);
         Assert.Contains("@media (max-width: 575.98px)", styles);
     }
+
+    [Fact]
+    public void Access_center_uses_accessible_subtitles_and_labels_the_five_latest_audit_rows()
+    {
+        var view = File.ReadAllText(Path.Combine(ProjectPath, "Views", "AdminPortalAccess", "Index.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "admin-portal-access.css"));
+
+        Assert.Contains("class=\"portal-access-subtitle\"", view);
+        Assert.Contains("Últimos 5 acessos aos portais", view);
+        Assert.Contains("color: #E5E7EB", styles);
+        Assert.Contains("@media (max-width: 575.98px)", styles);
+    }
 }

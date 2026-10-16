@@ -837,8 +837,12 @@ body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page
 }
 
 body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: 132px;
     min-height: 44px;
+    line-height: 1.2;
 }
 
 @media (max-width: 767px) {
@@ -861,11 +865,13 @@ body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page
     }
 
     body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions {
+        align-items: center;
         flex-wrap: wrap;
     }
 
     body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-seller-edit-page .admin-form-actions .btn {
-        flex: 1 1 136px;
+        flex: 0 1 auto;
+        white-space: nowrap;
     }
 }
 
