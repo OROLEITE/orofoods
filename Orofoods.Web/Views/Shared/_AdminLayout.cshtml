@@ -47,6 +47,12 @@
     }
     @if (ViewContext.RouteData.Values["area"]?.ToString() == "Admin" &&
          ViewContext.RouteData.Values["controller"]?.ToString() == "Customers" &&
+         ViewContext.RouteData.Values["action"]?.ToString() == "Edit")
+    {
+        <link rel="stylesheet" href="~/css/admin-customer-config.css" asp-append-version="true" />
+    }
+    @if (ViewContext.RouteData.Values["area"]?.ToString() == "Admin" &&
+         ViewContext.RouteData.Values["controller"]?.ToString() == "Customers" &&
          ViewContext.RouteData.Values["action"]?.ToString() == "Details")
     {
         <link rel="stylesheet" href="~/css/admin-customer-details.css" asp-append-version="true" />
