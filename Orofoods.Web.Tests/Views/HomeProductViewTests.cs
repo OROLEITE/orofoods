@@ -18,7 +18,8 @@ public class HomeProductViewTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
 
-        Assert.Contains("home-product-card\" asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\"", markup);
+        Assert.Contains("class=\"public-home-product-media\" asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\"", markup);
+        Assert.Contains("class=\"public-home-product-action\" asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\"", markup);
     }
 
     [Fact]
