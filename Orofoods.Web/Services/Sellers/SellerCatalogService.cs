@@ -1,8 +1,7 @@
-using System.Globalization;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
+using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Pricing;
 
@@ -46,7 +45,7 @@ public sealed class SellerCatalogService(
         if (!string.IsNullOrWhiteSpace(query))
         {
             query = query.Trim();
-            var normalizedQuery = NormalizeSearchText(query);
+            var normalizedQuery = CatalogSearchText.Normalize(query);
             var candidates = await productsQuery
                 .Select(product => new ProductSearchCandidate(
                     product.Id,
@@ -187,17 +186,11 @@ public sealed class SellerCatalogService(
                 inventory.QuantityOnHand - inventory.QuantityReserved >= x.MinimumCases));
 
     private static bool MatchesSearch(ProductSearchCandidate product, string normalizedQuery) =>
-        NormalizeSearchText(product.Name).Contains(normalizedQuery, StringComparison.Ordinal) ||
-        NormalizeSearchText(product.Sku).Contains(normalizedQuery, StringComparison.Ordinal) ||
-        NormalizeSearchText(product.Description).Contains(normalizedQuery, StringComparison.Ordinal) ||
-        (product.WmcCode is not null && NormalizeSearchText(product.WmcCode).Contains(normalizedQuery, StringComparison.Ordinal)) ||
-        (product.Ean is not null && NormalizeSearchText(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal));
-
-    private static string NormalizeSearchText(string value) => string.Concat(
-            value.Normalize(NormalizationForm.FormD)
-                .Where(character => CharUnicodeInfo.GetUnicodeCategory(character) is not (
-                    UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark)))
-        .ToUpperInvariant();
+        CatalogSearchText.Normalize(product.Name).Contains(normalizedQuery, StringComparison.Ordinal) ||
+        CatalogSearchText.Normalize(product.Sku).Contains(normalizedQuery, StringComparison.Ordinal) ||
+        CatalogSearchText.Normalize(product.Description).Contains(normalizedQuery, StringComparison.Ordinal) ||
+        (product.WmcCode is not null && CatalogSearchText.Normalize(product.WmcCode).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+        (product.Ean is not null && CatalogSearchText.Normalize(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal));
 
     private static IReadOnlyList<SellerCatalogProductRow> ToRows(
         IEnumerable<Models.Catalog.Product> products,

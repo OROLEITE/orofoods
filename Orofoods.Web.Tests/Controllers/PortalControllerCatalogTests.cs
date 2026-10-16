@@ -32,6 +32,45 @@ public class PortalControllerCatalogTests
         public Task<PaymentGatewayOrder> RefundAsync(RefundPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
+    [Theory]
+    [InlineData("bau")]
+    [InlineData("BAUDUCCO")]
+    [InlineData("pão")]
+    [InlineData("PÃO")]
+    [InlineData("pao")]
+    [InlineData("WMC-TEST-998")]
+    [InlineData("7891234567890")]
+    public async Task Catalog_search_matches_name_partial_case_and_accents_and_product_codes(string search)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true
+        };
+        var category = new ProductCategory { Name = "Mercearia", Slug = "mercearia", IsActive = true };
+        var product = CreateProduct("SKU-BAU-001", "BAUDUCCO PÃO GRÃOS CLÁSSICOS 390G", category);
+        product.Brand = "Bauducco";
+        product.WmcCode = "WMC-TEST-998";
+        product.Ean = "7891234567890";
+        var user = new ApplicationUser
+        {
+            Id = "customer-user", UserName = "customer@orofoods.local", NormalizedUserName = "CUSTOMER@OROFOODS.LOCAL",
+            Email = "customer@orofoods.local", NormalizedEmail = "CUSTOMER@OROFOODS.LOCAL", Customer = customer, IsActive = true
+        };
+        db.AddRange(customer, category, product, user);
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 20 });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new TestSession());
+        var result = Assert.IsType<ViewResult>(await controller.Catalog(search, null, null, null));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Equal(product.Id, Assert.Single(products).Id);
+        Assert.Contains(product.Id, Assert.IsType<Dictionary<int, decimal>>(controller.ViewBag.Prices).Keys);
+    }
+
     [Fact]
     public async Task Administrator_customer_selection_is_scoped_and_audited()
     {

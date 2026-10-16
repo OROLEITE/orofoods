@@ -170,6 +170,26 @@ html[data-theme="dark"] body.admin-authenticated:has(.whatsapp-inbox-page) .site
     color: #F8FAFC !important;
 }
 
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link {
+    color: #1E293B !important;
+}
+
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:hover,
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:focus-visible,
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link.active {
+    color: #0F172A !important;
+}
+
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link {
+    color: #E5E7EB !important;
+}
+
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:hover,
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:focus-visible,
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link.active {
+    color: #F8FAFC !important;
+}
+
 html:not([data-theme="dark"]) .site-header-modern :is(.navbar-toggler, .btn-outline-dark) {
     border-color: var(--border-subtle);
     color: #334155;

@@ -27,7 +27,7 @@
 <section class="section portal-catalog-page">
     <div class="container">
         <form class="catalog-tools">
-            <input name="q" value="@Context.Request.Query["q"]" placeholder="Pesquisar por nome, SKU ou marca" aria-label="Pesquisar por nome, SKU ou marca" />
+            <input name="q" value="@Context.Request.Query["q"]" placeholder="Pesquisar por nome, SKU, marca, código WMC ou EAN" aria-label="Pesquisar por nome, SKU, marca, código WMC ou EAN" />
             <select name="category" aria-label="Categoria">
                 <option value="">Todas as categorias</option>
                 @foreach (var category in Model.Select(x => x.ProductCategory).OfType<ProductCategory>().DistinctBy(x => x.Id).OrderBy(x => x.SortOrder))

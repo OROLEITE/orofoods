@@ -14,6 +14,28 @@ namespace Orofoods.Web.Tests.Controllers;
 public sealed class AdminPortalAccessControllerTests
 {
     [Fact]
+    public async Task Recent_access_audit_returns_five_latest_rows_with_deterministic_ties()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var latest = DateTime.UtcNow.Date.AddHours(12);
+        db.AdminPortalAccessAudits.AddRange(Enumerable.Range(1, 7).Select(index => new AdminPortalAccessAudit
+        {
+            Id = index,
+            AdministratorUserId = "admin-user",
+            AccessType = AdminPortalAccessType.Customer,
+            TargetId = index,
+            TargetName = $"Cliente {index}",
+            SelectedAt = index >= 5 ? latest : latest.AddHours(-index)
+        }));
+        await db.SaveChangesAsync();
+
+        var result = await new AdminPortalAccessAuditService(db).GetRecentAsync();
+
+        Assert.Equal(new[] { 7, 6, 5, 1, 2 }, result.Select(item => item.Id));
+        Assert.Equal(7, await db.AdminPortalAccessAudits.CountAsync());
+    }
+
+    [Fact]
     public async Task Selecting_seller_keeps_admin_session_and_records_audit()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

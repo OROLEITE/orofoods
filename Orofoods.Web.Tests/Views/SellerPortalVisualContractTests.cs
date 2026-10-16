@@ -124,10 +124,13 @@ public sealed class SellerPortalVisualContractTests
         var accessStyles = CompactCss(File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "admin-portal-access.css")));
 
         Assert.Contains("class=\"portal-access-audit-caption mb-0\"", accessView);
+        Assert.Contains("class=\"portal-access-subtitle\"", accessView);
         Assert.Contains(".admin-authenticated.admin-portal-access-page.portal-access-audit-caption{color:var(--access-muted);}", accessStyles);
         Assert.Contains("html[data-theme=\"dark\"]body.admin-authenticated.admin-portal-access-page.portal-access-audit-caption{color:#E5E7EB;}", accessStyles);
+        Assert.Contains("html[data-theme=\"dark\"]body.admin-authenticated.admin-portal-access-page.portal-access-subtitle{color:#E5E7EB;}", accessStyles);
         Assert.Contains("--access-muted:#64748B;", accessStyles);
         Assert.True(ContrastRatio("#E5E7EB", "#111827") >= 4.5);
+        Assert.True(ContrastRatio("#E5E7EB", "#0B1220") >= 4.5);
     }
 
     [Fact]

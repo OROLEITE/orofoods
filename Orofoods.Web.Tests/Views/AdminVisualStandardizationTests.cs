@@ -33,6 +33,18 @@ public sealed class AdminVisualStandardizationTests
         Assert.Contains("asp-route-sort=\"customer\"", view);
         Assert.Contains("asp-route-page=\"@currentPage\"", view);
         Assert.Contains("customer-status--@customer.Status", view);
+        Assert.Contains("value=\"@customerStatus\"", view);
+        Assert.Contains("StatusLabel(customerStatus)", view);
+        foreach (var statusMapping in new[]
+        {
+            "CustomerStatus.Pending => \"Pendente\"",
+            "CustomerStatus.Approved => \"Aprovado\"",
+            "CustomerStatus.Blocked => \"Bloqueado\"",
+            "_ => \"Inativo\""
+        })
+            Assert.Contains(statusMapping, view);
+        Assert.Contains("gerencie as condições comerciais", view);
+        Assert.DoesNotContain("condi&ccedil;&otilde;es", view);
         Assert.Contains("asp-action=\"Details\"", view);
         Assert.Contains("asp-action=\"Edit\"", view);
         Assert.Contains("asp-action=\"NewOrder\"", view);
@@ -66,6 +78,19 @@ public sealed class AdminVisualStandardizationTests
         Assert.Contains("asp-action=\"Index\"", view);
         Assert.Contains("Salvar vendedor", view);
         Assert.Contains("admin-form-actions", view);
+    }
+
+    [Fact]
+    public void Seller_edit_actions_keep_compact_touch_targets_at_mobile_widths()
+    {
+        var registrations = ReadCss("admin-registrations.css");
+        var compact = System.Text.RegularExpressions.Regex.Replace(registrations, @"\s+", string.Empty);
+
+        Assert.Contains("align-items:center;", compact);
+        Assert.Contains("flex:01auto;", compact);
+        Assert.Contains("white-space:nowrap;", compact);
+        Assert.Contains("min-height:44px", compact);
+        Assert.Contains("@media(max-width:767px)", compact);
     }
 
     [Fact]

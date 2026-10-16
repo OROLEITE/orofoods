@@ -10,7 +10,7 @@ public sealed class AdminPortalAccessAuditService(ApplicationDbContext db)
         db.AdminPortalAccessAudits.AsNoTracking()
             .OrderByDescending(x => x.SelectedAt)
             .ThenByDescending(x => x.Id)
-            .Take(100)
+            .Take(5)
             .ToListAsync(cancellationToken);
 
     public async Task RecordSelectionAsync(

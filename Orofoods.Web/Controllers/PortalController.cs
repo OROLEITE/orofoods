@@ -10,6 +10,7 @@ using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Customers;
+using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Payments;
@@ -117,12 +118,32 @@ public class PortalController(
 
         if (!string.IsNullOrWhiteSpace(q))
         {
-            query = query.Where(x =>
-                x.Name.Contains(q) ||
-                x.Sku.Contains(q) ||
-                x.Brand.Contains(q) ||
-                x.Description.Contains(q) ||
-                x.ProductCategory!.Name.Contains(q));
+            var normalizedQuery = CatalogSearchText.Normalize(q.Trim());
+            var candidates = await query.Select(product => new
+            {
+                product.Id,
+                product.Name,
+                product.Sku,
+                product.Brand,
+                product.Description,
+                CategoryName = product.ProductCategory!.Name,
+                product.WmcCode,
+                product.Ean
+            }).ToListAsync();
+
+            var matchingIds = candidates
+                .Where(product =>
+                    CatalogSearchText.Normalize(product.Name).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.Sku).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.Brand).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.Description).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.CategoryName).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    (product.WmcCode is not null && CatalogSearchText.Normalize(product.WmcCode).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+                    (product.Ean is not null && CatalogSearchText.Normalize(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal)))
+                .Select(product => product.Id)
+                .ToArray();
+
+            query = query.Where(product => matchingIds.Contains(product.Id));
         }
 
         if (!string.IsNullOrWhiteSpace(category))
