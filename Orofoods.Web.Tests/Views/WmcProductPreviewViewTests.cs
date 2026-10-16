@@ -96,6 +96,8 @@ public sealed class WmcProductPreviewViewTests
         var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
         var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
         var releaseService = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcInitialLoadReadinessReleaseService.cs"));
+        var importService = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcBimboStagingImportService.cs"));
+        var productRules = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcBimboProductRules.cs"));
 
         Assert.Contains("WmcBimboSimulate", controller, StringComparison.Ordinal);
         Assert.Contains("WmcBimboImport", controller, StringComparison.Ordinal);
@@ -110,6 +112,12 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Importando...", view, StringComparison.Ordinal);
         Assert.Contains("@product.CommercialStatus", view, StringComparison.Ordinal);
         Assert.Contains("product.Reasons", view, StringComparison.Ordinal);
-        Assert.Contains("ValidateCommercialData", releaseService, StringComparison.Ordinal);
+        Assert.Contains("var canActivateBimbo = hostEnvironment.IsStaging() && initialLoadReleaseOptions.Value.Enabled;", controller, StringComparison.Ordinal);
+        Assert.Contains("WmcBimboProductRules.ValidateStagingActivationData(product, inventory)", releaseService, StringComparison.Ordinal);
+        Assert.Contains("var issues = allowStagingActivation", importService, StringComparison.Ordinal);
+        Assert.Contains("? WmcBimboProductRules.ValidateStagingActivationData(product, inventory)", importService, StringComparison.Ordinal);
+        Assert.Contains(": WmcBimboProductRules.ValidateCommercialData(product, product.ProductCategory, inventory)", importService, StringComparison.Ordinal);
+        Assert.Contains("if (category is null || !category.IsActive)", productRules, StringComparison.Ordinal);
+        Assert.Contains("if (!IsValidBarcode(product.Dun14, 14))", productRules, StringComparison.Ordinal);
     }
 }
