@@ -39,7 +39,7 @@
                         <small>@product.Sku</small>
                         <h2 class="h5 seller-product-name">@product.Name</h2>
                         <p class="text-muted small seller-product-description">@product.Description</p>
-                        <p class="seller-product-price mb-0">@product.UnitPrice.ToString("C")</p>
+                        <p class="seller-product-price mb-0">@product.UnitPrice.ToString("C") / @product.PriceUnitLabel</p>
                         <p class="seller-product-unit">@product.UnitDescription</p>
                         <form asp-area="Vendedor" asp-controller="Cart" asp-action="Add" asp-route-customerId="@Model.CustomerId" method="post" class="seller-add-form seller-product-actions">
                             @Html.AntiForgeryToken()

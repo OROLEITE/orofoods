@@ -9,6 +9,8 @@
     const paginationHost = document.getElementById('product-pagination');
     const itemsHost = document.getElementById('draft-items');
     const totalHost = document.getElementById('draft-total');
+    const minimumOrderHost = document.getElementById('seller-minimum-order-gap');
+    const minimumOrder = Number(document.getElementById('seller-minimum-order')?.dataset.minimumOrder) || 0;
     const itemCountHost = document.getElementById('draft-item-count');
     const summaryCountHost = document.getElementById('summary-item-count');
     const removalStatus = document.getElementById('draft-removal-status');
@@ -58,6 +60,11 @@
             if (subtotal) subtotal.textContent = money.format(price * quantity);
         });
         totalHost.textContent = money.format(total);
+        if (minimumOrderHost) {
+            minimumOrderHost.textContent = total < minimumOrder
+                ? `Faltam ${money.format(minimumOrder - total)} para atingir o mínimo.`
+                : 'Pedido mínimo atingido.';
+        }
         itemCountHost.textContent = String(rows.length);
         summaryCountHost.textContent = String(rows.length);
         emptyItems.hidden = rows.length > 0;

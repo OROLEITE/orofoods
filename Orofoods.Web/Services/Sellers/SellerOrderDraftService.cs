@@ -279,7 +279,10 @@ public sealed class SellerOrderDraftService(
 
         draft.DeliveryAddressId = input.DeliveryAddressId;
         draft.PaymentTermId = input.PaymentTermId;
-        draft.RequestedDeliveryDate = input.RequestedDeliveryDate;
+        if (input.RequestedDeliveryDate.HasValue)
+        {
+            draft.RequestedDeliveryDate = input.RequestedDeliveryDate;
+        }
         draft.Notes = input.Notes?.Trim() ?? "";
         draft.Version++;
         draft.UpdatedAt = DateTime.UtcNow;
@@ -456,8 +459,8 @@ public sealed class SellerOrderDraftService(
 
             var productMinimums = await db.Products.AsNoTracking()
                 .Where(x => items.Select(item => item.ProductId).Contains(x.Id))
-                .Select(x => new { x.Id, x.MinimumCases })
-                .ToDictionaryAsync(x => x.Id, x => x.MinimumCases, cancellationToken);
+                .Select(x => new { x.Id, x.MinimumCases, x.CommercialUnitCode })
+                .ToDictionaryAsync(x => x.Id, x => x.CommercialUnitCode == "PCT" ? 1 : x.MinimumCases, cancellationToken);
             if (items.Any(item => !productMinimums.TryGetValue(item.ProductId, out var minimum) || item.Quantity < minimum))
             {
                 return (false, Failure(SellerOrderDraftErrorCodes.BelowMinimumQuantity,
@@ -498,7 +501,7 @@ public sealed class SellerOrderDraftService(
                 item.Quantity,
                 item.RequestedDiscountAmount,
                 prices.GetValueOrDefault(item.ProductId, item.Product?.BasePrice ?? 0m),
-                item.Product?.MinimumCases ?? 1)).ToArray());
+                item.Product?.MinimumSalesQuantity ?? 1)).ToArray());
     }
 
     private void DetachDraft(SellerOrderDraft draft)

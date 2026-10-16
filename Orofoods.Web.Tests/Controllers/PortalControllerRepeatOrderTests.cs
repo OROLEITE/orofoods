@@ -286,6 +286,12 @@ public class PortalControllerRepeatOrderTests
 
     private static PortalController CreateController(Orofoods.Web.Data.ApplicationDbContext db, string userId)
     {
+        if (!db.OrderMinimumSettings.Any())
+        {
+            db.OrderMinimumSettings.Add(new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
+            db.SaveChanges();
+        }
+
         var priceService = new PriceService(db);
         var controller = new PortalController(
             db,

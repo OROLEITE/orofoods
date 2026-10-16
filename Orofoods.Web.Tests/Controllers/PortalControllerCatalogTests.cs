@@ -161,7 +161,7 @@ public class PortalControllerCatalogTests
         await db.SaveChangesAsync();
 
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{firstProduct.Id}\":2,\"{secondProduct.Id}\":3}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{firstProduct.Id}\":2,\"{secondProduct.Id}\":3}}");
         var controller = CreateController(db, session);
 
         await controller.Catalog(null, null, null, null);
@@ -199,7 +199,7 @@ public class PortalControllerCatalogTests
         await db.SaveChangesAsync();
 
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":2}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":2}}");
         var controller = CreateController(db, session);
 
         await controller.Catalog(null, null, null, null);

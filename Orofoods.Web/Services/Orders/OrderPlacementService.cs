@@ -219,7 +219,7 @@ public sealed class OrderPlacementService(
             return OrderPlacementResult.Failure("Um ou mais produtos não estão disponíveis.");
         }
 
-        if (strictDraftLines && lines.Any(line => line.Quantity < products[line.ProductId].MinimumCases))
+        if (strictDraftLines && lines.Any(line => line.Quantity < products[line.ProductId].MinimumSalesQuantity))
         {
             return OrderPlacementResult.Failure("A quantidade de um ou mais produtos está abaixo do mínimo de caixas.");
         }
@@ -251,13 +251,14 @@ public sealed class OrderPlacementService(
         foreach (var line in lines)
         {
             var product = products[line.ProductId];
-            var quantity = strictDraftLines ? line.Quantity : Math.Max(line.Quantity, product.MinimumCases);
+            var quantity = strictDraftLines ? line.Quantity : Math.Max(line.Quantity, product.MinimumSalesQuantity);
             var unitPrice = prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice);
             order.Items.Add(new OrderItem
             {
                 ProductId = product.Id,
                 ProductNameSnapshot = product.Name,
                 SkuSnapshot = product.Sku,
+                SalesUnitCodeSnapshot = product.EffectiveSalesUnitCode,
                 Quantity = quantity,
                 UnitPrice = unitPrice,
                 Subtotal = unitPrice * quantity
@@ -273,9 +274,13 @@ public sealed class OrderPlacementService(
                 OrderPlacementErrorCodes.CommercialQuoteChanged);
         }
 
-        if (order.Total < customer.MinimumOrder)
+        var configuredMinimum = await db.OrderMinimumSettings.AsNoTracking()
+            .Select(x => (decimal?)x.MinimumAmount)
+            .SingleOrDefaultAsync(cancellationToken);
+        var minimumOrder = OrderMinimumPolicy.Resolve(configuredMinimum, customer.MinimumOrder);
+        if (!OrderMinimumPolicy.MeetsMinimum(order.Subtotal, minimumOrder))
         {
-            return OrderPlacementResult.Failure($"O pedido mínimo é {customer.MinimumOrder:C}.");
+            return OrderPlacementResult.Failure($"O valor mínimo dos itens é {minimumOrder:C}, após os descontos e antes do frete.");
         }
 
         if (paymentTerm.DaysUntilDue > 0 && order.Total > customer.CreditLimit - customer.CreditUsed)

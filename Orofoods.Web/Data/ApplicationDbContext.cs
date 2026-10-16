@@ -54,6 +54,7 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<WhatsAppConversation> WhatsAppConversations => Set<WhatsAppConversation>();
     public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
+    public DbSet<OrderMinimumSettings> OrderMinimumSettings => Set<OrderMinimumSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -84,6 +85,14 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         });
 
         builder.Entity<ApplicationUser>().Property(x => x.FullName).HasMaxLength(256).IsRequired();
+
+        builder.Entity<OrderMinimumSettings>(entity =>
+        {
+            entity.ToTable("OrderMinimumSettings", table => table.HasCheckConstraint("CK_OrderMinimumSettings_Singleton", "\"Id\" = 1"));
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.MinimumAmount).HasPrecision(12, 2);
+            entity.Property(x => x.UpdatedByUserId).HasMaxLength(450);
+        });
 
         // Preserve the established PostgreSQL Identity schema widths across EF provider upgrades.
         builder.Entity<IdentityUserLogin<string>>().Property(x => x.LoginProvider).HasMaxLength(128);

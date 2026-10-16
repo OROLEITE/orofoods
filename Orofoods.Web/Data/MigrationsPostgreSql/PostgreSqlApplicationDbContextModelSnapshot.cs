@@ -217,14 +217,26 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<string>("CommercialUnitCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("Dun14")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)");
+
                     b.Property<string>("Ean")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Ean13")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
 
                     b.Property<string>("Ingredients")
                         .IsRequired()
@@ -246,6 +258,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<bool>("IsWmcActive")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("LogisticsUnitCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<int>("MinimumCases")
                         .HasColumnType("integer");
 
@@ -253,6 +269,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .IsRequired()
                         .HasMaxLength(140)
                         .HasColumnType("character varying(140)");
+
+                    b.Property<int?>("PackagesPerCase")
+                        .HasColumnType("integer");
 
                     b.Property<int>("ProductCategoryId")
                         .HasColumnType("integer");
@@ -567,6 +586,30 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("OpportunityId", "OccurredAt");
 
                     b.ToTable("CrmOpportunityHistories");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.OrderMinimumSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MinimumAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OrderMinimumSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderMinimumSettings_Singleton", "\"Id\" = 1");
+                        });
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Commercial.UserNotification", b =>
@@ -1850,6 +1893,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SalesUnitCodeSnapshot")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("SkuSnapshot")
                         .IsRequired()

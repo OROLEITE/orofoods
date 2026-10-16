@@ -11,7 +11,7 @@
     var registrationsActive = controller is "Categories" or "PriceTables" or "PaymentTerms";
     var teamActive = controller == "SalesRepresentatives";
     var managementActive = controller == "Reports";
-    var systemActive = controller is "Integrations" or "Users";
+    var systemActive = controller is "Integrations" or "Users" or "OrderSettings";
     string Active(string value) => controller == value ? "active" : string.Empty;
 }
 
@@ -89,6 +89,7 @@
             <div id="@prefix-Settings" class="admin-nav-submenu collapse @(systemActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@systemActive.ToString().ToLowerInvariant()">
                 <a class="admin-nav-link admin-nav-link--nested @Active("Users")" asp-area="Admin" asp-controller="Users" asp-action="Index"><i class="fa-solid fa-users-gear" aria-hidden="true"></i><span>Usuários e Acessos</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Integrations")" asp-area="Admin" asp-controller="Integrations" asp-action="Index"><i class="fa-solid fa-plug" aria-hidden="true"></i><span>Integrações</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @Active("OrderSettings")" asp-area="Admin" asp-controller="OrderSettings" asp-action="Index"><i class="fa-solid fa-coins" aria-hidden="true"></i><span>Pedido mínimo</span></a>
             </div>
         </div>
     }

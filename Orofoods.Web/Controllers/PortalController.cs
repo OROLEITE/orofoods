@@ -128,7 +128,9 @@ public class PortalController(
                 product.Description,
                 CategoryName = product.ProductCategory!.Name,
                 product.WmcCode,
-                product.Ean
+                product.Ean,
+                product.Ean13,
+                product.Dun14
             }).ToListAsync();
 
             var matchingIds = candidates
@@ -139,7 +141,9 @@ public class PortalController(
                     CatalogSearchText.Normalize(product.Description).Contains(normalizedQuery, StringComparison.Ordinal) ||
                     CatalogSearchText.Normalize(product.CategoryName).Contains(normalizedQuery, StringComparison.Ordinal) ||
                     (product.WmcCode is not null && CatalogSearchText.Normalize(product.WmcCode).Contains(normalizedQuery, StringComparison.Ordinal)) ||
-                    (product.Ean is not null && CatalogSearchText.Normalize(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal)))
+                    (product.Ean is not null && CatalogSearchText.Normalize(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+                    (product.Ean13 is not null && CatalogSearchText.Normalize(product.Ean13).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+                    (product.Dun14 is not null && CatalogSearchText.Normalize(product.Dun14).Contains(normalizedQuery, StringComparison.Ordinal)))
                 .Select(product => product.Id)
                 .ToArray();
 
@@ -527,16 +531,20 @@ public class PortalController(
         var items = order.Items.Select(item =>
         {
             var product = products[item.ProductId];
+            var salesUnitMatches = item.SalesUnitCodeSnapshot is null
+                ? string.IsNullOrWhiteSpace(product.CommercialUnitCode)
+                : string.Equals(item.SalesUnitCodeSnapshot, product.EffectiveSalesUnitCode, StringComparison.OrdinalIgnoreCase);
             return new RepeatItemVm(
                 product.Id,
                 product.Sku,
                 product.Name,
                 product.UnitDescription,
-                product.MinimumCases,
-                product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) ? item.Quantity : 0,
+                product.MinimumSalesQuantity,
+                product.IsAvailable && salesUnitMatches && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) ? item.Quantity : 0,
                 prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice),
-                product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)),
-                product.SubstituteProduct?.Name);
+                product.IsAvailable && salesUnitMatches && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)),
+                product.SubstituteProduct?.Name,
+                product.PriceUnitLabel);
         }).ToList();
 
         return View(new RepeatOrderVm
@@ -546,7 +554,10 @@ public class PortalController(
             Items = items,
             Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
             PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList(),
-            AttemptKey = Guid.NewGuid().ToString("N")
+            AttemptKey = Guid.NewGuid().ToString("N"),
+            MinimumOrder = OrderMinimumPolicy.Resolve(
+                await db.OrderMinimumSettings.AsNoTracking().Select(setting => (decimal?)setting.MinimumAmount).SingleOrDefaultAsync(),
+                customer.MinimumOrder)
         });
     }
 
@@ -674,7 +685,7 @@ public class PortalController(
             .ToDictionaryAsync(inventory => inventory.ProductId);
         foreach (var product in productList)
         {
-            product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= product.MinimumCases;
+            product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= product.MinimumSalesQuantity;
         }
     }
 }

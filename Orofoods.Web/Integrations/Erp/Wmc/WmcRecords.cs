@@ -18,4 +18,9 @@ public sealed record WmcProductRecord(
     decimal? PrecoCusto = null,
     decimal? PrecoVenda = null,
     decimal? EstoqueReservado = null,
-    DateTime? DataAlteracao = null);
+    DateTime? DataAlteracao = null,
+    string? Ean13 = null,
+    string? Dun14 = null,
+    string? CommercialUnitCode = null,
+    string? LogisticsUnitCode = null,
+    int? PackagesPerCase = null);

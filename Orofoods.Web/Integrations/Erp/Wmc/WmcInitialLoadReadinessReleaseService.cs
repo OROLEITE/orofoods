@@ -40,7 +40,7 @@ public sealed class WmcInitialLoadReadinessReleaseService(
             .Where(x => x.Id == productId && x.WmcCode == "243680" && !x.WmcInitialLoadReady
                 && x.IsWmcActive && x.WmcStockAvailable && x.IsActive && x.IsAvailable
                 && db.ProductInventories.Any(i => i.ProductId == x.Id && i.IsManuallyAdjusted
-                    && i.QuantityOnHand - i.QuantityReserved >= x.MinimumCases))
+                    && i.QuantityOnHand - i.QuantityReserved >= (x.CommercialUnitCode == "PCT" ? 1 : x.MinimumCases)))
             .ExecuteUpdateAsync(update => update.SetProperty(x => x.WmcInitialLoadReady, true), cancellationToken);
 
         if (changed == 0)

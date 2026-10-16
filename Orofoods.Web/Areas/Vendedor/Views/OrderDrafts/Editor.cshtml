@@ -174,7 +174,7 @@
                                                 <span class="seller-order-drafts__sku">@item.Sku</span>
                                                 <h3>@item.Name</h3>
                                                 <span class="seller-order-drafts__muted">@item.UnitDescription</span>
-                                                <span class="seller-order-drafts__unit-price">@item.UnitPrice.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) por unidade comercial</span>
+                                                <span class="seller-order-drafts__unit-price">@item.UnitPrice.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) por @item.PriceUnitLabel</span>
                                             </div>
                                             <div class="seller-order-drafts__item-controls">
                                                 @if (item.RemovalPending)
@@ -235,10 +235,7 @@
                                         </select>
                                         @if (Model.PaymentTerms.Count == 0) { <small class="seller-order-drafts__field-hint">Nenhuma condição está autorizada para este cliente.</small> }
                                     </div>
-                                    <div>
-                                        <label for="delivery-date">Data de entrega solicitada</label>
-                                        <input id="delivery-date" class="form-control" type="date" name="RequestedDeliveryDate" value="@(Model.RequestedDeliveryDate?.ToString("yyyy-MM-dd"))" />
-                                    </div>
+
                                     <div class="seller-order-drafts__notes-field">
                                         <label for="draft-notes">Observações <small>(até 500 caracteres)</small></label>
                                         <textarea id="draft-notes" class="form-control" name="Notes" maxlength="500" rows="2">@Model.Notes</textarea>
@@ -254,6 +251,10 @@
                                 <div class="seller-order-drafts__summary-line"><span>Produtos</span><strong id="summary-item-count">@Model.Items.Count(item => !item.RemovalPending)</strong></div>
                                 <div class="seller-order-drafts__summary-line"><span>Desconto</span><strong>0%</strong></div>
                                 <div class="seller-order-drafts__summary-total"><span>Total atual</span><strong id="draft-total" aria-live="polite">@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
+                                <div id="seller-minimum-order" data-minimum-order="@Model.MinimumOrder.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                    <span>Pedido mínimo: @Model.MinimumOrder.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                    <small id="seller-minimum-order-gap" role="status" aria-live="polite">@(Model.RemainingForMinimum > 0 ? $"Faltam {Model.RemainingForMinimum:C} para atingir o mínimo." : "Pedido mínimo atingido.")</small>
+                                </div>
                                 <p class="seller-order-drafts__summary-note">Cotação calculada no servidor com a tabela vigente. Se os valores mudarem antes do envio, revise o novo resumo para confirmar.</p>
                                 <div class="seller-order-drafts__summary-flags">
                                     <span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Sem reserva de estoque</span>

@@ -9,7 +9,10 @@ public sealed record SellerCatalogProductRow(
     decimal UnitPrice,
     int MinimumCases,
     int? ImageId,
-    string? Ean = null);
+    string? Ean = null,
+    string PriceUnitLabel = "caixa",
+    string? Ean13 = null,
+    string? Dun14 = null);
 
 public sealed class SellerCatalogViewModel
 {

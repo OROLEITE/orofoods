@@ -119,7 +119,7 @@
                 <div class="order-items-heading" role="row"><span role="columnheader">SKU</span><span role="columnheader">Produto</span><span role="columnheader">Quantidade</span><span role="columnheader">Preço unitário</span><span role="columnheader">Total</span></div>
                 @foreach (var item in Model.Items)
                 {
-                    <div class="order-row" role="row"><small class="order-item-sku" role="cell">@item.SkuSnapshot</small><span class="order-item-product" role="cell"><h3>@item.ProductNameSnapshot</h3></span><span role="cell" data-label="Quantidade">@item.Quantity</span><span role="cell" data-label="Preço unitário">@item.UnitPrice.ToString("C")</span><strong role="cell" data-label="Total">@item.Subtotal.ToString("C")</strong></div>
+                    <div class="order-row" role="row"><small class="order-item-sku" role="cell">@item.SkuSnapshot</small><span class="order-item-product" role="cell"><h3>@item.ProductNameSnapshot</h3></span><span role="cell" data-label="Quantidade">@item.Quantity</span><span role="cell" data-label="Preço unitário">@item.UnitPrice.ToString("C") / @(item.SalesUnitCodeSnapshot ?? "unidade legada")</span><strong role="cell" data-label="Total">@item.Subtotal.ToString("C")</strong></div>
                 }
             </div>
         </section>
@@ -293,7 +293,7 @@
                 <ul class="list-group list-group-flush order-wmc-products" aria-label="Produtos para exporta&ccedil;&atilde;o WMC">
                     @foreach (var item in Model.Items)
                     {
-                        <li class="list-group-item"><span>@item.ProductNameSnapshot</span><span>C&oacute;digo WMC: <code>@(item.Product?.WmcCode ?? "Não informado")</code></span><span>Unidade: @(item.Product?.Unit ?? "Não informada")</span></li>
+                        <li class="list-group-item"><span>@item.ProductNameSnapshot</span><span>C&oacute;digo WMC: <code>@(item.Product?.WmcCode ?? "Não informado")</code></span><span>Unidade: @(item.SalesUnitCodeSnapshot ?? "unidade legada")</span></li>
                     }
                 </ul>
             </details>

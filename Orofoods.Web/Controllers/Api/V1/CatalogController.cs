@@ -23,8 +23,9 @@ public class CatalogController(ApplicationDbContext db) : ControllerBase
         var items = await query.Include(product => product.ProductCategory).Include(product => product.Images)
             .OrderBy(product => product.Name).Skip(request.Skip).Take(request.PageSize)
             .Select(product => new ProductProjection(product.Id, product.Sku, product.Name, product.Brand, product.Description,
-                product.ProductCategory!.Name, product.UnitsPerCase,
-                product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && db.ProductInventories.Any(inventory => inventory.ProductId == product.Id && inventory.QuantityOnHand - inventory.QuantityReserved >= product.MinimumCases),
+                product.ProductCategory!.Name, product.UnitsPerCase, product.Ean13, product.Dun14,
+                product.EffectiveSalesUnitCode, product.PackagesPerCase,
+                product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && db.ProductInventories.Any(inventory => inventory.ProductId == product.Id && inventory.QuantityOnHand - inventory.QuantityReserved >= (product.CommercialUnitCode == "PCT" ? 1 : product.MinimumCases)),
                 product.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).Select(image => (int?)image.Id).FirstOrDefault()))
             .ToListAsync(cancellationToken);
         var responses = items.Select(product => new ProductResponse(
@@ -35,7 +36,11 @@ public class CatalogController(ApplicationDbContext db) : ControllerBase
             product.Description,
             product.Category,
             product.UnitsPerCase,
-                product.IsAvailable,
+            product.IsAvailable,
+            product.Ean13,
+            product.Dun14,
+            product.SalesUnitCode,
+            product.PackagesPerCase,
             product.ImageId is int imageId ? Url.RouteUrl("ProductMedia", new { imageId }) : null)).ToList();
         return Ok(new PagedResult<ProductResponse>(responses, request.Page, request.PageSize, totalItems));
     }
@@ -52,6 +57,6 @@ public class CatalogController(ApplicationDbContext db) : ControllerBase
     }
 }
 
-public sealed record ProductResponse(int Id, string Sku, string Name, string Brand, string Description, string Category, int UnitsPerCase, bool IsAvailable, string? ImageUrl);
-internal sealed record ProductProjection(int Id, string Sku, string Name, string Brand, string Description, string Category, int UnitsPerCase, bool IsAvailable, int? ImageId);
+public sealed record ProductResponse(int Id, string Sku, string Name, string Brand, string Description, string Category, int UnitsPerCase, bool IsAvailable, string? Ean13, string? Dun14, string SalesUnitCode, int? PackagesPerCase, string? ImageUrl);
+internal sealed record ProductProjection(int Id, string Sku, string Name, string Brand, string Description, string Category, int UnitsPerCase, string? Ean13, string? Dun14, string SalesUnitCode, int? PackagesPerCase, bool IsAvailable, int? ImageId);
 public sealed record CategoryResponse(int Id, string Name, string Slug);

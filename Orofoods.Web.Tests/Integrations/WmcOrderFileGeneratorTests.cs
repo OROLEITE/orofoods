@@ -10,6 +10,30 @@ namespace Orofoods.Web.Tests.Integrations;
 public class WmcOrderFileGeneratorTests
 {
     [Fact]
+    public void Blocks_package_orders_until_the_WMC_package_unit_code_is_homologated()
+    {
+        var order = new Order
+        {
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX" },
+            CustomerCnpjSnapshot = "03932292000199",
+            Items =
+            [
+                new OrderItem
+                {
+                    Product = new Product { WmcCode = "243680", Unit = "UN", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 24 },
+                    SalesUnitCodeSnapshot = "PCT",
+                    ProductNameSnapshot = "Produto em pacote",
+                    Quantity = 2,
+                    UnitPrice = 12m,
+                    Subtotal = 24m
+                }
+            ]
+        };
+
+        Assert.Contains("WMC_PACKAGE_UNIT_CODE_UNCONFIRMED", WmcTestOrderFileGenerator.Create().Validate(order));
+    }
+
+    [Fact]
     public void Writes_every_order_record_field_at_its_neogrid_v32_position()
     {
         const string customerCnpj = "03932292000199";

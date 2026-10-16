@@ -107,6 +107,8 @@ public sealed class OrderDraftsController(
                 product.Id,
                 product.Sku,
                 product.Ean,
+                product.Ean13,
+                product.Dun14,
                 product.Name,
                 product.UnitDescription,
                 product.UnitPrice,
@@ -285,6 +287,10 @@ public sealed class OrderDraftsController(
     {
         var workspace = await workspaceService.GetCustomerWorkspaceAsync(User, customerId, cancellationToken);
         if (workspace is null) return null;
+        var customerMinimum = await db.Customers.AsNoTracking().Where(x => x.Id == customerId)
+            .Select(x => x.MinimumOrder).SingleAsync(cancellationToken);
+        var configuredMinimum = await db.OrderMinimumSettings.AsNoTracking()
+            .Select(x => (decimal?)x.MinimumAmount).SingleOrDefaultAsync(cancellationToken);
 
         var addresses = await db.CustomerAddresses.AsNoTracking()
             .Where(address => address.CustomerId == customerId && address.IsActive)
@@ -329,7 +335,7 @@ public sealed class OrderDraftsController(
         }
         var editorItems = sourceItems.Select(item => productRowsById.TryGetValue(item.ProductId, out var product)
             ? new SellerOrderDraftEditorItem(item.ProductId, product.Sku, product.Name, product.UnitDescription,
-                item.Quantity, product.MinimumCases, product.UnitPrice, pendingRemovals.Contains(item.ProductId))
+                item.Quantity, product.MinimumCases, product.UnitPrice, pendingRemovals.Contains(item.ProductId), product.PriceUnitLabel)
             : new SellerOrderDraftEditorItem(item.ProductId, "", "Produto indisponível no catálogo atual", "", item.Quantity,
                 1, 0m, pendingRemovals.Contains(item.ProductId))).ToArray();
 
@@ -377,6 +383,7 @@ public sealed class OrderDraftsController(
             DeliveryAddressId = usePostedInput ? postedAddressId : draft?.DeliveryAddressId,
             PaymentTermId = usePostedInput ? postedPaymentTermId : draft?.PaymentTermId,
             RequestedDeliveryDate = usePostedInput ? postedDeliveryDate : draft?.RequestedDeliveryDate,
+            MinimumOrder = OrderMinimumPolicy.Resolve(configuredMinimum, customerMinimum),
             Notes = usePostedInput ? postedNotes ?? "" : draft?.Notes ?? "",
             Items = editorItems,
             RemovedProductIds = pendingRemovals.ToArray()

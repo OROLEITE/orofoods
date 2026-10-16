@@ -129,7 +129,7 @@
             <header class="customer-dashboard-section-heading"><div><span class="customer-section-kicker">CONDIÇÕES DA SUA CONTA</span><h2 id="commercialSummaryTitle">Resumo comercial</h2></div></header>
             <dl>
                 <div><dt>Sua tabela</dt><dd>@Model.Customer.PriceTableName</dd></div>
-                <div><dt>Pedido mínimo</dt><dd>@Model.Customer.MinimumOrder.ToString("C", ptBr)</dd></div>
+                <div><dt>Pedido mínimo</dt><dd>@Model.MinimumOrder.ToString("C", ptBr)</dd></div>
                 <div><dt>Crédito disponível</dt><dd>@((Model.Customer.CreditLimit - Model.Customer.CreditUsed).ToString("C", ptBr))</dd></div>
                 <div><dt>Condição de pagamento</dt><dd>@Model.Customer.PaymentTerms</dd></div>
             </dl>
