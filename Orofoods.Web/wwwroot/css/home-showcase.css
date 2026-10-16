@@ -166,6 +166,37 @@
     object-fit: cover;
 }
 
+.public-home-bimbo-banner-placeholder {
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 50% 42%, #FFFFFF 0, #F7FAFC 38%, #DCE8F1 100%);
+}
+
+.public-home-bimbo-banner-placeholder::after {
+    display: none;
+}
+
+.public-home-bimbo-banner-illustration {
+    display: grid;
+    width: clamp(116px, 18vw, 176px);
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1px solid #FFFFFF;
+    border-radius: 50%;
+    background: #FFFFFFB8;
+    box-shadow: 0 16px 40px #102A4C14;
+    color: #0E7490;
+    font-size: clamp(48px, 7vw, 76px);
+}
+
+.public-home-bimbo-banner-placeholder .public-home-hero-caption {
+    color: #102A4C;
+}
+
+.public-home-bimbo-banner-placeholder .public-home-hero-caption i {
+    color: #0E7490;
+}
+
 .public-home-hero-caption {
     position: absolute;
     z-index: 1;

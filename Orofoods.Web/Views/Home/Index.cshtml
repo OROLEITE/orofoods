@@ -7,6 +7,8 @@
     var isCommercialManager = User.IsInRole("GerenteComercial");
     var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
     var loginDashboardUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FDashboard";
+    var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog";
+    var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog";
     var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
     var sellerDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Vendedor" }) ?? "/Vendedor";
     var commercialDashboardUrl = Url.Action("Index", "Commercial", new { area = "Admin" }) ?? "/Admin/Commercial";
@@ -42,11 +44,11 @@
                 </div>
                 @if (!isAuthenticated)
                 {
-                    <p class="public-home-login-note">Já é cliente? <a href="@loginDashboardUrl">Entrar no portal</a></p>
+                    <p class="public-home-login-note">Já é cliente? <a href="@loginCatalogUrl">Entrar no portal</a></p>
                 }
             </div>
-            <div class="public-home-hero-image">
-                <img src="~/images/orofoods-institutional-kitchen.png" asp-append-version="true" alt="Ambiente de cozinha profissional para food service" />
+            <div class="public-home-hero-image public-home-bimbo-banner-placeholder" role="img" aria-label="Ilustração neutra de pão; não representa embalagem ou SKU específico">
+                <span class="public-home-bimbo-banner-illustration" aria-hidden="true"><i class="fa-solid fa-bread-slice"></i></span>
                 <div class="public-home-hero-caption"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Atendimento pensado para empresas</span></div>
             </div>
         </div>

@@ -23,6 +23,16 @@ public class HomeProductViewTests
     }
 
     [Fact]
+    public void Home_uses_a_neutral_banner_placeholder_until_an_official_bimbo_photo_is_verified()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
+
+        Assert.Contains("public-home-bimbo-banner-placeholder", markup);
+        Assert.DoesNotContain("orofoods-institutional-kitchen.png", markup);
+    }
+
+    [Fact]
     public void Product_detail_offers_administrators_a_return_to_administration()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
