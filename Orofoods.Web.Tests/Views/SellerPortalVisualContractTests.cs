@@ -66,6 +66,38 @@ public sealed class SellerPortalVisualContractTests
     }
 
     [Fact]
+    public void Seller_sidebar_brand_and_menu_keep_accessible_active_state()
+    {
+        var sellerLayout = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "_SellerLayout.cshtml"));
+        var shellStyles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css"));
+        var brandImageRule = System.Text.RegularExpressions.Regex.Match(
+            shellStyles,
+            @"(?s)\.seller-app-brand img\s*\{(?<declarations>.*?)\}");
+
+        Assert.Contains("src=\"~/images/logo-orofoods-transparent.png\"", sellerLayout);
+        Assert.True(brandImageRule.Success);
+        Assert.Contains("width: 64px;", brandImageRule.Groups["declarations"].Value);
+        Assert.Contains("height: 42px;", brandImageRule.Groups["declarations"].Value);
+        Assert.Contains("object-fit: contain;", brandImageRule.Groups["declarations"].Value);
+        Assert.DoesNotContain("background", brandImageRule.Groups["declarations"].Value);
+
+        Assert.Contains("asp-controller=\"Dashboard\" asp-action=\"Index\"", sellerLayout);
+        Assert.Contains("asp-controller=\"Customers\" asp-action=\"Index\"", sellerLayout);
+        Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"Index\"", sellerLayout);
+        Assert.Contains("aria-current=\"@(activeSection == \"dashboard\" ? \"page\" : null)\"", sellerLayout);
+        Assert.Contains("aria-current=\"@(activeSection == \"customers\" ? \"page\" : null)\"", sellerLayout);
+        Assert.Contains("aria-current=\"@(activeSection == \"drafts\" ? \"page\" : null)\"", sellerLayout);
+        Assert.Contains("data-bs-target=\"#sellerSidebar\"", sellerLayout);
+        Assert.Contains("aria-controls=\"sellerSidebar\"", sellerLayout);
+        Assert.Contains("aria-label=\"Abrir menu do vendedor\"", sellerLayout);
+        Assert.Contains(".seller-app-nav a.active", shellStyles);
+        Assert.Contains(".seller-app-nav a:focus-visible", shellStyles);
+        Assert.Contains("box-shadow: inset 3px 0 0 #38BDF8;", shellStyles);
+        Assert.Contains("body.seller-app-page .site-header-modern .main-nav .nav-link.active", shellStyles);
+        Assert.Contains("box-shadow: inset 0 -2px 0 #38BDF8;", shellStyles);
+    }
+
+    [Fact]
     public void Seller_header_and_search_actions_use_the_scoped_dark_cyan_visual_contract()
     {
         var shellStyles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css"));

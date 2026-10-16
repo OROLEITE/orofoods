@@ -309,6 +309,19 @@ public class AdminDarkThemeContractTests
         AssertAdminDarkRulesExcludeWhatsApp(styles, "admin-navigation.css");
     }
 
+    [Fact]
+    public void ScopeAuditAcceptsCommonPageLayoutOnlyInsideAuthenticatedAdminPages()
+    {
+        var styles = ReadStyles("admin-customers.css");
+        const string scoped = "body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .layout-probe { padding: 8px; }";
+        const string unscoped = ".customer-list-page .layout-probe { padding: 8px; }";
+        const string whatsapp = "body.admin-authenticated:has(.whatsapp-inbox-page) .customer-list-page .layout-probe { padding: 8px; }";
+
+        AssertAdminDarkRulesExcludeWhatsApp(styles + scoped, "admin-customers.css");
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertAdminDarkRulesExcludeWhatsApp(styles + unscoped, "admin-customers.css"));
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertAdminDarkRulesExcludeWhatsApp(styles + whatsapp, "admin-customers.css"));
+    }
+
     [Theory]
     [InlineData(".orders-table", "background-position: center;", "background")]
     [InlineData(".orders-table", "outline-offset: 2px;", "outline")]
@@ -665,7 +678,7 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(inventory, ".admin-inventory-page .alert-danger", "color");
 
         AssertModuleDarkRulesAreScoped(products, new[] { ".admin-products-page", ".admin-products-edit-page" });
-        AssertModuleDarkRulesAreScoped(inventory, new[] { ".admin-registration-page", ".admin-registration-form-page", ".admin-price-items-page", ".admin-inventory-page" });
+        AssertModuleDarkRulesAreScoped(inventory, new[] { ".admin-registration-page", ".admin-registration-form-page", ".admin-price-items-page", ".admin-inventory-page", ".admin-seller-edit-page" });
         foreach (var stylesheet in new[] { "admin-products.css", "admin-registrations.css" })
             Assert.DoesNotContain(ReadRules(ReadStyles(stylesheet)).Where(rule => IsScopedAdminDarkSelector(rule.Selector) &&
                 !(stylesheet == "admin-products.css" && ContainsComponent(rule.Selector, ".admin-products-edit-page") && ContainsComponent(rule.Selector, ".admin-image-manager"))), rule =>
@@ -720,7 +733,7 @@ public class AdminDarkThemeContractTests
         RequireScopedRule(registrations, ".admin-registration-form-page .form-control:disabled", "color");
         RequireScopedRule(registrations, ".admin-registration-form-page .form-control[readonly]", "background");
         RequireScopedRule(registrations, ".admin-price-items-page .admin-price-items-table .form-control", "background");
-        AssertModuleDarkRulesAreScoped(registrations, new[] { ".admin-registration-page", ".admin-registration-form-page", ".admin-price-items-page", ".admin-inventory-page" });
+        AssertModuleDarkRulesAreScoped(registrations, new[] { ".admin-registration-page", ".admin-registration-form-page", ".admin-price-items-page", ".admin-inventory-page", ".admin-seller-edit-page" });
 
         var users = ReadStyles("admin-users.css");
         RequireScopedRule(users, ".admin-users-page", "background");
@@ -945,7 +958,9 @@ public class AdminDarkThemeContractTests
         foreach (var rule in ReadRules(styles).Where(rule => !historicalRules.Contains(RuleIdentity(rule))))
         {
             Assert.True((IsScopedAdminDarkSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
-                        (stylesheet == "admin-navigation.css" && IsScopedAdminLightSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
+                        (stylesheet is "admin-navigation.css" or "header.css" && IsScopedAdminLightSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
+                        (stylesheet is "admin-customers.css" or "admin-integrations.css" or "admin-registrations.css" or "admin-shell.css" &&
+                         IsScopedAdminCommonSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
                         IsPermittedScopedCustomerOpportunityLayoutRule(rule.Selector, stylesheet),
                 $"Additional/changed {stylesheet} rule requires both gates, WhatsApp exclusion, and positive component/page scope: {rule.Selector}");
         }
@@ -980,10 +995,11 @@ public class AdminDarkThemeContractTests
         {
             "commercial.css" => new[] { ".commercial-dashboard-page", ".commercial-calendar-page", ".commercial-form-page" }.Any(component => ContainsComponent(target, component)),
             "admin-customers.css" => new[] { ".customer-list-page", ".customer-commercial-page", ".customer-approval-page", ".assisted-order-page" }.Any(component => ContainsComponent(target, component)),
+            "admin-integrations.css" => ContainsComponent(target, ".admin-integrations-page") || ContainsComponent(target, ".admin-wmc-page"),
             "admin-orders.css" => ContainsComponent(target, ".admin-orders-page") || ContainsComponent(target, ".admin-order-details-page"),
             "admin-order-details.css" => ContainsComponent(target, ".admin-order-details-page"),
             "admin-products.css" => ContainsComponent(target, ".admin-products-page") || ContainsComponent(target, ".admin-products-edit-page"),
-            "admin-registrations.css" => ContainsComponent(target, ".admin-inventory-page"),
+            "admin-registrations.css" => ContainsComponent(target, ".admin-inventory-page") || ContainsComponent(target, ".admin-seller-edit-page"),
             "header.css" => Regex.IsMatch(target, @"\.(?:site-header-modern|account-[a-z-]+|global-notification-[a-z-]+)(?![a-zA-Z0-9_-])"),
             "admin-navigation.css" => Regex.IsMatch(target, @"\.admin-(?:sidebar|nav|offcanvas|mobile)[a-z-]*(?![a-zA-Z0-9_-])"),
             "admin-shell.css" => Regex.IsMatch(target, @"\.(?:admin-[a-z-]+|site-footer)(?![a-zA-Z0-9_-])"),
@@ -1020,6 +1036,9 @@ public class AdminDarkThemeContractTests
 
     private static bool IsScopedAdminLightSelector(string selector) =>
         selector.StartsWith("html:not([data-theme=\"dark\"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) ", StringComparison.Ordinal);
+
+    private static bool IsScopedAdminCommonSelector(string selector) =>
+        selector.StartsWith("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) ", StringComparison.Ordinal);
 
     private static bool ContainsComponent(string selector, string component)
     {

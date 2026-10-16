@@ -7,6 +7,14 @@
     --admin-sidebar-accent: var(--gold);
 }
 
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar {
+    --admin-sidebar-accent: #0E7490;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar {
+    --admin-sidebar-accent: #38BDF8;
+}
+
 .admin-authenticated .site-header-modern {
     position: fixed;
     top: 0;

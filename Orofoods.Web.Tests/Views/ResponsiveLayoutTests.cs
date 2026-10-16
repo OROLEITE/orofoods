@@ -7,8 +7,13 @@ public class ResponsiveLayoutTests
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Cart.cshtml"));
+        var customerStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
+        var actionStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-actions.css"));
 
-        Assert.Contains("class=\"btn btn-dark qty-update\"", markup);
+        Assert.Contains("class=\"btn btn-gold qty-update\"", markup);
+        Assert.Contains(".customer-experience .qty-control :is(button, input)", customerStyles);
+        Assert.Contains("min-height: 40px", customerStyles);
+        Assert.Contains(".portal-authenticated .btn-gold:hover", actionStyles);
     }
 
     [Fact]

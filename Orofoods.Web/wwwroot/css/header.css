@@ -266,3 +266,32 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .dropdown-divider {
     border-color: #334155;
 }
+
+/* Admin logo sizing and active navigation stay inside the authenticated shell. */
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern {
+    --authenticated-nav-active: #0E7490;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern {
+    --authenticated-nav-active: #38BDF8;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
+    width: auto;
+    height: 42px;
+    max-width: min(100%, 180px);
+    object-fit: contain;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active {
+    box-shadow: inset 0 -2px 0 var(--authenticated-nav-active);
+}
+
+@media (max-width: 575.98px) {
+    html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo,
+    html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
+        height: 38px;
+    }
+}

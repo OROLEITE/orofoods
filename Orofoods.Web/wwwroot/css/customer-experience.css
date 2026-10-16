@@ -2915,3 +2915,249 @@ body.customer-registration-layout > .site-main {
 body.customer-registration-layout > .site-footer {
     margin-top: auto;
 }
+
+/* Customer portal shortcuts, empty cart and saved-order cards. */
+.customer-experience .customer-dashboard {
+    gap: 14px;
+}
+
+.customer-experience .customer-dashboard-shortcuts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.customer-experience .customer-dashboard-shortcut {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .5rem .65rem;
+    text-align: center;
+    white-space: normal;
+}
+
+.customer-experience .customer-dashboard-heading .portal-primary-action {
+    min-height: 44px;
+    white-space: nowrap;
+}
+
+.customer-experience .order-page .order-layout {
+    gap: 14px;
+}
+
+.customer-experience .order-page .order-row {
+    gap: 10px;
+    padding: 12px 14px;
+}
+
+.customer-experience .order-page .order-product,
+.customer-experience .order-page .order-product h3,
+.customer-experience .order-page .line-price {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.customer-experience .customer-cart-empty {
+    display: grid;
+    width: min(100%, 760px);
+    min-height: 0;
+    justify-items: center;
+    gap: 10px;
+    margin-inline: auto;
+    padding: clamp(24px, 3.5vw, 40px);
+    text-align: center;
+}
+
+.customer-experience .customer-cart-empty__icon {
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    border-radius: 50%;
+    background: #E7F2F5;
+    color: #0E7490;
+    font-size: 1.15rem;
+}
+
+.customer-experience .customer-cart-empty h2,
+.customer-experience .customer-cart-empty p {
+    margin: 0;
+}
+
+.customer-experience .customer-cart-empty__action {
+    min-width: 176px;
+    margin-top: 4px;
+}
+
+.customer-experience .orders-history-row {
+    min-height: 72px;
+    gap: 10px;
+    padding: 10px 14px;
+}
+
+.customer-experience .orders-history-row :is(.orders-history-number, .orders-history-total, .orders-history-row-actions) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.customer-experience .saved-orders-page .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.customer-experience .saved-orders-page .product-card {
+    min-width: 0;
+    height: 100%;
+}
+
+.customer-experience .saved-orders-page .product-card > div {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px !important;
+}
+
+.customer-experience .saved-orders-page .product-card h2 {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 1.05rem;
+    line-height: 1.3;
+}
+
+.customer-experience .saved-orders-page .product-card p {
+    margin: 0 0 4px;
+}
+
+.customer-experience .saved-orders-page .product-card :is(form, .btn) {
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    .customer-experience .customer-dashboard-shortcuts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .customer-experience .customer-dashboard-shortcut {
+        padding-inline: .5rem;
+        font-size: .82rem;
+    }
+
+    .customer-experience .orders-history-row {
+        min-height: 0;
+    }
+
+    .customer-experience .saved-orders-page .product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .customer-experience .customer-cart-empty {
+        padding: 24px 16px;
+    }
+
+    .customer-experience .saved-orders-page .product-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .customer-experience .saved-orders-page .product-card > div {
+        padding: 14px !important;
+    }
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-content {
+    display: grid;
+    min-height: calc(100vh - 72px);
+    align-items: center;
+    padding: clamp(24px, 4vw, 48px) 0;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-layout {
+    display: grid;
+    grid-template-columns: minmax(0, min(100%, 560px));
+    justify-content: center;
+    width: 100%;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-card {
+    width: 100%;
+    padding: clamp(22px, 4vw, 38px);
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-card .auth-card-heading {
+    margin-bottom: 22px;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-card .auth-card-heading h2 {
+    margin: 0 0 8px;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-card .auth-card-heading > p:last-child {
+    margin: 0;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-card .auth-field input {
+    min-height: 46px;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-submit {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #0E7490;
+    background: #0E7490;
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-submit:hover {
+    border-color: #155E75;
+    background: #155E75;
+    color: #FFFFFF;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-submit:focus-visible {
+    outline: 3px solid #0E7490;
+    outline-offset: 2px;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-login {
+    display: block;
+    margin-top: 18px;
+    color: #0E7490;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-login:hover {
+    color: #155E75;
+    text-decoration: underline;
+}
+
+.customer-experience.identity-recovery-page .identity-recovery-login:focus-visible {
+    border-radius: 3px;
+    outline: 3px solid #0E7490;
+    outline-offset: 3px;
+}
+
+@media (max-width: 575.98px) {
+    .customer-experience.identity-recovery-page .identity-recovery-content {
+        min-height: 0;
+        padding: 28px 0;
+    }
+
+    .customer-experience.identity-recovery-page .identity-recovery-layout {
+        padding-inline: 12px;
+    }
+
+    .customer-experience.identity-recovery-page .identity-recovery-card {
+        padding: 22px 18px;
+    }
+}
