@@ -23,13 +23,32 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Home_uses_a_neutral_banner_placeholder_until_an_official_bimbo_photo_is_verified()
+    public void Home_uses_the_institutional_food_photo_without_associating_it_with_a_product_sku()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
 
-        Assert.Contains("public-home-bimbo-banner-placeholder", markup);
-        Assert.DoesNotContain("orofoods-institutional-kitchen.png", markup);
+        Assert.Contains("Soluções para o seu Food Service", markup);
+        Assert.Contains("~/images/orofoods-hero.png", markup);
+        Assert.Contains("Hambúrguer artesanal e pães em uma cozinha profissional", markup);
+        Assert.Contains("public-home-primary-action\" asp-controller=\"Home\" asp-action=\"Products\">Conheça nossos produtos", markup);
+        Assert.Contains("public-home-secondary-action\" asp-controller=\"CustomerRegistration\" asp-action=\"Register\">Cadastre sua empresa", markup);
+        Assert.DoesNotContain("public-home-bimbo-banner-placeholder", markup);
+        Assert.DoesNotContain("BIMBO", markup);
+    }
+
+    [Fact]
+    public void Home_header_has_a_larger_proportional_logo_and_visible_navigation_states()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var homeStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "home-showcase.css"));
+
+        Assert.Contains("height: clamp(54px, 4vw, 64px);", homeStyles);
+        Assert.Contains("object-fit: contain;", homeStyles);
+        Assert.Contains("color: #F8FAFC;", homeStyles);
+        Assert.Contains("color: #22D3EE;", homeStyles);
+        Assert.Contains("box-shadow: inset 0 -2px 0 var(--home-gold);", homeStyles);
+        Assert.Contains("@media (max-width: 767px)", homeStyles);
     }
 
     [Fact]

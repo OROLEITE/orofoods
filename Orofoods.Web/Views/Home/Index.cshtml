@@ -28,9 +28,9 @@
     <section class="public-home-hero" aria-labelledby="public-home-title">
         <div class="container public-home-hero-grid">
             <div class="public-home-hero-copy">
-                <p class="public-home-eyebrow"><span aria-hidden="true"></span> Distribuição B2B para food service</p>
-                <h1 id="public-home-title">Mais previsibilidade para a cozinha da sua operação.</h1>
-                <p class="public-home-hero-description">Uma parceria de abastecimento para hamburguerias, lanchonetes e restaurantes que precisam manter o ritmo todos os dias.</p>
+                <p class="public-home-eyebrow"><span aria-hidden="true"></span> Orofoods</p>
+                <h1 id="public-home-title">Soluções para o seu Food Service</h1>
+                <p class="public-home-hero-description">Pães e produtos para hamburguerias, restaurantes e lanchonetes.</p>
                 <div class="public-home-hero-actions">
                     @if (isAuthenticated)
                     {
@@ -38,18 +38,25 @@
                     }
                     else
                     {
-                        <a class="btn public-home-primary-action" asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a>
+                        <a class="btn public-home-primary-action" asp-controller="Home" asp-action="Products">Conheça nossos produtos</a>
                     }
-                    <a class="btn public-home-secondary-action" asp-controller="Home" asp-action="Products">Explorar catálogo</a>
+                    @if (isAuthenticated)
+                    {
+                        <a class="btn public-home-secondary-action" asp-controller="Home" asp-action="Products">Conheça nossos produtos</a>
+                    }
+                    else
+                    {
+                        <a class="btn public-home-secondary-action" asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a>
+                    }
                 </div>
                 @if (!isAuthenticated)
                 {
                     <p class="public-home-login-note">Já é cliente? <a href="@loginCatalogUrl">Entrar no portal</a></p>
                 }
             </div>
-            <div class="public-home-hero-image public-home-bimbo-banner-placeholder" role="img" aria-label="Ilustração neutra de pão; não representa embalagem ou SKU específico">
-                <span class="public-home-bimbo-banner-illustration" aria-hidden="true"><i class="fa-solid fa-bread-slice"></i></span>
-                <div class="public-home-hero-caption"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Atendimento pensado para empresas</span></div>
+            <div class="public-home-hero-image">
+                <img src="~/images/orofoods-hero.png" asp-append-version="true" alt="Hambúrguer artesanal e pães em uma cozinha profissional" width="1672" height="941" fetchpriority="high" decoding="async" />
+                <div class="public-home-hero-caption"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Inspiração para cozinhas profissionais</span></div>
             </div>
         </div>
     </section>
