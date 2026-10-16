@@ -75,7 +75,9 @@ public class OrderPlacementServiceTests
             clearCart: false);
 
         Assert.False(result.Succeeded);
-        Assert.Contains(result.Errors, error => error.Contains("160,00", StringComparison.Ordinal));
+        var minimumError = Assert.Single(result.Errors);
+        Assert.Contains("valor mínimo dos itens", minimumError, StringComparison.OrdinalIgnoreCase);
+        Assert.Matches(@"\b160\b", minimumError);
         Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
     }
 
