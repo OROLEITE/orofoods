@@ -10,7 +10,7 @@ public class AdminProductEditVisualContractTests
         var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "ProductsController.cs"));
 
         Assert.False(File.Exists(Path.Combine(projectPath, "Areas", "Admin", "Views", "Products", "Create.cshtml")));
-        Assert.Contains("public async Task<IActionResult> Edit(int? id)", controller);
+        Assert.Contains("public async Task<IActionResult> Edit(int? id, string? q = null, bool includeInactive = false, int? page = null)", controller);
         Assert.Contains("id is null ? new Product()", controller);
         Assert.Contains("return View(product);", controller);
         Assert.Contains("class=\"container admin-products-edit-container\"", view);
@@ -31,7 +31,7 @@ public class AdminProductEditVisualContractTests
     {
         var index = ReadProductView("Index.cshtml");
 
-        Assert.Matches("<a[^>]*asp-action=\"Edit\"(?![^>]*asp-route-id)[^>]*>.*Novo produto</a>", index);
+        Assert.Matches("(?s)<a[^>]*asp-action=\"Edit\"(?![^>]*asp-route-id)[^>]*>.*Novo produto\\s*</a>", index);
         Assert.DoesNotContain("asp-action=\"Create\"", index);
     }
 

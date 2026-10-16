@@ -97,28 +97,28 @@ public sealed class WmcBimboStagingImportServiceTests
     }
 
     [Fact]
-    public async Task Admin_status_is_pending_until_commercial_data_is_complete_then_inactive_until_activation()
+    public async Task Admin_status_allows_staging_activation_with_pending_category_and_missing_dun_when_package_data_is_valid()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var service = CreateService(db, ValidBimboRows());
         await service.ImportSelectedAsync(ActorId, ["503838"]);
 
-        var pending = Assert.Single(await service.GetAdminProductsAsync(), product => product.WmcCode == "503838");
+        var pending = Assert.Single(await service.GetAdminProductsAsync(allowStagingActivation: true), product => product.WmcCode == "503838");
         Assert.Equal(WmcBimboProductRules.CommercialStatusPending, pending.CommercialStatus);
         Assert.False(pending.CanActivate);
 
         var product = await db.Products.SingleAsync(item => item.WmcCode == "503838");
         var category = await db.ProductCategories.SingleAsync();
-        category.IsActive = true;
+        category.IsActive = false;
         product.ProductCategoryId = category.Id;
-        product.Dun14 = "17899679702656";
         product.LogisticsUnitCode = "CX";
         product.PackagesPerCase = 8;
         await db.SaveChangesAsync();
 
-        var inactive = Assert.Single(await service.GetAdminProductsAsync(), item => item.WmcCode == "503838");
+        var inactive = Assert.Single(await service.GetAdminProductsAsync(allowStagingActivation: true), item => item.WmcCode == "503838");
         Assert.Equal(WmcBimboProductRules.CommercialStatusInactive, inactive.CommercialStatus);
         Assert.True(inactive.CanActivate);
+        Assert.Null(inactive.Dun14);
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public sealed class WmcBimboStagingImportServiceTests
         Assert.Equal("7899679702659", brioche.Ean);
         Assert.Equal("7899679702659", brioche.Ean13);
         Assert.Null(brioche.Dun14);
-        Assert.Null(brioche.LogisticsUnitCode);
+        Assert.Equal("CX", brioche.LogisticsUnitCode);
         Assert.Null(brioche.PackagesPerCase);
         Assert.Equal(1m, brioche.BasePrice);
         Assert.False(brioche.IsActive);
@@ -157,6 +157,57 @@ public sealed class WmcBimboStagingImportServiceTests
         Assert.Equal((short)104, audit.BrandCode);
         Assert.Equal(ActorId, audit.ActorUserId);
         Assert.Equal("Succeeded", audit.Outcome);
+    }
+
+    [Fact]
+    public async Task Imports_package_factor_from_description_for_each_approved_code_without_converting_stock_or_price()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var rows = ValidBimboRows()
+            .Select((row, index) => row with { Produto = $"BIMBO {row.CodProduto} 12PCX180UN", EstoqueAtual = index + 3 })
+            .ToArray();
+        var service = CreateService(db, rows);
+
+        var result = await service.ImportAsync(ActorId);
+
+        Assert.True(result.Succeeded, result.ErrorSummary);
+        Assert.Equal(10, result.ImportedWmcCodes.Count);
+        foreach (var row in rows)
+        {
+            var product = await db.Products.SingleAsync(item => item.WmcCode == row.CodProduto);
+            Assert.Equal("PCT", product.Unit);
+            Assert.Equal("PCT", product.CommercialUnitCode);
+            Assert.Equal("CX", product.LogisticsUnitCode);
+            Assert.Equal(12, product.PackagesPerCase);
+            Assert.Equal(1m, product.BasePrice);
+            var inventory = await db.ProductInventories.SingleAsync(item => item.ProductId == product.Id);
+            Assert.Equal((int)row.EstoqueAtual!.Value, inventory.QuantityOnHand);
+        }
+    }
+
+    [Theory]
+    [InlineData("BIMBO 503838 180UN")]
+    [InlineData("BIMBO 503838 0PCX180UN")]
+    [InlineData("BIMBO 503838 12PCX0UN")]
+    [InlineData("BIMBO 503838 12PCX180UN 24PCX360UN")]
+    [InlineData("BIMBO 503838 12PCX180UN PCX")]
+    [InlineData("BIMBO 503838 999999999999999999999PCX180UN")]
+    public async Task Invalid_or_ambiguous_package_descriptions_leave_the_factor_unset(string description)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var rows = ValidBimboRows()
+            .Select(row => row.CodProduto == "503838" ? row with { Produto = description } : row)
+            .ToArray();
+        var service = CreateService(db, rows);
+
+        var result = await service.ImportSelectedAsync(ActorId, ["503838"]);
+
+        Assert.True(result.Succeeded, result.ErrorSummary);
+        var product = await db.Products.SingleAsync(item => item.WmcCode == "503838");
+        Assert.Equal("PCT", product.CommercialUnitCode);
+        Assert.Equal("CX", product.LogisticsUnitCode);
+        Assert.Null(product.PackagesPerCase);
+        Assert.Equal(8, (await db.ProductInventories.SingleAsync(item => item.ProductId == product.Id)).QuantityOnHand);
     }
 
     [Fact]
