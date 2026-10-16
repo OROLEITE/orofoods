@@ -52,7 +52,8 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
                 .Where(product => product.Id == input.Id)
                 .Select(product => (bool?)product.IsActive)
                 .SingleOrDefaultAsync();
-        try { await catalogService.SaveProductAsync(input); }
+        Product savedProduct;
+        try { savedProduct = await catalogService.SaveProductAsync(input); }
         catch (InvalidOperationException error) { ModelState.AddModelError(string.Empty, error.Message); await PopulateSelectionsAsync(input); return View(input); }
         catch (DbUpdateException)
         {
@@ -61,8 +62,8 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
             return View(input);
         }
 
-        TempData["ProductSuccess"] = wasActive.HasValue && wasActive.Value != input.IsActive
-            ? $"Produto {(input.IsActive ? "ativado" : "desativado")} com sucesso."
+        TempData["ProductSuccess"] = wasActive.HasValue && wasActive.Value != savedProduct.IsActive
+            ? $"Produto {(savedProduct.IsActive ? "ativado" : "desativado")} com sucesso."
             : input.Id == 0 ? "Produto cadastrado com sucesso." : "Produto salvo com sucesso.";
         return RedirectToAction(nameof(Index), new { q, includeInactive, page });
     }

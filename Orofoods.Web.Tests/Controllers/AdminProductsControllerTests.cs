@@ -142,7 +142,10 @@ public sealed class AdminProductsControllerTests
             Unit = "PCT",
             ProductCategory = category,
             IsActive = false,
-            IsAvailable = false
+            IsAvailable = false,
+            IsWmcActive = false,
+            WmcStockAvailable = false,
+            WmcInitialLoadReady = false
         };
         db.Products.Add(product);
         await db.SaveChangesAsync();
@@ -169,9 +172,62 @@ public sealed class AdminProductsControllerTests
         Assert.Equal(true, result.RouteValues["includeInactive"]);
         Assert.Equal(5, result.RouteValues["page"]);
         Assert.Equal("Produto ativado com sucesso.", controller.TempData["ProductSuccess"]);
-        var saved = await db.Products.SingleAsync(item => item.Id == product.Id);
+        db.ChangeTracker.Clear();
+        var saved = await db.Products.AsNoTracking().SingleAsync(item => item.Id == product.Id);
         Assert.True(saved.IsActive);
         Assert.False(saved.IsAvailable);
+        Assert.False(saved.IsWmcActive);
+        Assert.False(saved.WmcStockAvailable);
+        Assert.False(saved.WmcInitialLoadReady);
+    }
+
+    [Fact]
+    public async Task Edit_invalid_barcode_keeps_activation_unsaved_and_reports_validation_error()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Teste", Slug = "teste", IsActive = true };
+        var product = new Product
+        {
+            Sku = "BIMBO-TEST-1",
+            WmcCode = "503768",
+            WmcBrandCode = "104",
+            Name = "Produto BIMBO",
+            Brand = "BIMBO",
+            Unit = "PC",
+            ProductCategory = category,
+            IsActive = false,
+            IsAvailable = false
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db);
+        SetTempData(controller);
+        var result = await controller.Edit(new Product
+        {
+            Id = product.Id,
+            Sku = product.Sku,
+            WmcCode = product.WmcCode,
+            WmcBrandCode = product.WmcBrandCode,
+            Name = product.Name,
+            Brand = product.Brand,
+            Unit = product.Unit,
+            ProductCategoryId = category.Id,
+            Ean13 = "1234567890123",
+            IsActive = true,
+            IsAvailable = false,
+            Accent = product.Accent
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(
+            controller.ModelState.Values.SelectMany(state => state.Errors),
+            error => error.ErrorMessage.Contains("GS1", StringComparison.OrdinalIgnoreCase));
+        Assert.Null(controller.TempData["ProductSuccess"]);
+
+        db.ChangeTracker.Clear();
+        var saved = await db.Products.AsNoTracking().SingleAsync(item => item.Id == product.Id);
+        Assert.False(saved.IsActive);
     }
 
     [Fact]
