@@ -605,3 +605,29 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         width: 100%;
     }
 }
+
+.admin-authenticated .admin-products-page .admin-product-stock,
+.admin-authenticated .admin-products-page .admin-mobile-table td[data-label="Disponibilidade"],
+.admin-authenticated .admin-products-page .admin-mobile-table td[data-label="Status"] {
+    white-space: nowrap;
+}
+
+.admin-authenticated .admin-products-page .admin-product-stock {
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-authenticated .admin-products-page .admin-product-stock-unit {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.admin-authenticated .admin-products-page .admin-product-feedback {
+    margin-bottom: 14px;
+}
+
+@media (min-width: 768px) and (max-width: 960px) {
+    .admin-authenticated .admin-products-page .admin-mobile-table {
+        min-width: 1040px;
+    }
+}
