@@ -203,9 +203,10 @@ public class IntegrationsController(
 
     private async Task LoadBimboManagementRowsAsync(CancellationToken cancellationToken)
     {
-        ViewBag.BimboProducts = await wmcBimboStagingImportService.GetAdminProductsAsync(cancellationToken);
+        var canActivateBimbo = hostEnvironment.IsStaging() && initialLoadReleaseOptions.Value.Enabled;
+        ViewBag.BimboProducts = await wmcBimboStagingImportService.GetAdminProductsAsync(canActivateBimbo, cancellationToken);
         ViewBag.CanManageBimbo = hostEnvironment.IsStaging();
-        ViewBag.CanActivateBimbo = hostEnvironment.IsStaging() && initialLoadReleaseOptions.Value.Enabled;
+        ViewBag.CanActivateBimbo = canActivateBimbo;
     }
 
     private static string? GetWmcBimboErrorMessage(string? errorCode) => errorCode switch
