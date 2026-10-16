@@ -37,7 +37,7 @@
         <div class="seller-order-drafts__search-row">
             <input id="customer-query" class="form-control" type="search" name="q" value="@Model.CustomerSearch" maxlength="100" autocomplete="organization"
                    aria-autocomplete="list" aria-controls="customer-search-results" data-customer-search-input />
-            <button class="btn seller-order-drafts__primary" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
+            <button class="btn seller-order-drafts__primary btn-search" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
         </div>
     </form>
     <div class="customer-search__results seller-order-drafts__customer-results" id="customer-search-results" role="list"
@@ -137,7 +137,7 @@
                                 <label class="visually-hidden" for="product-search">Pesquisar produtos</label>
                                 <div class="seller-order-drafts__search-row seller-order-drafts__product-search-row">
                                     <input id="product-search" class="form-control" type="search" maxlength="100" autocomplete="off" placeholder="Ex.: pão de queijo, SKU, código WMC ou EAN" aria-controls="product-results" />
-                                    <button id="product-search-button" class="btn seller-order-drafts__primary" type="button"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="visually-hidden">Buscar produtos</span></button>
+                                    <button id="product-search-button" class="btn seller-order-drafts__primary btn-search" type="button"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="visually-hidden">Buscar produtos</span></button>
                                 </div>
                                 <div id="product-search-status" class="seller-order-drafts__search-status" role="status" aria-live="polite">Digite para pesquisar produtos disponíveis para este cliente.</div>
                                 <div id="product-results" class="seller-order-drafts__product-results" aria-live="polite"></div>

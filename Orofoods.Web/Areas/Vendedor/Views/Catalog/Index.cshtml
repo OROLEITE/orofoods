@@ -18,7 +18,7 @@
 
         <form method="get" class="seller-catalog-search" role="search">
             <div><label class="visually-hidden" for="catalog-search">Buscar produto</label><input id="catalog-search" class="form-control" name="q" value="@Model.Query" placeholder="Buscar por nome, descrição ou código" /></div>
-            <button class="btn btn-outline-dark" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
+            <button class="btn btn-outline-dark btn-search" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Buscar</button>
         </form>
 
         @if (TempData["SellerCartError"] is string error)
