@@ -27,6 +27,14 @@ public class AdminProductEditVisualContractTests
     }
 
     [Fact]
+    public void Product_form_displays_property_validation_errors()
+    {
+        var view = ReadProductView("Edit.cshtml");
+
+        Assert.Contains("asp-validation-summary=\"All\"", view);
+    }
+
+    [Fact]
     public void New_product_action_opens_the_shared_form_without_an_id()
     {
         var index = ReadProductView("Index.cshtml");
