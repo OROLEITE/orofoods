@@ -596,7 +596,8 @@ public sealed class SellerOrderDraftSubmissionServiceTests
                 ProductCategory = new ProductCategory { Name = "Categoria", Slug = "submission-category" }
             };
             var priceTableItem = new PriceTableItem { PriceTable = table, Product = product, Price = 40m, PromotionalPrice = 37m };
-            db.AddRange(representative, seller, table, customer, address, paymentTerm, product, priceTableItem);
+            db.AddRange(representative, seller, table, customer, address, paymentTerm, product, priceTableItem,
+                new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
             if (otherSeller is not null) db.Users.Add(otherSeller);
             await db.SaveChangesAsync();
             db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 10 });

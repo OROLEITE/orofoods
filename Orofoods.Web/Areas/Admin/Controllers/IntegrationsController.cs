@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -21,7 +22,11 @@ public class IntegrationsController(
     IOptions<WmcSyncOptions> wmcSyncOptions,
     IWmcBrandReader wmcBrandReader,
     WmcProductPreviewService wmcProductPreviewService,
-    ILogger<IntegrationsController> logger) : Controller
+    ILogger<IntegrationsController> logger,
+    IHostEnvironment hostEnvironment,
+    WmcBimboStagingImportService wmcBimboStagingImportService,
+    WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
+    IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -93,6 +98,7 @@ public class IntegrationsController(
 
     public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {
+        await LoadBimboManagementRowsAsync(cancellationToken);
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
         IReadOnlyList<WmcBrandRecord> brands = [];
@@ -141,8 +147,88 @@ public class IntegrationsController(
             .ToList();
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        await LoadBimboManagementRowsAsync(cancellationToken);
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand));
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcBimboSimulate(CancellationToken cancellationToken)
+    {
+        if (!hostEnvironment.IsStaging()) return Forbid();
+        var result = await wmcBimboStagingImportService.SimulateAsync(cancellationToken);
+        return Ok(new WmcBimboSimulationResponse(result.Succeeded, result.Products, result.ErrorCode));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcBimboImport(string[]? selectedWmcCodes, CancellationToken cancellationToken)
+    {
+        if (!hostEnvironment.IsStaging())
+        {
+            return Forbid();
+        }
+
+        var actorUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(actorUserId))
+        {
+            return Forbid();
+        }
+
+        var result = await wmcBimboStagingImportService.ImportSelectedAsync(actorUserId, selectedWmcCodes, cancellationToken);
+        var response = new WmcBimboImportResponse(
+            result.Succeeded,
+            result.ImportedWmcCodes.Count,
+            result.SkippedWmcCodes.Count,
+            result.ErrorSummary,
+            GetWmcBimboErrorMessage(result.ErrorSummary),
+            result.Products);
+        return result.Succeeded ? Ok(response) : Conflict(response);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcBimboActivate(int productId, string? reason, CancellationToken cancellationToken)
+    {
+        if (!hostEnvironment.IsStaging()) return Forbid();
+        var result = await initialLoadReadinessReleaseService.ActivateBimboAsync(
+            productId,
+            reason,
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            cancellationToken);
+        var succeeded = result.Status is WmcInitialLoadReleaseStatus.Released or WmcInitialLoadReleaseStatus.AlreadyReady;
+        return StatusCode(succeeded ? StatusCodes.Status200OK : StatusCodes.Status409Conflict,
+            new WmcBimboActivationResponse(succeeded, result.Status.ToString(), result.Message));
+    }
+
+    private async Task LoadBimboManagementRowsAsync(CancellationToken cancellationToken)
+    {
+        ViewBag.BimboProducts = await wmcBimboStagingImportService.GetAdminProductsAsync(cancellationToken);
+        ViewBag.CanManageBimbo = hostEnvironment.IsStaging();
+        ViewBag.CanActivateBimbo = hostEnvironment.IsStaging() && initialLoadReleaseOptions.Value.Enabled;
+    }
+
+    private static string? GetWmcBimboErrorMessage(string? errorCode) => errorCode switch
+    {
+        "NO_PRODUCTS_SELECTED" => "Selecione ao menos um produto validado na simulação.",
+        "PRODUCT_NOT_APPROVED" => "A seleção contém códigos fora do lote BIMBO homologado.",
+        "WMC_READ_FAILED" => "Não foi possível consultar o espelho WMC.",
+        "PENDING_CATEGORY_ACTIVE" => "A categoria pendente está ativa e precisa ser revisada.",
+        "LOCAL_WMC_CODE_CONFLICT" => "Há códigos WMC duplicados no cadastro Orofoods.",
+        "SOURCE_WMC_CODE_CONFLICT" => "Há códigos WMC duplicados no espelho.",
+        "APPROVED_PRODUCT_MISSING" => "Um ou mais produtos selecionados não foram encontrados no WMC.",
+        "SOURCE_BRAND_MISMATCH" => "Um produto selecionado não pertence à marca BIMBO 104.",
+        "SOURCE_PRODUCT_NOT_ACTIVE" => "Um produto selecionado está inativo no WMC.",
+        "SOURCE_STOCK_UNIT_MISMATCH" => "A unidade de estoque do WMC não é PC.",
+        "SOURCE_PRODUCT_NAME_INVALID" => "A descrição de um produto selecionado é inválida.",
+        "SOURCE_EAN13_INVALID" => "O EAN-13 de um produto está ausente ou inválido.",
+        "SOURCE_EAN13_MISMATCH" => "Um EAN-13 não corresponde à referência homologada.",
+        "SOURCE_STOCK_INVALID" => "O estoque de um produto selecionado é inválido.",
+        "LOCAL_SKU_CONFLICT" => "O SKU WMC reservado já está sendo utilizado por outro produto.",
+        "IMPORT_FAILED" => "A importação falhou e a transação foi revertida.",
+        null => null,
+        _ => "A importação foi recusada após a validação. Revise os dados e tente novamente."
+    };
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -160,3 +246,18 @@ public class IntegrationsController(
         return RedirectToAction(nameof(Wmc));
     }
 }
+
+public sealed record WmcBimboImportResponse(
+    bool Succeeded,
+    int ImportedProducts,
+    int SkippedProducts,
+    string? ErrorCode,
+    string? ErrorMessage,
+    IReadOnlyList<WmcBimboProductOutcome> Products);
+
+public sealed record WmcBimboSimulationResponse(
+    bool Succeeded,
+    IReadOnlyList<WmcBimboProductSimulation> Products,
+    string? ErrorCode);
+
+public sealed record WmcBimboActivationResponse(bool Succeeded, string Status, string Message);

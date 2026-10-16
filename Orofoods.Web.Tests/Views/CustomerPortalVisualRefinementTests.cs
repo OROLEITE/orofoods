@@ -11,7 +11,7 @@ public class CustomerPortalVisualRefinementTests
 
         Assert.Contains("asp-action=\"AddToCart\"", view);
         Assert.Contains("asp-action=\"Product\"", view);
-        Assert.Contains("min=\"@product.MinimumCases\"", view);
+        Assert.Contains("min=\"@product.MinimumSalesQuantity\"", view);
         Assert.Contains("data-catalog-quantity-stepper", view);
         Assert.Contains("data-catalog-quantity-decrease", view);
         Assert.Contains("data-catalog-quantity-increase", view);

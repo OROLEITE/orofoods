@@ -54,6 +54,9 @@ public class CustomerDashboardService(
         return new DashboardVm
         {
             Customer = customer,
+            MinimumOrder = OrderMinimumPolicy.Resolve(
+                await db.OrderMinimumSettings.AsNoTracking().Select(setting => (decimal?)setting.MinimumAmount).SingleOrDefaultAsync(cancellationToken),
+                customer.MinimumOrder),
             LastOrder = await db.Orders
                 .Include(order => order.Items)
                 .ThenInclude(item => item.Product)

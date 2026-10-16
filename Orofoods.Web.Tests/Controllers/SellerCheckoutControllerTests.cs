@@ -40,11 +40,12 @@ public class SellerCheckoutControllerTests
         customer.Addresses.Add(address);
         var term = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega", DaysUntilDue = 0, IsActive = true };
         var product = new Product { Sku = "SELLER-COD", Name = "Produto", Brand = "Orofoods", Unit = "caixa", BasePrice = 25m, MinimumCases = 1, IsActive = true, IsAvailable = true, ProductCategory = new ProductCategory { Name = "Categoria", Slug = "categoria" } };
-        db.AddRange(representative, seller, customer, term, product, new ProductInventory { Product = product, QuantityOnHand = 10 });
+        db.AddRange(representative, seller, customer, term, product, new ProductInventory { Product = product, QuantityOnHand = 10 },
+            new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
         await db.SaveChangesAsync();
 
         var session = new TestSession();
-        session.SetString($"orofoods-cart-product-ids:seller:{representative.Id}:customer:{customer.Id}", $"{{\"{product.Id}\":1}}");
+        session.SetString($"orofoods-cart-v2-product-ids:seller:{representative.Id}:customer:{customer.Id}", $"{{\"{product.Id}\":1}}");
         var priceService = new PriceService(db);
         var cartService = new CartService(db, priceService);
         var accessService = new SalesRepresentativeAccessService(db);

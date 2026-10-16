@@ -92,6 +92,10 @@ public sealed class AdminWmcLegacyDownloadTests
             null!,
             null!,
             null!,
+            null!,
+            null!,
+            null!,
+            null!,
             null!)
         {
             ControllerContext = new ControllerContext { HttpContext = context },

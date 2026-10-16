@@ -121,6 +121,15 @@ public sealed class SellerOrderDraftEntryContractTests
     }
 
     [Fact]
+    public void Seller_entry_hides_delivery_date_but_keeps_the_legacy_field_in_its_form_contract()
+    {
+        var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+
+        Assert.DoesNotContain("name=\"RequestedDeliveryDate\"", view, StringComparison.Ordinal);
+        Assert.Contains(nameof(SellerOrderDraftSaveForm.RequestedDeliveryDate), typeof(SellerOrderDraftSaveForm).GetProperties().Select(property => property.Name));
+    }
+
+    [Fact]
     public void Entry_form_does_not_accept_prices_or_discount_values_and_does_not_use_cart_or_checkout_services()
     {
         var controllerType = typeof(CustomersController).Assembly

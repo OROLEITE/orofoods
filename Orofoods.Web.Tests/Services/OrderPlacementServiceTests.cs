@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
@@ -38,7 +39,7 @@ public class OrderPlacementServiceTests
         Assert.Equal(fixture.Customer.SalesRepresentativeId, order.SalesRepresentativeId);
         Assert.Equal(fixture.CurrentPrice, Assert.Single(order.Items).UnitPrice);
         Assert.Equal(OrderStatus.Received, Assert.Single(order.StatusHistory).Status);
-        Assert.False(fixture.Session.TryGetValue("orofoods-cart-product-ids:seller:7:customer:1", out _));
+        Assert.False(fixture.Session.TryGetValue("orofoods-cart-v2-product-ids:seller:7:customer:1", out _));
     }
 
     [Fact]
@@ -59,6 +60,68 @@ public class OrderPlacementServiceTests
 
         var persistedOrder = await fixture.Db.Orders.AsNoTracking().SingleAsync(order => order.Id == result.Order!.Id);
         Assert.Equal(originalCnpj, persistedOrder.CustomerCnpjSnapshot);
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_rejects_subtotal_below_minimum_even_when_customer_minimum_is_lower()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10, minimumOrderSetting: null);
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.False(result.Succeeded);
+        var minimumError = Assert.Single(result.Errors);
+        Assert.Contains("valor mínimo dos itens", minimumError, StringComparison.OrdinalIgnoreCase);
+        Assert.Matches(@"\b160\b", minimumError);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Package_sales_accepts_whole_pack_quantities_without_case_multiples_and_snapshots_the_unit()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Product.CommercialUnitCode = "PCT";
+        fixture.Product.LogisticsUnitCode = "CX";
+        fixture.Product.PackagesPerCase = 12;
+        fixture.Product.MinimumCases = 12;
+        fixture.Product.BasePrice = 99m;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 3)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var item = Assert.Single(result.Order!.Items);
+        Assert.Equal(3, item.Quantity);
+        Assert.Equal("PCT", item.SalesUnitCodeSnapshot);
+        Assert.Equal(297m, item.Subtotal);
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_accepts_the_configured_minimum_exactly()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10, minimumOrderSetting: 160m);
+        fixture.Product.BasePrice = 80m;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 2)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal(160m, result.Order!.Subtotal);
     }
 
     [Fact]
@@ -340,7 +403,7 @@ public class OrderPlacementServiceTests
     public async Task PlaceAsync_rolls_back_when_inventory_reservation_fails()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 0);
-        fixture.Session.SetString("orofoods-cart-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [fixture.Product.Id] = 1 }));
+        fixture.Session.SetString("orofoods-cart-v2-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [fixture.Product.Id] = 1 }));
 
         var result = await fixture.Service.PlaceAsync(
             fixture.Customer.Id,
@@ -444,7 +507,7 @@ public class OrderPlacementServiceTests
             return product;
         }
 
-        public static async Task<PlacementFixture> CreateAsync(int availableQuantity, string paymentTermCode = "PIX")
+        public static async Task<PlacementFixture> CreateAsync(int availableQuantity, string paymentTermCode = "PIX", decimal? minimumOrderSetting = 1m)
         {
             var db = await TestDbContextFactory.CreateAsync();
             var representative = new SalesRepresentative { Id = 7, Name = "Vendedor", IsActive = true };
@@ -454,11 +517,12 @@ public class OrderPlacementServiceTests
             var product = new Product { Sku = "PLACE-001", Name = "Produto", Brand = "Orofoods", Unit = "caixa", BasePrice = 99m, MinimumCases = 1, IsActive = true, IsAvailable = true, ProductCategory = new ProductCategory { Name = "Categoria", Slug = "categoria" } };
             var seller = new ApplicationUser { Id = "seller", UserName = "seller", Email = "seller@test.local", IsActive = true, SalesRepresentative = representative };
             db.AddRange(representative, customer, address, term, product, seller, new ProductInventory { Product = product, QuantityOnHand = availableQuantity });
+            if (minimumOrderSetting.HasValue) db.OrderMinimumSettings.Add(new OrderMinimumSettings { MinimumAmount = minimumOrderSetting.Value });
             await db.SaveChangesAsync();
 
             var session = new TestSession();
             var scope = CartScope.ForSeller(representative.Id, customer.Id);
-            session.SetString("orofoods-cart-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [product.Id] = 1 }));
+            session.SetString("orofoods-cart-v2-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [product.Id] = 1 }));
             return new PlacementFixture
             {
                 Db = db,

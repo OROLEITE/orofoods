@@ -81,6 +81,8 @@ public sealed class SellerOrderDraftEditorViewModel
     public int? DeliveryAddressId { get; init; }
     public int? PaymentTermId { get; init; }
     public DateTime? RequestedDeliveryDate { get; init; }
+    public decimal MinimumOrder { get; init; } = 160m;
+    public decimal RemainingForMinimum => Math.Max(0m, MinimumOrder - Total);
     public string Notes { get; init; } = "";
     public IReadOnlyList<SellerOrderDraftEditorItem> Items { get; init; } = [];
     public IReadOnlyList<int> RemovedProductIds { get; init; } = [];
@@ -99,7 +101,8 @@ public sealed record SellerOrderDraftEditorItem(
     int Quantity,
     int MinimumCases,
     decimal UnitPrice,
-    bool RemovalPending = false)
+    bool RemovalPending = false,
+    string PriceUnitLabel = "caixa")
 {
     public decimal Subtotal => UnitPrice * Quantity;
 }

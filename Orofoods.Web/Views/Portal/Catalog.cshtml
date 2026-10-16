@@ -67,17 +67,17 @@
                         }
                     </div>
                     <div class="p-4 catalog-card-body">
-                        <small>@product.Sku | m&iacute;nimo @product.MinimumCases cx.</small>
+                        <small>@product.Sku | m&iacute;nimo @product.MinimumSalesQuantity @product.PriceUnitLabel</small>
                         <h3>@product.Name</h3>
                         <p>@product.UnitDescription</p>
-                        <div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ caixa</span></div>
+                        <div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ @product.PriceUnitLabel</span></div>
                         <form asp-action="AddToCart" method="post" class="catalog-add-form" data-catalog-add-form>
                             <input type="hidden" name="productId" value="@product.Id" />
                             <label for="quantity-@product.Id">Quantidade</label>
                             <div class="catalog-add-controls">
                                 <div class="catalog-quantity-stepper" data-catalog-quantity-stepper>
                                     <button class="catalog-quantity-button" type="button" data-catalog-quantity-decrease aria-label="Diminuir quantidade de @product.Name" disabled="@isInCart">&minus;</button>
-                                    <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumCases" step="1" value="@(isInCart ? cartProductQuantity : product.MinimumCases)" inputmode="numeric" aria-label="Quantidade de @product.Name" disabled="@isInCart" />
+                                    <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumSalesQuantity" step="1" value="@(isInCart ? cartProductQuantity : product.MinimumSalesQuantity)" inputmode="numeric" aria-label="Quantidade de @product.Name" disabled="@isInCart" />
                                     <button class="catalog-quantity-button" type="button" data-catalog-quantity-increase aria-label="Aumentar quantidade de @product.Name" disabled="@isInCart">+</button>
                                 </div>
                                 <button class="btn btn-gold @(isInCart ? "is-in-cart" : null)" type="submit" disabled="@(isInCart || !product.IsCommerciallyAvailable)">

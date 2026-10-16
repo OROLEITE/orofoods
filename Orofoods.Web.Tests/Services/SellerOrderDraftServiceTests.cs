@@ -107,6 +107,24 @@ public sealed class SellerOrderDraftServiceTests
     }
 
     [Fact]
+    public async Task Saving_without_the_legacy_delivery_date_keeps_an_existing_date_unchanged()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var existingDate = DateTime.UtcNow.Date.AddDays(5);
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, new SellerOrderDraftInput(
+            fixture.Customer.Id, fixture.Address.Id, fixture.PaymentTerm.Id, existingDate, null,
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2)]));
+        Assert.True(created.Succeeded, created.ErrorMessage);
+
+        var saved = await fixture.Service.SaveAsync(fixture.SellerPrincipal, created.Draft!.Id, new SellerOrderDraftSaveInput(
+            created.Draft.Version, fixture.Address.Id, fixture.PaymentTerm.Id, null, "Atualizado",
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2)]));
+
+        Assert.True(saved.Succeeded, saved.ErrorMessage);
+        Assert.Equal(existingDate, saved.Draft!.RequestedDeliveryDate);
+    }
+
+    [Fact]
     public async Task Repeated_create_request_key_returns_the_existing_draft_without_duplicating_it()
     {
         await using var fixture = await DraftFixture.CreateAsync();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Services.Orders;
@@ -31,12 +32,37 @@ public class CartServiceTests
         await db.SaveChangesAsync();
         var product = await AddProductAsync(db, 2, 2);
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
 
         var cart = await new CartService(db, new PriceService(db)).GetAsync(customer.Id, session);
 
         Assert.False(Assert.Single(cart.Items).IsAvailable);
         Assert.Equal(0m, cart.Subtotal);
+    }
+
+    [Fact]
+    public async Task GetAsync_preserves_legacy_cart_lines_but_drops_lines_that_would_be_reinterpreted_as_packs()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var legacyProduct = await AddProductAsync(db, 20);
+        var packageProduct = await AddProductAsync(db, 20);
+        packageProduct.CommercialUnitCode = "PCT";
+        packageProduct.LogisticsUnitCode = "CX";
+        packageProduct.PackagesPerCase = 12;
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        session.SetString("orofoods-cart-product-ids", $"{{\"{legacyProduct.Id}\":2,\"{packageProduct.Id}\":3}}");
+
+        var cart = await new CartService(db, new PriceService(db)).GetAsync(customer.Id, session);
+
+        var line = Assert.Single(cart.Items);
+        Assert.Equal(legacyProduct.Id, line.ProductId);
+        Assert.Equal(2, line.Quantity);
+        Assert.True(session.TryGetValue("orofoods-cart-v2-product-ids", out _));
+        Assert.False(session.TryGetValue("orofoods-cart-product-ids", out _));
     }
 
     [Fact]
@@ -57,6 +83,33 @@ public class CartServiceTests
         var line = Assert.Single(cart.Items);
         Assert.Equal(product.Id, line.ProductId);
         Assert.Equal(3, line.Quantity);
+    }
+
+    [Fact]
+    public async Task GetAsync_applies_the_global_order_minimum_without_changing_customer_settings()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", MinimumOrder = 75m };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var cart = await new CartService(db, new PriceService(db)).GetAsync(customer.Id, new TestSession());
+
+        Assert.Equal(160m, cart.MinimumOrder);
+        Assert.Equal(75m, customer.MinimumOrder);
+    }
+
+    [Fact]
+    public async Task GetAsync_uses_an_administrator_configured_minimum()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", MinimumOrder = 75m };
+        db.Customers.Add(customer);
+        db.OrderMinimumSettings.Add(new OrderMinimumSettings { MinimumAmount = 200m });
+        await db.SaveChangesAsync();
+
+        var cart = await new CartService(db, new PriceService(db)).GetAsync(customer.Id, new TestSession());
+
+        Assert.Equal(200m, cart.MinimumOrder);
     }
 
     private static async Task<Product> AddProductAsync(Orofoods.Web.Data.ApplicationDbContext db, int quantityOnHand, int quantityReserved = 0)

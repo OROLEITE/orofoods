@@ -88,4 +88,28 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("color: var(--muted)", css, StringComparison.Ordinal);
         Assert.Contains("color: var(--admin-dark-muted)", css, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Bimbo_panel_has_staging_admin_simulation_selection_reason_and_individual_activation_contracts()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var releaseService = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcInitialLoadReadinessReleaseService.cs"));
+
+        Assert.Contains("WmcBimboSimulate", controller, StringComparison.Ordinal);
+        Assert.Contains("WmcBimboImport", controller, StringComparison.Ordinal);
+        Assert.Contains("WmcBimboActivate", controller, StringComparison.Ordinal);
+        Assert.Contains("if (!hostEnvironment.IsStaging()) return Forbid();", controller, StringComparison.Ordinal);
+        Assert.Contains("selectedWmcCodes", controller, StringComparison.Ordinal);
+        Assert.Contains("wmcBimboSimulateForm", view, StringComparison.Ordinal);
+        Assert.Contains("Simular importa&ccedil;&atilde;o", view, StringComparison.Ordinal);
+        Assert.Contains("wmcBimboImportForm", view, StringComparison.Ordinal);
+        Assert.Contains("Importar selecionados", view, StringComparison.Ordinal);
+        Assert.Contains("window.confirm", view, StringComparison.Ordinal);
+        Assert.Contains("Importando...", view, StringComparison.Ordinal);
+        Assert.Contains("@product.CommercialStatus", view, StringComparison.Ordinal);
+        Assert.Contains("product.Reasons", view, StringComparison.Ordinal);
+        Assert.Contains("ValidateCommercialData", releaseService, StringComparison.Ordinal);
+    }
 }

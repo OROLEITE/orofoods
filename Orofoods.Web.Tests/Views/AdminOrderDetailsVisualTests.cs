@@ -17,7 +17,7 @@ public class AdminOrderDetailsVisualTests
         Assert.Contains("Customer?.WmcCode", view);
         Assert.Contains("informativo", view);
         Assert.Contains("Product?.WmcCode", view);
-        Assert.Contains("Product?.Unit", view);
+        Assert.Contains("SalesUnitCodeSnapshot", view);
         Assert.Contains("WmcOrderExportState", controller);
         Assert.Contains("BlockReason", view);
         Assert.Contains("CanExport", view);

@@ -67,6 +67,13 @@ public sealed class WmcOrderFileGenerator
 
         foreach (var item in order.Items)
         {
+            if (string.Equals(item.SalesUnitCodeSnapshot, "PCT", StringComparison.OrdinalIgnoreCase)
+                || (item.SalesUnitCodeSnapshot is null
+                    && string.Equals(item.Product?.CommercialUnitCode, "PCT", StringComparison.OrdinalIgnoreCase)))
+            {
+                errors.Add("WMC_PACKAGE_UNIT_CODE_UNCONFIRMED");
+            }
+
             if (string.IsNullOrWhiteSpace(item.Product?.WmcCode))
             {
                 errors.Add($"O codigo WMC do produto '{item.ProductNameSnapshot}' e obrigatorio para exportar o pedido.");

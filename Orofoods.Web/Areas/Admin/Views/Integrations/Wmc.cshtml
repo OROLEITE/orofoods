@@ -5,6 +5,9 @@
     ViewData["Title"] = "Sincroniza\u00e7\u00e3o WMC";
     var isRunning = (bool)ViewBag.IsRunning;
     var lastRun = ViewBag.LastRun as WmcSyncRunResult;
+    var bimboProducts = ViewBag.BimboProducts as IReadOnlyList<WmcBimboAdminProductRow> ?? [];
+    var canManageBimbo = ViewBag.CanManageBimbo == true;
+    var canActivateBimbo = ViewBag.CanActivateBimbo == true;
 }
 
 <section class="section admin-wmc-page">
@@ -68,6 +71,85 @@
         <section class="mt-5" aria-labelledby="wmc-preview-title">
             <h2 id="wmc-preview-title" class="wmc-preview-heading"><svg data-icon="package" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m21 8-9-5-9 5 9 5 9-5Zm-18 0v8l9 5 9-5V8m-9 5v8" /></svg> Pr&eacute;via de produtos por marca</h2>
             <p>Consulta somente leitura. Nenhum produto, estoque, categoria ou execu&ccedil;&atilde;o ser&aacute; gravado.</p>
+
+            @if (canManageBimbo)
+            {
+            <section class="wmc-bimbo-card" aria-labelledby="wmc-bimbo-title">
+                <div class="wmc-bimbo-heading">
+                    <div>
+                        <h3 id="wmc-bimbo-title">Importa&ccedil;&atilde;o BIMBO &middot; marca 104</h3>
+                        <p>Simule a valida&ccedil;&atilde;o dos 10 produtos. A importa&ccedil;&atilde;o &eacute; restrita ao Staging e mant&eacute;m os produtos pendentes de cadastro comercial.</p>
+                    </div>
+                    @if (canManageBimbo)
+                    {
+                        <form id="wmcBimboSimulateForm" asp-action="WmcBimboSimulate" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-primary" id="wmcBimboSimulateButton">Simular importa&ccedil;&atilde;o</button>
+                        </form>
+                    }
+                </div>
+                <div id="wmcBimboFeedback" class="alert alert-info" role="status" aria-live="polite" hidden></div>
+
+                <h4 class="wmc-bimbo-subtitle">Status comercial dos produtos</h4>
+                <div class="table-responsive">
+                    <table class="wmc-product-table wmc-bimbo-status-table">
+                        <thead><tr><th>C&oacute;digo WMC</th><th>Produto</th><th>EAN-13</th><th>DUN-14</th><th>Pre&ccedil;o/PCT</th><th>Estoque</th><th>Status</th><th>A&ccedil;&atilde;o</th></tr></thead>
+                        <tbody>
+                            @foreach (var product in bimboProducts)
+                            {
+                                <tr data-bimbo-code="@product.WmcCode">
+                                    <td>@product.WmcCode</td>
+                                    <td>@(product.Name ?? "N&atilde;o importado")</td>
+                                    <td>@(product.Ean13 ?? "—")</td>
+                                    <td>@(product.Dun14 ?? "—")</td>
+                                    <td>@(product.BasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</td>
+                                    <td>@(product.AvailableStock?.ToString("0.###") ?? "—")</td>
+                                    <td><span class="wmc-product-status wmc-product-status--@product.CommercialStatus.ToLowerInvariant()" data-commercial-status="@product.CommercialStatus">@product.CommercialStatus</span></td>
+                                    <td>
+                                        @if (canActivateBimbo && product.CanActivate && product.ProductId.HasValue)
+                                        {
+                                            <form class="wmc-bimbo-activate-form" asp-action="WmcBimboActivate" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="productId" value="@product.ProductId" />
+                                                <label class="visually-hidden" for="bimbo-reason-@product.WmcCode">Motivo da ativa&ccedil;&atilde;o @product.WmcCode</label>
+                                                <input id="bimbo-reason-@product.WmcCode" type="text" name="reason" maxlength="300" required placeholder="Motivo da libera&ccedil;&atilde;o" />
+                                                <button type="submit" class="btn btn-sm btn-primary">Ativar</button>
+                                            </form>
+                                        }
+                                        else if (product.Reasons.Count > 0)
+                                        {
+                                            <span class="wmc-bimbo-reasons">@string.Join(" ", product.Reasons)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (canManageBimbo)
+                {
+                    <form id="wmcBimboImportForm" asp-action="WmcBimboImport" method="post">
+                        @Html.AntiForgeryToken()
+                        <div id="wmcBimboSimulation" hidden>
+                            <h4 class="wmc-bimbo-subtitle">Resultado da simula&ccedil;&atilde;o</h4>
+                            <div class="table-responsive">
+                                <table class="wmc-product-table">
+                                    <thead><tr><th>Selecionar</th><th>C&oacute;digo WMC</th><th>Produto</th><th>EAN-13</th><th>Unidade</th><th>Estoque</th><th>Valida&ccedil;&atilde;o / motivo</th></tr></thead>
+                                    <tbody id="wmcBimboSimulationRows"></tbody>
+                                </table>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="wmcBimboImportButton" disabled>Importar selecionados</button>
+                        </div>
+                    </form>
+                }
+            </section>
+            }
+
             @if (TempData["WmcPreviewError"] is string previewError)
             {
                 <div class="alert alert-warning" role="alert">@previewError</div>
@@ -196,3 +278,126 @@
         updateCount();
     })();
 </script>
+
+@if (canManageBimbo)
+{
+<script>
+    (() => {
+        const simulateForm = document.getElementById('wmcBimboSimulateForm');
+        const importForm = document.getElementById('wmcBimboImportForm');
+        const resultPanel = document.getElementById('wmcBimboSimulation');
+        const resultRows = document.getElementById('wmcBimboSimulationRows');
+        const importButton = document.getElementById('wmcBimboImportButton');
+        const feedback = document.getElementById('wmcBimboFeedback');
+
+        const showFeedback = (message, type = 'info') => {
+            feedback.className = `alert alert-${type}`;
+            feedback.textContent = message;
+            feedback.hidden = false;
+        };
+        const postForm = async (form) => {
+            const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+            return fetch(form.action, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token, 'Accept': 'application/json' },
+                body: new FormData(form),
+                credentials: 'same-origin'
+            });
+        };
+        const updateImportButton = () => {
+            importButton.disabled = !resultRows.querySelector('input[name="selectedWmcCodes"]:checked');
+        };
+        const addCell = (row, value) => {
+            const cell = document.createElement('td');
+            cell.textContent = value ?? '—';
+            row.appendChild(cell);
+            return cell;
+        };
+        const renderSimulation = (products) => {
+            resultRows.replaceChildren();
+            for (const product of products ?? []) {
+                const row = document.createElement('tr');
+                const selectCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'selectedWmcCodes';
+                checkbox.value = product.wmcCode;
+                checkbox.disabled = !product.canSelect;
+                checkbox.setAttribute('aria-label', `Selecionar produto WMC ${product.wmcCode}`);
+                checkbox.addEventListener('change', updateImportButton);
+                selectCell.appendChild(checkbox);
+                row.appendChild(selectCell);
+                addCell(row, product.wmcCode);
+                addCell(row, product.description);
+                addCell(row, product.ean13);
+                addCell(row, product.salesUnitCode);
+                addCell(row, product.stock == null ? 'N/D' : Number(product.stock).toLocaleString('pt-BR'));
+                const issueText = (product.issues ?? []).map(issue => issue.message).concat(product.skipReasons ?? []).join(' ');
+                addCell(row, issueText || 'Validado para importação.');
+                if (product.issues?.length) row.classList.add('wmc-bimbo-row--invalid');
+                if (product.alreadyImported) row.classList.add('wmc-bimbo-row--existing');
+                resultRows.appendChild(row);
+            }
+            resultPanel.hidden = false;
+            updateImportButton();
+        };
+
+        simulateForm?.addEventListener('submit', async event => {
+            event.preventDefault();
+            const button = document.getElementById('wmcBimboSimulateButton');
+            button.disabled = true;
+            button.textContent = 'Validando...';
+            showFeedback('Validando os 10 produtos BIMBO sem gravar dados.');
+            try {
+                const response = await postForm(simulateForm);
+                const result = await response.json();
+                renderSimulation(result.products);
+                showFeedback(result.succeeded ? 'Simulação concluída. Nenhum dado foi gravado.' : 'Simulação concluída com registros que precisam de revisão.', result.succeeded ? 'success' : 'warning');
+            } catch {
+                showFeedback('Não foi possível concluir a simulação. Tente novamente.', 'danger');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Simular importação';
+            }
+        });
+
+        importForm?.addEventListener('submit', async event => {
+            event.preventDefault();
+            const selectedCount = resultRows.querySelectorAll('input[name="selectedWmcCodes"]:checked').length;
+            if (selectedCount === 0 || !window.confirm(`Confirmar a importação de ${selectedCount} produto(s) selecionado(s) para o Staging?`)) return;
+            importButton.disabled = true;
+            importButton.textContent = 'Importando...';
+            try {
+                const response = await postForm(importForm);
+                const result = await response.json();
+                const messages = (result.products ?? []).map(product => `${product.wmcCode}: ${product.message}`);
+                const summary = `Importados: ${result.importedProducts ?? 0}; ignorados: ${result.skippedProducts ?? 0}.`;
+                showFeedback([result.succeeded ? 'Importação concluída com sucesso.' : `Importação recusada: ${result.errorMessage ?? result.errorCode ?? 'revise os dados selecionados'}.`, summary, ...messages].join(' '), result.succeeded ? 'success' : 'danger');
+                if (result.succeeded) window.setTimeout(() => window.location.reload(), 1800);
+            } catch {
+                showFeedback('Não foi possível concluir a importação. Revise os registros e tente novamente.', 'danger');
+            } finally {
+                importButton.textContent = 'Importar selecionados';
+                updateImportButton();
+            }
+        });
+
+        document.querySelectorAll('.wmc-bimbo-activate-form').forEach(form => form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const button = form.querySelector('button[type="submit"]');
+            if (!window.confirm('Ativar este produto no catálogo após validar os dados comerciais?')) return;
+            button.disabled = true;
+            try {
+                const response = await postForm(form);
+                const result = await response.json();
+                showFeedback(result.message, result.succeeded ? 'success' : 'warning');
+                if (result.succeeded) window.setTimeout(() => window.location.reload(), 1200);
+            } catch {
+                showFeedback('Não foi possível ativar o produto. Revise o cadastro comercial.', 'danger');
+            } finally {
+                button.disabled = false;
+            }
+        }));
+    })();
+</script>
+}

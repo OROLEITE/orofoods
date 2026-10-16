@@ -53,7 +53,9 @@ public sealed class SellerCatalogService(
                     product.Sku,
                     product.Description,
                     product.WmcCode,
-                    product.Ean))
+                    product.Ean,
+                    product.Ean13,
+                    product.Dun14))
                 .ToListAsync(cancellationToken);
             var matchingIds = candidates
                 .Where(candidate => MatchesSearch(candidate, normalizedQuery))
@@ -183,14 +185,16 @@ public sealed class SellerCatalogService(
             x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)) &&
             db.ProductInventories.Any(inventory =>
                 inventory.ProductId == x.Id &&
-                inventory.QuantityOnHand - inventory.QuantityReserved >= x.MinimumCases));
+                inventory.QuantityOnHand - inventory.QuantityReserved >= (x.CommercialUnitCode == "PCT" ? 1 : x.MinimumCases)));
 
     private static bool MatchesSearch(ProductSearchCandidate product, string normalizedQuery) =>
         CatalogSearchText.Normalize(product.Name).Contains(normalizedQuery, StringComparison.Ordinal) ||
         CatalogSearchText.Normalize(product.Sku).Contains(normalizedQuery, StringComparison.Ordinal) ||
         CatalogSearchText.Normalize(product.Description).Contains(normalizedQuery, StringComparison.Ordinal) ||
         (product.WmcCode is not null && CatalogSearchText.Normalize(product.WmcCode).Contains(normalizedQuery, StringComparison.Ordinal)) ||
-        (product.Ean is not null && CatalogSearchText.Normalize(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal));
+        (product.Ean is not null && CatalogSearchText.Normalize(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+        (product.Ean13 is not null && CatalogSearchText.Normalize(product.Ean13).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+        (product.Dun14 is not null && CatalogSearchText.Normalize(product.Dun14).Contains(normalizedQuery, StringComparison.Ordinal));
 
     private static IReadOnlyList<SellerCatalogProductRow> ToRows(
         IEnumerable<Models.Catalog.Product> products,
@@ -201,9 +205,12 @@ public sealed class SellerCatalogService(
             product.Description,
             product.UnitDescription,
             prices.GetValueOrDefault(product.Id, product.BasePrice),
-            product.MinimumCases,
+            product.MinimumSalesQuantity,
             product.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).Select(image => (int?)image.Id).FirstOrDefault(),
-            product.Ean)).ToArray();
+            product.Ean,
+            product.PriceUnitLabel,
+            product.Ean13,
+            product.Dun14)).ToArray();
 
     private sealed record ProductSearchCandidate(
         int Id,
@@ -211,5 +218,7 @@ public sealed class SellerCatalogService(
         string Sku,
         string Description,
         string? WmcCode,
-        string? Ean);
+        string? Ean,
+        string? Ean13,
+        string? Dun14);
 }

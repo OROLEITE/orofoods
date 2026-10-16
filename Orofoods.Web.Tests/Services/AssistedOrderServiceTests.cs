@@ -94,6 +94,12 @@ public class AssistedOrderServiceTests
 
     private static AssistedOrderService CreateService(Orofoods.Web.Data.ApplicationDbContext db)
     {
+        if (!db.OrderMinimumSettings.Any())
+        {
+            db.OrderMinimumSettings.Add(new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
+            db.SaveChanges();
+        }
+
         var options = Options.Create(new PaymentEligibilityOptions());
         return new AssistedOrderService(db, new PriceService(db), new PaymentEligibilityService(db, options), new OrderReservationService(db));
     }

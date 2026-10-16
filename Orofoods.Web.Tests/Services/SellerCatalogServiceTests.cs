@@ -99,6 +99,8 @@ public class SellerCatalogServiceTests
         var baudUcco = Product("SKU-BAUDUCCO-390", "BAUDUCCO PÃO GRÃOS CLÁSSICOS 390G", true);
         baudUcco.WmcCode = "WMC-BAU-390";
         baudUcco.Ean = "7891234567890";
+        baudUcco.Ean13 = "0123456789012";
+        baudUcco.Dun14 = "00012345678905";
         baudUcco.IsWmcActive = true;
         baudUcco.WmcStockAvailable = true;
         baudUcco.WmcInitialLoadReady = true;
@@ -117,7 +119,7 @@ public class SellerCatalogServiceTests
         await db.SaveChangesAsync();
 
         var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
-        foreach (var query in new[] { "bau", "BAU", "WMC-bau", "graos clas", "sku-bauducco", "912345678" })
+        foreach (var query in new[] { "bau", "BAU", "WMC-bau", "graos clas", "sku-bauducco", "912345678", "0123456789012", "00012345678905" })
         {
             var catalog = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, query, page: 1);
             Assert.Equal(baudUcco.Id, Assert.Single(Assert.IsType<SellerCatalogViewModel>(catalog).Products).Id);

@@ -12,6 +12,7 @@ public sealed class AssistedOrderViewModel
     public IReadOnlyList<CustomerAddress> Addresses { get; init; } = [];
     public IReadOnlyList<PaymentTerm> PaymentTerms { get; init; } = [];
     public IReadOnlyList<AssistedOrderProductViewModel> Products { get; init; } = [];
+    public decimal MinimumOrder { get; init; } = 160m;
     public PaymentEligibilityResult? PaymentEligibility { get; init; }
     public string? Query { get; init; }
     [Range(1, int.MaxValue)] public int AddressId { get; set; }
@@ -23,7 +24,7 @@ public sealed class AssistedOrderViewModel
     public List<int> Quantities { get; set; } = [];
 }
 
-public sealed record AssistedOrderProductViewModel(int Id, string Sku, string Name, string Unit, decimal UnitPrice, int MinimumCases, bool IsAvailable);
+public sealed record AssistedOrderProductViewModel(int Id, string Sku, string Name, string Unit, decimal UnitPrice, int MinimumCases, bool IsAvailable, string PriceUnitLabel = "caixa");
 
 public sealed record AssistedOrderResult(bool Succeeded, int? OrderId, string? ErrorMessage)
 {

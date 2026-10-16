@@ -9,11 +9,12 @@ using OrderModel = Orofoods.Web.Models.Orders.Order;
 
 namespace Orofoods.Web.ViewModels;
 
-public record RepeatItemVm(int ProductId, string Sku, string Name, string Unit, int Minimum, int Quantity, decimal Price, bool Available, string? Substitute);
+public record RepeatItemVm(int ProductId, string Sku, string Name, string Unit, int Minimum, int Quantity, decimal Price, bool Available, string? Substitute, string PriceUnitLabel = "caixa");
 
 public class DashboardVm
 {
     public required CustomerModel Customer { get; init; }
+    public decimal MinimumOrder { get; init; } = 160m;
     public OrderModel? LastOrder { get; init; }
     public required List<FrequentProduct> FrequentProducts { get; init; }
     public required List<OrderModel> RecentOrders { get; init; }
@@ -34,6 +35,7 @@ public class RepeatOrderVm
     public required List<CustomerAddressModel> Addresses { get; init; }
     public required List<PaymentTerm> PaymentTerms { get; init; }
     public required string AttemptKey { get; init; }
+    public decimal MinimumOrder { get; init; } = 160m;
 }
 
 public class ConfirmOrderVm
