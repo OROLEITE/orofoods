@@ -11,7 +11,7 @@ public sealed class ProductCommercialUnitTests
         var product = new Product
         {
             Ean13 = "4006381333931",
-            Dun14 = "10012345678904",
+            Dun14 = "17899679702656",
             CommercialUnitCode = "PCT",
             LogisticsUnitCode = "CX",
             PackagesPerCase = 24,
@@ -19,7 +19,7 @@ public sealed class ProductCommercialUnitTests
         };
 
         Assert.Equal("4006381333931", product.Ean13);
-        Assert.Equal("10012345678904", product.Dun14);
+        Assert.Equal("17899679702656", product.Dun14);
         Assert.Equal("PCT", product.EffectiveSalesUnitCode);
         Assert.Equal("PCT", product.PriceUnitLabel);
         Assert.Equal("PCT · CX com 24 PCT", product.UnitDescription);
@@ -65,5 +65,16 @@ public sealed class ProductCommercialUnitTests
 
         Assert.False(valid);
         Assert.Contains(errors, error => error.ErrorMessage!.Contains("verificador", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Dun14_uses_the_correct_gtin14_check_digit_weighting()
+    {
+        var product = new Product { Dun14 = "17899679702656" };
+        var errors = new List<ValidationResult>();
+
+        var valid = Validator.TryValidateObject(product, new ValidationContext(product), errors, validateAllProperties: true);
+
+        Assert.True(valid, string.Join("; ", errors.Select(error => error.ErrorMessage)));
     }
 }

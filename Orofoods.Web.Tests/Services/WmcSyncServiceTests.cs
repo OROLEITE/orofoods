@@ -59,7 +59,7 @@ public class WmcSyncServiceTests
         var product = new Product
         {
             WmcCode = "PKG-1", Sku = "LOCAL-PKG-1", Name = "Produto", ProductCategory = category,
-            Ean13 = "4006381333931", Dun14 = "10012345678904", CommercialUnitCode = "PCT",
+            Ean13 = "4006381333931", Dun14 = "17899679702656", CommercialUnitCode = "PCT",
             LogisticsUnitCode = "CX", PackagesPerCase = 24
         };
         db.AddRange(category, product);

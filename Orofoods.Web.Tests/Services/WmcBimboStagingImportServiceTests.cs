@@ -27,6 +27,101 @@ public sealed class WmcBimboStagingImportServiceTests
     };
 
     [Fact]
+    public async Task Simulation_validates_all_ten_products_without_writing_products_inventory_or_audit()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, ValidBimboRows());
+
+        var result = await service.SimulateAsync();
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(10, result.Products.Count);
+        Assert.All(result.Products, product =>
+        {
+            Assert.True(product.CanSelect);
+            Assert.Empty(product.Issues);
+            Assert.Equal("PCT", product.SalesUnitCode);
+        });
+        Assert.Empty(await db.Products.ToListAsync());
+        Assert.Empty(await db.ProductInventories.ToListAsync());
+        Assert.Empty(await db.WmcProductImportRuns.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Selected_import_revalidates_and_imports_only_the_selected_approved_product()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, ValidBimboRows());
+
+        var result = await service.ImportSelectedAsync(ActorId, ["503838"]);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(["503838"], result.ImportedWmcCodes);
+        Assert.Empty(result.SkippedWmcCodes);
+        Assert.Equal(["503838"], await db.Products.Select(product => product.WmcCode!).ToListAsync());
+        Assert.Equal(8, (await db.ProductInventories.SingleAsync()).QuantityOnHand);
+    }
+
+    [Fact]
+    public async Task Selected_import_is_not_blocked_by_a_local_duplicate_for_an_unselected_code()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Produtos", Slug = "produtos", IsActive = true };
+        db.ProductCategories.Add(category);
+        db.Products.AddRange(
+            new Product { Sku = "DUP-503768-A", WmcCode = "503768", Name = "Duplicado A", ProductCategory = category },
+            new Product { Sku = "DUP-503768-B", WmcCode = "503768", Name = "Duplicado B", ProductCategory = category });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, ValidBimboRows());
+
+        var result = await service.ImportSelectedAsync(ActorId, ["503838"]);
+
+        Assert.True(result.Succeeded, result.ErrorSummary);
+        Assert.Equal(["503838"], result.ImportedWmcCodes);
+        Assert.Equal(3, await db.Products.CountAsync());
+    }
+
+    [Fact]
+    public async Task Selected_import_rejects_an_invalid_selected_product_without_partial_writes()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var rows = ValidBimboRows().Select(row => row.CodProduto == "503838" ? row with { Ean = "7899679702658" } : row).ToArray();
+        var service = CreateService(db, rows);
+
+        var result = await service.ImportSelectedAsync(ActorId, ["503838", "503833"]);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("SOURCE_EAN13_INVALID", result.ErrorSummary);
+        Assert.Empty(await db.Products.ToListAsync());
+        Assert.Empty(await db.ProductInventories.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Admin_status_is_pending_until_commercial_data_is_complete_then_inactive_until_activation()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, ValidBimboRows());
+        await service.ImportSelectedAsync(ActorId, ["503838"]);
+
+        var pending = Assert.Single(await service.GetAdminProductsAsync(), product => product.WmcCode == "503838");
+        Assert.Equal(WmcBimboProductRules.CommercialStatusPending, pending.CommercialStatus);
+        Assert.False(pending.CanActivate);
+
+        var product = await db.Products.SingleAsync(item => item.WmcCode == "503838");
+        var category = await db.ProductCategories.SingleAsync();
+        category.IsActive = true;
+        product.ProductCategoryId = category.Id;
+        product.Dun14 = "17899679702656";
+        product.LogisticsUnitCode = "CX";
+        product.PackagesPerCase = 8;
+        await db.SaveChangesAsync();
+
+        var inactive = Assert.Single(await service.GetAdminProductsAsync(), item => item.WmcCode == "503838");
+        Assert.Equal(WmcBimboProductRules.CommercialStatusInactive, inactive.CommercialStatus);
+        Assert.True(inactive.CanActivate);
+    }
+
+    [Fact]
     public async Task Imports_only_the_approved_bimbo_batch_and_copies_package_stock_without_conversion()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

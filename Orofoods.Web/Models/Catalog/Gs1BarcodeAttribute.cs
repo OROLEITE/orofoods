@@ -14,10 +14,11 @@ public sealed class Gs1BarcodeAttribute(int length) : ValidationAttribute
             return new ValidationResult($"O código deve conter exatamente {length} dígitos.");
 
         var sum = 0;
+        var firstWeight = barcode.Length % 2 == 0 ? 3 : 1;
         for (var index = 0; index < barcode.Length - 1; index++)
         {
             var digit = barcode[index] - '0';
-            sum += digit * (index % 2 == 0 ? 1 : 3);
+            sum += digit * (index % 2 == 0 ? firstWeight : firstWeight == 3 ? 1 : 3);
         }
 
         var checkDigit = (10 - sum % 10) % 10;

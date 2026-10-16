@@ -51,6 +51,62 @@ public class WmcInitialLoadReadinessReleaseServiceTests
         Assert.False(new WmcInitialLoadReleaseOptions().Enabled);
     }
 
+    [Fact]
+    public async Task Bimbo_activation_requires_complete_commercial_data()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var product = await AddBimboProductAsync(db, complete: false);
+        var service = CreateService(db);
+
+        var result = await service.ActivateBimboAsync(product.Id, "Cadastro conferido", "admin-1");
+
+        Assert.Equal(WmcInitialLoadReleaseStatus.Blocked, result.Status);
+        await db.Entry(product).ReloadAsync();
+        Assert.False(product.IsActive);
+        Assert.False(product.IsAvailable);
+        Assert.False(product.WmcInitialLoadReady);
+        Assert.Empty(await db.WmcInitialLoadReleaseAudits.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("Production", true)]
+    [InlineData("Staging", false)]
+    public async Task Bimbo_activation_is_disabled_outside_staging_or_without_explicit_configuration(string environmentName, bool enabled)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var product = await AddBimboProductAsync(db, complete: true);
+        var service = CreateService(db, environmentName, enabled);
+
+        var result = await service.ActivateBimboAsync(product.Id, "Cadastro validado", "admin-1");
+
+        Assert.Equal(WmcInitialLoadReleaseStatus.Disabled, result.Status);
+        await db.Entry(product).ReloadAsync();
+        Assert.False(product.IsActive);
+        Assert.False(product.IsAvailable);
+        Assert.False(product.WmcInitialLoadReady);
+        Assert.Empty(await db.WmcInitialLoadReleaseAudits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Bimbo_activation_enables_only_a_complete_product_and_records_existing_release_audit()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var product = await AddBimboProductAsync(db, complete: true);
+        var service = CreateService(db, now: new DateTimeOffset(2026, 10, 16, 14, 0, 0, TimeSpan.Zero));
+
+        var result = await service.ActivateBimboAsync(product.Id, "Cadastro validado", "admin-42");
+
+        Assert.True(result.Status == WmcInitialLoadReleaseStatus.Released, result.Message);
+        await db.Entry(product).ReloadAsync();
+        Assert.True(product.IsActive);
+        Assert.True(product.IsAvailable);
+        Assert.True(product.WmcInitialLoadReady);
+        var audit = Assert.Single(await db.WmcInitialLoadReleaseAudits.ToListAsync());
+        Assert.Equal("503838", audit.WmcCode);
+        Assert.Equal("admin-42", audit.AdminUserId);
+        Assert.Equal("Cadastro validado", audit.Reason);
+    }
+
     [Theory]
     [InlineData("Production", true)]
     [InlineData("Staging", false)]
@@ -245,6 +301,38 @@ public class WmcInitialLoadReadinessReleaseServiceTests
             QuantityReserved = reserved,
             IsManuallyAdjusted = true
         });
+        await db.SaveChangesAsync();
+        return product;
+    }
+
+    private static async Task<Product> AddBimboProductAsync(ApplicationDbContext db, bool complete)
+    {
+        var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
+        db.ProductCategories.Add(category);
+        var product = new Product
+        {
+            Sku = "WMC-503838",
+            WmcCode = "503838",
+            WmcBrandCode = "104",
+            Name = "Mini HB Brioche",
+            ProductCategory = category,
+            Brand = "BIMBO",
+            Unit = "PCT",
+            Ean = "7899679702659",
+            Ean13 = "7899679702659",
+            Dun14 = complete ? "17899679702656" : null,
+            CommercialUnitCode = "PCT",
+            LogisticsUnitCode = complete ? "CX" : null,
+            PackagesPerCase = complete ? 8 : null,
+            BasePrice = 1m,
+            IsActive = false,
+            IsAvailable = false,
+            IsWmcActive = true,
+            WmcStockAvailable = true,
+            WmcInitialLoadReady = false
+        };
+        db.Products.Add(product);
+        db.ProductInventories.Add(new ProductInventory { Product = product, QuantityOnHand = 8 });
         await db.SaveChangesAsync();
         return product;
     }
