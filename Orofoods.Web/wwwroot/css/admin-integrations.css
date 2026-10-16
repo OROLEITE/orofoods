@@ -525,3 +525,227 @@ body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-pag
         min-height: 44px;
     }
 }
+
+.admin-authenticated .admin-integrations-page .erp-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.admin-authenticated .admin-integrations-page .erp-page-header > div:first-child {
+    min-width: 0;
+}
+
+.admin-authenticated .admin-integrations-page .erp-page-header h1 {
+    margin-bottom: 4px;
+}
+
+.admin-authenticated .admin-integrations-page .erp-page-header p {
+    margin-bottom: 0;
+}
+
+.admin-authenticated .admin-integrations-page .erp-header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+}
+
+.admin-authenticated .admin-integrations-page .erp-header-action {
+    min-height: 38px;
+    white-space: nowrap;
+}
+
+.admin-authenticated .admin-integrations-page .erp-filter-card {
+    margin-bottom: 12px;
+}
+
+.admin-authenticated .admin-integrations-page .erp-table thead th {
+    padding: 8px 10px;
+}
+
+.admin-authenticated .admin-integrations-page .erp-table tbody td {
+    padding: 7px 10px;
+    line-height: 1.35;
+}
+
+.admin-authenticated .admin-integrations-page .erp-status-badge {
+    padding: .24rem .45rem;
+    font-size: 9px;
+}
+
+.admin-authenticated .admin-integrations-page .erp-wmc-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    min-width: 150px;
+}
+
+.admin-authenticated .admin-integrations-page .erp-wmc-summary-date {
+    color: #475569;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.admin-authenticated .admin-integrations-page .erp-wmc-details-toggle {
+    min-height: 30px;
+    padding: 2px 3px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.admin-authenticated .admin-integrations-page .erp-wmc-details-toggle:hover {
+    color: #0f172a;
+}
+
+.admin-authenticated .admin-integrations-page .erp-wmc-details-toggle:focus-visible,
+.admin-authenticated .admin-integrations-page .erp-header-action:focus-visible {
+    outline: 2px solid #0284C7;
+    outline-offset: 2px;
+}
+
+template.erp-wmc-details-template {
+    display: none;
+}
+
+.erp-wmc-popover {
+    --bs-popover-max-width: min(24rem, calc(100vw - 1.5rem));
+    --bs-popover-border-color: #CBD5E1;
+    --bs-popover-bg: #FFFFFF;
+    --bs-popover-header-bg: #F8FAFC;
+    --bs-popover-header-color: #0F172A;
+    --bs-popover-body-color: #334155;
+    box-shadow: 0 12px 30px rgb(15 23 42 / 18%);
+}
+
+.erp-wmc-popover .popover-header {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.erp-wmc-popover-content {
+    max-height: min(50vh, 24rem);
+    overflow-y: auto;
+}
+
+.erp-wmc-popover-meta {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.erp-wmc-popover-meta dt {
+    color: #64748B;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.erp-wmc-popover-meta dd {
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.erp-wmc-popover-meta .erp-wmc-popover-error {
+    color: #B91C1C;
+}
+
+.erp-wmc-history-link {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    color: #0369A1;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-wmc-summary-date {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-wmc-details-toggle {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-wmc-details-toggle:hover {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-header-action {
+    border-color: #64748B;
+    background: #1E293B;
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page .erp-header-action:hover {
+    border-color: #94A3B8;
+    background: #334155;
+    color: #FFFFFF;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page.erp-wmc-popover {
+    --bs-popover-border-color: #475569;
+    --bs-popover-bg: #111827;
+    --bs-popover-header-bg: #1E293B;
+    --bs-popover-header-color: #F8FAFC;
+    --bs-popover-body-color: #E5E7EB;
+    box-shadow: 0 16px 36px rgb(0 0 0 / 42%);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page.erp-wmc-popover .popover-header {
+    border-color: #334155;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page.erp-wmc-popover .erp-wmc-popover-meta dt {
+    color: #94A3B8;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page.erp-wmc-popover .erp-wmc-popover-meta .erp-wmc-popover-error {
+    color: #FCA5A5;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-integrations-page.erp-wmc-popover .erp-wmc-history-link {
+    color: #7DD3FC;
+}
+
+@media (max-width: 767px) {
+    .admin-authenticated .admin-integrations-page .erp-page-header {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .admin-authenticated .admin-integrations-page .erp-header-action {
+        min-height: 44px;
+    }
+
+    .admin-authenticated .admin-integrations-page .erp-table tbody td {
+        padding: 8px;
+    }
+
+    .admin-authenticated .admin-integrations-page .erp-wmc-details-toggle {
+        min-height: 40px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .admin-authenticated .admin-integrations-page .erp-page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-authenticated .admin-integrations-page .erp-header-actions {
+        justify-content: flex-start;
+    }
+}
