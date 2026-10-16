@@ -44,6 +44,34 @@ public class HomeControllerProductTests
     }
 
     [Fact]
+    public async Task Index_prioritizes_BIMBO_products_with_associated_photos_without_exposing_inactive_products()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Paes", Slug = "paes", IsActive = true };
+        db.ProductCategories.Add(category);
+        await db.SaveChangesAsync();
+
+        var featuredOtherBrand = new Product { Sku = "OTHER-01", Name = "Outro destaque", Brand = "Orofoods", ProductCategoryId = category.Id, IsActive = true, IsAvailable = true, IsFeatured = true };
+        var bimboWithPhoto = new Product { Sku = "BIMBO-01", Name = "BIMBO com foto", Brand = "BIMBO", ProductCategoryId = category.Id, IsActive = true, IsAvailable = true };
+        var bimboWithoutPhoto = new Product { Sku = "BIMBO-02", Name = "BIMBO sem foto", Brand = "BIMBO", ProductCategoryId = category.Id, IsActive = true, IsAvailable = true };
+        var inactiveBimboWithPhoto = new Product { Sku = "BIMBO-03", Name = "BIMBO inativo", Brand = "BIMBO", ProductCategoryId = category.Id, IsActive = false, IsAvailable = true, IsFeatured = true };
+        db.Products.AddRange(featuredOtherBrand, bimboWithPhoto, bimboWithoutPhoto, inactiveBimboWithPhoto);
+        await db.SaveChangesAsync();
+        db.ProductImages.AddRange(
+            new ProductImage { ProductId = bimboWithPhoto.Id, Url = "/uploads/products/bimbo-confirmed.png", AltText = "Embalagem BIMBO confirmada", IsPrimary = true },
+            new ProductImage { ProductId = inactiveBimboWithPhoto.Id, Url = "/uploads/products/bimbo-inactive.png", AltText = "Embalagem BIMBO", IsPrimary = true });
+        await db.SaveChangesAsync();
+
+        var result = await new HomeController(db).Index();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<PublicHomeViewModel>(view.Model);
+        Assert.Equal("BIMBO com foto", model.Products[0].Name);
+        Assert.Single(model.Products[0].Images);
+        Assert.DoesNotContain(model.Products, product => product.Name == "BIMBO inativo");
+    }
+
+    [Fact]
     public async Task Products_returns_only_active_products_matching_search()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

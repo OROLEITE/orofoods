@@ -26,7 +26,8 @@ public class HomeController(ApplicationDbContext db) : Controller
         var products = await publicProducts
             .Include(product => product.ProductCategory)
             .Include(product => product.Images)
-            .OrderByDescending(product => product.IsFeatured)
+            .OrderByDescending(product => product.Brand == "BIMBO" && product.Images.Any())
+            .ThenByDescending(product => product.IsFeatured)
             .ThenBy(product => product.Name)
             .Take(4)
             .ToListAsync();

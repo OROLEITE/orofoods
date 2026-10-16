@@ -6,8 +6,98 @@
     --home-muted: #596B80;
     --home-cyan: #0E7490;
     --home-cyan-hover: #0B5D73;
+    --home-gold: #D4A017;
     color: var(--home-ink);
     background: var(--home-page);
+}
+
+/* The shared shell keeps its existing appearance everywhere except the public Home. */
+.public-home-page .site-header-modern,
+.public-home-page .site-header-modern .navbar.bg-white {
+    border-color: #26324B;
+    background: #0B132B !important;
+}
+
+.public-home-page .site-header-modern .site-logo {
+    width: auto;
+    height: clamp(40px, 3.7vw, 54px);
+    max-width: min(250px, 34vw);
+    object-fit: contain;
+}
+
+.public-home-page .site-header-modern .main-nav .nav-link {
+    color: #E5E7EB;
+}
+
+.public-home-page .site-header-modern .main-nav .nav-link:hover,
+.public-home-page .site-header-modern .main-nav .nav-link:focus-visible,
+.public-home-page .site-header-modern .main-nav .nav-link.active {
+    color: #FFFFFF;
+}
+
+.public-home-page .site-header-modern .main-nav .nav-link.active {
+    box-shadow: inset 0 -2px 0 var(--home-gold);
+}
+
+.public-home-page .site-header-modern .main-nav .nav-link:focus-visible,
+.public-home-page .site-header-modern .navbar-toggler:focus-visible,
+.public-home-page .site-header-modern .btn:focus-visible {
+    outline: 2px solid var(--home-gold);
+    outline-offset: 3px;
+}
+
+.public-home-page .site-header-modern .btn-outline-dark {
+    border-color: var(--home-cyan);
+    background: var(--home-cyan);
+    color: #FFFFFF;
+}
+
+.public-home-page .site-header-modern .btn-outline-dark:hover {
+    border-color: var(--home-cyan-hover);
+    background: var(--home-cyan-hover);
+    color: #FFFFFF;
+}
+
+.public-home-page .site-footer {
+    border-top: 2px solid var(--home-gold);
+    background: #0B132B;
+    color: #E5E7EB;
+}
+
+.public-home-page .site-footer .footer-logo {
+    width: auto;
+    height: auto;
+    max-width: min(220px, 60vw);
+    max-height: 68px;
+    object-fit: contain;
+}
+
+.public-home-page .site-footer .footer-brand p,
+.public-home-page .site-footer .footer-legal p,
+.public-home-page .site-footer .footer-legal small {
+    color: #CBD5E1;
+}
+
+.public-home-page .site-footer .footer-links a {
+    color: #E5E7EB;
+}
+
+.public-home-page .site-footer .footer-links a:hover,
+.public-home-page .site-footer .footer-links a:focus-visible,
+.public-home-page .site-footer .footer-legal i {
+    color: var(--home-gold);
+}
+
+@media (max-width: 991.98px) {
+    .public-home-page .site-header-modern .navbar-collapse {
+        border-color: #26324B;
+        background: #0B132B;
+    }
+
+    .public-home-page .site-header-modern .site-logo {
+        height: 42px;
+        max-width: min(220px, 52vw);
+    }
 }
 
 .public-home a {
@@ -108,20 +198,20 @@
 }
 
 .public-home .public-home-secondary-action {
-    border-color: #B7C5D5;
-    color: var(--home-navy);
-    background: #FFFFFFB8;
+    border-color: var(--home-cyan);
+    color: #FFFFFF;
+    background: var(--home-cyan);
 }
 
 .public-home .public-home-secondary-action:hover {
-    border-color: var(--home-cyan);
-    color: var(--home-cyan-hover);
-    background: #FFFFFF;
-    box-shadow: 0 5px 12px #102A4C12;
+    border-color: var(--home-cyan-hover);
+    color: #FFFFFF;
+    background: var(--home-cyan-hover);
+    box-shadow: 0 5px 12px #0E749033;
 }
 
 .public-home a:focus-visible {
-    outline: 3px solid #06B6D4;
+    outline: 3px solid #0B132B;
     outline-offset: 3px;
     border-radius: 4px;
 }
@@ -432,19 +522,26 @@
 
 .public-home-product-action {
     display: flex;
-    min-height: 42px;
+    min-height: 40px;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    border-top: 1px solid #E9EEF3;
-    color: var(--home-cyan-hover) !important;
+    padding: 0 11px;
+    border: 1px solid var(--home-cyan);
+    border-radius: 8px;
+    color: #FFFFFF !important;
+    background: var(--home-cyan);
     font-size: 12px;
     font-weight: 750;
     text-decoration: none;
+    transition: background-color 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
 }
 
 .public-home-product-action:hover {
-    color: var(--home-navy) !important;
+    border-color: var(--home-cyan-hover);
+    color: #FFFFFF !important;
+    background: var(--home-cyan-hover);
+    box-shadow: 0 5px 12px #0E749033;
 }
 
 .public-home-empty {
