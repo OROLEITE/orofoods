@@ -40,7 +40,9 @@ public sealed class WmcBimboStagingImportService(
         return new(assessment.All(row => row.Issues.Count == 0), assessment, null);
     }
 
-    public async Task<IReadOnlyList<WmcBimboAdminProductRow>> GetAdminProductsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<WmcBimboAdminProductRow>> GetAdminProductsAsync(
+        bool allowStagingActivation,
+        CancellationToken cancellationToken = default)
     {
         var products = await db.Products.AsNoTracking()
             .Include(product => product.ProductCategory)
@@ -73,7 +75,9 @@ public sealed class WmcBimboStagingImportService(
 
             var product = matches[0];
             inventories.TryGetValue(product.Id, out var inventory);
-            var issues = WmcBimboProductRules.ValidateCommercialData(product, product.ProductCategory, inventory);
+            var issues = allowStagingActivation
+                ? WmcBimboProductRules.ValidateStagingActivationData(product, inventory)
+                : WmcBimboProductRules.ValidateCommercialData(product, product.ProductCategory, inventory);
             var commercialIssues = issues.Where(issue => issue.Code is not "WMC_PRODUCT_INACTIVE" and not "WMC_STOCK_UNAVAILABLE").ToArray();
             var isActive = product.IsActive && product.IsAvailable && product.WmcInitialLoadReady
                 && product.IsWmcActive && product.WmcStockAvailable && inventory is not null
@@ -199,6 +203,8 @@ public sealed class WmcBimboStagingImportService(
                     Brand = "BIMBO",
                     Unit = "PCT",
                     CommercialUnitCode = "PCT",
+                    LogisticsUnitCode = "CX",
+                    PackagesPerCase = WmcBimboProductRules.ExtractPackagesPerCase(row.Produto),
                     BasePrice = 1.00m,
                     ProductCategory = category,
                     IsActive = false,

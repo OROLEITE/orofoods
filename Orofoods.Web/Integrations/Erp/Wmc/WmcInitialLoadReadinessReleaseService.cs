@@ -101,7 +101,7 @@ public sealed class WmcInitialLoadReadinessReleaseService(
         }
 
         var inventory = await db.ProductInventories.SingleOrDefaultAsync(item => item.ProductId == product.Id, cancellationToken);
-        var validationIssues = WmcBimboProductRules.ValidateCommercialData(product, product.ProductCategory, inventory);
+        var validationIssues = WmcBimboProductRules.ValidateStagingActivationData(product, inventory);
         if (validationIssues.Count > 0)
         {
             await transaction.RollbackAsync(cancellationToken);

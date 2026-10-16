@@ -107,6 +107,34 @@ public class WmcInitialLoadReadinessReleaseServiceTests
         Assert.Equal("Cadastro validado", audit.Reason);
     }
 
+    [Fact]
+    public async Task Bimbo_activation_in_staging_allows_provisional_price_pending_category_and_missing_dun_without_changing_commercial_values()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var product = await AddBimboProductAsync(db, complete: true);
+        product.ProductCategory!.IsActive = false;
+        product.Dun14 = null;
+        product.BasePrice = 1m;
+        await db.SaveChangesAsync();
+        var inventory = await db.ProductInventories.SingleAsync(item => item.ProductId == product.Id);
+        var service = CreateService(db);
+
+        var result = await service.ActivateBimboAsync(product.Id, "Homologação Staging", "admin-42");
+
+        Assert.Equal(WmcInitialLoadReleaseStatus.Released, result.Status);
+        await db.Entry(product).ReloadAsync();
+        Assert.True(product.IsActive);
+        Assert.True(product.IsAvailable);
+        Assert.True(product.WmcInitialLoadReady);
+        Assert.Equal(1m, product.BasePrice);
+        Assert.Null(product.Dun14);
+        Assert.False(product.ProductCategory!.IsActive);
+        await db.Entry(inventory).ReloadAsync();
+        Assert.Equal(8, inventory.QuantityOnHand);
+        Assert.Equal(0, inventory.QuantityReserved);
+        Assert.Single(await db.WmcInitialLoadReleaseAudits.ToListAsync());
+    }
+
     [Theory]
     [InlineData("Production", true)]
     [InlineData("Staging", false)]

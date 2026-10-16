@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Inventory;
 
@@ -28,6 +30,13 @@ public static class WmcBimboProductRules
         ["504342"] = "7899679704936"
     };
 
+    private static readonly Regex PackageCasePattern = new(
+        @"(?<![A-Z0-9])(?<packages>[0-9]+)\s*PCX\s*[1-9][0-9]*\s*UN(?![A-Z0-9])",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex PackageCaseMarkerPattern = new(
+        "PCX",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     public static IReadOnlyList<string> ApprovedProductCodes { get; } = Array.AsReadOnly(Codes);
 
     public static string NormalizeCode(string? value) => WmcProductRules.NormalizeCode(value);
@@ -35,6 +44,21 @@ public static class WmcBimboProductRules
     public static bool IsApprovedEan13(string? wmcCode, string? value) =>
         EanReferences.TryGetValue(NormalizeCode(wmcCode), out var expected)
         && string.Equals(value?.Trim(), expected, StringComparison.Ordinal);
+
+    public static int? ExtractPackagesPerCase(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return null;
+
+        var matches = PackageCasePattern.Matches(description);
+        if (PackageCaseMarkerPattern.Matches(description).Count != 1
+            || matches.Count != 1
+            || !int.TryParse(matches[0].Groups["packages"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var packages)
+            || packages <= 0)
+            return null;
+
+        return packages;
+    }
 
     public static IReadOnlyList<WmcBimboValidationIssue> ValidateSourceRow(string code, WmcProductRecord? row)
     {
@@ -85,6 +109,28 @@ public static class WmcBimboProductRules
             issues.Add(new("COMMERCIAL_DUN14_INVALID", "Informe um DUN-14 válido com dígito verificador correto."));
         if (!product.HasPackageSalesConfiguration)
             issues.Add(new("COMMERCIAL_PACKAGE_CONFIGURATION_INCOMPLETE", "Informe unidade PCT, unidade logística CX e fator de pacotes por caixa."));
+        if (!product.IsWmcActive)
+            issues.Add(new("WMC_PRODUCT_INACTIVE", "O produto está inativo no WMC."));
+        if (!product.WmcStockAvailable || inventory is null || inventory.QuantityOnHand - inventory.QuantityReserved < 1)
+            issues.Add(new("WMC_STOCK_UNAVAILABLE", "O produto precisa ter ao menos um pacote disponível no estoque WMC."));
+        return issues;
+    }
+
+    public static IReadOnlyList<WmcBimboValidationIssue> ValidateStagingActivationData(Product product, ProductInventory? inventory)
+    {
+        var issues = new List<WmcBimboValidationIssue>();
+        var code = NormalizeCode(product.WmcCode);
+        if (!Codes.Contains(code, StringComparer.Ordinal) || !string.Equals(product.WmcBrandCode, BrandCode.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
+            issues.Add(new("LOCAL_PRODUCT_SCOPE_MISMATCH", "Produto fora do lote BIMBO homologado."));
+        if (string.IsNullOrWhiteSpace(product.Sku) || string.IsNullOrWhiteSpace(product.Name))
+            issues.Add(new("COMMERCIAL_IDENTITY_INCOMPLETE", "SKU e nome comercial são obrigatórios."));
+        if (product.BasePrice <= 0)
+            issues.Add(new("COMMERCIAL_PRICE_INVALID", "Informe um preço base maior que zero."));
+        if (!IsValidBarcode(product.Ean13, 13) || !IsApprovedEan13(code, product.Ean13)
+            || !string.Equals(product.Ean?.Trim(), product.Ean13?.Trim(), StringComparison.Ordinal))
+            issues.Add(new("COMMERCIAL_EAN_INVALID", "O EAN-13 deve ser válido e corresponder ao código WMC homologado."));
+        if (!string.Equals(product.Unit, "PCT", StringComparison.OrdinalIgnoreCase) || !product.HasPackageSalesConfiguration)
+            issues.Add(new("COMMERCIAL_PACKAGE_CONFIGURATION_INCOMPLETE", "Informe unidade comercial PCT, unidade logística CX e fator de pacotes por caixa."));
         if (!product.IsWmcActive)
             issues.Add(new("WMC_PRODUCT_INACTIVE", "O produto está inativo no WMC."));
         if (!product.WmcStockAvailable || inventory is null || inventory.QuantityOnHand - inventory.QuantityReserved < 1)
