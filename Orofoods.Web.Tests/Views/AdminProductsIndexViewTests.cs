@@ -36,7 +36,7 @@ public sealed class AdminProductsIndexViewTests
         Assert.Contains("name=\"includeInactive\"", index, StringComparison.Ordinal);
         Assert.Contains("name=\"page\" value=\"@ViewBag.Page\"", index, StringComparison.Ordinal);
         Assert.Contains("type=\"hidden\" name=\"q\" value=\"@ViewBag.Query\"", edit, StringComparison.Ordinal);
-        Assert.Contains("type=\"hidden\" name=\"includeInactive\" value=\"@ViewBag.IncludeInactive\"", edit, StringComparison.Ordinal);
+        Assert.Contains("type=\"hidden\" name=\"includeInactive\" value=\"@((bool)ViewBag.IncludeInactive ? \"true\" : \"false\")\"", edit, StringComparison.Ordinal);
         Assert.Contains("type=\"hidden\" name=\"page\" value=\"@ViewBag.Page\"", edit, StringComparison.Ordinal);
         Assert.DoesNotContain("Ã", index + edit, StringComparison.Ordinal);
         Assert.DoesNotContain("�", index + edit, StringComparison.Ordinal);
