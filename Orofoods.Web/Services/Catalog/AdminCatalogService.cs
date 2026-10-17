@@ -17,7 +17,7 @@ public class AdminCatalogService(ApplicationDbContext db)
         var sku = input.Sku.Trim().ToUpperInvariant();
         if (await db.Products.AnyAsync(x => x.Id != input.Id && x.Sku.ToUpper() == sku, cancellationToken))
         {
-            throw new InvalidOperationException("Ja existe um produto com esse SKU.");
+            throw new InvalidOperationException("Já existe um produto com esse SKU.");
         }
 
         var wmcCode = string.IsNullOrWhiteSpace(input.WmcCode) ? null : input.WmcCode.Trim();
@@ -25,7 +25,7 @@ public class AdminCatalogService(ApplicationDbContext db)
                 x => x.Id != input.Id && x.WmcCode != null && x.WmcCode.Trim().ToLower() == wmcCode.ToLowerInvariant(),
                 cancellationToken))
         {
-            throw new InvalidOperationException("Ja existe um produto com esse codigo WMC.");
+            throw new InvalidOperationException("Já existe um produto com esse código WMC.");
         }
 
         var hasPackageConfiguration = !string.IsNullOrWhiteSpace(input.CommercialUnitCode)
@@ -61,7 +61,7 @@ public class AdminCatalogService(ApplicationDbContext db)
         product.Name = input.Name.Trim();
         product.ProductCategoryId = input.ProductCategoryId;
         product.Brand = input.Brand.Trim();
-        product.Description = input.Description.Trim();
+        product.Description = (input.Description ?? string.Empty).Trim();
         product.Weight = input.Weight;
         product.Unit = input.Unit.Trim();
         product.UnitsPerPackage = input.UnitsPerPackage;

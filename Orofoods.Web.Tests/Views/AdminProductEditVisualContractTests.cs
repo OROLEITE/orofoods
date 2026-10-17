@@ -32,6 +32,7 @@ public class AdminProductEditVisualContractTests
         var view = ReadProductView("Edit.cshtml");
 
         Assert.Contains("asp-validation-summary=\"All\"", view);
+        Assert.Contains("Descri&ccedil;&atilde;o comercial <em>Opcional</em>", view);
     }
 
     [Fact]

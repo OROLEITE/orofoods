@@ -42,8 +42,12 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
     public async Task<IActionResult> Edit(Product input, string? q = null, bool includeInactive = false, int? page = null)
     {
         SetListContext(q, includeInactive, page);
-        if (string.IsNullOrWhiteSpace(input.Sku) || string.IsNullOrWhiteSpace(input.Name) || input.ProductCategoryId == 0)
-            ModelState.AddModelError(string.Empty, "SKU, nome e categoria são obrigatórios.");
+        if (string.IsNullOrWhiteSpace(input.Sku))
+            ModelState.AddModelError(nameof(input.Sku), "Informe o SKU do produto.");
+        if (string.IsNullOrWhiteSpace(input.Name))
+            ModelState.AddModelError(nameof(input.Name), "Informe o nome do produto.");
+        if (input.ProductCategoryId == 0)
+            ModelState.AddModelError(nameof(input.ProductCategoryId), "Selecione uma categoria para o produto.");
         if (!ModelState.IsValid) { await PopulateSelectionsAsync(input); return View(input); }
 
         var wasActive = input.Id == 0

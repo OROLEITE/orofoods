@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Mvc;
+using Orofoods.Web.Models.Validation;
+
 namespace Orofoods.Web.Tests.Views;
 
 public sealed class AdminProductsIndexViewTests
@@ -39,9 +42,43 @@ public sealed class AdminProductsIndexViewTests
         Assert.DoesNotContain("�", index + edit, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Product_table_keeps_actions_inside_table_cell_and_stabilizes_rows_and_dividers()
+    {
+        var index = ReadView("Index.cshtml");
+        var styles = File.ReadAllText(Path.Combine(WebProjectPath(), "wwwroot", "css", "admin-products.css"));
+
+        Assert.Contains("class=\"admin-product-actions\"", index, StringComparison.Ordinal);
+        Assert.Contains(".admin-products-table td.admin-table-actions {", styles, StringComparison.Ordinal);
+        Assert.Contains("display: table-cell", styles, StringComparison.Ordinal);
+        Assert.Contains(".admin-product-actions {", styles, StringComparison.Ordinal);
+        Assert.Contains(".admin-products-table > tbody > tr {", styles, StringComparison.Ordinal);
+        Assert.Contains(".admin-products-table > tbody > tr > td {", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Product_edit_uses_portuguese_model_binding_messages()
+    {
+        var program = File.ReadAllText(Path.Combine(WebProjectPath(), "Program.cs"));
+        var options = new MvcOptions();
+        AdminModelBindingMessages.Configure(options);
+
+        Assert.Contains("AdminModelBindingMessages.Configure", program, StringComparison.Ordinal);
+        Assert.Equal(
+            "O valor 'value' não é válido para o campo pacotes por caixa.",
+            options.ModelBindingMessageProvider.AttemptedValueIsInvalidAccessor("value", "Product.PackagesPerCase"));
+        Assert.Equal(
+            "O valor 'value' não é válido.",
+            options.ModelBindingMessageProvider.NonPropertyAttemptedValueIsInvalidAccessor("value"));
+        Assert.Equal(
+            "Informe um número válido para preço base.",
+            options.ModelBindingMessageProvider.ValueMustBeANumberAccessor("BasePrice"));
+    }
+
     private static string ReadView(string name)
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        return File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Products", name));
+        return File.ReadAllText(Path.Combine(WebProjectPath(), "Areas", "Admin", "Views", "Products", name));
     }
+
+    private static string WebProjectPath() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
 }
