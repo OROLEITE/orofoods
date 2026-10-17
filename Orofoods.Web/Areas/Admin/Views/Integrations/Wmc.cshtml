@@ -91,7 +91,7 @@
                 <div id="wmcBimboFeedback" class="alert alert-info" role="status" aria-live="polite" hidden></div>
 
                 <h4 class="wmc-bimbo-subtitle">Status comercial dos produtos</h4>
-                <div class="table-responsive">
+                <div class="table-responsive wmc-bimbo-status-scroll">
                     <table class="wmc-product-table wmc-bimbo-status-table">
                         <thead><tr><th>C&oacute;digo WMC</th><th>Produto</th><th>EAN-13</th><th>DUN-14</th><th>Pre&ccedil;o/PCT</th><th>Estoque</th><th>Status</th><th>A&ccedil;&atilde;o</th></tr></thead>
                         <tbody>
@@ -99,7 +99,7 @@
                             {
                                 <tr data-bimbo-code="@product.WmcCode">
                                     <td>@product.WmcCode</td>
-                                    <td>@(product.Name ?? "N&atilde;o importado")</td>
+                                    <td class="wmc-bimbo-product-name" title="@(product.Name ?? "N&atilde;o importado")">@(product.Name ?? "N&atilde;o importado")</td>
                                     <td>@(product.Ean13 ?? "—")</td>
                                     <td>@(product.Dun14 ?? "—")</td>
                                     <td>@(product.BasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</td>
@@ -118,7 +118,15 @@
                                         }
                                         else if (product.Reasons.Count > 0)
                                         {
-                                            <span class="wmc-bimbo-reasons">@string.Join(" ", product.Reasons)</span>
+                                            <details class="wmc-bimbo-reason-details">
+                                                <summary aria-label="Ver motivos de bloqueio do produto @product.WmcCode"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> Motivos (@product.Reasons.Count)</summary>
+                                                <ul class="wmc-bimbo-reason-list">
+                                                    @foreach (var reason in product.Reasons)
+                                                    {
+                                                        <li>@reason</li>
+                                                    }
+                                                </ul>
+                                            </details>
                                         }
                                         else
                                         {

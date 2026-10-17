@@ -111,16 +111,35 @@
 
                 <section class="registration-card registration-card--full">
                     <header class="registration-card-heading"><span><i class="fa-solid fa-credit-card" aria-hidden="true"></i></span><div><small>05. Condições de pagamento</small><h2>Elegibilidade e prazos</h2></div></header>
-                    <div class="row g-3">
-                        <div class="col-md-3"><small>Compras válidas</small><strong class="d-block">@Model.ValidPurchaseCount</strong></div>
-                        <div class="col-md-3"><small>Condição atual</small><strong class="d-block">@(Model.InvoiceCreditEnabled ? "Até 14 dias" : "À vista")</strong></div>
-                        <div class="col-md-3"><small>Prazo máximo</small><strong class="d-block">@Model.EffectiveMaximumPaymentTermDays dias</strong></div>
-                        <div class="col-md-3"><small>Liberação</small><strong class="d-block">@(Model.EffectiveCreditReleaseDate?.ToString("dd/MM/yyyy") ?? "Não liberado")</strong></div>
-                        <div class="col-md-4"><div class="form-check"><input asp-for="CreditBlocked" class="form-check-input" /><label asp-for="CreditBlocked" class="form-check-label">Bloquear boleto a prazo</label></div></div>
-                        <div class="col-md-4"><div class="form-check"><input asp-for="CreditOverrideEnabled" class="form-check-input" /><label asp-for="CreditOverrideEnabled" class="form-check-label">Definir prazo manualmente</label></div></div>
-                        <div class="col-md-4"><label asp-for="MaximumPaymentTermDays" class="form-label">Prazo manual (dias)</label><input asp-for="MaximumPaymentTermDays" class="form-control" inputmode="numeric" max="14" /></div>
-                        <div class="col-12"><label asp-for="PaymentTermIds" class="form-label">Condições de pagamento</label><select asp-for="PaymentTermIds" class="form-select customer-payment-terms" asp-items="Model.PaymentTerms" multiple size="3"></select><small class="customer-field-help">Use Ctrl (Windows) ou Command (Mac) para selecionar mais de uma condição.</small></div>
-                        <div class="col-12"><label asp-for="CreditNotes" class="form-label">Observações de crédito</label><textarea asp-for="CreditNotes" class="form-control" rows="3"></textarea></div>
+                    <div class="customer-payment-layout">
+                        <div class="customer-payment-indicators" aria-label="Indicadores de elegibilidade de pagamento">
+                            <div class="customer-payment-indicator"><small>Compras válidas</small><strong>@Model.ValidPurchaseCount</strong></div>
+                            <div class="customer-payment-indicator"><small>Condição atual</small><strong>@(Model.InvoiceCreditEnabled ? "Até 14 dias" : "À vista")</strong></div>
+                            <div class="customer-payment-indicator"><small>Prazo máximo</small><strong>@Model.EffectiveMaximumPaymentTermDays dias</strong></div>
+                            <div class="customer-payment-indicator"><small>Liberação</small><strong>@(Model.EffectiveCreditReleaseDate?.ToString("dd/MM/yyyy") ?? "Não liberado")</strong></div>
+                        </div>
+                        <div class="customer-payment-controls">
+                            <div class="form-check"><input asp-for="CreditBlocked" class="form-check-input" /><label asp-for="CreditBlocked" class="form-check-label">Bloquear boleto a prazo</label></div>
+                            <div class="form-check"><input asp-for="CreditOverrideEnabled" class="form-check-input" /><label asp-for="CreditOverrideEnabled" class="form-check-label">Definir prazo manualmente</label></div>
+                            <div><label asp-for="MaximumPaymentTermDays" class="form-label">Prazo manual (dias)</label><input asp-for="MaximumPaymentTermDays" class="form-control" inputmode="numeric" max="14" /></div>
+                        </div>
+                        <div>
+                            <fieldset class="customer-payment-terms">
+                                <legend>Condições de pagamento</legend>
+                                <div class="customer-payment-terms-grid">
+                                    @foreach (var term in Model.PaymentTerms)
+                                    {
+                                        var termId = $"payment-term-{term.Value}";
+                                        <label class="customer-payment-term" for="@termId">
+                                            <input id="@termId" type="checkbox" name="PaymentTermIds" value="@term.Value" checked="@(term.Selected ? "checked" : null)" />
+                                            <span>@term.Text</span>
+                                        </label>
+                                    }
+                                </div>
+                            </fieldset>
+                            <small class="customer-field-help">Selecione uma ou mais condições disponíveis para este cliente.</small>
+                        </div>
+                        <div><label asp-for="CreditNotes" class="form-label">Observações de crédito</label><textarea asp-for="CreditNotes" class="form-control" rows="3"></textarea></div>
                     </div>
                 </section>
 
