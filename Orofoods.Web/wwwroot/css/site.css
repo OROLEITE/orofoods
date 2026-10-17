@@ -67,6 +67,48 @@ html,body{max-width:100%;overflow-x:hidden}.container,.order-layout,.order-items
 /* Editorial image replaces the isolated logo in the login introduction. */
 .auth-operation-photo{display:block;width:520px;height:320px;object-fit:cover;border:1px solid #ffffff38;border-radius:14px;box-shadow:0 14px 30px #090c093d}@media(max-width:600px){.auth-operation-photo{width:148px;height:90px}}@media(max-height:720px) and (min-width:901px){.auth-operation-photo{width:420px;height:240px}}
 
+/* Login action matches the rounded gold button in the client access reference. */
+.auth-screen #login-submit.auth-submit {
+    min-height: 54px;
+    gap: 12px;
+    padding: 8px 12px 8px 20px;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(100deg, #e8b42e 0%, #d99a1d 100%);
+    box-shadow: 0 9px 20px #a96a1233;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: left;
+}
+
+.auth-screen #login-submit.auth-submit > i {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: #b97812;
+    font-size: 15px;
+}
+
+.auth-screen #login-submit.auth-submit:hover {
+    border-color: transparent;
+    color: #17130b;
+    background: linear-gradient(100deg, #f0bd38 0%, #e2a322 100%);
+}
+
+.auth-screen #login-submit.auth-submit:hover > i {
+    background: #b97812;
+}
+
+.auth-screen #login-submit.auth-submit:focus-visible {
+    outline: 3px solid #80570e;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px #e0a12633;
+}
+
 /* The internal dashboard is organized around operational decisions rather than generic shortcuts. */
 @media(max-width:900px){
 	.admin-dashboard-page{overflow-x:hidden}
