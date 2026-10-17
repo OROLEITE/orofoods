@@ -20,27 +20,25 @@ public class IdentityLoginValidationTests
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var login = File.ReadAllText(Path.Combine(projectPath, "Areas", "Identity", "Pages", "Account", "Login.cshtml"));
-        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "client-login.css"));
 
-        Assert.Contains("id=\"login-submit\" type=\"submit\" class=\"btn btn-gold auth-submit\">Logar no sistema", login);
+        Assert.Contains("id=\"login-submit\" type=\"submit\" class=\"btn btn-gold client-login-submit\">Entrar no Portal do Cliente", login);
         Assert.Contains("<i class=\"fa-solid fa-arrow-right\" aria-hidden=\"true\"></i></button>", login);
-        Assert.Contains(".auth-submit{display:flex;justify-content:space-between;align-items:center;width:100%", styles);
-        Assert.Contains(".auth-screen #login-submit.auth-submit {", styles);
-        Assert.Contains("min-height: 54px;", styles);
-        Assert.Contains("background: linear-gradient(100deg, #e8b42e 0%, #d99a1d 100%);", styles);
-        Assert.Contains(".btn-gold{background:var(--gold);border-color:var(--gold);color:#17130b}", styles);
+        Assert.Contains(".client-login-submit {", styles);
+        Assert.Contains("min-height: 52px;", styles);
+        Assert.Contains("background: var(--client-login-gold);", styles);
+        Assert.Contains("--client-login-gold: #D49B24;", styles);
+        Assert.Contains("--client-login-gold-hover: #B98212;", styles);
+        Assert.Contains("--client-login-ink: #0F172A;", styles);
         Assert.Contains("border-radius: 50%;", styles);
-        Assert.Contains("background: #b97812;", styles);
-        Assert.Contains("color: #fff;", styles);
-        Assert.Contains(".auth-screen #login-submit.auth-submit:hover {", styles);
-        Assert.Contains(".auth-screen #login-submit.auth-submit:focus-visible {", styles);
-        Assert.Contains("outline: 3px solid #80570e;", styles);
-        Assert.Contains("@media(max-width:900px){.auth-screen{overflow:auto}", styles);
-        Assert.Contains("@media(max-width:600px){.auth-layout{padding:28px 16px}", styles);
+        Assert.Contains(".client-login-submit:hover {", styles);
+        Assert.Contains(".client-login-submit:focus-visible {", styles);
+        Assert.Contains("outline: 3px solid rgb(212 155 36 / 55%);", styles);
+        Assert.Contains("@media (max-width: 820px)", styles);
+        Assert.Contains("@media (max-width: 600px)", styles);
 
-        Assert.True(ContrastRatio("17130b", "e8b42e") >= 4.5);
-        Assert.True(ContrastRatio("17130b", "d99a1d") >= 4.5);
-        Assert.True(ContrastRatio("ffffff", "b97812") >= 3);
+        Assert.True(ContrastRatio("0F172A", "D49B24") >= 4.5);
+        Assert.True(ContrastRatio("0F172A", "B98212") >= 4.5);
         Assert.True(ContrastRatio("80570e", "ffffff") >= 4.5);
     }
 
@@ -50,7 +48,7 @@ public class IdentityLoginValidationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var login = File.ReadAllText(Path.Combine(projectPath, "Areas", "Identity", "Pages", "Account", "Login.cshtml"));
 
-        Assert.Equal(2, login.Split("asp-area=\"\" asp-controller=\"Home\" asp-action=\"Index\"").Length - 1);
+        Assert.Equal(1, login.Split("asp-area=\"\" asp-controller=\"Home\" asp-action=\"Index\"").Length - 1);
     }
 
     [Fact]
@@ -67,31 +65,51 @@ public class IdentityLoginValidationTests
     }
 
     [Fact]
-    public void Login_view_uses_the_institutional_operation_photo_instead_of_the_logo()
+    public void Login_hero_uses_a_local_kitchen_background_and_preserves_identity_controls()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var login = File.ReadAllText(Path.Combine(projectPath, "Areas", "Identity", "Pages", "Account", "Login.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "client-login.css"));
 
-        Assert.Contains("orofoods-institutional-kitchen.png", login);
-        Assert.Contains("auth-operation-photo", login);
+        Assert.Contains("orofoods-institutional-kitchen.png", styles);
+        Assert.True(File.Exists(Path.Combine(projectPath, "wwwroot", "images", "orofoods-institutional-kitchen.png")));
+        Assert.Contains("asp-for=\"Input.Email\"", login);
+        Assert.Contains("asp-for=\"Input.Password\"", login);
+        Assert.Contains("asp-for=\"Input.RememberMe\"", login);
+        Assert.Contains("data-password-toggle=\"Input_Password\"", login);
+        Assert.Contains("asp-page=\"./ForgotPassword\"", login);
+        Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", login);
     }
 
     [Fact]
-    public void Login_operation_photo_has_a_prominent_desktop_size()
+    public void Login_hero_background_covers_the_main_section_with_a_dark_left_gradient()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "client-login.css"));
 
-        Assert.Contains(".auth-operation-photo{display:block;width:520px;height:320px", styles);
+        Assert.Contains(".client-login-page {", styles);
+        Assert.Contains("linear-gradient(90deg, rgb(33 26 20 / 96%) 0%,", styles);
+        Assert.Contains("url(\"/images/orofoods-institutional-kitchen.png\") center 57% / cover;", styles);
     }
 
     [Fact]
-    public void Login_operation_photo_remains_prominent_on_short_desktop_viewports()
+    public void Login_has_the_requested_presentational_and_trust_benefits()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var login = File.ReadAllText(Path.Combine(projectPath, "Areas", "Identity", "Pages", "Account", "Login.cshtml"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
 
-        Assert.Contains("@media(max-height:720px) and (min-width:901px){.auth-operation-photo{width:420px;height:240px}", styles);
+        Assert.Contains("Pedidos online", login);
+        Assert.Contains("Produtos sempre atualizados", login);
+        Assert.Contains("Condi&ccedil;&otilde;es comerciais", login);
+        Assert.Contains("Compra B2B", login);
+        Assert.Contains("Atendimento especializado", login);
+        Assert.Contains("Suporte dedicado", login);
+        Assert.Contains("fa-cart-shopping", login);
+        Assert.Contains("fa-box-open", login);
+        Assert.Contains("fa-chart-column", login);
+        Assert.Contains("client-login-trust", login);
+        Assert.Contains(".auth-screen .site-footer{display:none}", styles);
     }
 
     [Fact]
