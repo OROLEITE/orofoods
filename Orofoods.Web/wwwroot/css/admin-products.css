@@ -466,16 +466,27 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 }
 
 .admin-products-edit-page .admin-image-grid {
-    grid-template-columns: repeat(auto-fill, minmax(190px, 230px));
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
     align-items: start;
     gap: 12px;
     margin-top: 12px !important;
 }
 
 .admin-products-edit-page .admin-image-grid article {
+    display:grid;
+    grid-template-columns:90px minmax(0,1fr);
+    align-items:start;
     overflow: hidden;
     border-color: #DCE5EC;
     border-radius: 12px;
+}
+
+.admin-products-edit-page .admin-image-grid article > img {
+    width:90px;
+    height:90px;
+    padding:6px;
+    background:#F8FAFC;
+    object-fit:contain;
 }
 
 .admin-products-edit-page .admin-image-grid article > div {
@@ -587,7 +598,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     }
 
     .admin-products-edit-page .admin-image-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .admin-products-edit-page .admin-form-card {
