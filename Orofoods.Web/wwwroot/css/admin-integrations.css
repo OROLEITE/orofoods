@@ -754,11 +754,24 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-authenticated .admin-wmc-page .wmc-bimbo-heading h3{margin:0 0 3px;font-size:1.05rem}
 .admin-authenticated .admin-wmc-page .wmc-bimbo-heading p{margin:0;color:var(--muted,#687166);font-size:.9rem}
 .admin-authenticated .admin-wmc-page .wmc-bimbo-subtitle{margin:12px 0 6px;font-size:.92rem}
-.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table{margin-bottom:8px}
-.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table td{vertical-align:middle}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table{min-width:1120px;margin-bottom:8px;table-layout:fixed}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th,.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table td{padding:6px 8px;vertical-align:middle;white-space:nowrap}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(1){width:92px}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(2){width:250px}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(3),.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(4){width:125px}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(5),.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(6){width:104px}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(7){width:104px}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-status-table th:nth-child(8){width:250px}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-product-name{overflow:hidden;text-overflow:ellipsis}
 .admin-authenticated .admin-wmc-page .wmc-bimbo-activate-form{display:flex;align-items:center;gap:6px;min-width:230px}
 .admin-authenticated .admin-wmc-page .wmc-bimbo-activate-form input{width:min(220px,100%);min-height:36px;padding:.35rem .5rem;border:1px solid var(--border,#d7dce2);border-radius:6px;background:var(--surface,#fff);color:var(--text,#17211b)}
-.admin-authenticated .admin-wmc-page .wmc-bimbo-reasons{display:block;max-width:300px;color:var(--muted,#687166);font-size:.82rem;white-space:normal}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-reason-details{display:inline-block;max-width:100%;position:relative}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-reason-details summary{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid #d6a64a;border-radius:999px;background:#fff4d6;color:#76520b;cursor:pointer;font-size:.72rem;font-weight:700;list-style:none}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-reason-details summary::-webkit-details-marker{display:none}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-reason-details summary:focus-visible{outline:2px solid #0284C7;outline-offset:2px}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-reason-list{min-width:260px;max-width:360px;margin:6px 0 0;padding:9px 12px 9px 27px;border:1px solid var(--border,#d7dce2);border-radius:8px;background:var(--surface,#fff);color:var(--text,#17211b);font-size:.78rem;white-space:normal}
+.admin-authenticated .admin-wmc-page .wmc-bimbo-reason-list li+li{margin-top:4px}
 .admin-authenticated .admin-wmc-page .wmc-product-status--pendente{background:#fff4d6;color:#76520b}
 .admin-authenticated .admin-wmc-page .wmc-product-status--inativo{background:#e9ecef;color:#495057}
 .admin-authenticated .admin-wmc-page .wmc-product-status--ativo{background:#d8f3e3;color:#14532d}
@@ -766,8 +779,9 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-authenticated .admin-wmc-page .wmc-bimbo-row--existing{background:rgba(108,117,125,.07)}
 .admin-authenticated .admin-wmc-page #wmcBimboImportButton{margin-top:8px}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-bimbo-card{border-color:var(--admin-dark-border);background:var(--admin-dark-surface);color:var(--admin-dark-text)}
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-bimbo-heading p,
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-bimbo-reasons{color:var(--admin-dark-muted)}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-bimbo-heading p{color:var(--admin-dark-muted)}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-bimbo-reason-details summary{border-color:#92400e;background:#604a16;color:#fde68a}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-bimbo-reason-list{border-color:var(--admin-dark-border);background:var(--admin-dark-surface-secondary);color:var(--admin-dark-text)}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-product-status--pendente{background:#604a16;color:#fde68a}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-product-status--inativo{background:#374151;color:#e5e7eb}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-product-status--ativo{background:#14532d;color:#bbf7d0}
