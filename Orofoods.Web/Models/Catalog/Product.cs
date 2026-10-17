@@ -24,6 +24,9 @@ public class Product
     public int ProductCategoryId { get; set; }
     public ProductCategory? ProductCategory { get; set; }
     [MaxLength(80)] public string Brand { get; set; } = "";
+    [Display(Name = "descrição comercial")]
+    [Required(AllowEmptyStrings = true)]
+    [DisplayFormat(ConvertEmptyStringToNull = false)]
     [MaxLength(500)] public string Description { get; set; } = "";
     public decimal? Weight { get; set; }
     [MaxLength(20)] public string Unit { get; set; } = "caixa";

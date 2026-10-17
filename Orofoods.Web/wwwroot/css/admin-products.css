@@ -626,6 +626,45 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     margin-bottom: 14px;
 }
 
+.admin-authenticated .admin-products-page .admin-product-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 38px;
+}
+
+.admin-authenticated .admin-products-page .admin-product-actions form {
+    margin: 0;
+}
+
+.admin-authenticated .admin-products-page .admin-product-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 84px;
+    min-height: 36px;
+    margin: 0;
+    white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+    .admin-authenticated .admin-products-page .admin-products-table > tbody > tr {
+        height: 76px;
+    }
+
+    .admin-authenticated .admin-products-page .admin-products-table > tbody > tr > td {
+        border-bottom-width: 1px;
+        border-bottom-style: solid;
+        vertical-align: middle;
+    }
+
+    .admin-authenticated .admin-products-page .admin-products-table td.admin-table-actions {
+        display: table-cell;
+        white-space: nowrap;
+    }
+}
+
 @media (min-width: 768px) and (max-width: 960px) {
     .admin-authenticated .admin-products-page .admin-mobile-table {
         min-width: 1040px;

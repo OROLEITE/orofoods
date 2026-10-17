@@ -73,6 +73,7 @@
                                     <span class="status-badge @(product.IsActive ? "status-badge--active" : "status-badge--inactive")"><i aria-hidden="true"></i>@(product.IsActive ? "Ativo" : "Inativo")</span>
                                 </td>
                                 <td class="admin-table-actions" data-label="Ações">
+                                    <div class="admin-product-actions">
                                     <a class="btn admin-edit-action" asp-action="Edit" asp-route-id="@product.Id"
                                        asp-route-q="@ViewBag.Query" asp-route-includeInactive="@ViewBag.IncludeInactive" asp-route-page="@ViewBag.Page">
                                         <i class="fa-solid fa-pen" aria-hidden="true"></i> Editar
@@ -87,6 +88,7 @@
                                             <button class="btn admin-secondary-action admin-deactivate-action" type="submit">Desativar</button>
                                         </form>
                                     }
+                                    </div>
                                 </td>
                             </tr>
                         }

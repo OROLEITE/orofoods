@@ -28,6 +28,7 @@ using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
 using Orofoods.Web.Services.Sellers;
 using Orofoods.Web.Services.Storage;
+using Orofoods.Web.Models.Validation;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -342,7 +343,7 @@ builder.Services.AddAuthorization(options =>
         OrofoodsPolicies.LinkedSalesRepresentative,
         policy => policy.RequireAuthenticatedUser().AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options => AdminModelBindingMessages.Configure(options));
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     var brazilianPortuguese = new CultureInfo("pt-BR");
