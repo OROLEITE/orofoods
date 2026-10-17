@@ -5,39 +5,68 @@
     ViewData["BodyClass"] = "auth-screen";
 }
 
-<section class="auth-page">
-    <div class="auth-orbit auth-orbit-one"></div>
-    <div class="auth-orbit auth-orbit-two"></div>
-    <div class="auth-layout container">
-        <aside class="auth-intro">
-            <a asp-area="" asp-controller="Home" asp-action="Index" aria-label="Orofoods - in&#237;cio">
-                <img class="auth-operation-photo" src="~/images/orofoods-institutional-kitchen.png" asp-append-version="true" alt="Preparo profissional de produtos para food service" />
-            </a>
-            <div>
-                <p class="auth-kicker">&Aacute;REA EXCLUSIVA</p>
+@section Head {
+    <link rel="stylesheet" href="~/css/client-login.css" asp-append-version="true" />
+}
+
+<section class="client-login-page">
+    <div class="client-login-layout container">
+        <aside class="client-login-intro">
+            <div class="client-login-intro-copy">
+                <p class="client-login-kicker">&Aacute;REA EXCLUSIVA</p>
                 <h1>Seu abastecimento,<br /><em>sob controle.</em></h1>
-                <p class="auth-copy">Acesse seus pedidos, produtos e condi&ccedil;&otilde;es comerciais em um &uacute;nico lugar.</p>
+                <p class="client-login-copy">Acesse seus pedidos, produtos e condi&ccedil;&otilde;es comerciais em um &uacute;nico lugar.</p>
+                <ul class="client-login-benefits" aria-label="Benef&iacute;cios do Portal do Cliente">
+                    <li><span class="client-login-benefit-icon"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></span><span><strong>Pedidos online</strong><small>R&aacute;pido e pr&aacute;tico</small></span></li>
+                    <li><span class="client-login-benefit-icon"><i class="fa-solid fa-box-open" aria-hidden="true"></i></span><span><strong>Produtos sempre atualizados</strong><small>Cat&aacute;logo completo</small></span></li>
+                    <li><span class="client-login-benefit-icon"><i class="fa-solid fa-chart-column" aria-hidden="true"></i></span><span><strong>Condi&ccedil;&otilde;es comerciais</strong><small>Exclusivas para o seu neg&oacute;cio</small></span></li>
+                </ul>
             </div>
-            <div class="auth-assurance"><span></span> Compra B2B simples, segura e recorrente.</div>
         </aside>
-        <div class="auth-card-wrap">
-            <div class="auth-card">
-                <div class="auth-card-heading"><p class="auth-kicker">BEM-VINDO DE VOLTA</p><h2>Acesse sua conta</h2><p>Use o e-mail cadastrado da sua empresa.</p></div>
-                <form id="account" method="post" class="auth-form">
-                    <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
-                    <div class="auth-field"><label asp-for="Input.Email"></label><input asp-for="Input.Email" autocomplete="username" placeholder="nome@empresa.com.br" /><span asp-validation-for="Input.Email"></span></div>
-                    <div class="auth-field">
-                        <div class="auth-field-label"><label asp-for="Input.Password"></label><a asp-page="./ForgotPassword">Esqueci minha senha</a></div>
-                        <div class="auth-password-control"><input asp-for="Input.Password" autocomplete="current-password" placeholder="Sua senha" /><button class="password-toggle" type="button" data-password-toggle="Input_Password" aria-label="Mostrar senha"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></div>
+        <div class="client-login-card-wrap">
+            <div class="client-login-card">
+                <div class="client-login-card-heading">
+                    <p class="client-login-kicker">BEM-VINDO DE VOLTA</p>
+                    <h2>Acesse sua conta</h2>
+                    <p>Use o e-mail cadastrado da sua empresa para entrar no Portal do Cliente.</p>
+                </div>
+                <form id="account" method="post" class="client-login-form">
+                    <div asp-validation-summary="ModelOnly" class="client-login-validation" role="alert"></div>
+                    <div class="client-login-field">
+                        <label asp-for="Input.Email"></label>
+                        <div class="client-login-input-wrap">
+                            <i class="fa-regular fa-envelope" aria-hidden="true"></i>
+                            <input asp-for="Input.Email" autocomplete="username" placeholder="nome@empresa.com.br" />
+                        </div>
+                        <span asp-validation-for="Input.Email"></span>
+                    </div>
+                    <div class="client-login-field">
+                        <div class="client-login-field-label"><label asp-for="Input.Password"></label><a asp-page="./ForgotPassword">Esqueci minha senha</a></div>
+                        <div class="client-login-input-wrap client-login-password-control">
+                            <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                            <input asp-for="Input.Password" autocomplete="current-password" placeholder="Sua senha" />
+                            <button class="client-login-password-toggle" type="button" data-password-toggle="Input_Password" aria-label="Mostrar senha"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                        </div>
                         <span asp-validation-for="Input.Password"></span>
                     </div>
-                    <label class="auth-check"><input asp-for="Input.RememberMe" /> <span>@Html.DisplayNameFor(m => m.Input.RememberMe)</span></label>
-                    <button id="login-submit" type="submit" class="btn btn-gold auth-submit">Logar no sistema <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+                    <label class="client-login-check"><input asp-for="Input.RememberMe" /> <span>@Html.DisplayNameFor(m => m.Input.RememberMe)</span></label>
+                    <button id="login-submit" type="submit" class="btn btn-gold client-login-submit">Entrar no Portal do Cliente <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
                 </form>
-                <p class="auth-register">Ainda n&atilde;o tem acesso? <a asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a></p>
+                <div class="client-login-register">
+                    <span>OU</span>
+                    <p>Ainda n&atilde;o tem acesso? <a asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></p>
+                </div>
+                <a class="client-login-back" asp-area="" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para o site</a>
             </div>
-            <a class="auth-back" asp-area="" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para o site</a>
         </div>
+    </div>
+</section>
+
+<section class="client-login-trust" aria-label="Atendimento Orofoods">
+    <div class="client-login-trust-inner container">
+        <div class="client-login-trust-item"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><strong>Compra B2B</strong><small>Simples, segura e recorrente</small></span></div>
+        <div class="client-login-trust-item"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i><span><strong>Atendimento especializado</strong><small>Para o seu neg&oacute;cio</small></span></div>
+        <div class="client-login-trust-item"><i class="fa-solid fa-headset" aria-hidden="true"></i><span><strong>Suporte dedicado</strong><small>Sempre que precisar</small></span></div>
     </div>
 </section>
 
