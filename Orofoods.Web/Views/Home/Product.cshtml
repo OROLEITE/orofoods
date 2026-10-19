@@ -2,12 +2,14 @@
 @model Orofoods.Web.Models.Catalog.Product
 @{
     ViewData["Title"] = Model.Name;
-    var primaryImage = Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
     var catalogImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(Model.WmcCode);
+    var primaryImage = catalogImage?.UseCatalogImage == true ? null : Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
     var sellerProduct = ViewBag.SellerProduct as SellerCatalogProductRow;
     var sellerCustomerId = ViewBag.SellerCustomerId as int?;
     var isSeller = User.IsInRole("Vendedor");
     var loginReturnUrl = Url.Action("Product", "Home", new { id = Model.Id, customerId = sellerCustomerId });
+    var customerPrice = ViewBag.CustomerPrice as Orofoods.Web.Services.Pricing.ResolvedPrice;
+    var customerPurchaseAuthorized = ViewBag.CustomerPurchaseAuthorized as bool? == true;
 }
 
 <section class="page-hero product-detail-hero">
@@ -19,19 +21,20 @@
             </a>
             <span class="product-detail-category">@Model.Category</span>
         </div>
-        <h1>@Model.Name</h1>
+        <h1>@(catalogImage?.ModelName ?? Model.Name)</h1>
         <p class="product-detail-meta">@Model.Sku <span aria-hidden="true">&middot;</span> @Model.Brand</p>
     </div>
 </section>
 
 <section class="section product-detail-section" aria-labelledby="product-description-title">
     <div class="container product-detail product-detail-layout public-product-detail">
-        <figure class="product-detail-media" style="--accent:@Model.Accent">
+        <figure class="product-detail-media" style="--accent:@Model.Accent;--bimbo-image-scale:@(primaryImage is null ? catalogImage?.VisualScale ?? 1m : 1m)">
             @if (primaryImage is not null || catalogImage is not null)
             {
                 <img data-product-image="true"
                      data-fallback-stage="@(primaryImage is null ? "catalog" : "manual")"
                      data-catalog-fallback="@(catalogImage?.ImageUrl ?? string.Empty)"
+                     data-catalog-scale="@(catalogImage?.VisualScale ?? 1m)"
                      data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")"
                      src="@(primaryImage is not null ? Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id }) : catalogImage!.ImageUrl)"
                      alt="@(primaryImage is not null && !string.IsNullOrWhiteSpace(primaryImage.AltText) ? primaryImage.AltText : catalogImage?.ModelName ?? Model.Name)" />
@@ -44,7 +47,7 @@
         </figure>
 
         <div class="product-detail-copy">
-            <p class="product-detail-kicker">@Model.Brand <span aria-hidden="true">&middot;</span> @Model.Sku</p>
+            <p class="product-detail-kicker">@Model.Brand <span aria-hidden="true">&middot;</span> @(catalogImage is null ? Model.Sku : $"WMC {Model.WmcCode}")</p>
             @if (!string.IsNullOrWhiteSpace(Model.Description))
             {
                 <h2 id="product-description-title">Descri&ccedil;&atilde;o</h2>
@@ -118,7 +121,36 @@
             {
                 <div class="product-detail-actions d-flex flex-wrap gap-2">
                     <a class="btn btn-gold" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Entrar para comprar</a>
-                    <a class="btn btn-outline-dark" asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a>
+                    <a class="btn btn-outline-dark" asp-controller="CustomerRegistration" asp-action="Register">Criar cadastro</a>
+                </div>
+            }
+            else if (customerPurchaseAuthorized)
+            {
+                if (customerPrice?.IsCommerciallyValid == true)
+                {
+                    <div class="catalog-price portal-product-price"><strong>@customerPrice.EffectivePrice.ToString("C")</strong><span>/ @Model.PriceUnitLabel</span></div>
+                }
+                else
+                {
+                    <p class="alert alert-warning" role="status">Pre&ccedil;o comercial indispon&iacute;vel para este cliente.</p>
+                }
+                @if (!Model.IsCommerciallyAvailable)
+                {
+                    <p class="alert alert-warning" role="status">Produto sem estoque dispon&iacute;vel para compra.</p>
+                }
+                else if (customerPrice?.IsCommerciallyValid == true)
+                {
+                    <form asp-controller="Portal" asp-action="AddToCart" method="post" class="product-detail-purchase-form">
+                        <input type="hidden" name="productId" value="@Model.Id" />
+                        <input type="hidden" name="returnToProduct" value="true" />
+                        <label for="portal-product-quantity">Quantidade (@Model.PriceUnitLabel)</label>
+                        <input id="portal-product-quantity" class="form-control" type="number" name="quantity" min="@Model.MinimumSalesQuantity" step="1" value="@Model.MinimumSalesQuantity" inputmode="numeric" />
+                        <button class="btn btn-gold" type="submit">Adicionar ao carrinho</button>
+                    </form>
+                }
+                <div class="product-detail-actions d-flex flex-wrap gap-2 mt-3">
+                    <a class="btn btn-outline-dark" asp-controller="Portal" asp-action="Catalog">Continuar comprando</a>
+                    <a class="btn btn-outline-dark" asp-controller="Portal" asp-action="Cart">Ver carrinho</a>
                 </div>
             }
             else if (User.IsInRole("Administrador"))

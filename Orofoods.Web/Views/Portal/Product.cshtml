@@ -4,8 +4,8 @@
     ViewData["Title"] = Model.Name;
     var resolvedPrice = ViewBag.Price as ResolvedPrice;
     var hasValidPrice = resolvedPrice?.EffectivePrice is > 0m;
-    var primaryImage = Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
     var catalogImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(Model.WmcCode);
+    var primaryImage = catalogImage?.UseCatalogImage == true ? null : Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
     var cartQuantity = (int?)ViewBag.CartQuantity ?? 0;
     var cartProductQuantities = ViewBag.CartProductQuantities as Dictionary<int, int> ?? [];
     var quantity = cartProductQuantities.GetValueOrDefault(Model.Id, Model.MinimumSalesQuantity);

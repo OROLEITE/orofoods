@@ -1,18 +1,41 @@
+@using Orofoods.Web.Services.Sellers
 @model Orofoods.Web.ViewModels.PublicProductCatalogViewModel
-@{ ViewData["Title"] = "Produtos"; }
+@{
+    ViewData["Title"] = "Produtos";
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isSeller = User.IsInRole("Vendedor");
+    var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSeller;
+    var prices = ViewBag.Prices as Dictionary<int, decimal> ?? new Dictionary<int, decimal>();
+    var availableQuantities = ViewBag.AvailableQuantities as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var cartProductQuantities = ViewBag.CartProductQuantities as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var sellerProducts = ViewBag.SellerProducts as Dictionary<int, SellerCatalogProductRow> ?? new Dictionary<int, SellerCatalogProductRow>();
+    var customerId = ViewBag.CustomerId as int?;
+    var cartQuantity = ViewBag.CartQuantity as int? ?? 0;
+    var loginReturnUrl = Url.Action("Products", "Home", new { search = Model.Search, category = Model.Category, customerId });
+}
 
 <section class="page-hero institutional-hero public-page-hero public-products-hero">
     <div class="container">
         <div class="eyebrow light"><span></span> Sele&ccedil;&atilde;o Orofoods</div>
         <h1>Produtos para sua opera&ccedil;&atilde;o.</h1>
-        <p>Conhe&ccedil;a nossa linha para hamburguerias, lanchonetes e food service.</p>
+        <p>Encontre produtos e compre direto pelo cat&aacute;logo.</p>
     </div>
 </section>
 
 <section class="section products-section public-products-section">
     <div class="container">
+        @if (isCustomer)
+        {
+            <div class="public-catalog-cart-row">
+                <a class="catalog-cart-link" asp-area="" asp-controller="Portal" asp-action="Cart" aria-label="Ver carrinho com @cartQuantity unidades">
+                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Ver carrinho
+                    @if (cartQuantity > 0) { <span class="catalog-cart-count" aria-hidden="true">@cartQuantity</span> }
+                </a>
+            </div>
+        }
+
         <form method="get" class="catalog-tools">
-            <input name="search" value="@Model.Search" placeholder="Buscar por nome, SKU ou marca" />
+            <input name="search" value="@Model.Search" placeholder="Buscar por nome, SKU ou marca" aria-label="Buscar produtos" />
             <select name="category" aria-label="Categoria">
                 <option value="">Todas as categorias</option>
                 @foreach (var category in Model.Categories)
@@ -20,6 +43,7 @@
                     <option value="@category.Slug" selected="@(Model.Category == category.Slug)">@category.Name</option>
                 }
             </select>
+            @if (isSeller && customerId is > 0) { <input type="hidden" name="customerId" value="@customerId" /> }
             <button class="btn btn-gold" type="submit">Buscar</button>
         </form>
 
@@ -29,18 +53,21 @@
         }
         else
         {
-            <div class="product-grid">
+            <div class="product-grid public-quick-buy-grid">
                 @foreach (var product in Model.Products)
                 {
-                    var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
                     var catalogImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);
-                    <article class="product-card public-product-card">
-                        <div class="product-visual" style="--accent:@product.Accent">
+                    var image = catalogImage?.UseCatalogImage == true ? null : product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
+                    var isBimbo = catalogImage is not null;
+                    var availableQuantity = availableQuantities.GetValueOrDefault(product.Id);
+                    <article class="product-card public-product-card public-quick-buy-card @(isBimbo ? "public-product-card--bimbo" : "")">
+                        <div class="product-visual" style="--accent:@product.Accent;--bimbo-image-scale:@(image is null ? catalogImage?.VisualScale ?? 1m : 1m)">
                             @if (image is not null || catalogImage is not null)
                             {
                                 <img data-product-image="true"
                                      data-fallback-stage="@(image is null ? "catalog" : "manual")"
                                      data-catalog-fallback="@(catalogImage?.ImageUrl ?? string.Empty)"
+                                     data-catalog-scale="@(catalogImage?.VisualScale ?? 1m)"
                                      data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")"
                                      src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : catalogImage!.ImageUrl)"
                                      alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : catalogImage?.ModelName ?? product.Name)"
@@ -50,16 +77,83 @@
                             {
                                 <img src="~/images/products/product-photo-unavailable.svg" alt="Foto do produto indispon&iacute;vel" loading="lazy" />
                             }
-                            <small>@product.Category</small>
                         </div>
-                        <div class="p-4 public-product-card-body">
-                            <small>@product.Sku &middot; @product.UnitDescription</small>
-                            <h3>@product.Name</h3>
-                            @if (!string.IsNullOrWhiteSpace(product.Description))
+                        <div class="p-3 public-quick-buy-card-body">
+                            <span class="quick-buy-brand">@product.Brand</span>
+                            <small class="quick-buy-code">@(string.IsNullOrWhiteSpace(product.WmcCode) ? product.Sku : $"WMC {product.WmcCode}")</small>
+                            <h2>@(catalogImage?.ModelName ?? product.Name)</h2>
+                            <p class="quick-buy-packaging">@product.UnitDescription</p>
+
+                            @if (isCustomer)
                             {
-                                <p>@product.Description</p>
+                                var price = prices.GetValueOrDefault(product.Id);
+                                var isInCart = cartProductQuantities.TryGetValue(product.Id, out var cartProductQuantity);
+                                if (price > 0m) { <div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ @product.PriceUnitLabel</span></div> }
+                                if (!product.IsCommerciallyAvailable)
+                                {
+                                    <p class="quick-buy-unavailable" role="status">Sem estoque dispon&iacute;vel</p>
+                                    <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                                }
+                                else if (price <= 0m)
+                                {
+                                    <p class="quick-buy-unavailable" role="status">Pre&ccedil;o indispon&iacute;vel para sua tabela</p>
+                                    <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                                }
+                                else
+                                {
+                                    <form asp-area="" asp-controller="Portal" asp-action="AddToCart" method="post" class="catalog-add-form quick-buy-form" data-catalog-add-form>
+                                        <input type="hidden" name="productId" value="@product.Id" />
+                                        <label for="quantity-@product.Id">Quantidade (@product.PriceUnitLabel)</label>
+                                        <div class="catalog-add-controls quick-buy-controls">
+                                            <div class="catalog-quantity-stepper" data-catalog-quantity-stepper>
+                                                <button class="catalog-quantity-button" type="button" data-catalog-quantity-decrease aria-label="Diminuir quantidade de @product.Name" disabled="@isInCart">&minus;</button>
+                                                <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumSalesQuantity" max="@availableQuantity" step="1" value="@(isInCart ? cartProductQuantity : product.MinimumSalesQuantity)" inputmode="numeric" aria-label="Quantidade de @product.Name" disabled="@isInCart" />
+                                                <button class="catalog-quantity-button" type="button" data-catalog-quantity-increase aria-label="Aumentar quantidade de @product.Name" disabled="@isInCart">+</button>
+                                            </div>
+                                            <button class="btn quick-buy-button" type="submit" disabled="@isInCart">@(isInCart ? "No carrinho" : "Comprar")</button>
+                                        </div>
+                                        <p class="catalog-add-status" aria-live="polite">@(isInCart ? "Produto j&aacute; est&aacute; no carrinho." : "")</p>
+                                    </form>
+                                }
                             }
-                            <a asp-action="Product" asp-route-id="@product.Id">Conhecer produto &rarr;</a>
+                            else if (isSeller)
+                            {
+                                if (customerId is > 0 && sellerProducts.TryGetValue(product.Id, out var sellerProduct))
+                                {
+                                    if (sellerProduct.UnitPrice > 0m)
+                                    {
+                                        <div class="catalog-price"><strong>@sellerProduct.UnitPrice.ToString("C")</strong><span>/ @sellerProduct.PriceUnitLabel</span></div>
+                                        <a class="btn quick-buy-button" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@customerId" asp-route-productId="@product.Id">Comprar</a>
+                                    }
+                                    else
+                                    {
+                                        <p class="quick-buy-unavailable" role="status">Pre&ccedil;o indispon&iacute;vel para este cliente</p>
+                                        <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                                    }
+                                }
+                                else if (customerId is > 0)
+                                {
+                                    <p class="quick-buy-unavailable" role="status">Produto indispon&iacute;vel para este cliente</p>
+                                    <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                                }
+                                else
+                                {
+                                    <p class="quick-buy-unavailable" role="status">Selecione um cliente autorizado para comprar</p>
+                                    <a class="btn quick-buy-button" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-productId="@product.Id">Selecionar cliente</a>
+                                }
+                            }
+                            else
+                            {
+                                <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                                @if (!isAuthenticated)
+                                {
+                                    <p class="quick-buy-auth-hint">Entre ou cadastre-se para comprar.</p>
+                                }
+                                else
+                                {
+                                    <p class="quick-buy-auth-hint">Compra dispon&iacute;vel para clientes aprovados.</p>
+                                }
+                            }
                         </div>
                     </article>
                 }
@@ -70,4 +164,5 @@
 
 @section Scripts {
     <script src="~/js/product-image-fallback.js" asp-append-version="true"></script>
+    @if (isCustomer) { <script src="~/js/catalog.js" asp-append-version="true"></script> }
 }

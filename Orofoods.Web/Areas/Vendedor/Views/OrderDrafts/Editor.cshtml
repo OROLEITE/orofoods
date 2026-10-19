@@ -30,10 +30,11 @@
             </header>
             <section class="seller-order-drafts__card seller-order-drafts__customer-picker customer-search" aria-labelledby="customer-search-heading"
          data-customer-search data-search-url="/Vendedor/Rascunhos/Clientes" data-search-mode="links"
-         data-link-url-template="/Vendedor/Rascunhos/Novo?customerId=__id__" data-server-rendered-query="@Model.CustomerSearch">
+         data-link-url-template="/Vendedor/Rascunhos/Novo?customerId=__id__@(Model.PendingProductId is int pendingProductId ? $"&amp;productId={pendingProductId}" : "")" data-server-rendered-query="@Model.CustomerSearch">
     <h2 id="customer-search-heading">Buscar cliente</h2>
     <form method="get" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" class="seller-order-drafts__search-form" role="search">
         <label for="customer-query">Nome, CNPJ ou código WMC</label>
+        @if (Model.PendingProductId is int searchProductId) { <input type="hidden" name="productId" value="@searchProductId" /> }
         <div class="seller-order-drafts__search-row">
             <input id="customer-query" class="form-control" type="search" name="q" value="@Model.CustomerSearch" maxlength="100" autocomplete="organization"
                    aria-autocomplete="list" aria-controls="customer-search-results" data-customer-search-input />
@@ -44,7 +45,7 @@
          aria-label="Clientes autorizados" data-customer-search-results>
         @foreach (var customer in Model.CustomerResults)
         {
-            <a class="seller-order-drafts__customer-option" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@customer.Id">
+            <a class="seller-order-drafts__customer-option" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@customer.Id" asp-route-productId="@Model.PendingProductId">
                 <span class="seller-order-drafts__customer-mark" aria-hidden="true"><i class="fa-solid fa-building"></i></span>
                 <span class="seller-order-drafts__customer-info"><strong>@customer.Name</strong><small>@customer.Code <span aria-hidden="true">·</span> @customer.City</small></span>
                 <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>

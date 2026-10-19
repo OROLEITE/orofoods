@@ -67,6 +67,7 @@ public sealed class SellerOrderDraftEditorViewModel
     public bool IsPersisted => DraftId.HasValue;
     public bool CanEdit => !IsPersisted || Status == SellerOrderDraftStatus.Draft;
     public int CustomerId { get; init; }
+    public int? PendingProductId { get; init; }
     public required string CustomerName { get; init; }
     public required string CustomerCode { get; init; }
     public string? CustomerSearch { get; init; }

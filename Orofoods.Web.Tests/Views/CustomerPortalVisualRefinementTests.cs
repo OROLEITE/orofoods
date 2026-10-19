@@ -10,7 +10,7 @@ public class CustomerPortalVisualRefinementTests
         var script = ReadText(Path.Combine(projectPath, "wwwroot", "js", "catalog.js"));
 
         Assert.Contains("asp-action=\"AddToCart\"", view);
-        Assert.Contains("asp-action=\"Product\"", view);
+        Assert.DoesNotContain("catalog-details-link", view);
         Assert.Contains("min=\"@product.MinimumSalesQuantity\"", view);
         Assert.Contains("data-catalog-quantity-stepper", view);
         Assert.Contains("data-catalog-quantity-decrease", view);

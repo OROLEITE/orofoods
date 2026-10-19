@@ -40,6 +40,67 @@ public class ProductCatalogImagePresentationTests
         Assert.Contains(".portal-app-shell .product-visual>img{object-fit:contain", styles, StringComparison.Ordinal);
         Assert.Contains(".public-home-product-media {\n    display: grid;\n    width: 100%;\n    aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
         Assert.Contains(".public-home-product-media {\n        aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
-        Assert.Contains(".product-detail-media img{object-fit:contain;mix-blend-mode:normal}", styles, StringComparison.Ordinal);
+        Assert.Contains(".product-detail-media img{object-fit:contain;mix-blend-mode:normal;", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Wmc_504342_can_override_an_incorrect_manual_photo_with_its_confirmed_catalog_image()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var views = new[]
+        {
+            Path.Combine(projectPath, "Views", "Home", "Index.cshtml"),
+            Path.Combine(projectPath, "Views", "Home", "Product.cshtml"),
+            Path.Combine(projectPath, "Views", "Home", "Products.cshtml"),
+            Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"),
+            Path.Combine(projectPath, "Views", "Portal", "Product.cshtml")
+        };
+
+        foreach (var path in views)
+        {
+            Assert.Contains("UseCatalogImage", File.ReadAllText(path), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void Public_catalog_cards_support_direct_purchase_by_authorized_customers_and_sellers()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Controllers", "HomeController.cs"));
+
+        Assert.Contains("data-catalog-add-form", markup, StringComparison.Ordinal);
+        Assert.Contains("asp-controller=\"Portal\" asp-action=\"AddToCart\"", markup, StringComparison.Ordinal);
+        Assert.Contains("data-catalog-quantity-decrease", markup, StringComparison.Ordinal);
+        Assert.Contains("data-catalog-quantity-increase", markup, StringComparison.Ordinal);
+        Assert.Contains("OrderDrafts\" asp-action=\"New\"", markup, StringComparison.Ordinal);
+        Assert.Contains("CustomerAccessService", controller, StringComparison.Ordinal);
+        Assert.Contains("GetPricesAsync", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("Conhecer produto", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(">Comprar<", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Visitor_header_returns_to_catalog_and_seller_selection_keeps_product_id()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
+        var sellerEditor = File.ReadAllText(Path.Combine(projectPath, "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+        var sellerController = File.ReadAllText(Path.Combine(projectPath, "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+        var sellerCatalog = File.ReadAllText(Path.Combine(projectPath, "Areas", "Vendedor", "Views", "Catalog", "Index.cshtml"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+
+        Assert.Contains("Cadastrar", header, StringComparison.Ordinal);
+        Assert.Contains("asp-route-returnUrl=\"@catalogLoginReturnUrl\"", header, StringComparison.Ordinal);
+        Assert.Contains("CustomerRegistration\" asp-action=\"Register", header, StringComparison.Ordinal);
+        Assert.Contains("PendingProductId", sellerEditor, StringComparison.Ordinal);
+        Assert.Contains("PendingProductId = productId", sellerController, StringComparison.Ordinal);
+        Assert.Contains("asp-route-productId=\"@product.Id\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("asp-controller=\"Cart\"", markup, StringComparison.Ordinal);
+        Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"New\"", sellerCatalog, StringComparison.Ordinal);
+        Assert.Contains(">Comprar</a>", sellerCatalog, StringComparison.Ordinal);
+        Assert.DoesNotContain("asp-controller=\"Cart\"", sellerCatalog, StringComparison.Ordinal);
+        Assert.DoesNotContain("seller-cart.js", sellerCatalog, StringComparison.Ordinal);
+        Assert.DoesNotContain("seller-product-details-link", sellerCatalog, StringComparison.Ordinal);
     }
 }

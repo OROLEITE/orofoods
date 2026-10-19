@@ -18,8 +18,9 @@ public class HomeProductViewTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
 
-        Assert.Contains("class=\"public-home-product-media\" asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\"", markup);
-        Assert.Contains("class=\"public-home-product-action\" asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\"", markup);
+        Assert.Contains("class=\"public-home-product-media\" style=", markup);
+        Assert.Contains("asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\"", markup);
+        Assert.Contains("Ver produto", markup);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Product_detail_routes_authorized_administrators_to_the_existing_customer_portal()
+    public void Product_detail_stays_public_and_Admin_uses_the_existing_customer_portal()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
@@ -98,8 +99,10 @@ public class HomeProductViewTests
 
         Assert.Contains("User.IsInRole(\"Administrador\")", markup);
         Assert.Contains("Comprar para o cliente selecionado", markup);
-        Assert.Contains("OrofoodsPolicies.ApprovedCustomer", controller);
-        Assert.Contains("RedirectToAction(\"Product\", \"Portal\", new { id })", controller);
+        Assert.DoesNotContain("RedirectToAction(\"Product\", \"Portal\", new { id })", controller);
+        Assert.Contains("GetApprovedCustomerAsync", controller);
+        Assert.Contains("customerPurchaseAuthorized", markup);
+        Assert.Contains("asp-controller=\"Portal\" asp-action=\"Product\"", markup);
     }
 
     [Fact]

@@ -47,6 +47,7 @@ public sealed class OrderDraftsController(
             return View("Editor", new SellerOrderDraftEditorViewModel
             {
                 CustomerId = 0,
+                PendingProductId = productId,
                 CustomerName = "",
                 CustomerCode = "",
                 CustomerSearch = customers.Query,

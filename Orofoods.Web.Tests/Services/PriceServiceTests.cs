@@ -90,4 +90,30 @@ public class PriceServiceTests
         Assert.NotNull(result);
         Assert.Equal(99.90m, result!.EffectivePrice);
     }
+
+    [Fact]
+    public async Task Bimbo_import_placeholder_price_is_not_a_commercial_price()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Paes", Slug = "paes", IsActive = true };
+        var customer = new Customer
+        {
+            LegalName = "Burger House Ltda", TradeName = "Burger House", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true
+        };
+        var product = new Product
+        {
+            Sku = "WMC-503768", WmcCode = "503768", WmcBrandCode = "113", Name = "Pao BIMBO",
+            ProductCategory = category, Brand = "BIMBO", Unit = "PCT", CommercialUnitCode = "PCT",
+            BasePrice = 1m, IsAvailable = true, IsActive = true
+        };
+        db.AddRange(category, customer, product);
+        await db.SaveChangesAsync();
+
+        var result = await new PriceService(db).GetPriceAsync(customer.Id, product.Id);
+
+        Assert.NotNull(result);
+        Assert.False(result!.IsCommerciallyValid);
+        Assert.Equal(0m, result.EffectivePrice);
+    }
 }

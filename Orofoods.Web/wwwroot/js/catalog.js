@@ -1,12 +1,20 @@
 document.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) => {
     const input = stepper.querySelector('input[name="quantity"]');
     const minimum = Math.max(1, Number.parseInt(input.min, 10) || 1);
+    const maximum = Number.parseInt(input.max, 10) || Number.POSITIVE_INFINITY;
     const decrease = stepper.querySelector('[data-catalog-quantity-decrease]');
     const increase = stepper.querySelector('[data-catalog-quantity-increase]');
 
     const normalizeQuantity = () => {
+        if (input.disabled) {
+            decrease.disabled = true;
+            increase.disabled = true;
+            return;
+        }
         const value = Number.parseInt(input.value, 10);
-        input.value = Math.max(minimum, Number.isFinite(value) ? value : minimum);
+        input.value = Math.min(maximum, Math.max(minimum, Number.isFinite(value) ? value : minimum));
+        decrease.disabled = Number(input.value) <= minimum;
+        increase.disabled = Number(input.value) >= maximum;
     };
 
     decrease.addEventListener('click', () => {
@@ -22,6 +30,7 @@ document.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) =
     });
 
     input.addEventListener('change', normalizeQuantity);
+    normalizeQuantity();
 });
 
 document.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
@@ -69,7 +78,7 @@ document.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
                     cartCount.textContent = payload.cartQuantity;
                     cartLink.append(cartCount);
                 }
-                cartLink.setAttribute('aria-label', `Ver carrinho com ${payload.cartQuantity} caixas`);
+                cartLink.setAttribute('aria-label', `Ver carrinho com ${payload.cartQuantity} unidades`);
             }
         } catch (error) {
             button.disabled = false;

@@ -43,6 +43,32 @@ public class OrderPlacementServiceTests
     }
 
     [Fact]
+    public async Task PlaceLinesAsync_rejects_provisional_Bimbo_import_price()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Product.Brand = "BIMBO";
+        fixture.Product.WmcCode = "503768";
+        fixture.Product.WmcBrandCode = "113";
+        fixture.Product.IsWmcActive = true;
+        fixture.Product.WmcStockAvailable = true;
+        fixture.Product.WmcInitialLoadReady = true;
+        fixture.Product.BasePrice = 1m;
+        fixture.Product.PromotionalPrice = null;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.False(result.Succeeded);
+        Assert.NotEmpty(result.Errors);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
     public async Task Confirmed_order_keeps_customer_cnpj_snapshot_after_customer_correction()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);

@@ -24,6 +24,7 @@ public class BimboProductImageCatalogTests
             Assert.StartsWith("https://", image.ProductPageUrl, StringComparison.Ordinal);
             Assert.False(string.IsNullOrWhiteSpace(image.SourceName));
             Assert.False(string.IsNullOrWhiteSpace(image.ConfirmationStatus));
+            Assert.InRange(image.VisualScale, 0.85m, 1.65m);
         }
     }
 
@@ -44,5 +45,13 @@ public class BimboProductImageCatalogTests
 
         Assert.NotNull(image);
         Assert.Equal(expectedModel, image.ModelName);
+    }
+
+    [Fact]
+    public void Australiano_uses_the_confirmed_catalog_photo_ahead_of_manual_media()
+    {
+        Assert.True(BimboProductImageCatalog.Find("504342")!.UseCatalogImage);
+        Assert.All(BimboProductImageCatalog.All.Where(image => image.Key != "504342"),
+            image => Assert.False(image.Value.UseCatalogImage));
     }
 }
