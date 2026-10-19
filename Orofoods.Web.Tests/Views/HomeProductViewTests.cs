@@ -53,6 +53,8 @@ public class HomeProductViewTests
 
         Assert.Contains("if (!product.IsCommerciallyAvailable)", card);
         Assert.Contains("Consulte disponibilidade", card);
+        Assert.Contains("if (isHomeShowcase && !product.IsCommerciallyAvailable)", card);
+        Assert.Contains("asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\">Ver produto</a>", card);
         Assert.Contains("if (!isAuthenticated)", card);
         Assert.Contains("asp-page=\"/Account/Login\"", card);
         Assert.Contains("asp-route-returnUrl=\"@loginReturnUrl\"", card);
@@ -112,15 +114,15 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Home_search_shortcuts_use_catalog_search_for_real_product_fields()
+    public void Home_omits_search_shortcuts_while_catalog_keeps_search_for_real_product_fields()
     {
         var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
+        var catalog = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Products.cshtml"));
         var controller = File.ReadAllText(Path.Combine(ProjectPath, "Controllers", "HomeController.cs"));
 
-        Assert.Contains("asp-route-search=\"brioche\"", markup);
-        Assert.Contains("asp-route-search=\"gergelim\"", markup);
-        Assert.Contains("asp-route-search=\"australiano\"", markup);
-        Assert.Contains("asp-route-search=\"congel\"", markup);
+        Assert.DoesNotContain("public-home-search-panel", markup);
+        Assert.DoesNotContain("public-home-chips", markup);
+        Assert.Contains("name=\"search\"", catalog);
         Assert.Contains("x.StorageInformation.ToLower().Contains(normalizedSearch)", controller);
         Assert.Contains("x.StorageTemperature.ToLower().Contains(normalizedSearch)", controller);
         Assert.Contains("x.AdditionalInformation.ToLower().Contains(normalizedSearch)", controller);

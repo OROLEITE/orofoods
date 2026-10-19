@@ -40,6 +40,30 @@ public class CustomerPortalVisualRefinementTests
     }
 
     [Fact]
+    public void Portal_catalog_keeps_its_dark_palette_and_does_not_crop_product_images()
+    {
+        var projectPath = GetWebProjectPath();
+        var catalogStyles = ReadText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
+        var darkStyles = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-dark.css"));
+
+        Assert.DoesNotMatch(
+            @"(?s)(?:\.public-products-hero,\s*)?\.portal-catalog-hero\s*\{[^}]*background:\s*#F1F5FB\s*!important",
+            catalogStyles);
+        Assert.Contains("body.portal-authenticated .portal-app-main .portal-catalog-page", darkStyles);
+        Assert.Contains("background: #0B132B;", darkStyles);
+        Assert.Contains("body.portal-authenticated .portal-app-main .portal-catalog-hero", darkStyles);
+        Assert.Matches(
+            @"(?s)body\.portal-authenticated \.portal-app-main \.portal-catalog-hero\s*\{[^}]*background:\s*var\(--portal-dark-surface\);",
+            darkStyles);
+        Assert.Contains("color: #E5E7EB;", darkStyles);
+        Assert.Contains("grid-template-columns: repeat(5, minmax(0, 1fr));", catalogStyles);
+        Assert.Contains("object-fit: contain;", darkStyles);
+        Assert.Contains("object-position: center;", darkStyles);
+        Assert.Contains("transform: none;", darkStyles);
+        Assert.DoesNotContain("object-fit:cover", catalogStyles);
+    }
+
+    [Fact]
     public void Portal_navigation_inherits_admin_typography_and_has_no_broad_span_highlight_rule()
     {
         var projectPath = GetWebProjectPath();

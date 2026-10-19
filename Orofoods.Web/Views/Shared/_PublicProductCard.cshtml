@@ -5,6 +5,8 @@
     var product = Model;
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var isSeller = User.IsInRole("Vendedor");
+    var isHomeShowcase = string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), "Home", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Index", StringComparison.OrdinalIgnoreCase);
     var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSeller;
     var prices = ViewBag.Prices as Dictionary<int, decimal> ?? new Dictionary<int, decimal>();
     var availableQuantities = ViewBag.AvailableQuantities as Dictionary<int, int> ?? new Dictionary<int, int>();
@@ -51,7 +53,12 @@
         <h2>@product.Name</h2>
         <p class="quick-buy-packaging"><i class="fa-solid fa-box" aria-hidden="true"></i><span>@packageDescription</span></p>
 
-        @if (isCustomer)
+        @if (isHomeShowcase && !product.IsCommerciallyAvailable)
+        {
+            <p class="quick-buy-unavailable" role="status">Consulte disponibilidade</p>
+            <a class="btn quick-buy-button" asp-area="" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">Ver produto</a>
+        }
+        else if (isCustomer)
         {
             var price = prices.GetValueOrDefault(product.Id);
             var isInCart = cartProductQuantities.TryGetValue(product.Id, out var cartProductQuantity);
