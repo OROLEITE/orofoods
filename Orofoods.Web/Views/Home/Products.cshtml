@@ -82,13 +82,13 @@
                         ? $"CX com {product.PackagesPerCase} PCT"
                         : product.UnitDescription;
                     <article class="product-card public-product-card public-quick-buy-card @(isBimbo ? "public-product-card--bimbo" : "")" data-catalog-product data-catalog-tags="@string.Join(' ', quickFilterTags)">
-                        <div class="product-visual" style="--accent:@product.Accent;--bimbo-image-scale:@(image is null ? catalogImage?.VisualScale ?? 1m : 1m)">
+                        <div class="product-visual" style="--accent:@product.Accent;--bimbo-image-scale:@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(image is null ? catalogImage?.VisualScale ?? 1m : 1m))">
                             @if (image is not null || catalogImage is not null)
                             {
                                 <img data-product-image="true"
                                      data-fallback-stage="@(image is null ? "catalog" : "manual")"
                                      data-catalog-fallback="@(catalogImage?.ImageUrl ?? string.Empty)"
-                                     data-catalog-scale="@(catalogImage?.VisualScale ?? 1m)"
+                                     data-catalog-scale="@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(catalogImage?.VisualScale ?? 1m))"
                                      data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")"
                                      src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : catalogImage!.ImageUrl)"
                                      alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : catalogImage?.ModelName ?? product.Name)"

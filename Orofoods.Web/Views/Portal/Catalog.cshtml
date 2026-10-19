@@ -56,10 +56,10 @@
                     ? $"CX com {product.PackagesPerCase} PCT"
                     : product.UnitDescription;
                 <article class="product-card @(product.IsCommerciallyAvailable ? "" : "unavailable")">
-                    <div class="product-visual" style="--accent:@product.Accent;--bimbo-image-scale:@(image is null ? officialImage?.VisualScale ?? 1m : 1m)">
+                    <div class="product-visual" style="--accent:@product.Accent;--bimbo-image-scale:@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(image is null ? officialImage?.VisualScale ?? 1m : 1m))">
                         @if (officialImage is not null || image is not null)
                         {
-                            <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-catalog-scale="@(officialImage?.VisualScale ?? 1m)" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" />
+                            <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-catalog-scale="@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(officialImage?.VisualScale ?? 1m))" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" />
                         }
                         else
                         {
