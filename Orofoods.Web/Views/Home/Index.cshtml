@@ -122,6 +122,10 @@
                                 {
                                     <span class="public-home-product-placeholder"><i class="fa-regular fa-image" aria-hidden="true"></i><span>Imagem indisponível</span></span>
                                 }
+                                @if (officialImage?.IsIllustrative == true)
+                                {
+                                    <span class="product-image-illustrative-note">Imagem ilustrativa</span>
+                                }
                             </a>
                             <div class="public-home-product-body">
                                 <p class="public-home-product-brand">@product.Brand</p>

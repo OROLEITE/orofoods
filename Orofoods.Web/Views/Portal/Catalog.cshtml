@@ -62,6 +62,10 @@
                         {
                             <img src="~/images/products/product-photo-unavailable.svg" alt="Foto do produto indispon&iacute;vel" loading="lazy" />
                         }
+                        @if (officialImage?.IsIllustrative == true)
+                        {
+                            <span class="product-image-illustrative-note">Imagem ilustrativa</span>
+                        }
                         <small>@product.Category</small>
                         @if (!product.IsCommerciallyAvailable)
                         {

@@ -77,6 +77,10 @@
                             {
                                 <img src="~/images/products/product-photo-unavailable.svg" alt="Foto do produto indispon&iacute;vel" loading="lazy" />
                             }
+                            @if (catalogImage?.IsIllustrative == true)
+                            {
+                                <span class="product-image-illustrative-note">Imagem ilustrativa</span>
+                            }
                         </div>
                         <div class="p-3 public-quick-buy-card-body">
                             <span class="quick-buy-brand">@product.Brand</span>

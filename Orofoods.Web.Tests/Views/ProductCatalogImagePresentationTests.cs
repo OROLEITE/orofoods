@@ -38,9 +38,29 @@ public class ProductCatalogImagePresentationTests
         Assert.Contains("class=\"portal-app-shell\"", portalLayout, StringComparison.Ordinal);
         Assert.Contains(".portal-app-shell .product-visual{aspect-ratio:4/3", styles, StringComparison.Ordinal);
         Assert.Contains(".portal-app-shell .product-visual>img{object-fit:contain", styles, StringComparison.Ordinal);
-        Assert.Contains(".public-home-product-media {\n    display: grid;\n    width: 100%;\n    aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
+        Assert.Contains(".public-home-product-media {\n    display: grid;\n    position: relative;\n    width: 100%;\n    aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
         Assert.Contains(".public-home-product-media {\n        aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
         Assert.Contains(".product-detail-media img{object-fit:contain;mix-blend-mode:normal;", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Illustrative_bimbo_cards_are_labeled_and_desktop_keeps_five_columns()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var publicCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var home = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
+        var portalCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
+
+        Assert.Contains("IsIllustrative", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("Imagem ilustrativa", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("IsIllustrative", home, StringComparison.Ordinal);
+        Assert.Contains("Imagem ilustrativa", home, StringComparison.Ordinal);
+        Assert.Contains("IsIllustrative", portalCatalog, StringComparison.Ordinal);
+        Assert.Contains("Imagem ilustrativa", portalCatalog, StringComparison.Ordinal);
+        Assert.Contains(".public-quick-buy-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))", styles, StringComparison.Ordinal);
+        Assert.Contains("@media(min-width:1200px){.portal-catalog-page .product-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}", styles, StringComparison.Ordinal);
+        Assert.Contains(".product-visual>.product-image-illustrative-note{position:absolute", styles, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using Orofoods.Web.Services.Catalog;
+using System.Buffers.Binary;
 
 namespace Orofoods.Web.Tests.Services;
 
@@ -16,11 +17,21 @@ public class BimboProductImageCatalogTests
 
         foreach (var (wmcCode, image) in catalog)
         {
-            Assert.StartsWith("/images/products/bimbo-catalog/", image.ImageUrl, StringComparison.Ordinal);
+            Assert.StartsWith("/images/products/", image.ImageUrl, StringComparison.Ordinal);
             Assert.DoesNotContain("https://", image.ImageUrl, StringComparison.OrdinalIgnoreCase);
             Assert.True(File.Exists(Path.Combine(projectPath, "wwwroot", image.ImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar))),
                 $"The packaged image for WMC {wmcCode} is missing.");
-            Assert.StartsWith("https://", image.SourceImageUrl, StringComparison.Ordinal);
+            if (image.IsIllustrative)
+            {
+                var bytes = File.ReadAllBytes(Path.Combine(projectPath, "wwwroot", image.ImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)));
+                var dimensions = ReadDimensions(bytes);
+                Assert.Equal(800, dimensions.Width);
+                Assert.Equal(600, dimensions.Height);
+            }
+            if (!image.IsIllustrative)
+            {
+                Assert.StartsWith("https://", image.SourceImageUrl, StringComparison.Ordinal);
+            }
             Assert.StartsWith("https://", image.ProductPageUrl, StringComparison.Ordinal);
             Assert.False(string.IsNullOrWhiteSpace(image.SourceName));
             Assert.False(string.IsNullOrWhiteSpace(image.ConfirmationStatus));
@@ -51,7 +62,39 @@ public class BimboProductImageCatalogTests
     public void Australiano_uses_the_confirmed_catalog_photo_ahead_of_manual_media()
     {
         Assert.True(BimboProductImageCatalog.Find("504342")!.UseCatalogImage);
-        Assert.All(BimboProductImageCatalog.All.Where(image => image.Key != "504342"),
+        Assert.All(BimboProductImageCatalog.All.Where(image => image.Key != "504342" && !image.Value.IsIllustrative),
             image => Assert.False(image.Value.UseCatalogImage));
+    }
+
+    [Fact]
+    public void Illustrative_images_are_local_and_explicitly_marked()
+    {
+        var illustrativeCodes = new[] { "503775", "503777", "503805", "503833", "503838" };
+
+        foreach (var code in illustrativeCodes)
+        {
+            var image = BimboProductImageCatalog.Find(code)!;
+            var illustrativeProperty = image.GetType().GetProperty("IsIllustrative");
+
+            Assert.NotNull(illustrativeProperty);
+            Assert.True((bool)illustrativeProperty!.GetValue(image)!);
+            Assert.StartsWith("/images/products/bimbo-illustrative/", image.ImageUrl, StringComparison.Ordinal);
+            Assert.True(image.UseCatalogImage);
+        }
+    }
+
+    private static (int Width, int Height) ReadDimensions(byte[] bytes)
+    {
+        if (bytes.Length >= 24 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e && bytes[3] == 0x47)
+        {
+            return (BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(16, 4)), BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(20, 4)));
+        }
+
+        if (bytes.Length >= 30 && bytes.AsSpan(12, 4).SequenceEqual("VP8 "u8))
+        {
+            return (bytes[26] | ((bytes[27] & 0x3f) << 8), bytes[28] | ((bytes[29] & 0x3f) << 8));
+        }
+
+        throw new InvalidDataException("Unsupported illustrative image format.");
     }
 }
