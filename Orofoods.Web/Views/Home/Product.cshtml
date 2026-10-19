@@ -28,13 +28,13 @@
 
 <section class="section product-detail-section" aria-labelledby="product-description-title">
     <div class="container product-detail product-detail-layout public-product-detail">
-        <figure class="product-detail-media" style="--accent:@Model.Accent;--bimbo-image-scale:@(primaryImage is null ? catalogImage?.VisualScale ?? 1m : 1m)">
+        <figure class="product-detail-media" style="--accent:@Model.Accent;--bimbo-image-scale:@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(primaryImage is null ? catalogImage?.VisualScale ?? 1m : 1m))">
             @if (primaryImage is not null || catalogImage is not null)
             {
                 <img data-product-image="true"
                      data-fallback-stage="@(primaryImage is null ? "catalog" : "manual")"
                      data-catalog-fallback="@(catalogImage?.ImageUrl ?? string.Empty)"
-                     data-catalog-scale="@(catalogImage?.VisualScale ?? 1m)"
+                     data-catalog-scale="@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(catalogImage?.VisualScale ?? 1m))"
                      data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")"
                      src="@(primaryImage is not null ? Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id }) : catalogImage!.ImageUrl)"
                      alt="@(primaryImage is not null && !string.IsNullOrWhiteSpace(primaryImage.AltText) ? primaryImage.AltText : catalogImage?.ModelName ?? Model.Name)" />
