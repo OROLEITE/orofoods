@@ -20,7 +20,7 @@ public class HomeController(
     CartService? cartService = null,
     AdminCustomerContextService? adminCustomerContextService = null) : Controller
 {
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int? customerId = null)
     {
         var publicProducts = db.Products
             .AsNoTracking()
@@ -40,8 +40,10 @@ public class HomeController(
             .OrderByDescending(product => product.Brand == "BIMBO" && product.Images.Any())
             .ThenByDescending(product => product.IsFeatured)
             .ThenBy(product => product.Name)
-            .Take(4)
+            .Take(8)
             .ToListAsync();
+
+        await PopulatePurchaseContextAsync(products, customerId);
 
         return View(new PublicHomeViewModel
         {
@@ -119,6 +121,23 @@ public class HomeController(
         }
 
         var products = await query.OrderBy(x => x.Name).ToListAsync();
+        await PopulatePurchaseContextAsync(products, customerId);
+
+        return View(new PublicProductCatalogViewModel
+        {
+            Products = products,
+            Categories = await db.ProductCategories.AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.SortOrder)
+                .ToListAsync(),
+            Search = search,
+            Category = category
+        });
+    }
+
+    // Fills the ViewBag data consumed by the shared _PublicProductCard partial (Home showcase and /produtos).
+    private async Task PopulatePurchaseContextAsync(IReadOnlyList<Product> products, int? customerId)
+    {
         var productIds = products.Select(product => product.Id).ToArray();
         var inventory = await db.ProductInventories.AsNoTracking()
             .Where(item => productIds.Contains(item.ProductId))
@@ -181,17 +200,6 @@ public class HomeController(
         {
             ViewBag.SellerProducts = new Dictionary<int, Orofoods.Web.Services.Sellers.SellerCatalogProductRow>();
         }
-
-        return View(new PublicProductCatalogViewModel
-        {
-            Products = products,
-            Categories = await db.ProductCategories.AsNoTracking()
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.SortOrder)
-                .ToListAsync(),
-            Search = search,
-            Category = category
-        });
     }
 
     [HttpGet("/produtos/{id:int}")]

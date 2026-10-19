@@ -2,100 +2,75 @@ namespace Orofoods.Web.Tests.Views;
 
 public class HomeProductViewTests
 {
+    private static readonly string ProjectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+
     [Fact]
     public void Product_detail_groups_customer_actions_with_bootstrap_spacing()
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
+        var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Product.cshtml"));
 
         Assert.Contains("product-detail-actions d-flex", markup);
         Assert.Contains("gap-2", markup);
     }
 
     [Fact]
-    public void Home_product_card_opens_the_public_product_detail()
+    public void Home_hero_prioritizes_product_access_with_a_cyan_primary_button_and_a_secondary_portal_link()
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
+        var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
 
-        Assert.Contains("class=\"public-home-product-media\" style=", markup);
-        Assert.Contains("asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\"", markup);
-        Assert.Contains("Ver produto", markup);
-    }
-
-    [Fact]
-    public void Home_uses_the_institutional_food_photo_without_associating_it_with_a_product_sku()
-    {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
-
-        Assert.Contains("Soluções para o seu Food Service", markup);
-        Assert.Contains("~/images/orofoods-hero.png", markup);
-        Assert.Contains("Hambúrguer artesanal e pães em uma cozinha profissional", markup);
-        Assert.Contains("public-home-primary-action\" asp-controller=\"Home\" asp-action=\"Products\">Conheça nossos produtos", markup);
-        Assert.Contains("public-home-secondary-action\" asp-controller=\"CustomerRegistration\" asp-action=\"Register\">Cadastre sua empresa", markup);
+        Assert.Contains("public-home-primary-action\" asp-controller=\"Home\" asp-action=\"Products\">Comprar produtos", markup);
+        Assert.Contains("public-home-secondary-action\" href=\"@portalUrl\">Meu portal", markup);
         Assert.DoesNotContain("public-home-bimbo-banner-placeholder", markup);
         Assert.DoesNotContain("BIMBO", markup);
     }
 
     [Fact]
-    public void Home_header_has_a_larger_proportional_logo_and_visible_navigation_states()
+    public void Home_uses_the_shared_white_header_and_the_nav_has_no_home_only_overrides()
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var homeStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "home-showcase.css"));
+        var layout = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_Layout.cshtml"));
+        var header = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_SiteHeader.cshtml"));
+        var homeStyles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "home-showcase.css"));
 
-        Assert.Contains("height: clamp(54px, 4vw, 64px);", homeStyles);
-        Assert.Contains("object-fit: contain;", homeStyles);
-        Assert.Contains("color: #F8FAFC;", homeStyles);
-        Assert.Contains("color: #22D3EE;", homeStyles);
-        Assert.Contains("box-shadow: inset 0 -2px 0 var(--home-gold);", homeStyles);
-        Assert.Contains("@media (max-width: 767px)", homeStyles);
+        Assert.Equal(1, layout.Split("PartialAsync(\"_SiteHeader\")", StringSplitOptions.None).Length - 1);
+        Assert.Contains("navbar navbar-expand-lg navbar-light bg-white", header);
+        Assert.Contains("logo-orofoods-transparent.png", header);
+        Assert.True(File.Exists(Path.Combine(ProjectPath, "wwwroot", "images", "logo-orofoods-transparent.png")));
+        Assert.DoesNotContain(".public-home-page .site-header-modern", homeStyles);
+        Assert.DoesNotContain(".navbar", homeStyles);
+        Assert.DoesNotContain(".nav-link", homeStyles);
+        Assert.DoesNotContain("#0B132B !important", homeStyles);
     }
 
     [Fact]
-    public void Home_branding_is_scoped_to_the_public_home_and_reuses_the_transparent_official_logo()
+    public void Home_keeps_the_public_footer_scope_and_exposes_the_page_class()
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
-        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
-        var homeStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "home-showcase.css"));
+        var layout = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_Layout.cshtml"));
+        var homeStyles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "home-showcase.css"));
 
         Assert.Contains("isPublicHomePage", layout);
         Assert.Contains("public-home-page", layout);
-        Assert.Contains("logo-orofoods-transparent.png", header);
-        Assert.Contains("logo-orofoods-transparent.png", layout);
-        Assert.True(File.Exists(Path.Combine(projectPath, "wwwroot", "images", "logo-orofoods-transparent.png")));
-        Assert.Contains(".public-home-page .site-header-modern", homeStyles);
         Assert.Contains(".public-home-page .site-footer", homeStyles);
-        Assert.Contains("#0B132B", homeStyles);
-        Assert.Contains("#0E7490", homeStyles);
-        Assert.Contains("#D4A017", homeStyles);
-        Assert.Contains("focus-visible", homeStyles);
-        Assert.Contains("outline: 3px solid #0B132B;", homeStyles);
-        Assert.Contains("object-fit: contain", homeStyles);
+        Assert.Contains("outline: 3px solid", homeStyles);
     }
 
     [Fact]
-    public void Home_product_card_action_uses_the_cyan_button_treatment()
+    public void Home_featured_cards_reuse_the_shared_catalog_button_treatment()
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var homeStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "home-showcase.css"));
-        var actionStart = homeStyles.IndexOf(".public-home-product-action {", StringComparison.Ordinal);
-        Assert.True(actionStart >= 0);
-        var actionEnd = homeStyles.IndexOf('}', actionStart);
-        var actionRule = homeStyles[actionStart..actionEnd];
+        var catalogStyles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "catalog.css")).Replace("\r\n", "\n", StringComparison.Ordinal);
+        var home = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
 
-        Assert.Contains("background: var(--home-cyan);", actionRule);
-        Assert.Contains("color: #FFFFFF !important;", actionRule);
-        Assert.Contains("min-height: 40px;", actionRule);
+        Assert.Contains("catalog.css", home);
+        Assert.Contains("public-home-featured public-products-section", home);
+        Assert.Contains(".public-products-section .quick-buy-button,", catalogStyles);
+        Assert.Contains("background: #0E7490;", catalogStyles);
+        Assert.Contains("min-height: 44px;", catalogStyles);
     }
 
     [Fact]
     public void Product_detail_stays_public_and_Admin_uses_the_existing_customer_portal()
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
-        var controller = File.ReadAllText(Path.Combine(projectPath, "Controllers", "HomeController.cs"));
+        var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Product.cshtml"));
+        var controller = File.ReadAllText(Path.Combine(ProjectPath, "Controllers", "HomeController.cs"));
 
         Assert.Contains("User.IsInRole(\"Administrador\")", markup);
         Assert.Contains("Comprar para o cliente selecionado", markup);
@@ -108,9 +83,8 @@ public class HomeProductViewTests
     [Fact]
     public void Product_purchase_links_use_existing_customer_login_and_seller_order_entry_flows()
     {
-        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
-        var portalDetail = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Product.cshtml"));
+        var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Product.cshtml"));
+        var portalDetail = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Portal", "Product.cshtml"));
 
         Assert.Contains("asp-page=\"/Account/Login\"", markup);
         Assert.Contains("asp-route-returnUrl=\"@loginReturnUrl\"", markup);
