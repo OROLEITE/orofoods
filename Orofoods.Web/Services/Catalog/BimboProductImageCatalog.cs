@@ -36,7 +36,7 @@ public static class BimboProductImageCatalog
                 "https://loja.burgerfoods.com.br/29-large_default/pao-bqb-hb-classico-australiano-cong-bimbo.webp",
                 "https://loja.burgerfoods.com.br/pao-de-hamburguer/pao-bqb-hb-classico-australiano-cong-bimbo-41",
                 "Burger Foods, distribuidor Bimbo QSR",
-                "Foto de pao BQB Classico Australiano identificada pelo distribuidor", 1.30m, true),
+                "Foto de pao BQB Classico Australiano identificada pelo distribuidor", 1.45m, true),
             ["503833"] = new(
                 "Classico Brioche",
                 "/images/products/bimbo-illustrative/06-brioche.png",
@@ -57,7 +57,7 @@ public static class BimboProductImageCatalog
                 "https://www.k2distribuidora.com.br/43-large_default/pao-bqb-hb-smart-cxg.webp",
                 "https://www.k2distribuidora.com.br/inicio/pao-bqb-hb-smart-cxg-1",
                 "K2 Distribuidora, distribuidor Bimbo QSR",
-                "Foto de pao BQB HB Smart sem gergelim identificada pelo distribuidor", 1.25m),
+                "Foto de pao BQB HB Smart sem gergelim identificada pelo distribuidor", 1.40m),
             ["503777"] = new(
                 "Smart com gergelim",
                 "/images/products/bimbo-illustrative/03-gergelim.png",

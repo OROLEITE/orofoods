@@ -439,7 +439,7 @@
 .portal-catalog-page .product-grid {
     align-items: stretch;
     grid-auto-rows: 1fr;
-    gap: 16px;
+    gap: 20px;
 }
 
 .public-products-section .public-quick-buy-card,
@@ -485,7 +485,8 @@
     margin: auto;
     object-fit: contain;
     object-position: center;
-    transform: none;
+    transform: scale(var(--bimbo-image-scale, 1));
+    transform-origin: center;
 }
 
 .public-products-section .public-quick-buy-card-body,
@@ -589,6 +590,18 @@
     opacity: 1;
 }
 
+.public-products-section .quick-buy-button:not(:disabled):hover,
+.portal-catalog-page .catalog-add-controls > .btn:not(:disabled):hover {
+    border-color: #0B5D75 !important;
+    background: #0B5D75 !important;
+    color: #FFFFFF !important;
+}
+
+.public-products-section .quick-buy-button:not(:disabled):focus-visible,
+.portal-catalog-page .catalog-add-controls > .btn:not(:disabled):focus-visible {
+    outline: 3px solid rgb(14 116 144 / 25%);
+    outline-offset: 2px;
+}
 .public-products-section .quick-buy-auth-hint,
 .public-products-section .quick-buy-unavailable {
     min-height: 2.3em;
@@ -664,7 +677,7 @@
 
     .public-products-section .public-quick-buy-grid,
     .portal-catalog-page .product-grid {
-        gap: 11px;
+        gap: 14px;
     }
 
     .public-products-section .public-quick-buy-card-body,
@@ -679,5 +692,144 @@
 
     .public-products-section .quick-buy-button {
         min-height: 44px;
+    }
+}
+
+/* Compact catalog filters and a shared cool palette for both B2B catalog views. */
+.public-products-hero,
+.portal-catalog-hero {
+    background: #F1F5FB !important;
+    color: #0F172A;
+}
+
+.public-products-hero::before,
+.portal-catalog-hero::before {
+    background: none;
+}
+
+.public-products-hero h1,
+.portal-catalog-hero h1 {
+    color: #0F172A;
+}
+
+.public-products-hero p,
+.portal-catalog-hero p {
+    color: #64748B;
+}
+
+.public-products-hero .eyebrow.light,
+.portal-catalog-hero .eyebrow.light {
+    color: #0E7490;
+}
+
+.public-products-hero .eyebrow span,
+.portal-catalog-hero .eyebrow span {
+    background: #0E7490;
+}
+
+.public-products-section,
+.portal-catalog-page {
+    background: #F1F5FB;
+}
+
+.public-products-tools {
+    grid-template-columns: minmax(260px, 1fr) minmax(170px, .35fr) auto;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.public-products-search,
+.public-products-tools select,
+.public-products-tools > .btn,
+.portal-catalog-page .catalog-tools input,
+.portal-catalog-page .catalog-tools select,
+.portal-catalog-page .catalog-tools > .btn {
+    min-height: 42px;
+}
+
+.public-products-search,
+.public-products-tools select,
+.portal-catalog-page .catalog-tools input,
+.portal-catalog-page .catalog-tools select {
+    border: 1px solid #D8E2EF;
+    border-radius: 8px;
+    background: #FFFFFF;
+}
+
+.portal-catalog-page .catalog-tools {
+    grid-template-columns: minmax(260px, 1fr) minmax(170px, .35fr) minmax(150px, .3fr) auto;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.public-catalog-quick-filters {
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.public-catalog-quick-filters button {
+    min-height: 34px;
+    padding: 5px 11px;
+    background: #E9EEF5;
+    font-size: .78rem;
+}
+
+@media (max-width: 900px) {
+    .public-products-tools {
+        grid-template-columns: minmax(0, 1fr) minmax(145px, .45fr) auto;
+    }
+
+    .public-products-search {
+        grid-column: 1 / -1;
+    }
+
+    .public-products-tools > .btn {
+        grid-column: auto;
+    }
+
+    .portal-catalog-page .catalog-tools {
+        grid-template-columns: minmax(0, 1.2fr) minmax(130px, .8fr) minmax(130px, .8fr) auto;
+        gap: 7px;
+    }
+}
+
+@media (max-width: 599px) {
+    .public-products-tools {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 7px;
+    }
+
+    .public-products-search {
+        grid-column: 1 / -1;
+    }
+
+    .public-products-tools > .btn {
+        grid-column: auto;
+        min-width: 88px;
+        padding-inline: 14px;
+    }
+
+    .portal-catalog-page .catalog-tools {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 7px;
+    }
+
+    .portal-catalog-page .catalog-tools input {
+        grid-column: 1 / -1;
+    }
+
+    .portal-catalog-page .catalog-tools > .btn {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 359px) {
+    .portal-catalog-page .catalog-tools {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
