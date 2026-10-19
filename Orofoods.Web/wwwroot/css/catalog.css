@@ -439,7 +439,7 @@
 .portal-catalog-page .product-grid {
     align-items: stretch;
     grid-auto-rows: 1fr;
-    gap: 16px;
+    gap: 20px;
 }
 
 .public-products-section .public-quick-buy-card,
@@ -485,7 +485,8 @@
     margin: auto;
     object-fit: contain;
     object-position: center;
-    transform: none;
+    transform: scale(var(--bimbo-image-scale, 1));
+    transform-origin: center;
 }
 
 .public-products-section .public-quick-buy-card-body,
@@ -589,6 +590,19 @@
     opacity: 1;
 }
 
+.public-products-section .quick-buy-button:not(:disabled):hover,
+.portal-catalog-page .catalog-add-controls > .btn:not(:disabled):hover {
+    border-color: #0B5D75 !important;
+    background: #0B5D75 !important;
+    color: #FFFFFF !important;
+}
+
+.public-products-section .quick-buy-button:not(:disabled):focus-visible,
+.portal-catalog-page .catalog-add-controls > .btn:not(:disabled):focus-visible {
+    outline: 3px solid rgb(14 116 144 / 25%);
+    outline-offset: 2px;
+}
+
 .public-products-section .quick-buy-auth-hint,
 .public-products-section .quick-buy-unavailable {
     min-height: 2.3em;
@@ -664,7 +678,7 @@
 
     .public-products-section .public-quick-buy-grid,
     .portal-catalog-page .product-grid {
-        gap: 11px;
+        gap: 14px;
     }
 
     .public-products-section .public-quick-buy-card-body,
