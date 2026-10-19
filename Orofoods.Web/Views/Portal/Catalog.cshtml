@@ -14,7 +14,7 @@
                 <h1>Cat&aacute;logo de produtos</h1>
                 <p>Encontre os produtos dispon&iacute;veis e adicione o que precisa ao carrinho.</p>
             </div>
-            <a class="btn btn-gold catalog-cart-link" asp-action="Cart" aria-label="Ver carrinho com @cartQuantity caixas">
+            <a class="btn btn-gold catalog-cart-link" asp-action="Cart" aria-label="Ver carrinho com @cartQuantity unidades">
                 <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Ver carrinho
                 @if (cartQuantity > 0)
                 {
@@ -49,14 +49,14 @@
             {
                 var price = prices.GetValueOrDefault(product.Id, product.BasePrice);
                 var hasValidPrice = price > 0m;
-                var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
                 var officialImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);
+                var image = officialImage?.UseCatalogImage == true ? null : product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
                 var isInCart = cartProductQuantities.TryGetValue(product.Id, out var cartProductQuantity);
                 <article class="product-card @(product.IsCommerciallyAvailable ? "" : "unavailable")">
-                    <div class="product-visual" style="--accent:@product.Accent">
+                    <div class="product-visual" style="--accent:@product.Accent;--bimbo-image-scale:@(image is null ? officialImage?.VisualScale ?? 1m : 1m)">
                         @if (officialImage is not null || image is not null)
                         {
-                            <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" />
+                            <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-catalog-scale="@(officialImage?.VisualScale ?? 1m)" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" />
                         }
                         else
                         {
@@ -91,7 +91,7 @@
                                         }
                                         else
                                         {
-                                            <span>Adicionar ao carrinho</span>
+                                            <span>Comprar</span>
                                         }
                                     </button>
                                 </div>
@@ -102,7 +102,6 @@
                         {
                             <p class="alert alert-warning" role="status">Pre&ccedil;o indispon&iacute;vel para este cliente.</p>
                         }
-                        <a class="text-link catalog-details-link" asp-action="Product" asp-route-id="@product.Id">Ver detalhes <span aria-hidden="true">&rarr;</span></a>
                     </div>
                 </article>
             }

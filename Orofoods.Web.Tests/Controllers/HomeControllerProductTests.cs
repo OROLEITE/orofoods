@@ -1,6 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Orofoods.Web.Controllers;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Models.Customers;
+using Orofoods.Web.Models.Identity;
+using Orofoods.Web.Models.Pricing;
+using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Tests.Infrastructure;
 using Orofoods.Web.ViewModels;
 
@@ -83,11 +89,64 @@ public class HomeControllerProductTests
             new Product { Sku = "OLD-01", Name = "Produto Antigo", Brand = "Orofoods", ProductCategoryId = category.Id, IsActive = false });
         await db.SaveChangesAsync();
 
-        var result = await new HomeController(db).Products("brioche", null);
+        var controller = new HomeController(db)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
+        };
+        var result = await controller.Products("brioche", null);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<PublicProductCatalogViewModel>(view.Model);
         Assert.Single(model.Products);
+        Assert.False((bool)view.ViewData["CustomerPurchaseAuthorized"]!);
+        Assert.Empty(Assert.IsType<Dictionary<int, decimal>>(view.ViewData["Prices"]));
+    }
+
+    [Fact]
+    public async Task Products_exposes_only_the_approved_customers_authorized_table_price()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
+        var table = new PriceTable { Name = "Tabela aprovada", IsActive = true };
+        var customer = new Customer
+        {
+            LegalName = "Cliente A Ltda", TradeName = "Cliente A", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true, PriceTable = table
+        };
+        db.AddRange(category, table, customer);
+        await db.SaveChangesAsync();
+        var product = new Product
+        {
+            Sku = "BIMBO-503768", WmcCode = "503768", Name = "Pão", Brand = "BIMBO",
+            ProductCategoryId = category.Id, IsActive = true, IsAvailable = true, CommercialUnitCode = "PCT",
+            BasePrice = 1m, IsWmcActive = true, WmcStockAvailable = true, WmcInitialLoadReady = true
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new Orofoods.Web.Models.Inventory.ProductInventory { ProductId = product.Id, QuantityOnHand = 10, QuantityReserved = 0 });
+        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = table.Id, ProductId = product.Id, Price = 18.50m });
+        db.Users.Add(new ApplicationUser { Id = "approved-client", UserName = "approved-client@test.local", NormalizedUserName = "APPROVED-CLIENT@TEST.LOCAL", Email = "approved-client@test.local", NormalizedEmail = "APPROVED-CLIENT@TEST.LOCAL", IsActive = true, CustomerId = customer.Id });
+        await db.SaveChangesAsync();
+
+        var controller = new HomeController(db, customerAccessService: new CustomerAccessService(db), priceService: new PriceService(db));
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity([
+                    new Claim(ClaimTypes.NameIdentifier, "approved-client"),
+                    new Claim(ClaimTypes.Role, "Cliente")
+                ], "test"))
+            }
+        };
+
+        var result = await controller.Products(null, null);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.True((bool)view.ViewData["CustomerPurchaseAuthorized"]!);
+        var prices = Assert.IsType<Dictionary<int, decimal>>(view.ViewData["Prices"]);
+        Assert.Equal(18.50m, prices[product.Id]);
+        Assert.True(Assert.IsType<PublicProductCatalogViewModel>(view.Model).Products.Single().IsCommerciallyAvailable);
     }
 
     [Fact]
@@ -103,5 +162,29 @@ public class HomeControllerProductTests
         var result = await new HomeController(db).Product(1);
 
         Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task Product_keeps_public_details_route_for_an_authenticated_customer()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Paes", Slug = "paes", IsActive = true };
+        db.ProductCategories.Add(category);
+        await db.SaveChangesAsync();
+        db.Products.Add(new Product { Id = 31, Sku = "BIMBO-31", WmcCode = "503768", Name = "Pao BIMBO", Brand = "BIMBO", ProductCategoryId = category.Id, IsActive = true, IsAvailable = true });
+        await db.SaveChangesAsync();
+        var controller = new HomeController(db);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "customer"), new Claim(ClaimTypes.Role, "Cliente")], "test"))
+            }
+        };
+
+        var result = await controller.Product(31);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal(31, Assert.IsType<Product>(view.Model).Id);
     }
 }

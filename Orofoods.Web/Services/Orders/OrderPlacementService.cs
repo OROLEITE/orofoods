@@ -225,6 +225,10 @@ public sealed class OrderPlacementService(
         }
 
         var prices = await priceService.GetPricesAsync(customerId, productIds, cancellationToken);
+        if (productIds.Any(productId => !prices.TryGetValue(productId, out var price) || price <= 0m))
+        {
+            return OrderPlacementResult.Failure("Um ou mais produtos nÃ£o possuem preÃ§o comercial vÃ¡lido.");
+        }
         var order = new Order
         {
             CustomerId = customerId,
@@ -252,7 +256,7 @@ public sealed class OrderPlacementService(
         {
             var product = products[line.ProductId];
             var quantity = strictDraftLines ? line.Quantity : Math.Max(line.Quantity, product.MinimumSalesQuantity);
-            var unitPrice = prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice);
+            var unitPrice = prices[product.Id];
             order.Items.Add(new OrderItem
             {
                 ProductId = product.Id,

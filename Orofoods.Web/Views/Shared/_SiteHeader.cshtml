@@ -23,6 +23,7 @@
             : isCommercialManager
             ? Url.Action("Index", "Commercial", new { area = "Admin" })
             : Url.Action("Dashboard", "Portal", new { area = "" });
+    var catalogLoginReturnUrl = Url.Action("Products", "Home", new { area = "" });
 }
 <header class="site-header-modern">
     <nav class="navbar navbar-expand-lg navbar-light bg-white">
@@ -61,7 +62,8 @@
                     }
                     else
                     {
-                        <a class="btn btn-outline-dark" asp-area="Identity" asp-page="/Account/Login">Entrar</a>
+                        <a class="btn btn-outline-dark" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@catalogLoginReturnUrl">Entrar</a>
+                        <a class="btn btn-header-register" asp-area="" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar</a>
                     }
                 </div>
             </div>

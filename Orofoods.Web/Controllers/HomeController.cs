@@ -5,14 +5,20 @@ using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models;
 using Orofoods.Web.Services.Sellers;
+using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Pricing;
+using Orofoods.Web.Services.Orders;
 using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Controllers;
 
 public class HomeController(
     ApplicationDbContext db,
-    IAuthorizationService? authorizationService = null,
-    SellerCatalogService? sellerCatalogService = null) : Controller
+    SellerCatalogService? sellerCatalogService = null,
+    CustomerAccessService? customerAccessService = null,
+    PriceService? priceService = null,
+    CartService? cartService = null,
+    AdminCustomerContextService? adminCustomerContextService = null) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -88,7 +94,7 @@ public class HomeController(
     }
 
     [HttpGet("/produtos")]
-    public async Task<IActionResult> Products(string? search, string? category)
+    public async Task<IActionResult> Products(string? search, string? category, int? customerId = null)
     {
         IQueryable<Product> query = db.Products
             .AsNoTracking()
@@ -109,9 +115,73 @@ public class HomeController(
             query = query.Where(x => x.ProductCategory != null && x.ProductCategory.Slug == category);
         }
 
+        var products = await query.OrderBy(x => x.Name).ToListAsync();
+        var productIds = products.Select(product => product.Id).ToArray();
+        var inventory = await db.ProductInventories.AsNoTracking()
+            .Where(item => productIds.Contains(item.ProductId))
+            .ToDictionaryAsync(item => item.ProductId, item => item.AvailableQuantity);
+        foreach (var product in products)
+        {
+            product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable
+                && (product.WmcCode is null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady))
+                && inventory.TryGetValue(product.Id, out var availableQuantity)
+                && availableQuantity >= product.MinimumSalesQuantity;
+        }
+
+        ViewBag.AvailableQuantities = inventory;
+        ViewBag.CustomerPurchaseAuthorized = false;
+        ViewBag.CustomerId = customerId;
+        ViewBag.Prices = new Dictionary<int, decimal>();
+        ViewBag.CartQuantity = 0;
+        ViewBag.CartProductQuantities = new Dictionary<int, int>();
+        Orofoods.Web.Models.Customers.Customer? purchaseCustomer = null;
+        if (User.Identity?.IsAuthenticated == true && customerAccessService is not null
+            && User.IsInRole("Cliente") && !User.IsInRole("Vendedor"))
+        {
+            purchaseCustomer = await customerAccessService.GetApprovedCustomerAsync(
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+        }
+        else if (User.Identity?.IsAuthenticated == true && customerAccessService is not null
+            && adminCustomerContextService is not null && User.IsInRole("Administrador"))
+        {
+            var selectedCustomerId = adminCustomerContextService.GetSelectedCustomerId(
+                HttpContext.Session,
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            if (selectedCustomerId is not null)
+            {
+                purchaseCustomer = await customerAccessService.GetApprovedCustomerByIdAsync(selectedCustomerId.Value);
+            }
+        }
+
+        if (purchaseCustomer is not null)
+        {
+            ViewBag.CustomerPurchaseAuthorized = true;
+            ViewBag.Prices = priceService is null
+                ? new Dictionary<int, decimal>()
+                : await priceService.GetPricesAsync(purchaseCustomer.Id, productIds);
+
+            if (cartService is not null)
+            {
+                var cart = await cartService.GetAsync(purchaseCustomer.Id, HttpContext.Session);
+                ViewBag.CartQuantity = cart.Items.Sum(item => item.Quantity);
+                ViewBag.CartProductQuantities = cart.Items.ToDictionary(item => item.ProductId, item => item.Quantity);
+            }
+        }
+
+        if (User.Identity?.IsAuthenticated == true && User.IsInRole("Vendedor")
+            && customerId is > 0 && sellerCatalogService is not null)
+        {
+            var sellerProducts = await sellerCatalogService.GetSelectableProductsByIdsAsync(User, customerId.Value, productIds);
+            ViewBag.SellerProducts = sellerProducts?.ToDictionary(product => product.Id);
+        }
+        else
+        {
+            ViewBag.SellerProducts = new Dictionary<int, Orofoods.Web.Services.Sellers.SellerCatalogProductRow>();
+        }
+
         return View(new PublicProductCatalogViewModel
         {
-            Products = await query.OrderBy(x => x.Name).ToListAsync(),
+            Products = products,
             Categories = await db.ProductCategories.AsNoTracking()
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.SortOrder)
@@ -124,15 +194,6 @@ public class HomeController(
     [HttpGet("/produtos/{id:int}")]
     public async Task<IActionResult> Product(int id, int? customerId = null)
     {
-        if (authorizationService is not null && User.Identity?.IsAuthenticated == true)
-        {
-            var approvedCustomer = await authorizationService.AuthorizeAsync(User, Orofoods.Web.Authorization.OrofoodsPolicies.ApprovedCustomer);
-            if (approvedCustomer.Succeeded)
-            {
-                return RedirectToAction("Product", "Portal", new { id });
-            }
-        }
-
         var product = await db.Products
             .AsNoTracking()
             .Include(x => x.ProductCategory)
@@ -142,6 +203,21 @@ public class HomeController(
         if (product is null)
         {
             return NotFound();
+        }
+
+        var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(item => item.ProductId == product.Id);
+        product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable
+            && (product.WmcCode is null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady))
+            && inventory is not null && inventory.AvailableQuantity >= product.MinimumSalesQuantity;
+
+        if (User.Identity?.IsAuthenticated == true && User.IsInRole("Cliente") && customerAccessService is not null)
+        {
+            var customer = await customerAccessService.GetApprovedCustomerAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            if (customer is not null)
+            {
+                ViewBag.CustomerPurchaseAuthorized = true;
+                ViewBag.CustomerPrice = priceService is null ? null : await priceService.GetPriceAsync(customer.Id, product.Id);
+            }
         }
 
         ViewBag.SellerCustomerId = customerId;

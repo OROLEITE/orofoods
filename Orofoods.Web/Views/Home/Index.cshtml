@@ -110,13 +110,13 @@
                 <div class="public-home-product-grid">
                     @foreach (var product in Model.Products)
                     {
-                        var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
                         var officialImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);
+                        var image = officialImage?.UseCatalogImage == true ? null : product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
                         <article class="public-home-product-card">
-                            <a class="public-home-product-media" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Conhecer @product.Name">
+                            <a class="public-home-product-media" style="--bimbo-image-scale:@(image is null ? officialImage?.VisualScale ?? 1m : 1m)" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Ver produto @(officialImage?.ModelName ?? product.Name)">
                                 @if (officialImage is not null || image is not null)
                                 {
-                                    <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" loading="lazy" decoding="async" />
+                                    <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-catalog-scale="@(officialImage?.VisualScale ?? 1m)" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" loading="lazy" decoding="async" />
                                 }
                                 else
                                 {
@@ -125,9 +125,10 @@
                             </a>
                             <div class="public-home-product-body">
                                 <p class="public-home-product-brand">@product.Brand</p>
-                                <h3><a asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">@product.Name</a></h3>
+                                <h3><a asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">@(officialImage?.ModelName ?? product.Name)</a></h3>
+                                @if (officialImage is not null) { <small class="public-home-product-wmc">WMC @product.WmcCode</small> }
                                 <p class="public-home-product-unit">@product.UnitDescription</p>
-                                <a class="public-home-product-action" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">Conhecer produto <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                                <a class="public-home-product-action" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">Ver produto <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
                             </div>
                         </article>
                     }
