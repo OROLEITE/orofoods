@@ -66,10 +66,24 @@ public class BimboProductImageCatalogTests
             image => Assert.False(image.Value.UseCatalogImage));
     }
 
+    [Theory]
+    [InlineData("504342", "/images/products/bimbo-illustrative/504342-classico-australiano.webp")]
+    [InlineData("503811", "/images/products/bimbo-illustrative/503811-hot-dog.webp")]
+    [InlineData("503768", "/images/products/bimbo-illustrative/503768-corte-duplo.webp")]
+    public void User_provided_product_photos_are_selected_by_wmc_without_additional_zoom(string wmcCode, string expectedImageUrl)
+    {
+        var image = BimboProductImageCatalog.Find(wmcCode)!;
+
+        Assert.Equal(expectedImageUrl, image.ImageUrl);
+        Assert.True(image.UseCatalogImage);
+        Assert.True(image.IsIllustrative);
+        Assert.Equal(1m, image.VisualScale);
+    }
+
     [Fact]
     public void Illustrative_images_are_local_and_explicitly_marked()
     {
-        var illustrativeCodes = new[] { "503775", "503777", "503805", "503833", "503838" };
+        var illustrativeCodes = new[] { "503775", "503777", "503805", "503833", "503838", "503768", "503811", "504342" };
 
         foreach (var code in illustrativeCodes)
         {

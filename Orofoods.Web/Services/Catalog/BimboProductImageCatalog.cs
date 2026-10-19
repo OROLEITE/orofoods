@@ -18,11 +18,11 @@ public static class BimboProductImageCatalog
         {
             ["503768"] = new(
                 "Tradicional Corte Duplo",
-                "/images/products/bimbo-catalog/503768-tradicional-corte-duplo.webp",
-                "https://www.demarchiparana.com.br/1401-thickbox_default/pao-supremo-gergelim-cd-pc15-cx12.webp",
+                "/images/products/bimbo-illustrative/503768-corte-duplo.webp",
+                "Arquivo fornecido pelo usuário: pão_de_hambúrguer_duplo_isolado.png",
                 "https://www.bimboqsrbrasil.com.br/produto/pao-tradicional-corte-duplo/",
-                "DeMarchi Parana, distribuidor Bimbo QSR",
-                "Foto de pao redondo com gergelim e corte duplo; modelo confirmado na pagina oficial Bimbo QSR", 1.10m),
+                "Imagem ilustrativa fornecida pelo usuário",
+                "Imagem associada ao tipo de pão de corte duplo informado para o WMC 503768", 1.00m, true, true),
             ["503838"] = new(
                 "Mini Brioche Corte Total",
                 "/images/products/bimbo-illustrative/01-brioche-liso.webp",
@@ -32,11 +32,11 @@ public static class BimboProductImageCatalog
                 "Imagem ilustrativa de pão brioche; não representa escala ou SKU exatos", 1.15m, true, true),
             ["504342"] = new(
                 "Classico Australiano",
-                "/images/products/bimbo-catalog/504342-classico-australiano.webp",
-                "https://loja.burgerfoods.com.br/29-large_default/pao-bqb-hb-classico-australiano-cong-bimbo.webp",
+                "/images/products/bimbo-illustrative/504342-classico-australiano.webp",
+                "Arquivo fornecido pelo usuário: pão_integral_rústico_em_fundo_claro.png",
                 "https://loja.burgerfoods.com.br/pao-de-hamburguer/pao-bqb-hb-classico-australiano-cong-bimbo-41",
-                "Burger Foods, distribuidor Bimbo QSR",
-                "Foto de pao BQB Classico Australiano identificada pelo distribuidor", 1.45m, true),
+                "Imagem ilustrativa fornecida pelo usuário",
+                "Imagem associada ao tipo de pão australiano informado para o WMC 504342", 1.00m, true, true),
             ["503833"] = new(
                 "Classico Brioche",
                 "/images/products/bimbo-illustrative/06-brioche.png",
@@ -46,11 +46,11 @@ public static class BimboProductImageCatalog
                 "Imagem ilustrativa de pão tipo brioche; não representa SKU exato", 1.15m, true, true),
             ["503811"] = new(
                 "Hot Dog",
-                "/images/products/bimbo-catalog/503811-hot-dog.webp",
-                "https://loja.burgerfoods.com.br/104-thickbox_default/pao-bqb-hot-dog-cong-bimbo.webp",
+                "/images/products/bimbo-illustrative/503811-hot-dog.webp",
+                "Arquivo fornecido pelo usuário: pães_de_cachorro_quente_sobrepostos.png",
                 "https://loja.burgerfoods.com.br/hot-dog/pao-bqb-hot-dog-cong-bimbo-1",
-                "Burger Foods, distribuidor Bimbo QSR",
-                "Foto de pao BQB Hot Dog identificada pelo distribuidor", 1.30m),
+                "Imagem ilustrativa fornecida pelo usuário",
+                "Imagem associada ao tipo de pão Hot Dog informado para o WMC 503811", 1.00m, true, true),
             ["503813"] = new(
                 "Smart",
                 "/images/products/bimbo-catalog/503813-smart.webp",
