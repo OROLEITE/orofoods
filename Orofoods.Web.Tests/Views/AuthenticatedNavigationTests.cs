@@ -77,7 +77,8 @@ public class AuthenticatedNavigationTests
         Assert.Contains("Url.Action(\"Index\", \"Dashboard\", new { area = \"Admin\" })", header);
         Assert.Contains("Url.Action(\"Index\", \"Commercial\", new { area = \"Admin\" })", header);
         Assert.Contains("Url.Action(\"Dashboard\", \"Portal\", new { area = \"\" })", header);
-        Assert.Matches("@if \\(!isAdministrator\\)\\s*\\{\\s*<li><a class=\\\"dropdown-item\\\" href=\\\"@panelUrl\\\"", header);
+        Assert.Contains("<li><a class=\"dropdown-item\" href=\"@panelUrl\"", header);
+        Assert.Contains("@(isAdministrator ? \"Painel administrativo\" : \"Meu painel\")", header);
         Assert.DoesNotContain("Acessar portal de cliente", header);
     }
 
@@ -119,7 +120,10 @@ public class AuthenticatedNavigationTests
 
         Assert.Contains("""User.Identity?.IsAuthenticated == true""", home);
         Assert.Contains("""Url.Action("Dashboard", "Portal", new { area = "" })""", home);
-        Assert.Contains("""Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl })""", home);
+        Assert.Contains("""var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = publicCatalogUrl })""", home);
+        Assert.Contains("""var publicCatalogUrl = Url.Action("Products", "Home", new { area = "" }) ?? "/produtos""", home);
+        Assert.Contains("""var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog""", home);
+        Assert.Contains("""Url.Action("New", "OrderDrafts", new { area = "Vendedor", customerId = selectedCustomerId })""", home);
         Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Admin" })""", home);
         Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Vendedor" })""", home);
         Assert.Contains("""Url.Action("Index", "Commercial", new { area = "Admin" })""", home);

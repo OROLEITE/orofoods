@@ -6,16 +6,26 @@
     var isSalesRepresentative = User.IsInRole("Vendedor");
     var isCommercialManager = User.IsInRole("GerenteComercial");
     var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSalesRepresentative;
+    var selectedCustomerId = ViewBag.CustomerId as int?;
     var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
-    var loginDashboardUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FDashboard";
+    var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog";
+    var publicCatalogUrl = Url.Action("Products", "Home", new { area = "" }) ?? "/produtos";
+    var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = publicCatalogUrl }) ?? "/Identity/Account/Login?returnUrl=%2Fprodutos";
     var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
     var sellerDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Vendedor" }) ?? "/Vendedor";
     var commercialDashboardUrl = Url.Action("Index", "Commercial", new { area = "Admin" }) ?? "/Admin/Commercial";
-    var portalUrl = !isAuthenticated ? loginDashboardUrl
+    var sellerOrderEntryUrl = Url.Action("New", "OrderDrafts", new { area = "Vendedor", customerId = selectedCustomerId }) ?? "/Vendedor/Rascunhos/Novo";
+    var portalUrl = !isAuthenticated ? loginCatalogUrl
         : isAdministrator ? adminDashboardUrl
         : isSalesRepresentative ? sellerDashboardUrl
         : isCommercialManager ? commercialDashboardUrl
         : customerDashboardUrl;
+    var orderUrl = !isAuthenticated ? loginCatalogUrl
+        : isAdministrator ? adminDashboardUrl
+        : isSalesRepresentative ? sellerOrderEntryUrl
+        : isCommercialManager ? commercialDashboardUrl
+        : isCustomer ? customerCatalogUrl
+        : portalUrl;
     ViewData["LoginReturnUrl"] = Url.Action("Products", "Home", new { area = "" });
 }
 
@@ -27,13 +37,25 @@
 
     <div class="container public-home-shell">
         <section class="public-home-hero" aria-labelledby="public-home-title">
-            <p class="public-home-eyebrow">Orofoods &middot; Food service</p>
-            <h1 id="public-home-title">Tudo para sua opera&ccedil;&atilde;o, em um s&oacute; lugar.</h1>
-            <p class="public-home-hero-description">P&atilde;es e produtos para hamburguerias, restaurantes e lanchonetes.</p>
-            <div class="public-home-hero-actions">
-                <a class="btn public-home-primary-action" asp-controller="Home" asp-action="Products">Comprar produtos</a>
-                <a class="btn public-home-secondary-action" href="@portalUrl">Meu portal</a>
+            <div class="public-home-hero-copy">
+                <p class="public-home-eyebrow">Orofoods &middot; Food service</p>
+                <h1 id="public-home-title">Seu pr&oacute;ximo pedido come&ccedil;a aqui.</h1>
+                <p class="public-home-hero-description">P&atilde;es e produtos para hamburguerias, restaurantes e lanchonetes.</p>
+                <div class="public-home-hero-actions">
+                    <a class="btn public-home-primary-action" href="@orderUrl"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Fazer pedido</a>
+                    @if (isCustomer)
+                    {
+                        <a class="btn public-home-secondary-action" href="@portalUrl">Meu portal</a>
+                    }
+                    else if (!isAuthenticated)
+                    {
+                        <a class="btn public-home-secondary-action" asp-area="" asp-controller="CustomerRegistration" asp-action="Register">Criar minha conta</a>
+                    }
+                </div>
             </div>
+            <figure class="public-home-hero-media">
+                <img src="~/images/home/banner-hamburguer.webp" alt="Hamb&uacute;rguer artesanal servido com batatas" fetchpriority="high" />
+            </figure>
         </section>
 
         <section class="public-home-search-panel" aria-label="Buscar produtos">
@@ -45,10 +67,10 @@
                 <button class="btn public-home-primary-action" type="submit">Buscar</button>
             </form>
             <nav class="public-home-chips" aria-label="Atalhos de categorias">
-                <a asp-controller="Home" asp-action="Products" asp-route-filtro="brioche">Brioche</a>
-                <a asp-controller="Home" asp-action="Products" asp-route-filtro="gergelim">Gergelim</a>
-                <a asp-controller="Home" asp-action="Products" asp-route-filtro="australiano">Australiano</a>
-                <a asp-controller="Home" asp-action="Products" asp-route-filtro="congelados">Congelados</a>
+                <a asp-controller="Home" asp-action="Products" asp-route-search="brioche">Brioche</a>
+                <a asp-controller="Home" asp-action="Products" asp-route-search="gergelim">Gergelim</a>
+                <a asp-controller="Home" asp-action="Products" asp-route-search="australiano">Australiano</a>
+                <a asp-controller="Home" asp-action="Products" asp-route-search="congel">Congelados</a>
             </nav>
         </section>
 

@@ -47,10 +47,7 @@
                                 <span class="account-copy"><strong class="account-name">@accountName</strong><small class="account-context">@accountContext</small></span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end account-menu">
-                                @if (!isAdministrator)
-                                {
-                                    <li><a class="dropdown-item" href="@panelUrl"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Meu painel</a></li>
-                                }
+                                <li><a class="dropdown-item" href="@panelUrl"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> @(isAdministrator ? "Painel administrativo" : "Meu painel")</a></li>
                                 @if (isSalesRepresentative)
                                 {
                                     <li><a class="dropdown-item" asp-area="Vendedor" asp-controller="Customers" asp-action="Index"><i class="fa-solid fa-building" aria-hidden="true"></i> Minha carteira</a></li>
@@ -63,7 +60,7 @@
                     else
                     {
                         <a class="btn btn-outline-dark" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@catalogLoginReturnUrl">Entrar</a>
-                        <a class="btn btn-header-register" asp-area="" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar</a>
+                        <a class="btn btn-header-register" asp-area="" asp-controller="CustomerRegistration" asp-action="Register">Cadastre-se</a>
                     }
                 </div>
             </div>

@@ -22,9 +22,10 @@ public class InstitutionalViewTests
 
         Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", card);
         Assert.Contains("asp-page=\"/Account/Login\" asp-route-returnUrl=\"@loginReturnUrl\">Comprar", card);
-        Assert.Contains("Url.Page(\"/Account/Login\", values: new { area = \"Identity\", returnUrl = customerDashboardUrl })", markup);
+        Assert.Contains("var loginCatalogUrl = Url.Page(\"/Account/Login\", values: new { area = \"Identity\", returnUrl = publicCatalogUrl })", markup);
+        Assert.Contains("var publicCatalogUrl = Url.Action(\"Products\", \"Home\", new { area = \"\" }) ?? \"/produtos\"", markup);
         Assert.Contains("Url.Action(\"Dashboard\", \"Portal\", new { area = \"\" })", markup);
-        Assert.Contains("returnUrl = customerDashboardUrl", markup);
+        Assert.Contains("href=\"@orderUrl\"", markup);
         Assert.Contains("User.Identity?.IsAuthenticated == true", markup);
     }
 
@@ -34,13 +35,14 @@ public class InstitutionalViewTests
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
         var markup = File.ReadAllText(path);
 
-        Assert.Contains("Comprar produtos", markup);
+        Assert.Contains("Fazer pedido", markup);
+        Assert.Contains("fa-cart-shopping", markup);
         Assert.Contains("Meu portal", markup);
         Assert.Contains("name=\"search\"", markup);
         Assert.Contains("asp-controller=\"Home\" asp-action=\"Products\" class=\"public-home-search\"", markup);
-        foreach (var filter in new[] { "brioche", "gergelim", "australiano", "congelados" })
+        foreach (var filter in new[] { "brioche", "gergelim", "australiano", "congel" })
         {
-            Assert.Contains($"asp-route-filtro=\"{filter}\"", markup);
+            Assert.Contains($"asp-route-search=\"{filter}\"", markup);
         }
 
         Assert.Contains("Produtos em destaque", markup);
@@ -48,6 +50,7 @@ public class InstitutionalViewTests
         Assert.Contains("Model.Products.Count == 0", markup);
         Assert.DoesNotContain("carousel", markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("orofoods-hero.png", markup);
+        Assert.Contains("banner-hamburguer.webp", markup);
         Assert.DoesNotContain("btn-gold", markup);
     }
 
