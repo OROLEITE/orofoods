@@ -29,15 +29,16 @@ public class ProductCatalogImagePresentationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
         var portalLayout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PortalLayout.cshtml"));
-        var homeStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "home-showcase.css"));
+        var homeStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "home-showcase.css"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
 
         Assert.Contains(".public-product-card .product-visual{aspect-ratio:4/3", styles, StringComparison.Ordinal);
         Assert.Contains(".public-product-card .product-visual>img{object-fit:contain", styles, StringComparison.Ordinal);
         Assert.Contains("class=\"portal-app-shell\"", portalLayout, StringComparison.Ordinal);
         Assert.Contains(".portal-app-shell .product-visual{aspect-ratio:4/3", styles, StringComparison.Ordinal);
         Assert.Contains(".portal-app-shell .product-visual>img{object-fit:contain", styles, StringComparison.Ordinal);
-        Assert.Contains(".public-home-product-media {\r\n    display: grid;\r\n    width: 100%;\r\n    aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
-        Assert.Contains(".public-home-product-media {\r\n        aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
+        Assert.Contains(".public-home-product-media {\n    display: grid;\n    width: 100%;\n    aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
+        Assert.Contains(".public-home-product-media {\n        aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
         Assert.Contains(".product-detail-media img{object-fit:contain;mix-blend-mode:normal}", styles, StringComparison.Ordinal);
     }
 }
