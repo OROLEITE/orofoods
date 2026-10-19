@@ -31,20 +31,21 @@ public class InstitutionalViewTests
     }
 
     [Fact]
-    public void Home_view_is_a_compact_b2b_storefront_with_search_shortcuts_and_real_products()
+    public void Home_omits_search_and_quick_filters_while_the_catalog_keeps_them_and_real_products()
     {
-        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
-        var markup = File.ReadAllText(path);
+        var webRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(webRoot, "Views/Home/Index.cshtml"));
+        var catalog = File.ReadAllText(Path.Combine(webRoot, "Views/Home/Products.cshtml"));
 
         Assert.Contains("Fazer pedido", markup);
         Assert.Contains("fa-cart-shopping", markup);
         Assert.Contains("Meu portal", markup);
-        Assert.Contains("name=\"search\"", markup);
-        Assert.Contains("asp-controller=\"Home\" asp-action=\"Products\" class=\"public-home-search\"", markup);
-        foreach (var filter in new[] { "brioche", "gergelim", "australiano", "congel" })
-        {
-            Assert.Contains($"asp-route-search=\"{filter}\"", markup);
-        }
+        Assert.DoesNotContain("name=\"search\"", markup);
+        Assert.DoesNotContain("public-home-search", markup);
+        Assert.DoesNotContain("public-home-chips", markup);
+        Assert.Contains("name=\"search\"", catalog);
+        Assert.Contains("public-catalog-quick-filters", catalog);
+        Assert.Contains("data-catalog-filter=\"brioche\"", catalog);
 
         Assert.Contains("Produtos em destaque", markup);
         Assert.Contains("<partial name=\"_PublicProductCard\" model=\"product\" />", markup);

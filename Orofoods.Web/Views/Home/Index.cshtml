@@ -58,22 +58,6 @@
             </figure>
         </section>
 
-        <section class="public-home-search-panel" aria-label="Buscar produtos">
-            <form method="get" asp-controller="Home" asp-action="Products" class="public-home-search" role="search">
-                <label class="public-home-search-field">
-                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                    <input type="search" name="search" placeholder="O que voc&ecirc; procura para seu neg&oacute;cio?" aria-label="Buscar produtos no cat&aacute;logo" autocomplete="off" />
-                </label>
-                <button class="btn public-home-primary-action" type="submit">Buscar</button>
-            </form>
-            <nav class="public-home-chips" aria-label="Atalhos de categorias">
-                <a asp-controller="Home" asp-action="Products" asp-route-search="brioche">Brioche</a>
-                <a asp-controller="Home" asp-action="Products" asp-route-search="gergelim">Gergelim</a>
-                <a asp-controller="Home" asp-action="Products" asp-route-search="australiano">Australiano</a>
-                <a asp-controller="Home" asp-action="Products" asp-route-search="congel">Congelados</a>
-            </nav>
-        </section>
-
         <section class="public-home-featured public-products-section" id="produtos" aria-labelledby="public-home-featured-title">
             <div class="public-home-section-heading">
                 <h2 id="public-home-featured-title">Produtos em destaque</h2>
