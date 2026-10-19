@@ -402,6 +402,22 @@ body.portal-authenticated .portal-app-main .product-visual img {
     mix-blend-mode: normal;
 }
 
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-visual {
+    background: #FFFFFF;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-card.unavailable {
+    opacity: 1;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-visual img {
+    object-fit: contain;
+    object-position: center;
+    mix-blend-mode: normal;
+    filter: none;
+    opacity: 1;
+}
+
 body.portal-authenticated .portal-app-main .product-detail-media {
     border-color: var(--portal-dark-border);
     background: var(--portal-dark-surface-secondary);
