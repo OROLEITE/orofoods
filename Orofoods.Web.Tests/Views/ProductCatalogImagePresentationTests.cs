@@ -8,9 +8,8 @@ public class ProductCatalogImagePresentationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var views = new (string Path, string ManualImagePrecedence)[]
         {
-            (Path.Combine(projectPath, "Views", "Home", "Index.cshtml"), "image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })"),
+            (Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"), "image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })"),
             (Path.Combine(projectPath, "Views", "Home", "Product.cshtml"), "primaryImage is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = primaryImage.Id })"),
-            (Path.Combine(projectPath, "Views", "Home", "Products.cshtml"), "image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })"),
             (Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"), "image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })"),
             (Path.Combine(projectPath, "Views", "Portal", "Product.cshtml"), "primaryImage is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = primaryImage.Id })")
         };
@@ -30,16 +29,12 @@ public class ProductCatalogImagePresentationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
         var portalLayout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PortalLayout.cshtml"));
-        var homeStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "home-showcase.css"))
-            .Replace("\r\n", "\n", StringComparison.Ordinal);
 
         Assert.Contains(".public-product-card .product-visual{aspect-ratio:4/3", styles, StringComparison.Ordinal);
         Assert.Contains(".public-product-card .product-visual>img{object-fit:contain", styles, StringComparison.Ordinal);
         Assert.Contains("class=\"portal-app-shell\"", portalLayout, StringComparison.Ordinal);
         Assert.Contains(".portal-app-shell .product-visual{aspect-ratio:4/3", styles, StringComparison.Ordinal);
         Assert.Contains(".portal-app-shell .product-visual>img{object-fit:contain", styles, StringComparison.Ordinal);
-        Assert.Contains(".public-home-product-media {\n    display: grid;\n    position: relative;\n    width: 100%;\n    aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
-        Assert.Contains(".public-home-product-media {\n        aspect-ratio: 4/3;", homeStyles, StringComparison.Ordinal);
         Assert.Contains(".product-detail-media img{object-fit:contain;mix-blend-mode:normal;", styles, StringComparison.Ordinal);
     }
 
@@ -75,7 +70,8 @@ public class ProductCatalogImagePresentationTests
     public void Public_catalog_keeps_real_identifier_search_data_based_quick_filters_and_visitor_login_return()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var publicCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var publicCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"))
+            + File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
         var controller = File.ReadAllText(Path.Combine(projectPath, "Controllers", "HomeController.cs"));
         var filters = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "public-catalog-filters.js"));
 
@@ -100,9 +96,8 @@ public class ProductCatalogImagePresentationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var views = new[]
         {
-            Path.Combine(projectPath, "Views", "Home", "Index.cshtml"),
+            Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"),
             Path.Combine(projectPath, "Views", "Home", "Product.cshtml"),
-            Path.Combine(projectPath, "Views", "Home", "Products.cshtml"),
             Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"),
             Path.Combine(projectPath, "Views", "Portal", "Product.cshtml")
         };
@@ -117,7 +112,7 @@ public class ProductCatalogImagePresentationTests
     public void Public_catalog_cards_support_direct_purchase_by_authorized_customers_and_sellers()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
         var controller = File.ReadAllText(Path.Combine(projectPath, "Controllers", "HomeController.cs"));
 
         Assert.Contains("data-catalog-add-form", markup, StringComparison.Ordinal);
@@ -139,7 +134,7 @@ public class ProductCatalogImagePresentationTests
         var sellerEditor = File.ReadAllText(Path.Combine(projectPath, "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
         var sellerController = File.ReadAllText(Path.Combine(projectPath, "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
         var sellerCatalog = File.ReadAllText(Path.Combine(projectPath, "Areas", "Vendedor", "Views", "Catalog", "Index.cshtml"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
 
         Assert.Contains("Cadastrar", header, StringComparison.Ordinal);
         Assert.Contains("asp-route-returnUrl=\"@catalogLoginReturnUrl\"", header, StringComparison.Ordinal);
@@ -159,7 +154,7 @@ public class ProductCatalogImagePresentationTests
     public void Quick_buy_catalog_uses_registered_names_and_codes_and_prevents_image_distortion()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
 
         Assert.Contains("<h2>@product.Name</h2>", markup, StringComparison.Ordinal);
@@ -185,9 +180,8 @@ public class ProductCatalogImagePresentationTests
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var scaleViews = new[]
         {
-            Path.Combine(projectPath, "Views", "Home", "Products.cshtml"),
+            Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"),
             Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"),
-            Path.Combine(projectPath, "Views", "Home", "Index.cshtml"),
             Path.Combine(projectPath, "Views", "Home", "Product.cshtml"),
             Path.Combine(projectPath, "Areas", "Vendedor", "Views", "Catalog", "Index.cshtml")
         };

@@ -27,4 +27,10 @@
     buttons.forEach((button) => {
         button.addEventListener("click", () => applyFilter(button.dataset.catalogFilter));
     });
+
+    // Home shortcuts link to /produtos?filtro=<slug>; only filters that exist as buttons are honored.
+    const requestedFilter = new URLSearchParams(window.location.search).get("filtro");
+    if (requestedFilter && buttons.some((button) => button.dataset.catalogFilter === requestedFilter)) {
+        applyFilter(requestedFilter);
+    }
 })();

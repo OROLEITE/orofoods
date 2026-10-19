@@ -118,9 +118,7 @@ public class AuthenticatedNavigationTests
         var home = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
 
         Assert.Contains("""User.Identity?.IsAuthenticated == true""", home);
-        Assert.Contains("""Url.Action("Catalog", "Portal", new { area = "" })""", home);
-        Assert.Contains("""Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl })""", home);
-        Assert.Contains("""?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog""", home);
+        Assert.Contains("""Url.Action("Dashboard", "Portal", new { area = "" })""", home);
         Assert.Contains("""Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl })""", home);
         Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Admin" })""", home);
         Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Vendedor" })""", home);
