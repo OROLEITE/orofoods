@@ -67,13 +67,23 @@ public sealed class CustomerPortalQaVisualContractTests
     {
         var view = Read("Views", "Portal", "Catalog.cshtml");
         var mediaController = Read("Controllers", "ProductMediaController.cs");
+        var imageFallback = Read("wwwroot", "js", "product-image-fallback.js");
+        var catalogImages = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.All;
 
-        Assert.Contains("var image = product.Images", view);
+        Assert.True(catalogImages["504342"].UseCatalogImage);
+        Assert.All(catalogImages.Where(image => image.Key != "504342"), image => Assert.False(image.Value.UseCatalogImage));
+        Assert.Contains("var officialImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);", view);
+        Assert.Contains("var image = officialImage?.UseCatalogImage == true ? null : product.Images", view);
+        Assert.Contains("product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault()", view);
         Assert.Contains("Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode)", view);
         Assert.Contains("if (officialImage is not null || image is not null)", view);
         Assert.Contains("image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })", view);
-        Assert.Contains("else", view);
-        Assert.Contains("product-photo-unavailable.svg", view);
+        Assert.Contains("data-fallback-stage=\"@(image is null ? \"catalog\" : \"manual\")\"", view);
+        var compactView = Compact(view);
+        Assert.Contains("else{<imgsrc=\"~/images/products/product-photo-unavailable.svg\"", compactView);
+        Assert.Contains("image.dataset.fallbackStage === \"manual\" && image.dataset.catalogFallback", imageFallback);
+        Assert.Contains("image.dataset.fallbackStage !== \"placeholder\"", imageFallback);
+        Assert.Contains("image.src = image.dataset.placeholderSrc;", imageFallback);
         Assert.Contains("imageStorage.OpenReadAsync(image.Url", mediaController);
         Assert.Contains("return result is null ? NotFound() : File(result.Content, result.ContentType)", mediaController);
         Assert.Contains("StatusCode(StatusCodes.Status503ServiceUnavailable)", mediaController);
