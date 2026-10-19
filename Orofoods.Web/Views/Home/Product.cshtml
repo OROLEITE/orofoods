@@ -12,7 +12,7 @@
     var customerPurchaseAuthorized = ViewBag.CustomerPurchaseAuthorized as bool? == true;
 }
 
-<section class="page-hero product-detail-hero">
+<section class="page-hero product-detail-hero public-product-detail-hero">
     <div class="container">
         <div class="product-detail-topline">
             <a class="product-detail-back" asp-action="Products">
@@ -26,7 +26,7 @@
     </div>
 </section>
 
-<section class="section product-detail-section" aria-labelledby="product-description-title">
+<section class="section product-detail-section public-product-detail-section" aria-labelledby="product-description-title">
     <div class="container product-detail product-detail-layout public-product-detail">
         <figure class="product-detail-media" style="--accent:@Model.Accent;--bimbo-image-scale:@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(primaryImage is null ? catalogImage?.VisualScale ?? 1m : 1m))">
             @if (primaryImage is not null || catalogImage is not null)

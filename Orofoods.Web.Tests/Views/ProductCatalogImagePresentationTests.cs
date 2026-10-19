@@ -39,6 +39,29 @@ public class ProductCatalogImagePresentationTests
     }
 
     [Fact]
+    public void Public_catalog_and_detail_use_the_approved_light_palette_without_dark_photo_overlays()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var publicCatalogStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
+        var customerStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
+        var publicDetail = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
+        var portalStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-dark.css"));
+
+        Assert.Contains(".public-products-section .product-visual", publicCatalogStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #FFFFFF;", publicCatalogStyles, StringComparison.Ordinal);
+        Assert.Contains(".public-quick-buy-card .product-visual > img", customerStyles, StringComparison.Ordinal);
+        Assert.Contains("mix-blend-mode: normal;", customerStyles, StringComparison.Ordinal);
+        Assert.Contains("public-product-detail-hero", publicDetail, StringComparison.Ordinal);
+        Assert.Contains("public-product-detail-section", publicDetail, StringComparison.Ordinal);
+        Assert.Contains(".customer-experience .public-product-detail-hero", customerStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #F1F5FB;", customerStyles, StringComparison.Ordinal);
+        Assert.Contains("color: #0F172A;", customerStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #FFFFFF;", customerStyles, StringComparison.Ordinal);
+        Assert.Contains("color: #0E7490;", customerStyles, StringComparison.Ordinal);
+        Assert.Contains("body.portal-authenticated .portal-app-main .product-card", portalStyles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Illustrative_bimbo_metadata_is_preserved_without_visible_badges_and_desktop_keeps_five_columns()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
