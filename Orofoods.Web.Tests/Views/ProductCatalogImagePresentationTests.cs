@@ -174,7 +174,8 @@ public class ProductCatalogImagePresentationTests
         Assert.Contains("object-position: center", styles, StringComparison.Ordinal);
         Assert.Contains("grid-template-rows: minmax(0, 1fr)", styles, StringComparison.Ordinal);
         Assert.Contains("min-height: 0", styles, StringComparison.Ordinal);
-        Assert.Contains("transform: none", styles, StringComparison.Ordinal);
-        Assert.Contains("background: var(--customer-cream)", styles, StringComparison.Ordinal);
+        Assert.Contains("transform: scale(var(--bimbo-image-scale, 1))", styles, StringComparison.Ordinal);
+        Assert.Contains("background: #F1F5FB", styles, StringComparison.Ordinal);
+        Assert.Contains("background: #F8FAFC", styles, StringComparison.Ordinal);
     }
 }
