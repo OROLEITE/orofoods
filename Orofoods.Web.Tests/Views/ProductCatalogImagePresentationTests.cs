@@ -178,4 +178,51 @@ public class ProductCatalogImagePresentationTests
         Assert.Contains("background: #F1F5FB", styles, StringComparison.Ordinal);
         Assert.Contains("background: #F8FAFC", styles, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Public_and_customer_catalogs_serialize_image_scale_as_invariant_decimal_values()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var scaleViews = new[]
+        {
+            Path.Combine(projectPath, "Views", "Home", "Products.cshtml"),
+            Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"),
+            Path.Combine(projectPath, "Views", "Home", "Index.cshtml"),
+            Path.Combine(projectPath, "Views", "Home", "Product.cshtml"),
+            Path.Combine(projectPath, "Areas", "Vendedor", "Views", "Catalog", "Index.cshtml")
+        };
+
+        foreach (var path in scaleViews)
+        {
+            Assert.Contains("BimboProductImageCatalog.FormatVisualScale", File.ReadAllText(path), StringComparison.Ordinal);
+        }
+
+        var originalCulture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+            Assert.Equal("1.45", Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(1.45m));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    [Fact]
+    public void Customer_catalog_limits_images_to_the_centered_four_by_three_frame()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
+        var frameRules = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"\.customer-experience \.portal-catalog-page \.product-visual\s*\{(?<rules>[^}]*)\}").Groups["rules"].Value;
+        var imageRules = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"\.customer-experience \.portal-catalog-page \.product-visual img\s*\{(?<rules>[^}]*)\}").Groups["rules"].Value;
+
+        Assert.Contains("grid-template-rows: minmax(0, 1fr);", frameRules, StringComparison.Ordinal);
+        Assert.Contains("object-fit: contain;", imageRules, StringComparison.Ordinal);
+        Assert.Contains("object-position: center;", imageRules, StringComparison.Ordinal);
+    }
 }

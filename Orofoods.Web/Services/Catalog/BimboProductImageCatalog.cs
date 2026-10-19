@@ -97,4 +97,7 @@ public static class BimboProductImageCatalog
             ? image
             : null;
     }
+
+    public static string FormatVisualScale(decimal visualScale) =>
+        visualScale.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
