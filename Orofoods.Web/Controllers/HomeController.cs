@@ -37,10 +37,11 @@ public class HomeController(
         var products = await publicProducts
             .Include(product => product.ProductCategory)
             .Include(product => product.Images)
-            .OrderByDescending(product => product.Brand == "BIMBO" && product.Images.Any())
+            .OrderByDescending(product => product.Brand == "BIMBO")
+            .ThenByDescending(product => product.Brand == "BIMBO" && product.Images.Any())
             .ThenByDescending(product => product.IsFeatured)
             .ThenBy(product => product.Name)
-            .Take(8)
+            .Take(10)
             .ToListAsync();
 
         await PopulatePurchaseContextAsync(products, customerId);

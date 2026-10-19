@@ -276,6 +276,52 @@ public class HomeControllerProductTests
     }
 
     [Fact]
+    public async Task Index_shows_ten_active_BIMBO_products_even_when_unavailable_without_duplicates()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
+        db.ProductCategories.Add(category);
+        await db.SaveChangesAsync();
+
+        var bimboProducts = Enumerable.Range(1, 10)
+            .Select(index => new Product
+            {
+                Sku = $"BIMBO-{index:00}",
+                WmcCode = $"5038{index:02}",
+                Name = $"BIMBO pão {index:00}",
+                Brand = "BIMBO",
+                ProductCategoryId = category.Id,
+                IsActive = true,
+                IsAvailable = index % 2 == 0,
+                IsWmcActive = true,
+                WmcStockAvailable = true,
+                WmcInitialLoadReady = index % 2 == 0
+            })
+            .ToArray();
+        db.Products.AddRange(bimboProducts);
+        db.Products.AddRange(
+            new Product { Sku = "OTHER-01", Name = "Outro destaque A", Brand = "Orofoods", ProductCategoryId = category.Id, IsActive = true, IsAvailable = true, IsFeatured = true },
+            new Product { Sku = "OTHER-02", Name = "Outro destaque B", Brand = "Orofoods", ProductCategoryId = category.Id, IsActive = true, IsAvailable = true, IsFeatured = true },
+            new Product { Sku = "BIMBO-OLD", Name = "BIMBO inativo", Brand = "BIMBO", ProductCategoryId = category.Id, IsActive = false, IsFeatured = true });
+        await db.SaveChangesAsync();
+
+        var controller = new HomeController(db)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
+        };
+
+        var result = Assert.IsType<ViewResult>(await controller.Index());
+        var products = Assert.IsType<PublicHomeViewModel>(result.Model).Products;
+
+        Assert.Equal(10, products.Count);
+        Assert.Equal(10, products.Count(product => product.Brand == "BIMBO"));
+        Assert.Equal(products.Count, products.Select(product => product.Id).Distinct().Count());
+        Assert.Equal(bimboProducts.OrderBy(product => product.Name).Select(product => product.Name), products.Select(product => product.Name));
+        Assert.All(products, product => Assert.True(product.IsActive));
+        Assert.All(products.Where(product => product.Brand == "BIMBO"), product => Assert.False(product.IsCommerciallyAvailable));
+    }
+
+    [Fact]
     public async Task Product_returns_not_found_when_product_is_inactive()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
