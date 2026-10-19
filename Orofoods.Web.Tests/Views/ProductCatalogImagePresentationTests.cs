@@ -103,4 +103,27 @@ public class ProductCatalogImagePresentationTests
         Assert.DoesNotContain("seller-cart.js", sellerCatalog, StringComparison.Ordinal);
         Assert.DoesNotContain("seller-product-details-link", sellerCatalog, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Quick_buy_catalog_uses_registered_names_and_codes_and_prevents_image_distortion()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
+
+        Assert.Contains("<h2>@product.Name</h2>", markup, StringComparison.Ordinal);
+        Assert.Contains("Código @product.Sku", markup, StringComparison.Ordinal);
+        Assert.Contains("WMC @product.WmcCode", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<h2>@(catalogImage?.ModelName ?? product.Name)</h2>", markup, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(5, minmax(0, 1fr))", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(3, minmax(0, 1fr))", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr))", styles, StringComparison.Ordinal);
+        Assert.Contains("aspect-ratio: 4 / 3", styles, StringComparison.Ordinal);
+        Assert.Contains("object-fit: contain", styles, StringComparison.Ordinal);
+        Assert.Contains("object-position: center", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-rows: minmax(0, 1fr)", styles, StringComparison.Ordinal);
+        Assert.Contains("min-height: 0", styles, StringComparison.Ordinal);
+        Assert.Contains("transform: none", styles, StringComparison.Ordinal);
+        Assert.Contains("background: var(--customer-cream)", styles, StringComparison.Ordinal);
+    }
 }
