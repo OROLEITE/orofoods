@@ -1982,7 +1982,7 @@
     grid-template-rows: minmax(0, 1fr);
     place-items: center;
     overflow: hidden;
-    background: #F8FAFC;
+    background: #FFFFFF;
 }
 
 .customer-experience .public-products-section .public-quick-buy-card .product-visual > img {
@@ -2703,11 +2703,11 @@ body.customer-experience.public-sticky-footer > .site-footer {
 }
 
 /* Public product detail: compact heading and a clear image/specification layout. */
-.customer-experience .page-hero.product-detail-hero {
+.customer-experience .public-product-detail-hero {
     padding: 28px 0 34px;
-    border-bottom: 1px solid #e7dfcf;
-    background: radial-gradient(ellipse at 88% 5%, rgba(201, 149, 40, .13), transparent 30%), linear-gradient(112deg, #fffdf8 0%, #f2ecdf 100%);
-    color: var(--customer-ink);
+    border-bottom: 1px solid #E2E8F0;
+    background: #F1F5FB;
+    color: #0F172A;
 }
 
 .customer-experience .product-detail-topline {
@@ -2717,56 +2717,56 @@ body.customer-experience.public-sticky-footer > .site-footer {
     margin-bottom: 16px;
 }
 
-.customer-experience .product-detail-back {
+.customer-experience .public-product-detail-hero .product-detail-back {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: #78540f;
+    color: #0E7490;
     font-size: .8rem;
     font-weight: 700;
     text-decoration: none;
 }
 
-.customer-experience .product-detail-back:hover,
-.customer-experience .product-detail-back:focus-visible {
-    color: var(--customer-cocoa-deep);
+.customer-experience .public-product-detail-hero .product-detail-back:hover,
+.customer-experience .public-product-detail-hero .product-detail-back:focus-visible {
+    color: #0B5D75;
     text-decoration: underline;
     text-underline-offset: 3px;
 }
 
-.customer-experience .product-detail-category {
+.customer-experience .public-product-detail-hero .product-detail-category {
     display: inline-flex;
     align-items: center;
     min-height: 25px;
     padding: 4px 10px;
-    border: 1px solid rgba(201, 149, 40, .28);
+    border: 1px solid #BAE6F0;
     border-radius: 999px;
-    background: rgba(201, 149, 40, .08);
-    color: #78540f;
+    background: #E8F4F7;
+    color: #0E7490;
     font-size: .65rem;
     font-weight: 800;
     letter-spacing: .09em;
     text-transform: uppercase;
 }
 
-.customer-experience .product-detail-hero h1 {
+.customer-experience .public-product-detail-hero h1 {
     max-width: 1000px;
     margin: 0;
-    color: var(--customer-cocoa-deep);
+    color: #0F172A;
     font-size: clamp(2.15rem, 3.6vw, 3.15rem);
     line-height: 1.04;
     letter-spacing: -.045em;
 }
 
-.customer-experience .product-detail-hero .product-detail-meta {
+.customer-experience .public-product-detail-hero .product-detail-meta {
     margin: 9px 0 0;
-    color: var(--customer-muted);
+    color: #64748B;
     font-size: .88rem;
 }
 
-.customer-experience .product-detail-section {
+.customer-experience .public-product-detail-section {
     padding: 36px 0 56px;
-    background: var(--customer-cream);
+    background: #F1F5FB;
 }
 
 .customer-experience .product-detail.product-detail-layout {
@@ -2775,81 +2775,82 @@ body.customer-experience.public-sticky-footer > .site-footer {
     align-items: stretch;
 }
 
-.customer-experience .product-detail-media {
+.customer-experience .public-product-detail .product-detail-media {
     display: grid;
     place-items: center;
     height: clamp(320px, 33vw, 440px);
-    border: 1px solid #e4dccb;
+    border: 1px solid #E2E8F0;
     border-radius: var(--customer-radius-lg);
-    background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 12%, #fffdf8), #eee7d9);
-    box-shadow: var(--customer-shadow);
+    background: #FFFFFF;
+    box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
 }
 
-.customer-experience .product-detail-media img {
+.customer-experience .public-product-detail .product-detail-media img {
     width: 100%;
     height: 100%;
     padding: 14px;
     object-fit: contain;
-    mix-blend-mode: multiply;
+    object-position: center;
+    mix-blend-mode: normal;
 }
 
-.customer-experience .product-detail-media figcaption {
+.customer-experience .public-product-detail .product-detail-media figcaption {
     left: 14px;
     bottom: 14px;
     border: 1px solid rgba(255, 255, 255, .72);
     border-radius: 7px;
-    background: rgba(255, 253, 248, .94);
+    background: rgb(255 255 255 / 94%);
 }
 
-.customer-experience .product-detail-placeholder {
+.customer-experience .public-product-detail .product-detail-placeholder {
     display: grid;
     width: 100%;
     height: 100%;
     place-items: center;
-    color: rgba(120, 84, 15, .48);
+    color: #64748B;
     font-size: 3rem;
 }
 
-.customer-experience .product-detail-copy {
+.customer-experience .public-product-detail .product-detail-copy {
     display: flex;
     max-width: none;
     flex-direction: column;
     padding: clamp(22px, 2.7vw, 34px);
-    border: 1px solid #e7dfd1;
+    border: 1px solid #E2E8F0;
     border-radius: var(--customer-radius-lg);
     background: #fff;
-    box-shadow: var(--customer-shadow);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
 }
 
-.customer-experience .product-detail-kicker {
+.customer-experience .public-product-detail .product-detail-kicker {
     margin: 0 0 9px;
-    color: #87600f !important;
+    color: #0E7490 !important;
     font-size: .68rem;
     letter-spacing: .11em;
 }
 
-.customer-experience .product-detail-copy h2 {
+.customer-experience .public-product-detail .product-detail-copy h2 {
     margin: 0 0 12px;
-    color: var(--customer-cocoa-deep);
+    color: #0F172A;
     font-size: clamp(1.5rem, 2.3vw, 2rem);
     line-height: 1.1;
     letter-spacing: -.035em;
 }
 
-.customer-experience .product-detail-description {
+.customer-experience .public-product-detail .product-detail-description {
     margin: 0;
-    color: #625f55;
+    color: #475569;
     font-size: .93rem;
     line-height: 1.65;
 }
 
-.customer-experience .product-detail-facts {
+.customer-experience .public-product-detail .product-detail-facts {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px 18px;
     margin: 22px 0 0;
     padding-top: 18px;
-    border-top: 1px solid #ece5d9;
+    border-top: 1px solid #E2E8F0;
 }
 
 .customer-experience .product-detail-fact {
@@ -2860,18 +2861,18 @@ body.customer-experience.public-sticky-footer > .site-footer {
     grid-column: 1 / -1;
 }
 
-.customer-experience .product-detail-fact dt {
+.customer-experience .public-product-detail .product-detail-fact dt {
     margin: 0 0 6px;
-    color: #817966;
+    color: #64748B;
     font-size: .63rem;
     font-weight: 800;
     letter-spacing: .09em;
     text-transform: uppercase;
 }
 
-.customer-experience .product-detail-fact dd {
+.customer-experience .public-product-detail .product-detail-fact dd {
     margin: 0;
-    color: #4f4a3f;
+    color: #334155;
     font-size: .85rem;
     line-height: 1.5;
     overflow-wrap: anywhere;
@@ -2887,17 +2888,23 @@ body.customer-experience.public-sticky-footer > .site-footer {
     font-weight: 700;
 }
 
-.customer-experience .product-stock.is-available {
-    background: #eaf3e9;
-    color: #347342;
+.customer-experience .public-product-detail .product-stock.is-available {
+    background: #E8F4F7;
+    color: #0E7490;
 }
 
-.customer-experience .product-stock.is-unavailable {
-    background: #f5efe3;
-    color: #795d2a;
+.customer-experience .public-product-detail .product-stock.is-unavailable {
+    background: #F1F5F9;
+    color: #475569;
 }
 
-.customer-experience .product-detail-actions {
+.customer-experience .public-product-detail .alert {
+    border-color: #BAE6F0;
+    background: #E8F4F7;
+    color: #0F4C5C;
+}
+
+.customer-experience .public-product-detail .product-detail-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -2905,7 +2912,7 @@ body.customer-experience.public-sticky-footer > .site-footer {
     padding-top: 24px;
 }
 
-.customer-experience .product-detail-actions .btn {
+.customer-experience .public-product-detail .product-detail-actions .btn {
     display: inline-flex;
     min-height: 44px;
     align-items: center;
@@ -2917,8 +2924,32 @@ body.customer-experience.public-sticky-footer > .site-footer {
     font-weight: 700;
 }
 
+.customer-experience .public-product-detail .btn-gold {
+    border-color: #0E7490;
+    background: #0E7490;
+    color: #FFFFFF;
+}
+
+.customer-experience .public-product-detail .btn-gold:hover,
+.customer-experience .public-product-detail .btn-gold:focus-visible {
+    border-color: #0B5D75;
+    background: #0B5D75;
+    color: #FFFFFF;
+}
+
+.customer-experience .public-product-detail .btn-outline-dark {
+    border-color: #0E7490;
+    color: #0E7490;
+}
+
+.customer-experience .public-product-detail .btn-outline-dark:hover,
+.customer-experience .public-product-detail .btn-outline-dark:focus-visible {
+    background: #E8F4F7;
+    color: #0B5D75;
+}
+
 @media (max-width: 900px) {
-    .customer-experience .product-detail-section {
+    .customer-experience .public-product-detail-section {
         padding-top: 26px;
     }
 
@@ -2927,13 +2958,13 @@ body.customer-experience.public-sticky-footer > .site-footer {
         gap: 20px;
     }
 
-    .customer-experience .product-detail-media {
+    .customer-experience .public-product-detail .product-detail-media {
         height: clamp(280px, 58vw, 400px);
     }
 }
 
 @media (max-width: 600px) {
-    .customer-experience .page-hero.product-detail-hero {
+    .customer-experience .public-product-detail-hero {
         padding: 24px 0 28px;
     }
 
@@ -2947,35 +2978,35 @@ body.customer-experience.public-sticky-footer > .site-footer {
         font-size: clamp(1.9rem, 8vw, 2.5rem);
     }
 
-    .customer-experience .product-detail-section {
+    .customer-experience .public-product-detail-section {
         padding: 20px 0 36px;
     }
 
-    .customer-experience .product-detail-media {
+    .customer-experience .public-product-detail .product-detail-media {
         height: min(84vw, 340px);
         min-height: 250px;
     }
 
-    .customer-experience .product-detail-copy {
+    .customer-experience .public-product-detail .product-detail-copy {
         padding: 21px 18px;
     }
 
-    .customer-experience .product-detail-facts {
+    .customer-experience .public-product-detail .product-detail-facts {
         grid-template-columns: minmax(0, 1fr);
         gap: 12px;
         margin-top: 17px;
         padding-top: 15px;
     }
 
-    .customer-experience .product-detail-fact--wide {
+    .customer-experience .public-product-detail .product-detail-fact--wide {
         grid-column: auto;
     }
 
-    .customer-experience .product-detail-actions {
+    .customer-experience .public-product-detail .product-detail-actions {
         padding-top: 20px;
     }
 
-    .customer-experience .product-detail-actions .btn {
+    .customer-experience .public-product-detail .product-detail-actions .btn {
         width: 100%;
     }
 }

@@ -477,6 +477,10 @@
     background: #F8FAFC;
 }
 
+.public-products-section .product-visual {
+    background: #FFFFFF;
+}
+
 .public-products-section .product-visual > img,
 .portal-catalog-page .product-visual > img {
     display: block;
