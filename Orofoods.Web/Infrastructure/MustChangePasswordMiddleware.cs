@@ -10,8 +10,19 @@ public sealed class MustChangePasswordMiddleware(RequestDelegate next)
     private static readonly PathString ChangePasswordPath = new("/Identity/Account/ChangeTemporaryPassword");
     private static readonly PathString LogoutPath = new("/Identity/Account/Logout");
 
+    private static readonly PathString[] StaticAssetPaths =
+        [new("/css"), new("/js"), new("/lib"), new("/images"), new("/favicon.ico")];
+
     public async Task InvokeAsync(HttpContext context, UserManager<ApplicationUser> userManager)
     {
+        // Public static assets must not be redirected, otherwise the change-password page loses its CSS/JS.
+        if ((HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))
+            && StaticAssetPaths.Any(path => context.Request.Path.StartsWithSegments(path)))
+        {
+            await next(context);
+            return;
+        }
+
         var principal = context.User;
         var schemes = context.GetEndpoint()?.Metadata.GetOrderedMetadata<IAuthorizeData>()
             .SelectMany(data => (data.AuthenticationSchemes ?? string.Empty)

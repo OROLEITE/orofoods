@@ -56,6 +56,57 @@ public sealed class MustChangePasswordTests
         }
     }
 
+    [Theory]
+    [InlineData("/css/site.css")]
+    [InlineData("/lib/bootstrap/dist/css/bootstrap.min.css")]
+    [InlineData("/js/site.js")]
+    [InlineData("/images/logo.png")]
+    [InlineData("/favicon.ico")]
+    public async Task Temporary_password_account_can_load_static_assets(string path)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var users = TestIdentityFactory.CreateUserManager(db);
+        var user = await CreateTemporaryUserAsync(users);
+        var context = CreateContext(user.Id, path);
+        context.Request.Method = HttpMethods.Get;
+        var nextCalled = false;
+        var middleware = new MustChangePasswordMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context, users);
+
+        Assert.True(nextCalled);
+        Assert.NotEqual(StatusCodes.Status302Found, context.Response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Temporary_password_account_cannot_post_to_static_paths_or_lookalike_routes()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var users = TestIdentityFactory.CreateUserManager(db);
+        var user = await CreateTemporaryUserAsync(users);
+
+        foreach (var (method, path) in new[] { ("POST", "/css/site.css"), ("GET", "/cssx/secret"), ("GET", "/Portal"), ("GET", "/appsettings.json"), ("GET", "/web.config"), ("GET", "/DataProtectionKeys/key.xml"), ("GET", "/Admin/Users"), ("GET", "/api/orders") })
+        {
+            var context = CreateContext(user.Id, path);
+            context.Request.Method = method;
+            var nextCalled = false;
+            var middleware = new MustChangePasswordMiddleware(_ =>
+            {
+                nextCalled = true;
+                return Task.CompletedTask;
+            });
+
+            await middleware.InvokeAsync(context, users);
+
+            Assert.False(nextCalled, path);
+            Assert.Equal(path.StartsWith("/api") ? StatusCodes.Status403Forbidden : StatusCodes.Status302Found, context.Response.StatusCode);
+        }
+    }
+
     [Fact]
     public async Task Temporary_password_api_call_returns_forbidden_and_regular_user_continues()
     {
