@@ -94,14 +94,7 @@
                             @if (sellerProduct.UnitPrice > 0m)
                             {
                                 <div class="catalog-price"><strong>@sellerProduct.UnitPrice.ToString("C")</strong><span>/ @sellerProduct.PriceUnitLabel</span></div>
-                                <form asp-area="Vendedor" asp-controller="Cart" asp-action="Add" asp-route-customerId="@selectedCustomerId" method="post" class="product-detail-purchase-form">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="productId" value="@Model.Id" />
-                                    <label for="seller-product-quantity">Quantidade (@sellerProduct.PriceUnitLabel)</label>
-                                    <input id="seller-product-quantity" class="form-control" type="number" name="quantity" min="@sellerProduct.MinimumCases" value="@sellerProduct.MinimumCases" step="1" inputmode="numeric" />
-                                    <button class="btn btn-gold" type="submit">Adicionar ao carrinho</button>
-                                </form>
-                                <a class="btn btn-outline-dark mt-2" asp-area="Vendedor" asp-controller="Cart" asp-action="Index" asp-route-customerId="@selectedCustomerId">Ver carrinho</a>
+                                <a class="btn btn-gold" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@selectedCustomerId" asp-route-productId="@Model.Id">Digitar pedido</a>
                             }
                             else
                             {

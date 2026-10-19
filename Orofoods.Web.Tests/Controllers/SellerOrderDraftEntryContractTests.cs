@@ -11,6 +11,29 @@ namespace Orofoods.Web.Tests.Controllers;
 public sealed class SellerOrderDraftEntryContractTests
 {
     [Fact]
+    public void Bimbo_product_access_routes_sellers_to_order_entry_with_the_selected_customer_and_product()
+    {
+        var catalogView = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "Catalog", "Index.cshtml"));
+        var productView = File.ReadAllText(ProjectFile("Orofoods.Web", "Views", "Home", "Product.cshtml"));
+        var catalogController = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "CatalogController.cs"));
+        var orderDraftController = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+
+        Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"New\"", catalogView, StringComparison.Ordinal);
+        Assert.Contains("asp-route-customerId=\"@Model.CustomerId\"", catalogView, StringComparison.Ordinal);
+        Assert.Contains("asp-route-productId=\"@product.Id\"", catalogView, StringComparison.Ordinal);
+        Assert.DoesNotContain("asp-controller=\"Cart\" asp-action=\"Add\"", catalogView, StringComparison.Ordinal);
+        Assert.DoesNotContain("asp-area=\"Vendedor\" asp-controller=\"Cart\"", productView, StringComparison.Ordinal);
+        Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"New\"", productView, StringComparison.Ordinal);
+        Assert.Contains("asp-route-customerId=\"@selectedCustomerId\"", productView, StringComparison.Ordinal);
+        Assert.Contains("asp-route-productId=\"@Model.Id\"", productView, StringComparison.Ordinal);
+        Assert.Contains("SellerCatalogService", catalogController, StringComparison.Ordinal);
+        Assert.Contains("int? productId", orderDraftController, StringComparison.Ordinal);
+        Assert.Contains("GetSelectableProductsByIdsAsync", orderDraftController, StringComparison.Ordinal);
+        Assert.Contains("Quantity = selectedProduct.MinimumCases", orderDraftController, StringComparison.Ordinal);
+        Assert.Contains(": postedItems ?? []", orderDraftController, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Draft_entry_controller_requires_seller_policy_and_antiforgery_on_every_post()
     {
         var controllerType = typeof(CustomersController).Assembly

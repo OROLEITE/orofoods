@@ -103,7 +103,7 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Product_purchase_links_use_existing_customer_login_and_seller_cart_flows()
+    public void Product_purchase_links_use_existing_customer_login_and_seller_order_entry_flows()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
@@ -111,7 +111,10 @@ public class HomeProductViewTests
 
         Assert.Contains("asp-page=\"/Account/Login\"", markup);
         Assert.Contains("asp-route-returnUrl=\"@loginReturnUrl\"", markup);
-        Assert.Contains("asp-controller=\"Cart\" asp-action=\"Add\"", markup);
+        Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"New\"", markup);
+        Assert.Contains("asp-route-customerId=\"@selectedCustomerId\"", markup);
+        Assert.Contains("asp-route-productId=\"@Model.Id\"", markup);
+        Assert.DoesNotContain("asp-area=\"Vendedor\" asp-controller=\"Cart\"", markup);
         Assert.Contains("sellerProduct.UnitPrice > 0m", markup);
         Assert.Contains("Model.IsCommerciallyAvailable && hasValidPrice", portalDetail);
     }

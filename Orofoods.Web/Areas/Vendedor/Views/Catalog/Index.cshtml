@@ -51,13 +51,7 @@
                         <p class="seller-product-unit">@product.UnitDescription</p>
                         @if (product.UnitPrice > 0m)
                         {
-                            <form asp-area="Vendedor" asp-controller="Cart" asp-action="Add" asp-route-customerId="@Model.CustomerId" method="post" class="seller-add-form seller-product-actions">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="productId" value="@product.Id" />
-                                <label class="form-label small mb-1" for="quantity-@product.Id">Quantidade (@product.PriceUnitLabel)</label>
-                                <div class="seller-stepper"><button type="button" class="btn btn-outline-dark" data-stepper="decrease" aria-label="Diminuir quantidade">−</button><input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumCases" value="@product.MinimumCases" /><button type="button" class="btn btn-outline-dark" data-stepper="increase" aria-label="Aumentar quantidade">+</button></div>
-                                <button class="btn btn-gold seller-add-button" type="submit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Adicionar</button>
-                            </form>
+                            <a class="btn btn-gold seller-add-button" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@Model.CustomerId" asp-route-productId="@product.Id"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Digitar pedido</a>
                         }
                         <a class="seller-product-details-link mt-3" asp-area="" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" asp-route-customerId="@Model.CustomerId">Conhecer produto <span aria-hidden="true">&rarr;</span></a>
                     </article>
