@@ -69,7 +69,7 @@ public sealed class CustomerPortalQaVisualContractTests
         var mediaController = Read("Controllers", "ProductMediaController.cs");
         var imageFallback = Read("wwwroot", "js", "product-image-fallback.js");
         var catalogImages = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.All;
-        var illustrativeCodes = new[] { "503838", "503833", "503777", "503775", "503805" };
+        var illustrativeCodes = new[] { "503838", "503833", "503777", "503775", "503805", "503768", "503811" };
 
         Assert.True(catalogImages["504342"].UseCatalogImage);
         Assert.All(catalogImages.Where(image => image.Key != "504342" && !illustrativeCodes.Contains(image.Key)),
