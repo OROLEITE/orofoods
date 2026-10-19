@@ -18,10 +18,45 @@ public class HomeProductViewTests
     {
         var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
 
-        Assert.Contains("public-home-primary-action\" asp-controller=\"Home\" asp-action=\"Products\">Comprar produtos", markup);
+        Assert.Contains("public-home-primary-action\" href=\"@orderUrl\">", markup);
+        Assert.Contains("Fazer pedido", markup);
+        Assert.Contains("fa-cart-shopping", markup);
         Assert.Contains("public-home-secondary-action\" href=\"@portalUrl\">Meu portal", markup);
+        Assert.Contains("Criar minha conta", markup);
+        Assert.DoesNotContain("Comprar produtos", markup);
         Assert.DoesNotContain("public-home-bimbo-banner-placeholder", markup);
         Assert.DoesNotContain("BIMBO", markup);
+    }
+
+    [Fact]
+    public void Home_uses_the_local_hamburger_banner_and_stacks_it_after_actions_on_mobile()
+    {
+        var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "home-showcase.css"));
+
+        Assert.Contains("Seu pr&oacute;ximo pedido come&ccedil;a aqui.", markup);
+        Assert.Contains("P&atilde;es e produtos para hamburguerias, restaurantes e lanchonetes.", markup);
+        Assert.Contains("~/images/home/banner-hamburguer.webp", markup);
+        Assert.True(File.Exists(Path.Combine(ProjectPath, "wwwroot", "images", "home", "banner-hamburguer.webp")));
+        Assert.Contains("public-home-hero-copy", markup);
+        Assert.Contains("public-home-hero-media", markup);
+        Assert.Contains("grid-template-columns: 55fr 45fr;", styles);
+        Assert.Contains("object-fit: cover;", styles);
+        Assert.Contains("object-position: center;", styles);
+        Assert.Contains("@media (max-width: 575.98px)", styles);
+    }
+
+    [Fact]
+    public void Home_order_cta_routes_guests_clients_sellers_and_other_profiles_through_existing_flows()
+    {
+        var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
+
+        Assert.Contains("isSalesRepresentative ? sellerOrderEntryUrl", markup);
+        Assert.Contains("Url.Action(\"New\", \"OrderDrafts\", new { area = \"Vendedor\", customerId = selectedCustomerId })", markup);
+        Assert.Contains("isCustomer ? customerCatalogUrl", markup);
+        Assert.Contains(": portalUrl", markup);
+        Assert.Contains("loginCatalogUrl", markup);
+        Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", markup);
     }
 
     [Fact]
@@ -29,11 +64,15 @@ public class HomeProductViewTests
     {
         var layout = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_Layout.cshtml"));
         var header = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_SiteHeader.cshtml"));
+        var publicStyles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "customer-experience.css"));
         var homeStyles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "home-showcase.css"));
 
         Assert.Equal(1, layout.Split("PartialAsync(\"_SiteHeader\")", StringSplitOptions.None).Length - 1);
         Assert.Contains("navbar navbar-expand-lg navbar-light bg-white", header);
         Assert.Contains("logo-orofoods-transparent.png", header);
+        Assert.Contains("Cadastre-se", header);
+        Assert.Contains("color: #0F172A;", publicStyles);
+        Assert.Contains("color: #0E7490 !important;", publicStyles);
         Assert.True(File.Exists(Path.Combine(ProjectPath, "wwwroot", "images", "logo-orofoods-transparent.png")));
         Assert.DoesNotContain(".public-home-page .site-header-modern", homeStyles);
         Assert.DoesNotContain(".navbar", homeStyles);
@@ -42,15 +81,35 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Home_keeps_the_public_footer_scope_and_exposes_the_page_class()
+    public void Home_uses_a_compact_white_footer_scoped_to_public_pages()
     {
         var layout = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_Layout.cshtml"));
-        var homeStyles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "home-showcase.css"));
+        var publicStyles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "customer-experience.css"));
 
-        Assert.Contains("isPublicHomePage", layout);
         Assert.Contains("public-home-page", layout);
-        Assert.Contains(".public-home-page .site-footer", homeStyles);
-        Assert.Contains("outline: 3px solid", homeStyles);
+        Assert.Contains("site-footer-public", layout);
+        Assert.Contains("isPublicSitePage", layout);
+        Assert.Contains(".public-site-page .site-footer-public", publicStyles);
+        Assert.Contains("background: #FFFFFF;", publicStyles);
+        Assert.Contains("color: #0F172A;", publicStyles);
+        Assert.Contains("#64748B", publicStyles);
+        Assert.Contains("#E2E8F0", publicStyles);
+        Assert.DoesNotContain(".public-home-page .site-footer", publicStyles);
+    }
+
+    [Fact]
+    public void Home_search_shortcuts_use_catalog_search_for_real_product_fields()
+    {
+        var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
+        var controller = File.ReadAllText(Path.Combine(ProjectPath, "Controllers", "HomeController.cs"));
+
+        Assert.Contains("asp-route-search=\"brioche\"", markup);
+        Assert.Contains("asp-route-search=\"gergelim\"", markup);
+        Assert.Contains("asp-route-search=\"australiano\"", markup);
+        Assert.Contains("asp-route-search=\"congel\"", markup);
+        Assert.Contains("x.StorageInformation.ToLower().Contains(normalizedSearch)", controller);
+        Assert.Contains("x.StorageTemperature.ToLower().Contains(normalizedSearch)", controller);
+        Assert.Contains("x.AdditionalInformation.ToLower().Contains(normalizedSearch)", controller);
     }
 
     [Fact]

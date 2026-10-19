@@ -136,7 +136,7 @@ public class ProductCatalogImagePresentationTests
         var sellerCatalog = File.ReadAllText(Path.Combine(projectPath, "Areas", "Vendedor", "Views", "Catalog", "Index.cshtml"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
 
-        Assert.Contains("Cadastrar", header, StringComparison.Ordinal);
+        Assert.Contains("Cadastre-se", header, StringComparison.Ordinal);
         Assert.Contains("asp-route-returnUrl=\"@catalogLoginReturnUrl\"", header, StringComparison.Ordinal);
         Assert.Contains("CustomerRegistration\" asp-action=\"Register", header, StringComparison.Ordinal);
         Assert.Contains("PendingProductId", sellerEditor, StringComparison.Ordinal);

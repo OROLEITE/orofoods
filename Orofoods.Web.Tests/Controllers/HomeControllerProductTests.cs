@@ -15,7 +15,7 @@ namespace Orofoods.Web.Tests.Controllers;
 public class HomeControllerProductTests
 {
     [Fact]
-    public async Task Index_returns_only_public_products_and_categories_with_visible_products()
+    public async Task Index_returns_active_catalog_products_without_granting_purchase_availability()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var visibleCategory = new ProductCategory { Name = "Pães", Slug = "paes", SortOrder = 1, IsActive = true };
@@ -24,14 +24,15 @@ public class HomeControllerProductTests
         db.ProductCategories.AddRange(visibleCategory, unavailableCategory, inactiveCategory);
         await db.SaveChangesAsync();
 
-        var regular = new Product { Sku = "REG-01", Name = "Regular", Brand = "Orofoods", ProductCategoryId = visibleCategory.Id, IsAvailable = true };
-        var featured = new Product { Sku = "DST-01", Name = "Destaque", Brand = "BIMBO", ProductCategoryId = visibleCategory.Id, IsAvailable = true, IsFeatured = true };
+        var regular = new Product { Sku = "REG-01", Name = "Regular", Brand = "Orofoods", ProductCategoryId = visibleCategory.Id, IsActive = true, IsAvailable = true };
+        var featured = new Product { Sku = "DST-01", Name = "Destaque", Brand = "BIMBO", ProductCategoryId = visibleCategory.Id, IsActive = true, IsAvailable = true, IsFeatured = true };
         db.Products.AddRange(
             regular,
             featured,
-            new Product { Sku = "OFF-01", Name = "Indisponível", Brand = "Orofoods", ProductCategoryId = unavailableCategory.Id, IsAvailable = false, IsFeatured = true },
-            new Product { Sku = "WMC-01", Name = "WMC pendente", Brand = "Orofoods", ProductCategoryId = unavailableCategory.Id, IsAvailable = true, WmcCode = "10401", WmcInitialLoadReady = false },
-            new Product { Sku = "CAT-01", Name = "Categoria inativa", Brand = "Orofoods", ProductCategoryId = inactiveCategory.Id, IsAvailable = true });
+            new Product { Sku = "OFF-01", Name = "Indisponível", Brand = "Orofoods", ProductCategoryId = unavailableCategory.Id, IsActive = true, IsAvailable = false, IsFeatured = true },
+            new Product { Sku = "WMC-01", Name = "WMC pendente", Brand = "Orofoods", ProductCategoryId = unavailableCategory.Id, IsActive = true, IsAvailable = true, WmcCode = "10401", WmcInitialLoadReady = false },
+            new Product { Sku = "CAT-01", Name = "Categoria inativa", Brand = "Orofoods", ProductCategoryId = inactiveCategory.Id, IsActive = true, IsAvailable = true },
+            new Product { Sku = "OLD-01", Name = "Produto inativo", Brand = "Orofoods", ProductCategoryId = visibleCategory.Id, IsActive = false, IsAvailable = true });
         await db.SaveChangesAsync();
         db.ProductImages.Add(new ProductImage { ProductId = featured.Id, Url = "/images/featured.png", AltText = "Produto destaque", IsPrimary = true });
         await db.SaveChangesAsync();
@@ -45,8 +46,38 @@ public class HomeControllerProductTests
         Assert.Equal("Destaque", products[0].Name);
         Assert.Single(products[0].Images);
         Assert.Contains(products, product => product.Name == "Regular");
-        Assert.DoesNotContain(products, product => product.Name is "Indisponível" or "WMC pendente");
-        Assert.Equal(["Pães"], categories.Select(category => category.Name));
+        Assert.Contains(products, product => product.Name == "Indisponível" && !product.IsCommerciallyAvailable);
+        Assert.Contains(products, product => product.Name == "WMC pendente" && !product.IsCommerciallyAvailable);
+        Assert.Contains(products, product => product.Name == "Categoria inativa" && product.IsActive);
+        Assert.DoesNotContain(products, product => product.Name == "Produto inativo");
+        Assert.Equal(["Pães", "Molhos"], categories.Select(category => category.Name));
+    }
+
+    [Fact]
+    public async Task Products_search_matches_catalog_storage_information_for_the_frozen_quick_filter()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
+        db.ProductCategories.Add(category);
+        await db.SaveChangesAsync();
+        var frozen = new Product
+        {
+            Sku = "HOT-DOG-01", Name = "Pão Hot Dog", Brand = "BIMBO", ProductCategoryId = category.Id,
+            IsActive = true, IsAvailable = false, StorageInformation = "Manter congelado"
+        };
+        db.Products.Add(frozen);
+        await db.SaveChangesAsync();
+
+        var controller = new HomeController(db)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
+        };
+
+        var result = Assert.IsType<ViewResult>(await controller.Products("congel", null));
+        var model = Assert.IsType<PublicProductCatalogViewModel>(result.Model);
+
+        Assert.Equal(frozen.Id, Assert.Single(model.Products).Id);
+        Assert.False(model.Products[0].IsCommerciallyAvailable);
     }
 
     [Fact]

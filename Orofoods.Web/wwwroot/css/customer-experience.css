@@ -3365,6 +3365,178 @@ body.customer-registration-layout > .site-footer {
     outline-offset: 3px;
 }
 
+/* Shared public shell: keep the approved light navigation and footer off portal/admin shells. */
+.public-site-page .site-header-modern {
+    border-bottom: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
+
+.public-site-page .site-header-modern .navbar.bg-white {
+    background: #FFFFFF !important;
+}
+
+.public-site-page .site-logo {
+    filter: none;
+}
+
+.public-site-page .site-header-modern .navbar-toggler {
+    border-color: #CBD5E1;
+}
+
+.public-site-page .site-header-modern .navbar-toggler-icon {
+    filter: none;
+}
+
+.public-site-page .site-header-modern .navbar-collapse {
+    border-color: #E2E8F0;
+}
+
+.public-site-page .site-header-modern .main-nav .nav-link {
+    color: #0F172A !important;
+}
+
+.public-site-page .site-header-modern .main-nav .nav-link:hover,
+.public-site-page .site-header-modern .main-nav .nav-link:focus-visible,
+.public-site-page .site-header-modern .main-nav .nav-link.active {
+    color: #0E7490 !important;
+}
+
+.public-site-page .site-header-modern .main-nav .nav-link.active {
+    box-shadow: inset 0 -2px 0 #0E7490;
+}
+
+.public-site-page .site-header-modern .header-account {
+    border-color: #E2E8F0;
+}
+
+.public-site-page .site-header-modern .header-account .btn-outline-dark {
+    border-color: #0E7490;
+    color: #0E7490;
+}
+
+.public-site-page .site-header-modern .header-account .btn-outline-dark:hover,
+.public-site-page .site-header-modern .header-account .btn-outline-dark:focus-visible {
+    background: #E8F4F7;
+    color: #0B5D75;
+}
+
+.public-site-page .site-header-modern .btn-header-register {
+    min-height: 42px;
+    background: #0E7490;
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.public-site-page .site-header-modern .btn-header-register:hover,
+.public-site-page .site-header-modern .btn-header-register:focus-visible {
+    background: #0B5D75;
+    color: #FFFFFF;
+}
+
+.public-site-page .site-header-modern .account-trigger {
+    border-color: #E2E8F0;
+    background: #FFFFFF;
+    color: #0F172A;
+}
+
+.public-site-page .site-header-modern .account-trigger:hover,
+.public-site-page .site-header-modern .account-trigger:focus-visible,
+.public-site-page .site-header-modern .account-trigger.show {
+    border-color: #CBD5E1;
+    background: #F8FAFC;
+    color: #0F172A;
+}
+
+.public-site-page .site-header-modern .account-avatar {
+    background: #E6F2F5;
+    color: #0E7490;
+}
+
+.public-site-page .site-header-modern .account-context {
+    color: #64748B;
+}
+
+.public-site-page .site-header-modern .account-menu i {
+    color: #0E7490;
+}
+
+.public-site-page .site-header-modern .account-menu .dropdown-item:hover,
+.public-site-page .site-header-modern .account-menu .dropdown-item:focus {
+    background: #F1F5FB;
+}
+
+.public-site-page .site-footer-public {
+    padding: 16px 0;
+    border-top: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #0F172A;
+}
+
+.public-site-page .site-footer-public .site-footer-grid {
+    grid-template-columns: minmax(220px, 1.15fr) auto minmax(280px, 1.1fr);
+    gap: 22px;
+}
+
+.public-site-page .site-footer-public .footer-logo {
+    width: auto;
+    height: auto;
+    max-width: min(190px, 52vw);
+    max-height: 54px;
+    object-fit: contain;
+}
+
+.public-site-page .site-footer-public .footer-brand p,
+.public-site-page .site-footer-public .footer-legal p,
+.public-site-page .site-footer-public .footer-legal small {
+    color: #64748B;
+}
+
+.public-site-page .site-footer-public .footer-links a {
+    color: #0F172A;
+    transition: color .15s ease;
+}
+
+.public-site-page .site-footer-public .footer-links a:hover,
+.public-site-page .site-footer-public .footer-links a:focus-visible,
+.public-site-page .site-footer-public .footer-legal i {
+    color: #0E7490;
+}
+
+@media (max-width: 700px) {
+    .public-site-page .site-header-modern .header-account {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .public-site-page .site-header-modern .header-account > .btn,
+    .public-site-page .site-header-modern .header-account .btn-header-register {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .public-site-page .site-footer-public .site-footer-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .public-site-page .site-footer-public .footer-brand {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .public-site-page .site-footer-public .footer-links {
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .public-site-page .site-footer-public .footer-links a {
+        transition: none;
+    }
+}
+
 @media (max-width: 575.98px) {
     .customer-experience.identity-recovery-page .identity-recovery-content {
         min-height: 0;

@@ -36,7 +36,7 @@ public sealed class IdentityForgotPasswordVisualTests
         Assert.DoesNotContain("auth-screen", view);
         Assert.Contains("identity-recovery-page", styles);
         Assert.Contains("@media (max-width: 575.98px)", styles);
-        Assert.Contains("<footer class=\"site-footer\"", layout);
+        Assert.Contains("<footer class=\"site-footer ", layout);
     }
 
     private static string Read(params string[] parts) =>

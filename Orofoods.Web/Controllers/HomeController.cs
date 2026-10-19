@@ -24,7 +24,7 @@ public class HomeController(
     {
         var publicProducts = db.Products
             .AsNoTracking()
-            .Where(product => product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)));
+            .Where(product => product.IsActive);
 
         var categories = await db.ProductCategories
             .AsNoTracking()
@@ -110,6 +110,11 @@ public class HomeController(
             query = query.Where(x => x.Name.ToLower().Contains(normalizedSearch)
                 || x.Sku.ToLower().Contains(normalizedSearch)
                 || x.Brand.ToLower().Contains(normalizedSearch)
+                || x.Description.ToLower().Contains(normalizedSearch)
+                || (x.ProductCategory != null && x.ProductCategory.Name.ToLower().Contains(normalizedSearch))
+                || x.StorageInformation.ToLower().Contains(normalizedSearch)
+                || x.StorageTemperature.ToLower().Contains(normalizedSearch)
+                || x.AdditionalInformation.ToLower().Contains(normalizedSearch)
                 || (x.WmcCode != null && x.WmcCode.ToLower().Contains(normalizedSearch))
                 || (x.Ean != null && x.Ean.ToLower().Contains(normalizedSearch))
                 || (x.Ean13 != null && x.Ean13.ToLower().Contains(normalizedSearch)));
