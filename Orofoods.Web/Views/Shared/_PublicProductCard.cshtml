@@ -58,13 +58,13 @@
             if (price > 0m) { <div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ @product.PriceUnitLabel</span></div> }
             if (!product.IsCommerciallyAvailable)
             {
-                <p class="quick-buy-unavailable" role="status">Sem estoque dispon&iacute;vel</p>
-                <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                <p class="quick-buy-unavailable" role="status">Consulte disponibilidade</p>
+                <button class="quick-buy-button" type="button" disabled>Indispon&iacute;vel</button>
             }
             else if (price <= 0m)
             {
                 <p class="quick-buy-unavailable" role="status">Pre&ccedil;o indispon&iacute;vel para sua tabela</p>
-                <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                <button class="quick-buy-button" type="button" disabled>Consultar pre&ccedil;o</button>
             }
             else
             {
@@ -95,13 +95,13 @@
                 else
                 {
                     <p class="quick-buy-unavailable" role="status">Pre&ccedil;o indispon&iacute;vel para este cliente</p>
-                    <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                    <button class="quick-buy-button" type="button" disabled>Consultar pre&ccedil;o</button>
                 }
             }
             else if (customerId is > 0)
             {
-                <p class="quick-buy-unavailable" role="status">Produto indispon&iacute;vel para este cliente</p>
-                <button class="quick-buy-button" type="button" disabled>Comprar</button>
+                <p class="quick-buy-unavailable" role="status">Consulte disponibilidade para este cliente</p>
+                <button class="quick-buy-button" type="button" disabled>Indispon&iacute;vel</button>
             }
             else
             {
@@ -113,7 +113,7 @@
         {
             @if (!isAuthenticated)
             {
-                <a class="btn quick-buy-button" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Comprar</a>
+                <a class="btn quick-buy-button" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">@(product.IsCommerciallyAvailable ? "Comprar" : "Consulte disponibilidade")</a>
                 <p class="quick-buy-auth-hint">J&aacute; tem acesso? <a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Entrar</a> &middot; <a asp-area="" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar</a></p>
             }
             else

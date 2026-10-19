@@ -29,21 +29,35 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Home_uses_the_local_hamburger_banner_and_stacks_it_after_actions_on_mobile()
+    public void Home_uses_the_local_bread_showcase_banner_and_stacks_it_after_actions_on_mobile()
     {
         var markup = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
         var styles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "home-showcase.css"));
 
         Assert.Contains("Seu pr&oacute;ximo pedido come&ccedil;a aqui.", markup);
         Assert.Contains("P&atilde;es e produtos para hamburguerias, restaurantes e lanchonetes.", markup);
-        Assert.Contains("~/images/home/banner-hamburguer.webp", markup);
-        Assert.True(File.Exists(Path.Combine(ProjectPath, "wwwroot", "images", "home", "banner-hamburguer.webp")));
+        Assert.Contains("~/images/home/banner-paes-foodservice.webp", markup);
+        Assert.True(File.Exists(Path.Combine(ProjectPath, "wwwroot", "images", "home", "banner-paes-foodservice.webp")));
         Assert.Contains("public-home-hero-copy", markup);
         Assert.Contains("public-home-hero-media", markup);
         Assert.Contains("grid-template-columns: 55fr 45fr;", styles);
         Assert.Contains("object-fit: cover;", styles);
         Assert.Contains("object-position: center;", styles);
         Assert.Contains("@media (max-width: 575.98px)", styles);
+    }
+
+    [Fact]
+    public void Home_product_cards_keep_unavailable_products_blocked_and_visitors_on_the_login_flow()
+    {
+        var card = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
+
+        Assert.Contains("if (!product.IsCommerciallyAvailable)", card);
+        Assert.Contains("Consulte disponibilidade", card);
+        Assert.Contains("if (!isAuthenticated)", card);
+        Assert.Contains("asp-page=\"/Account/Login\"", card);
+        Assert.Contains("asp-route-returnUrl=\"@loginReturnUrl\"", card);
+        Assert.Contains("asp-controller=\"Portal\" asp-action=\"AddToCart\"", card);
+        Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"New\"", card);
     }
 
     [Fact]

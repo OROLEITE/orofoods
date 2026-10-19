@@ -55,7 +55,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
+    object-position: center 52%;
 }
 
 .public-home-eyebrow {
@@ -295,6 +295,10 @@
 
     .public-home-hero-media {
         height: clamp(190px, 57vw, 280px);
+    }
+
+    .public-home-hero-media img {
+        object-position: center;
     }
 
     .public-home-search {
