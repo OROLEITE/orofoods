@@ -69,11 +69,11 @@ public sealed class CustomerPortalQaVisualContractTests
         var mediaController = Read("Controllers", "ProductMediaController.cs");
 
         Assert.Contains("var image = product.Images", view);
-        Assert.Contains("Orofoods.Web.Services.Catalog.OfficialBimboProductImageCatalog.Find(product.WmcCode)", view);
+        Assert.Contains("Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode)", view);
         Assert.Contains("if (officialImage is not null || image is not null)", view);
         Assert.Contains("image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })", view);
         Assert.Contains("else", view);
-        Assert.Contains("<span>&bull;</span>", view);
+        Assert.Contains("product-photo-unavailable.svg", view);
         Assert.Contains("imageStorage.OpenReadAsync(image.Url", mediaController);
         Assert.Contains("return result is null ? NotFound() : File(result.Content, result.ContentType)", mediaController);
         Assert.Contains("StatusCode(StatusCodes.Status503ServiceUnavailable)", mediaController);

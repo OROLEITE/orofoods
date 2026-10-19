@@ -36,6 +36,7 @@ public sealed class OrderDraftsController(
         int? customerId,
         string? q,
         int page = 1,
+        int? productId = null,
         CancellationToken cancellationToken = default)
     {
         if (customerId is not int selectedCustomerId)
@@ -63,8 +64,23 @@ public sealed class OrderDraftsController(
             return Forbid();
         }
 
+        IReadOnlyList<SellerOrderDraftFormItem> initialItems = [];
+        if (productId is int requestedProductId)
+        {
+            var selectableProducts = await catalogService.GetSelectableProductsByIdsAsync(
+                User, selectedCustomerId, [requestedProductId], cancellationToken);
+            var selectedProduct = selectableProducts?.SingleOrDefault();
+            if (selectedProduct is null) return NotFound();
+
+            initialItems = [new SellerOrderDraftFormItem
+            {
+                ProductId = selectedProduct.Id,
+                Quantity = selectedProduct.MinimumCases
+            }];
+        }
+
         var editor = await BuildEditorAsync(
-            selectedCustomerId, null, null, null, null, null, [], Guid.NewGuid(), cancellationToken);
+            selectedCustomerId, null, null, null, null, null, initialItems, Guid.NewGuid(), cancellationToken);
         return editor is null ? Forbid() : View("Editor", editor);
     }
 
@@ -314,7 +330,7 @@ public sealed class OrderDraftsController(
                 .ToArray()
             : draft is not null
                 ? draft.Items.Select(item => new SellerOrderDraftFormItem { ProductId = item.ProductId, Quantity = item.Quantity }).ToArray()
-                : [];
+                : postedItems ?? [];
         var productRowsById = draft is not null && !usePostedInput
             ? draft.Items.ToDictionary(item => item.ProductId, item => new SellerCatalogProductRow(
                 item.ProductId, item.Sku, item.ProductName, "", item.UnitDescription, item.ResolvedUnitPrice, item.MinimumCases, null))

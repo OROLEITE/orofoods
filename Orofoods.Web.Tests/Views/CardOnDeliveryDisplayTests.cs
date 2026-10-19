@@ -34,8 +34,10 @@ public class CardOnDeliveryDisplayTests
         Assert.Contains("WmcManualExportService", wmcController);
         Assert.Contains("Cartão na entrega", adminView);
         Assert.Contains("Aguardando pagamento", adminView);
-        Assert.Contains("SITUAÇÃO FINANCEIRA", sellerView);
-        Assert.Contains("@Model.FinancialStatus", sellerView);
+        Assert.Contains("<small>PAGAMENTO</small>", sellerView);
+        Assert.Contains("@Model.PaymentMethod", sellerView);
+        Assert.Contains("<small>STATUS</small>", sellerView);
+        Assert.Contains("@Model.Status", sellerView);
         Assert.Contains("pointPaymentEnabled", adminView);
         Assert.Contains("StartPointCharge", adminView);
         Assert.Contains("cardOnDeliveryPayment?.Gateway == \"MercadoPagoPoint\"", adminView);

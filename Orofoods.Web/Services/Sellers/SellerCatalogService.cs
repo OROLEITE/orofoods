@@ -210,7 +210,8 @@ public sealed class SellerCatalogService(
             product.Ean,
             product.PriceUnitLabel,
             product.Ean13,
-            product.Dun14)).ToArray();
+            product.Dun14,
+            product.WmcCode)).ToArray();
 
     private sealed record ProductSearchCandidate(
         int Id,

@@ -233,6 +233,9 @@ public class PortalController(
 
         await ApplyCommercialAvailabilityAsync([product]);
         ViewBag.Price = await priceService.GetPriceAsync(customer.Id, product.Id);
+        var cart = await cartService.GetAsync(customer.Id, HttpContext.Session);
+        ViewBag.CartQuantity = cart.Items.Sum(item => item.Quantity);
+        ViewBag.CartProductQuantities = cart.Items.ToDictionary(item => item.ProductId, item => item.Quantity);
         return View(product);
     }
 
@@ -309,16 +312,27 @@ public class PortalController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddToCart(int productId, int quantity = 1)
+    public async Task<IActionResult> AddToCart(int productId, int quantity = 1, bool returnToProduct = false)
     {
         var customer = await GetCurrentCustomerAsync();
         try
         {
             await cartService.AddAsync(customer.Id, productId, quantity, HttpContext.Session);
         }
-        catch (InvalidOperationException exception) when (IsCatalogRequest())
+        catch (InvalidOperationException exception)
         {
-            return BadRequest(new { message = exception.Message });
+            if (IsCatalogRequest())
+            {
+                return BadRequest(new { message = exception.Message });
+            }
+
+            if (returnToProduct)
+            {
+                TempData["CartError"] = exception.Message;
+                return RedirectToAction(nameof(Product), new { id = productId });
+            }
+
+            throw;
         }
 
         if (IsCatalogRequest())
@@ -329,6 +343,12 @@ public class PortalController(
                 cartQuantity = cart.Items.Sum(item => item.Quantity),
                 quantity = cart.Items.Single(item => item.ProductId == productId).Quantity
             });
+        }
+
+        if (returnToProduct)
+        {
+            TempData["CartSuccess"] = "Produto adicionado ao carrinho.";
+            return RedirectToAction(nameof(Product), new { id = productId });
         }
 
         return RedirectToAction(nameof(Catalog));

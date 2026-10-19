@@ -90,22 +90,32 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Product_detail_offers_administrators_a_return_to_administration()
+    public void Product_detail_routes_authorized_administrators_to_the_existing_customer_portal()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Controllers", "HomeController.cs"));
 
         Assert.Contains("User.IsInRole(\"Administrador\")", markup);
-        Assert.Contains("asp-area=\"Admin\" asp-controller=\"Dashboard\"", markup);
+        Assert.Contains("Comprar para o cliente selecionado", markup);
+        Assert.Contains("OrofoodsPolicies.ApprovedCustomer", controller);
+        Assert.Contains("RedirectToAction(\"Product\", \"Portal\", new { id })", controller);
     }
 
     [Fact]
-    public void Product_availability_uses_text_not_an_html_entity_inside_razor_code()
+    public void Product_purchase_links_use_existing_customer_login_and_seller_order_entry_flows()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
+        var portalDetail = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Product.cshtml"));
 
-        Assert.Contains("? \"Disponível\" : \"Indisponível no momento\"", markup);
-        Assert.DoesNotContain("? \"Dispon&iacute;vel\"", markup);
+        Assert.Contains("asp-page=\"/Account/Login\"", markup);
+        Assert.Contains("asp-route-returnUrl=\"@loginReturnUrl\"", markup);
+        Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"New\"", markup);
+        Assert.Contains("asp-route-customerId=\"@selectedCustomerId\"", markup);
+        Assert.Contains("asp-route-productId=\"@Model.Id\"", markup);
+        Assert.DoesNotContain("asp-area=\"Vendedor\" asp-controller=\"Cart\"", markup);
+        Assert.Contains("sellerProduct.UnitPrice > 0m", markup);
+        Assert.Contains("Model.IsCommerciallyAvailable && hasValidPrice", portalDetail);
     }
 }

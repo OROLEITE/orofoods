@@ -18,7 +18,8 @@ public class ProductCatalogImagePresentationTests
         foreach (var (path, manualImagePrecedence) in views)
         {
             var view = File.ReadAllText(path);
-            Assert.DoesNotContain("officialImage?.ImageUrl ??", view, StringComparison.Ordinal);
+            Assert.Contains("data-fallback-stage=", view, StringComparison.Ordinal);
+            Assert.Contains("data-catalog-fallback=", view, StringComparison.Ordinal);
             Assert.Contains(manualImagePrecedence, view, StringComparison.Ordinal);
         }
     }

@@ -11,7 +11,7 @@
 .seller-catalog-search button { min-width: 220px; }
 .seller-product-grid { align-items: stretch; gap: 12px; }
 .seller-product-card { padding: .4rem; border: 1px solid rgba(35, 35, 35, .1); box-shadow: 0 8px 24px rgba(35, 35, 35, .06); }
-.seller-product-image-wrapper { width: 100%; height: 96px; display: flex; align-items: center; justify-content: center; margin: 0 0 .45rem; overflow: hidden; background: #faf8f3; border-radius: 8px; }
+.seller-product-image-wrapper { width: 100%; height: auto; aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; margin: 0 0 .45rem; overflow: hidden; background: #faf8f3; border-radius: 8px; }
 .seller-product-image { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
 .seller-product-image-wrapper--empty { background: linear-gradient(135deg, #f7f4ef, #eee7dc); }
 .seller-product-name { min-height: 2.1rem; margin: .2rem 0 .3rem; font-size: .95rem; line-height: 1.15; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }

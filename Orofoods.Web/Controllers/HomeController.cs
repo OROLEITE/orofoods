@@ -1,13 +1,18 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models;
+using Orofoods.Web.Services.Sellers;
 using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Controllers;
 
-public class HomeController(ApplicationDbContext db) : Controller
+public class HomeController(
+    ApplicationDbContext db,
+    IAuthorizationService? authorizationService = null,
+    SellerCatalogService? sellerCatalogService = null) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -117,15 +122,36 @@ public class HomeController(ApplicationDbContext db) : Controller
     }
 
     [HttpGet("/produtos/{id:int}")]
-    public async Task<IActionResult> Product(int id)
+    public async Task<IActionResult> Product(int id, int? customerId = null)
     {
+        if (authorizationService is not null && User.Identity?.IsAuthenticated == true)
+        {
+            var approvedCustomer = await authorizationService.AuthorizeAsync(User, Orofoods.Web.Authorization.OrofoodsPolicies.ApprovedCustomer);
+            if (approvedCustomer.Succeeded)
+            {
+                return RedirectToAction("Product", "Portal", new { id });
+            }
+        }
+
         var product = await db.Products
             .AsNoTracking()
             .Include(x => x.ProductCategory)
             .Include(x => x.Images)
             .SingleOrDefaultAsync(x => x.Id == id && x.IsActive);
 
-        return product is null ? NotFound() : View(product);
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        ViewBag.SellerCustomerId = customerId;
+        if (customerId is > 0 && User.IsInRole("Vendedor") && sellerCatalogService is not null)
+        {
+            var selectedProducts = await sellerCatalogService.GetSelectableProductsByIdsAsync(User, customerId.Value, [id]);
+            ViewBag.SellerProduct = selectedProducts?.SingleOrDefault();
+        }
+
+        return View(product);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
