@@ -242,4 +242,32 @@ public class ProductCatalogImagePresentationTests
         Assert.Contains("object-fit: contain;", imageRules, StringComparison.Ordinal);
         Assert.Contains("object-position: center;", imageRules, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Portal_catalog_photos_use_a_white_frame_without_changing_the_dark_portal_surfaces()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-dark.css"));
+        var sharedStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
+        var frameRules = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"body\.portal-authenticated \.portal-app-main \.portal-catalog-page \.product-visual\s*\{(?<rules>[^}]*)\}").Groups["rules"].Value;
+        var imageRules = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"body\.portal-authenticated \.portal-app-main \.portal-catalog-page \.product-visual img\s*\{(?<rules>[^}]*)\}").Groups["rules"].Value;
+        var unavailableCardRules = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"body\.portal-authenticated \.portal-app-main \.portal-catalog-page \.product-card\.unavailable\s*\{(?<rules>[^}]*)\}").Groups["rules"].Value;
+
+        Assert.Contains(".unavailable{opacity:.72}", sharedStyles, StringComparison.Ordinal);
+        Assert.Contains("opacity: 1;", unavailableCardRules, StringComparison.Ordinal);
+        Assert.Contains("background: #FFFFFF;", frameRules, StringComparison.Ordinal);
+        Assert.Contains("object-fit: contain;", imageRules, StringComparison.Ordinal);
+        Assert.Contains("object-position: center;", imageRules, StringComparison.Ordinal);
+        Assert.Contains("mix-blend-mode: normal;", imageRules, StringComparison.Ordinal);
+        Assert.Contains("var(--portal-dark-surface)", styles, StringComparison.Ordinal);
+        Assert.Contains("var(--portal-dark-surface-secondary)", styles, StringComparison.Ordinal);
+        Assert.Contains("INDISPON&Iacute;VEL", File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml")), StringComparison.Ordinal);
+        Assert.Contains("product.Category", File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml")), StringComparison.Ordinal);
+    }
 }
