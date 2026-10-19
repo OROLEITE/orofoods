@@ -323,3 +323,8 @@ html:not([data-theme="dark"]) :is(.registration-card .form-control, .contact-for
 .customer-detail-tabs .nav-link{color:var(--customer-tab-link-color,#4d4e49)!important}
 @media(max-width:767px){.customer-list-table tbody td[data-label="Ação"]{border-top:1px solid var(--customer-action-border,#ece7dd)!important}}
 .admin-sidebar-header .admin-sidebar-logo{display:block;width:82px;height:auto;margin:0 auto 3px;object-fit:contain}.admin-sidebar-collapsed .admin-sidebar-header .admin-sidebar-logo{width:34px;height:auto;margin:50px auto 0}
+.public-product-card .product-visual{aspect-ratio:4/3;height:auto;min-height:0}
+.public-product-card .product-visual>img{object-fit:contain;mix-blend-mode:normal}
+.portal-app-shell .product-visual{aspect-ratio:4/3;height:auto;min-height:0}
+.portal-app-shell .product-visual>img{object-fit:contain;mix-blend-mode:normal}
+.product-detail-media img{object-fit:contain;mix-blend-mode:normal}

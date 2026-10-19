@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = Model.Name;
     var primaryImage = Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
+    var officialImage = Orofoods.Web.Services.Catalog.OfficialBimboProductImageCatalog.Find(Model.WmcCode);
 }
 
 <section class="page-hero product-detail-hero">
@@ -21,9 +22,9 @@
 <section class="section product-detail-section" aria-labelledby="product-description-title">
     <div class="container product-detail product-detail-layout">
         <figure class="product-detail-media" style="--accent:@Model.Accent">
-            @if (primaryImage is not null)
+            @if (officialImage is not null || primaryImage is not null)
             {
-                <img src="@Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id })" alt="@primaryImage.AltText" />
+                <img src="@(primaryImage is not null ? Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id }) : officialImage!.ImageUrl)" alt="@(primaryImage is not null ? primaryImage.AltText : officialImage!.ModelName)" />
             }
             else
             {

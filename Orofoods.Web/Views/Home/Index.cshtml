@@ -111,11 +111,12 @@
                     @foreach (var product in Model.Products)
                     {
                         var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
+                        var officialImage = Orofoods.Web.Services.Catalog.OfficialBimboProductImageCatalog.Find(product.WmcCode);
                         <article class="public-home-product-card">
                             <a class="public-home-product-media" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Conhecer @product.Name">
-                                @if (image is not null)
+                                @if (officialImage is not null || image is not null)
                                 {
-                                    <img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@(string.IsNullOrWhiteSpace(image.AltText) ? product.Name : image.AltText)" loading="lazy" decoding="async" />
+                                    <img src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null ? (string.IsNullOrWhiteSpace(image.AltText) ? product.Name : image.AltText) : officialImage!.ModelName)" loading="lazy" decoding="async" />
                                 }
                                 else
                                 {
