@@ -106,7 +106,7 @@ public class SeedDataTests
     }
 
     [Fact]
-    public void Product_detail_views_render_the_primary_image_and_description()
+    public void Product_detail_views_preserve_manual_photos_and_only_render_populated_descriptions()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var publicDetail = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Product.cshtml"));
@@ -115,11 +115,13 @@ public class SeedDataTests
         Assert.Contains("var primaryImage", publicDetail);
         Assert.Contains("Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(Model.WmcCode)", publicDetail);
         Assert.Contains("primaryImage is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = primaryImage.Id })", publicDetail);
-        Assert.Contains("Descri&#231;&#227;o do produto", publicDetail);
+        Assert.Contains("@if (!string.IsNullOrWhiteSpace(Model.Description))", publicDetail);
+        Assert.Contains("class=\"product-detail-description\"", publicDetail);
         Assert.Contains("var primaryImage", portalDetail);
         Assert.Contains("Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(Model.WmcCode)", portalDetail);
         Assert.Contains("primaryImage is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = primaryImage.Id })", portalDetail);
-        Assert.Contains("Descrição do produto", portalDetail);
+        Assert.Contains("@if (!string.IsNullOrWhiteSpace(Model.Description))", portalDetail);
+        Assert.Contains("class=\"product-detail-description\"", portalDetail);
     }
 
     [Fact]
