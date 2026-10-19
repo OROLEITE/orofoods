@@ -570,3 +570,38 @@ body.portal-customer-select .site-main .text-muted {
         border-radius: 12px;
     }
 }
+
+/* Keep the customer catalog compact and aligned with the dark portal palette. */
+body.portal-authenticated .portal-app-main .portal-catalog-hero {
+    min-height: 0;
+    padding: 16px 0 14px;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-hero h1 {
+    margin: 2px 0 4px;
+    font-size: clamp(26px, 2.2vw, 34px);
+    line-height: 1.12;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page {
+    padding-top: 12px;
+    background: #0B132B;
+    color: #E5E7EB;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-tools {
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-grid {
+    gap: 14px;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-visual > img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center;
+    transform: none;
+}

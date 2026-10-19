@@ -14,12 +14,11 @@
 .public-home-shell {
     display: grid;
     max-width: 1440px;
-    gap: 16px;
+    gap: 12px;
     padding-block: 20px 8px;
 }
 
-.public-home-hero,
-.public-home-search-panel {
+.public-home-hero {
     min-width: 0;
     padding: clamp(16px, 2.4vw, 24px);
     border: 1px solid var(--home-border);
@@ -135,79 +134,9 @@
     outline-offset: 2px;
 }
 
-.public-home-search {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-}
-
-.public-home-search-field {
-    display: flex;
-    min-width: 0;
-    min-height: 42px;
-    align-items: center;
-    gap: 10px;
-    padding: 0 12px;
-    border: 1px solid var(--home-border);
-    border-radius: 9px;
-    background: #FFFFFF;
-    color: var(--home-cyan);
-}
-
-.public-home-search-field:focus-within {
-    border-color: var(--home-cyan);
-    box-shadow: 0 0 0 3px rgb(14 116 144 / 14%);
-}
-
-.public-home-search-field input {
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    outline: 0 !important;
-    background: transparent;
-    color: var(--home-navy);
-    font-size: 15px;
-}
-
-.public-home-search-field input::placeholder {
-    color: #64748B;
-}
-
-.public-home-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 9px;
-    padding-top: 9px;
-    border-top: 1px solid var(--home-border);
-}
-
-.public-home-chips a {
-    display: inline-flex;
-    min-height: 36px;
-    align-items: center;
-    padding: 5px 13px;
-    border: 1px solid var(--home-border);
-    border-radius: 999px;
-    background: #F1F5F9;
-    color: #334155;
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
-}
-
-.public-home-chips a:hover,
-.public-home-chips a:focus-visible {
-    border-color: var(--home-cyan);
-    background: var(--home-cyan);
-    color: #FFFFFF;
-}
-
 /* Section shell only: grid and cards come from catalog.css / customer-experience.css. */
 .public-home .public-home-featured.public-products-section {
-    padding: 4px 0 48px;
+    padding: 0 0 36px;
     background: transparent;
 }
 
@@ -269,7 +198,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .public-home-chips a,
     .public-home .public-home-primary-action,
     .public-home .public-home-secondary-action {
         transition: none;
@@ -305,13 +233,4 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .public-home-chips {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .public-home-chips a {
-        justify-content: center;
-        padding-inline: 8px;
-    }
 }
