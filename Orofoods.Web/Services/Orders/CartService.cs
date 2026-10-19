@@ -48,6 +48,12 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
 
         var product = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
             ?? throw new InvalidOperationException("Produto indisponível.");
+        var resolvedPrice = await priceService.GetPriceAsync(customerId, productId);
+        if (resolvedPrice?.EffectivePrice is not > 0m)
+        {
+            throw new InvalidOperationException("Produto sem preço válido para este cliente.");
+        }
+
         await MigrateLegacyCartAsync(session, scope);
         var quantities = Read(session, scope);
         var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId);

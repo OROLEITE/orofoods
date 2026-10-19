@@ -1,8 +1,13 @@
+@using Orofoods.Web.Services.Sellers
 @model Orofoods.Web.Models.Catalog.Product
 @{
     ViewData["Title"] = Model.Name;
     var primaryImage = Model.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).FirstOrDefault();
-    var officialImage = Orofoods.Web.Services.Catalog.OfficialBimboProductImageCatalog.Find(Model.WmcCode);
+    var catalogImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(Model.WmcCode);
+    var sellerProduct = ViewBag.SellerProduct as SellerCatalogProductRow;
+    var sellerCustomerId = ViewBag.SellerCustomerId as int?;
+    var isSeller = User.IsInRole("Vendedor");
+    var loginReturnUrl = Url.Action("Product", "Home", new { id = Model.Id, customerId = sellerCustomerId });
 }
 
 <section class="page-hero product-detail-hero">
@@ -20,31 +25,48 @@
 </section>
 
 <section class="section product-detail-section" aria-labelledby="product-description-title">
-    <div class="container product-detail product-detail-layout">
+    <div class="container product-detail product-detail-layout public-product-detail">
         <figure class="product-detail-media" style="--accent:@Model.Accent">
-            @if (officialImage is not null || primaryImage is not null)
+            @if (primaryImage is not null || catalogImage is not null)
             {
-                <img src="@(primaryImage is not null ? Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id }) : officialImage!.ImageUrl)" alt="@(primaryImage is not null ? primaryImage.AltText : officialImage!.ModelName)" />
+                <img data-product-image="true"
+                     data-fallback-stage="@(primaryImage is null ? "catalog" : "manual")"
+                     data-catalog-fallback="@(catalogImage?.ImageUrl ?? string.Empty)"
+                     data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")"
+                     src="@(primaryImage is not null ? Url.RouteUrl("ProductMedia", new { imageId = primaryImage.Id }) : catalogImage!.ImageUrl)"
+                     alt="@(primaryImage is not null && !string.IsNullOrWhiteSpace(primaryImage.AltText) ? primaryImage.AltText : catalogImage?.ModelName ?? Model.Name)" />
             }
             else
             {
-                <div class="product-detail-placeholder" aria-hidden="true">
-                    <i class="fa-solid fa-box-open"></i>
-                </div>
+                <img src="~/images/products/product-photo-unavailable.svg" alt="Foto do produto indispon&iacute;vel" />
             }
-            <figcaption>Imagem ilustrativa do produto.</figcaption>
+            <figcaption>Foto do produto</figcaption>
         </figure>
 
         <div class="product-detail-copy">
-            <p class="product-detail-kicker">@Model.Brand <span aria-hidden="true">&middot;</span> @Model.UnitDescription</p>
-            <h2 id="product-description-title">Descri&#231;&#227;o do produto</h2>
-            <p class="product-detail-description">@Model.Description</p>
+            <p class="product-detail-kicker">@Model.Brand <span aria-hidden="true">&middot;</span> @Model.Sku</p>
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <h2 id="product-description-title">Descri&ccedil;&atilde;o</h2>
+                <p class="product-detail-description">@Model.Description</p>
+            }
+            else
+            {
+                <h2 id="product-description-title">@Model.Name</h2>
+            }
 
             <dl class="product-detail-facts">
-                <div class="product-detail-fact product-detail-fact--availability">
-                    <dt>Disponibilidade</dt>
-                    <dd><span class="product-stock @(Model.IsAvailable ? "is-available" : "is-unavailable")">@(Model.IsAvailable ? "Disponível" : "Indisponível no momento")</span></dd>
+                <div class="product-detail-fact">
+                    <dt>Venda e embalagem</dt>
+                    <dd>@Model.UnitDescription</dd>
                 </div>
+                @if (Model.HasPackageSalesConfiguration)
+                {
+                    <div class="product-detail-fact">
+                        <dt>Convers&atilde;o da caixa</dt>
+                        <dd>@Model.PackagesPerCase PCT por CX</dd>
+                    </div>
+                }
                 @if (!string.IsNullOrWhiteSpace(Model.StorageInformation))
                 {
                     <div class="product-detail-fact">
@@ -61,24 +83,68 @@
                 }
             </dl>
 
-            <div class="product-detail-actions d-flex flex-wrap gap-2">
-                @if (User.Identity?.IsAuthenticated == true)
+            @if (isSeller)
+            {
+                if (sellerCustomerId is int selectedCustomerId)
                 {
-                    if (User.IsInRole("Administrador"))
+                    if (sellerProduct is not null)
                     {
-                        <a class="btn btn-gold" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Administra&ccedil;&atilde;o</a>
+                        <div class="seller-product-detail-context">
+                            <p class="product-detail-kicker">Cliente selecionado</p>
+                            @if (sellerProduct.UnitPrice > 0m)
+                            {
+                                <div class="catalog-price"><strong>@sellerProduct.UnitPrice.ToString("C")</strong><span>/ @sellerProduct.PriceUnitLabel</span></div>
+                                <form asp-area="Vendedor" asp-controller="Cart" asp-action="Add" asp-route-customerId="@selectedCustomerId" method="post" class="product-detail-purchase-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="productId" value="@Model.Id" />
+                                    <label for="seller-product-quantity">Quantidade (@sellerProduct.PriceUnitLabel)</label>
+                                    <input id="seller-product-quantity" class="form-control" type="number" name="quantity" min="@sellerProduct.MinimumCases" value="@sellerProduct.MinimumCases" step="1" inputmode="numeric" />
+                                    <button class="btn btn-gold" type="submit">Adicionar ao carrinho</button>
+                                </form>
+                                <a class="btn btn-outline-dark mt-2" asp-area="Vendedor" asp-controller="Cart" asp-action="Index" asp-route-customerId="@selectedCustomerId">Ver carrinho</a>
+                            }
+                            else
+                            {
+                                <p class="alert alert-warning" role="status">Pre&ccedil;o indispon&iacute;vel para este cliente.</p>
+                            }
+                        </div>
                     }
                     else
                     {
-                        <a class="btn btn-gold" asp-controller="Portal" asp-action="Catalog">Ver cat&aacute;logo</a>
+                        <p class="alert alert-warning" role="status">Produto sem estoque para o cliente ou sele&ccedil;&atilde;o n&atilde;o autorizada.</p>
+                        <a class="btn btn-outline-dark" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">Selecionar outro cliente</a>
                     }
                 }
                 else
                 {
-                    <a class="btn btn-gold" asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a>
-                    <a class="btn btn-outline-dark" asp-area="Identity" asp-page="/Account/Login">Entrar</a>
+                    <p class="alert alert-info" role="status">Selecione um cliente autorizado para consultar o pre&ccedil;o e comprar.</p>
+                    <a class="btn btn-gold" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">Selecionar cliente</a>
                 }
-            </div>
+            }
+            else if (User.Identity?.IsAuthenticated != true)
+            {
+                <div class="product-detail-actions d-flex flex-wrap gap-2">
+                    <a class="btn btn-gold" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Entrar para comprar</a>
+                    <a class="btn btn-outline-dark" asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a>
+                </div>
+            }
+            else if (User.IsInRole("Administrador"))
+            {
+                <a class="btn btn-gold" asp-controller="Portal" asp-action="Product" asp-route-id="@Model.Id">Comprar para o cliente selecionado</a>
+            }
+            else
+            {
+                <p class="alert alert-info" role="status">A compra fica dispon&iacute;vel para clientes com acesso aprovado ao portal.</p>
+                <a class="btn btn-outline-dark" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Entrar com outra conta</a>
+            }
         </div>
     </div>
 </section>
+
+@section Scripts {
+    <script src="~/js/product-image-fallback.js" asp-append-version="true"></script>
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/product-detail.css" asp-append-version="true" />
+}

@@ -15,12 +15,34 @@ public class CartServiceTests
     public async Task AddAsync_rejects_product_without_available_inventory()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
         var product = await AddProductAsync(db, 0);
         var service = new CartService(db, new PriceService(db));
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.AddAsync(1, product.Id, 1, new TestSession()));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.AddAsync(customer.Id, product.Id, 1, new TestSession()));
 
         Assert.Contains("Produto indispon", exception.Message);
+    }
+
+    [Fact]
+    public async Task AddAsync_rejects_a_product_without_a_positive_resolved_price()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var product = await AddProductAsync(db, 2);
+        product.BasePrice = 0m;
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        var service = new CartService(db, new PriceService(db));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.AddAsync(customer.Id, product.Id, 1, session));
+
+        Assert.Contains("preço", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(session.TryGetValue("orofoods-cart-v2-product-ids", out _));
     }
 
     [Fact]

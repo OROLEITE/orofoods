@@ -111,12 +111,12 @@
                     @foreach (var product in Model.Products)
                     {
                         var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
-                        var officialImage = Orofoods.Web.Services.Catalog.OfficialBimboProductImageCatalog.Find(product.WmcCode);
+                        var officialImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);
                         <article class="public-home-product-card">
                             <a class="public-home-product-media" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Conhecer @product.Name">
                                 @if (officialImage is not null || image is not null)
                                 {
-                                    <img src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null ? (string.IsNullOrWhiteSpace(image.AltText) ? product.Name : image.AltText) : officialImage!.ModelName)" loading="lazy" decoding="async" />
+                                    <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" loading="lazy" decoding="async" />
                                 }
                                 else
                                 {
@@ -136,4 +136,8 @@
 
         </div>
     </section>
+
+@section Scripts {
+    <script src="~/js/product-image-fallback.js" asp-append-version="true"></script>
+}
 </div>
