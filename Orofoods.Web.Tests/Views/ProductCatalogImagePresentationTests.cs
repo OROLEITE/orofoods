@@ -44,23 +44,54 @@ public class ProductCatalogImagePresentationTests
     }
 
     [Fact]
-    public void Illustrative_bimbo_cards_are_labeled_and_desktop_keeps_five_columns()
+    public void Illustrative_bimbo_metadata_is_preserved_without_visible_badges_and_desktop_keeps_five_columns()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var publicCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
         var home = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
         var portalCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
+        var catalogStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
+        var normalizedCatalogStyles = catalogStyles.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var imageCatalog = File.ReadAllText(Path.Combine(projectPath, "Services", "Catalog", "BimboProductImageCatalog.cs"));
 
-        Assert.Contains("IsIllustrative", publicCatalog, StringComparison.Ordinal);
-        Assert.Contains("Imagem ilustrativa", publicCatalog, StringComparison.Ordinal);
-        Assert.Contains("IsIllustrative", home, StringComparison.Ordinal);
-        Assert.Contains("Imagem ilustrativa", home, StringComparison.Ordinal);
-        Assert.Contains("IsIllustrative", portalCatalog, StringComparison.Ordinal);
-        Assert.Contains("Imagem ilustrativa", portalCatalog, StringComparison.Ordinal);
+        Assert.Contains("IsIllustrative", imageCatalog, StringComparison.Ordinal);
+        Assert.DoesNotContain("Imagem ilustrativa", publicCatalog, StringComparison.Ordinal);
+        Assert.DoesNotContain("Imagem ilustrativa", home, StringComparison.Ordinal);
+        Assert.DoesNotContain("Imagem ilustrativa", portalCatalog, StringComparison.Ordinal);
         Assert.Contains(".public-quick-buy-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))", styles, StringComparison.Ordinal);
         Assert.Contains("@media(min-width:1200px){.portal-catalog-page .product-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}", styles, StringComparison.Ordinal);
-        Assert.Contains(".product-visual>.product-image-illustrative-note{position:absolute", styles, StringComparison.Ordinal);
+        Assert.Contains("background: #F4F7FC", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("border: 1px solid #E2E8F0", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #0E7490", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #0B5D75", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("aspect-ratio: 4 / 3", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("object-fit: contain", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 599px)", catalogStyles, StringComparison.Ordinal);
+        Assert.Contains(".portal-catalog-page .product-grid {\n        grid-template-columns: repeat(5, minmax(0, 1fr));", normalizedCatalogStyles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Public_catalog_keeps_real_identifier_search_data_based_quick_filters_and_visitor_login_return()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var publicCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Controllers", "HomeController.cs"));
+        var filters = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "public-catalog-filters.js"));
+
+        Assert.Contains("quick-buy-button", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("/Account/Login", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("asp-page=\"/Account/Login\"", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("asp-route-returnUrl=\"@loginReturnUrl\"", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("name=\"search\"", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("Brioche", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("Gergelim", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("Australiano", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("Congelados", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("x.WmcCode", controller, StringComparison.Ordinal);
+        Assert.Contains("x.Ean", controller, StringComparison.Ordinal);
+        Assert.Contains("x.Ean13", controller, StringComparison.Ordinal);
+        Assert.Contains("data-catalog-filter", filters, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -132,8 +163,8 @@ public class ProductCatalogImagePresentationTests
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
 
         Assert.Contains("<h2>@product.Name</h2>", markup, StringComparison.Ordinal);
-        Assert.Contains("Código @product.Sku", markup, StringComparison.Ordinal);
-        Assert.Contains("WMC @product.WmcCode", markup, StringComparison.Ordinal);
+        Assert.Contains("<small class=\"quick-buy-code\">@(string.IsNullOrWhiteSpace(product.WmcCode) ? product.Sku : $\"WMC {product.WmcCode}\")</small>", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("quick-buy-wmc", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<h2>@(catalogImage?.ModelName ?? product.Name)</h2>", markup, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: repeat(5, minmax(0, 1fr))", styles, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: repeat(3, minmax(0, 1fr))", styles, StringComparison.Ordinal);

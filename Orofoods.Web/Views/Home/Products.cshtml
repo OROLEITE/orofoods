@@ -34,8 +34,11 @@
             </div>
         }
 
-        <form method="get" class="catalog-tools">
-            <input name="search" value="@Model.Search" placeholder="Buscar por nome, SKU ou marca" aria-label="Buscar produtos" />
+        <form method="get" class="catalog-tools public-products-tools">
+            <label class="public-products-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input name="search" value="@Model.Search" placeholder="Buscar por nome, SKU, WMC ou EAN" aria-label="Buscar por nome, SKU, WMC ou EAN" />
+            </label>
             <select name="category" aria-label="Categoria">
                 <option value="">Todas as categorias</option>
                 @foreach (var category in Model.Categories)
@@ -46,6 +49,14 @@
             @if (isSeller && customerId is > 0) { <input type="hidden" name="customerId" value="@customerId" /> }
             <button class="btn btn-gold" type="submit">Buscar</button>
         </form>
+
+        <div class="public-catalog-quick-filters" role="group" aria-label="Filtros r&aacute;pidos por tipo de produto">
+            <button type="button" class="is-active" data-catalog-filter="all" aria-pressed="true">Todos</button>
+            <button type="button" data-catalog-filter="brioche" aria-pressed="false">Brioche</button>
+            <button type="button" data-catalog-filter="gergelim" aria-pressed="false">Gergelim</button>
+            <button type="button" data-catalog-filter="australiano" aria-pressed="false">Australiano</button>
+            <button type="button" data-catalog-filter="congelados" aria-pressed="false">Congelados</button>
+        </div>
 
         @if (!Model.Products.Any())
         {
@@ -60,8 +71,18 @@
                     var image = catalogImage?.UseCatalogImage == true ? null : product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
                     var isBimbo = catalogImage is not null;
                     var availableQuantity = availableQuantities.GetValueOrDefault(product.Id);
-                    <article class="product-card public-product-card public-quick-buy-card @(isBimbo ? "public-product-card--bimbo" : "")">
-                        <div class="product-visual" style="--accent:@product.Accent">
+                    var productText = $"{product.Name} {product.Description} {product.Category}";
+                    var storageText = $"{product.StorageInformation} {product.StorageTemperature} {product.AdditionalInformation}";
+                    var quickFilterTags = new List<string>();
+                    if (productText.Contains("brioche", StringComparison.OrdinalIgnoreCase)) { quickFilterTags.Add("brioche"); }
+                    if (productText.Contains("gergelim", StringComparison.OrdinalIgnoreCase)) { quickFilterTags.Add("gergelim"); }
+                    if (productText.Contains("australiano", StringComparison.OrdinalIgnoreCase)) { quickFilterTags.Add("australiano"); }
+                    if (storageText.Contains("congel", StringComparison.OrdinalIgnoreCase)) { quickFilterTags.Add("congelados"); }
+                    var packageDescription = product.HasPackageSalesConfiguration
+                        ? $"CX com {product.PackagesPerCase} PCT"
+                        : product.UnitDescription;
+                    <article class="product-card public-product-card public-quick-buy-card @(isBimbo ? "public-product-card--bimbo" : "")" data-catalog-product data-catalog-tags="@string.Join(' ', quickFilterTags)">
+                        <div class="product-visual" style="--accent:@product.Accent;--bimbo-image-scale:@(image is null ? catalogImage?.VisualScale ?? 1m : 1m)">
                             @if (image is not null || catalogImage is not null)
                             {
                                 <img data-product-image="true"
@@ -77,20 +98,12 @@
                             {
                                 <img src="~/images/products/product-photo-unavailable.svg" alt="Foto do produto indispon&iacute;vel" loading="lazy" />
                             }
-                            @if (catalogImage?.IsIllustrative == true)
-                            {
-                                <span class="product-image-illustrative-note">Imagem ilustrativa</span>
-                            }
                         </div>
                         <div class="p-3 public-quick-buy-card-body">
                             <span class="quick-buy-brand">@product.Brand</span>
-                            <small class="quick-buy-code">Código @product.Sku</small>
-                            @if (!string.IsNullOrWhiteSpace(product.WmcCode))
-                            {
-                                <small class="quick-buy-wmc">WMC @product.WmcCode</small>
-                            }
+                            <small class="quick-buy-code">@(string.IsNullOrWhiteSpace(product.WmcCode) ? product.Sku : $"WMC {product.WmcCode}")</small>
                             <h2>@product.Name</h2>
-                            <p class="quick-buy-packaging">@product.UnitDescription</p>
+                            <p class="quick-buy-packaging"><i class="fa-solid fa-box" aria-hidden="true"></i><span>@packageDescription</span></p>
 
                             @if (isCustomer)
                             {
@@ -154,23 +167,30 @@
                             {
                                 @if (!isAuthenticated)
                                 {
-                                    <p class="quick-buy-auth-hint">Entre ou cadastre-se para comprar.</p>
+                                    <a class="btn quick-buy-button" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Comprar</a>
+                                    <p class="quick-buy-auth-hint">J&aacute; tem acesso? <a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Entrar</a> &middot; <a asp-area="" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar</a></p>
                                 }
                                 else
                                 {
+                                    <button class="quick-buy-button" type="button" disabled>Comprar</button>
                                     <p class="quick-buy-auth-hint">Compra dispon&iacute;vel para clientes aprovados.</p>
                                 }
-                                <button class="quick-buy-button" type="button" disabled>Comprar</button>
                             }
                         </div>
                     </article>
                 }
             </div>
         }
+        <div class="public-catalog-filter-empty" data-catalog-filter-empty hidden role="status">Nenhum produto desta categoria r&aacute;pida est&aacute; nos resultados atuais.</div>
     </div>
 </section>
 
 @section Scripts {
     <script src="~/js/product-image-fallback.js" asp-append-version="true"></script>
+    <script src="~/js/public-catalog-filters.js" asp-append-version="true"></script>
     @if (isCustomer) { <script src="~/js/catalog.js" asp-append-version="true"></script> }
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/catalog.css" asp-append-version="true" />
 }
