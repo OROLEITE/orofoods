@@ -8,7 +8,8 @@ public sealed record BimboProductImage(
     string SourceName,
     string ConfirmationStatus,
     decimal VisualScale = 1m,
-    bool UseCatalogImage = false);
+    bool UseCatalogImage = false,
+    bool IsIllustrative = false);
 
 public static class BimboProductImageCatalog
 {
@@ -24,11 +25,11 @@ public static class BimboProductImageCatalog
                 "Foto de pao redondo com gergelim e corte duplo; modelo confirmado na pagina oficial Bimbo QSR", 1.10m),
             ["503838"] = new(
                 "Mini Brioche Corte Total",
-                "/images/products/bimbo-catalog/503838-mini-brioche.jpg",
-                "https://www.bimboqsrbrasil.com.br/wp-content/uploads/2018/06/pao_mini_brioche-1.jpg",
+                "/images/products/bimbo-illustrative/01-brioche-liso.webp",
+                "Ilustração gerada a partir do conjunto de imagens ilustrativas autorizado pelo usuário",
                 "https://www.bimboqsrbrasil.com.br/produto/mini-brioche-corte-total/",
-                "Bimbo QSR Brasil",
-                "Foto de pao mini brioche, conferida visualmente na pagina oficial", 1.30m),
+                "Ilustração gerada para Orofoods",
+                "Imagem ilustrativa de pão brioche; não representa escala ou SKU exatos", 1.15m, true, true),
             ["504342"] = new(
                 "Classico Australiano",
                 "/images/products/bimbo-catalog/504342-classico-australiano.webp",
@@ -38,11 +39,11 @@ public static class BimboProductImageCatalog
                 "Foto de pao BQB Classico Australiano identificada pelo distribuidor", 1.30m, true),
             ["503833"] = new(
                 "Classico Brioche",
-                "/images/products/bimbo-catalog/503833-classico-brioche.webp",
-                "https://loja.burgerfoods.com.br/41-thickbox_default/pao-bqb-classico-brioche-ct-cong-bimbo.webp",
+                "/images/products/bimbo-illustrative/06-brioche.png",
+                "Ilustração gerada a partir do conjunto de imagens ilustrativas autorizado pelo usuário",
                 "https://loja.burgerfoods.com.br/pao-de-hamburguer/pao-bqb-classico-brioche-ct-cong-bimbo-14",
-                "Burger Foods, distribuidor Bimbo QSR",
-                "Foto de pao BQB Classico Brioche identificada pelo distribuidor", 1.65m),
+                "Ilustração gerada para Orofoods",
+                "Imagem ilustrativa de pão tipo brioche; não representa SKU exato", 1.15m, true, true),
             ["503811"] = new(
                 "Hot Dog",
                 "/images/products/bimbo-catalog/503811-hot-dog.webp",
@@ -59,11 +60,11 @@ public static class BimboProductImageCatalog
                 "Foto de pao BQB HB Smart sem gergelim identificada pelo distribuidor", 1.25m),
             ["503777"] = new(
                 "Smart com gergelim",
-                "/images/products/bimbo-catalog/503777-smart-gergelim.webp",
-                "https://www.demarchiparana.com.br/1155-thickbox_default/pao-smart-gergelim-ct-pc15-cx18.webp",
+                "/images/products/bimbo-illustrative/03-gergelim.png",
+                "Ilustração gerada a partir do conjunto de imagens ilustrativas autorizado pelo usuário",
                 "https://www.demarchiparana.com.br/pao-hamburger/pao-smart-gergelim-ct-pc15-cx18-863",
-                "DeMarchi Parana, distribuidor Bimbo QSR",
-                "Foto de pao Smart com gergelim identificada pelo distribuidor", 1.00m),
+                "Ilustração gerada para Orofoods",
+                "Imagem ilustrativa de pão com gergelim; não representa SKU exato", 1.05m, true, true),
             ["504338"] = new(
                 "Max Brioche",
                 "/images/products/bimbo-catalog/504338-max-brioche.png",
@@ -73,18 +74,18 @@ public static class BimboProductImageCatalog
                 "Foto Max Brioche identificada pelo distribuidor e compativel com a especificacao Bimbo QSR de 85 g", 0.90m),
             ["503775"] = new(
                 "Tradicional com gergelim",
-                "/images/products/bimbo-catalog/503775-tradicional-gergelim.webp",
-                "https://www.focatto.com/1751-large_default/pao-monaco-gergelim-ct-pc12-cx16.webp",
+                "/images/products/bimbo-illustrative/03-gergelim.png",
+                "Ilustração gerada a partir do conjunto de imagens ilustrativas autorizado pelo usuário",
                 "https://www.focatto.com/pao-hamburger/pao-monaco-gergelim-ct-pc12-cx16-72",
-                "Focatto, distribuidor Bimbo QSR",
-                "Foto de pao Monaco com gergelim, 75 g e 11 cm; modelo tradicional com gergelim Bimbo QSR", 0.90m),
+                "Ilustração gerada para Orofoods",
+                "Imagem ilustrativa de pão com gergelim; não representa SKU exato", 1.05m, true, true),
             ["503805"] = new(
                 "Tradicional",
-                "/images/products/bimbo-catalog/503805-tradicional.webp",
-                "https://www.focatto.com/1747-large_default/pao-monaco-ct-pc12-cx16.jpg",
+                "/images/products/bimbo-illustrative/04-tradicional.png",
+                "Ilustração gerada a partir do conjunto de imagens ilustrativas autorizado pelo usuário",
                 "https://www.focatto.com/pao-hamburger/pao-monaco-ct-pc12-cx16-50",
-                "Focatto, distribuidor Bimbo QSR",
-                "Foto de pao Monaco sem gergelim, 75 g e 11 cm; modelo tradicional Bimbo QSR", 0.90m)
+                "Ilustração gerada para Orofoods",
+                "Imagem ilustrativa de pão tradicional liso; não representa SKU exato", 1.05m, true, true)
         };
 
     public static IReadOnlyDictionary<string, BimboProductImage> All => ConfirmedImages;
