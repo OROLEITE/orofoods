@@ -430,7 +430,7 @@
 .public-home-product-media {
     display: grid;
     width: 100%;
-    aspect-ratio: 1.2;
+    aspect-ratio: 4/3;
     place-items: center;
     overflow: hidden;
     background: #F8FAFC;
@@ -673,7 +673,7 @@
     }
 
     .public-home-product-media {
-        aspect-ratio: 1.45;
+        aspect-ratio: 4/3;
     }
 
     .public-home-section-heading:not(.public-home-category-heading) {

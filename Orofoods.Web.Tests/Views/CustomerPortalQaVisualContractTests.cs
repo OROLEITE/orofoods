@@ -69,8 +69,9 @@ public sealed class CustomerPortalQaVisualContractTests
         var mediaController = Read("Controllers", "ProductMediaController.cs");
 
         Assert.Contains("var image = product.Images", view);
-        Assert.Contains("if (image is not null)", view);
-        Assert.Contains("@Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })", view);
+        Assert.Contains("Orofoods.Web.Services.Catalog.OfficialBimboProductImageCatalog.Find(product.WmcCode)", view);
+        Assert.Contains("if (officialImage is not null || image is not null)", view);
+        Assert.Contains("image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })", view);
         Assert.Contains("else", view);
         Assert.Contains("<span>&bull;</span>", view);
         Assert.Contains("imageStorage.OpenReadAsync(image.Url", mediaController);
