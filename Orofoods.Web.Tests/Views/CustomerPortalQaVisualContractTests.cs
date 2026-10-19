@@ -84,8 +84,7 @@ public sealed class CustomerPortalQaVisualContractTests
         Assert.Contains("product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault()", view);
         Assert.Contains("Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode)", view);
         Assert.Contains("if (officialImage is not null || image is not null)", view);
-        Assert.Contains("officialImage?.IsIllustrative == true", view);
-        Assert.Contains("Imagem ilustrativa", view);
+        Assert.DoesNotContain("Imagem ilustrativa", view);
         Assert.Contains("image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })", view);
         Assert.Contains("data-fallback-stage=\"@(image is null ? \"catalog\" : \"manual\")\"", view);
         var compactView = Compact(view);

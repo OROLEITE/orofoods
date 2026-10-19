@@ -103,6 +103,48 @@ public class HomeControllerProductTests
     }
 
     [Fact]
+    public async Task Products_search_matches_WMC_EAN_and_EAN13_without_matching_only_names()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "PÃ£es", Slug = "paes", IsActive = true };
+        db.ProductCategories.Add(category);
+        await db.SaveChangesAsync();
+        var wmcProduct = new Product
+        {
+            Sku = "SKU-A", Name = "Produto Alfa", Brand = "Marca A", WmcCode = "503768",
+            ProductCategoryId = category.Id, IsActive = true, IsAvailable = true
+        };
+        var eanProduct = new Product
+        {
+            Sku = "SKU-B", Name = "Produto Beta", Brand = "Marca B", Ean = "7899679700365",
+            ProductCategoryId = category.Id, IsActive = true, IsAvailable = true
+        };
+        var ean13Product = new Product
+        {
+            Sku = "SKU-C", Name = "Produto Gama", Brand = "Marca C", Ean13 = "0123456789012",
+            ProductCategoryId = category.Id, IsActive = true, IsAvailable = true
+        };
+        db.Products.AddRange(wmcProduct, eanProduct, ean13Product);
+        await db.SaveChangesAsync();
+        var controller = new HomeController(db)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
+        };
+
+        foreach (var (query, expectedId) in new[]
+        {
+            ("503768", wmcProduct.Id),
+            ("7899679700365", eanProduct.Id),
+            ("0123456789012", ean13Product.Id)
+        })
+        {
+            var result = Assert.IsType<ViewResult>(await controller.Products(query, null));
+            var model = Assert.IsType<PublicProductCatalogViewModel>(result.Model);
+            Assert.Equal(expectedId, Assert.Single(model.Products).Id);
+        }
+    }
+
+    [Fact]
     public async Task Products_exposes_only_the_approved_customers_authorized_table_price()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

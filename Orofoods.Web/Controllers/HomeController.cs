@@ -107,7 +107,10 @@ public class HomeController(
             var normalizedSearch = search.Trim().ToLower();
             query = query.Where(x => x.Name.ToLower().Contains(normalizedSearch)
                 || x.Sku.ToLower().Contains(normalizedSearch)
-                || x.Brand.ToLower().Contains(normalizedSearch));
+                || x.Brand.ToLower().Contains(normalizedSearch)
+                || (x.WmcCode != null && x.WmcCode.ToLower().Contains(normalizedSearch))
+                || (x.Ean != null && x.Ean.ToLower().Contains(normalizedSearch))
+                || (x.Ean13 != null && x.Ean13.ToLower().Contains(normalizedSearch)));
         }
 
         if (!string.IsNullOrWhiteSpace(category))
