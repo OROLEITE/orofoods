@@ -16,9 +16,12 @@ public class InstitutionalViewTests
     public void Home_view_sends_product_interest_to_customer_access()
     {
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
+        var cardPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Shared/_PublicProductCard.cshtml"));
         var markup = File.ReadAllText(path);
+        var card = File.ReadAllText(cardPath);
 
-        Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", markup);
+        Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", card);
+        Assert.Contains("asp-page=\"/Account/Login\" asp-route-returnUrl=\"@loginReturnUrl\">Comprar", card);
         Assert.Contains("Url.Page(\"/Account/Login\", values: new { area = \"Identity\", returnUrl = customerDashboardUrl })", markup);
         Assert.Contains("Url.Action(\"Dashboard\", \"Portal\", new { area = \"\" })", markup);
         Assert.Contains("returnUrl = customerDashboardUrl", markup);
@@ -26,44 +29,58 @@ public class InstitutionalViewTests
     }
 
     [Fact]
-    public void Home_view_has_one_institutional_hero_categories_and_featured_products_without_a_carousel()
+    public void Home_view_is_a_compact_b2b_storefront_with_search_shortcuts_and_real_products()
     {
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
         var markup = File.ReadAllText(path);
 
-        Assert.Contains("home-hero", markup);
-        Assert.Contains("home-categories", markup);
-        Assert.Contains("public-home-featured", markup);
+        Assert.Contains("Comprar produtos", markup);
+        Assert.Contains("Meu portal", markup);
+        Assert.Contains("name=\"search\"", markup);
+        Assert.Contains("asp-controller=\"Home\" asp-action=\"Products\" class=\"public-home-search\"", markup);
+        foreach (var filter in new[] { "brioche", "gergelim", "australiano", "congelados" })
+        {
+            Assert.Contains($"asp-route-filtro=\"{filter}\"", markup);
+        }
+
+        Assert.Contains("Produtos em destaque", markup);
+        Assert.Contains("<partial name=\"_PublicProductCard\" model=\"product\" />", markup);
+        Assert.Contains("Model.Products.Count == 0", markup);
         Assert.DoesNotContain("carousel", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("home-command-bar", markup);
-        Assert.DoesNotContain("home-catalog-cta", markup);
-        Assert.DoesNotContain("home-operation", markup);
+        Assert.DoesNotContain("orofoods-hero.png", markup);
         Assert.DoesNotContain("btn-gold", markup);
     }
 
     [Fact]
-    public void Home_product_cards_use_registered_product_media_or_a_neutral_placeholder()
+    public void Home_and_catalog_share_one_product_card_without_inventing_prices_or_promotions()
     {
-        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Views/Home/Index.cshtml"));
-        var markup = File.ReadAllText(path);
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var home = File.ReadAllText(Path.Combine(root, "Views/Home/Index.cshtml"));
+        var catalog = File.ReadAllText(Path.Combine(root, "Views/Home/Products.cshtml"));
+        var card = File.ReadAllText(Path.Combine(root, "Views/Shared/_PublicProductCard.cshtml"));
 
-        Assert.Contains("ProductMedia", markup);
-        Assert.Contains("home-product-placeholder", markup);
-        Assert.Contains("home-product-card", markup);
-        Assert.DoesNotContain("BIM-00", markup);
+        Assert.Contains("_PublicProductCard", catalog);
+        Assert.DoesNotContain("data-catalog-add-form", home);
+        Assert.DoesNotContain("data-catalog-add-form", catalog);
+        Assert.Contains("ProductMedia", card);
+        Assert.Contains("prices.GetValueOrDefault(product.Id)", card);
+        Assert.DoesNotContain("desconto", home + card, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("promo", home + card, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Home_styles_keep_the_public_visual_system_local_responsive_and_accessible()
+    public void Home_styles_use_the_ice_blue_palette_without_a_navy_header_and_stay_responsive_and_accessible()
     {
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/wwwroot/css/home-showcase.css"));
         var styles = File.ReadAllText(path);
 
-        Assert.Contains("#F4F7FC", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#F1F5FB", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#0F172A", styles, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#0E7490", styles, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("object-fit: contain", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(".site-header-modern", styles);
+        Assert.DoesNotContain("#0B132B !important", styles);
         Assert.Contains(":focus-visible", styles);
-        Assert.Contains("@media (max-width: 767px)", styles);
+        Assert.Contains("@media (max-width: 575.98px)", styles);
         Assert.Contains("prefers-reduced-motion", styles);
     }
 

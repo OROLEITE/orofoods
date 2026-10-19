@@ -5,10 +5,9 @@
     var isAdministrator = User.IsInRole("Administrador");
     var isSalesRepresentative = User.IsInRole("Vendedor");
     var isCommercialManager = User.IsInRole("GerenteComercial");
+    var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSalesRepresentative;
     var customerDashboardUrl = Url.Action("Dashboard", "Portal", new { area = "" }) ?? "/Portal/Dashboard";
     var loginDashboardUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FDashboard";
-    var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog";
-    var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl }) ?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog";
     var adminDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Admin" }) ?? "/Admin/Dashboard";
     var sellerDashboardUrl = Url.Action("Index", "Dashboard", new { area = "Vendedor" }) ?? "/Vendedor";
     var commercialDashboardUrl = Url.Action("Index", "Commercial", new { area = "Admin" }) ?? "/Admin/Commercial";
@@ -17,6 +16,7 @@
         : isSalesRepresentative ? sellerDashboardUrl
         : isCommercialManager ? commercialDashboardUrl
         : customerDashboardUrl;
+    ViewData["LoginReturnUrl"] = Url.Action("Products", "Home", new { area = "" });
 }
 
 <div class="public-home">
@@ -25,120 +25,65 @@
         <div class="container pt-3"><div class="alert alert-success mb-0" role="status">@registrationSuccess</div></div>
     }
 
-    <section class="public-home-hero" aria-labelledby="public-home-title">
-        <div class="container public-home-hero-grid">
-            <div class="public-home-hero-copy">
-                <p class="public-home-eyebrow"><span aria-hidden="true"></span> Orofoods</p>
-                <h1 id="public-home-title">Soluções para o seu Food Service</h1>
-                <p class="public-home-hero-description">Pães e produtos para hamburguerias, restaurantes e lanchonetes.</p>
-                <div class="public-home-hero-actions">
-                    @if (isAuthenticated)
-                    {
-                        <a class="btn public-home-primary-action" href="@portalUrl">Acessar meu portal</a>
-                    }
-                    else
-                    {
-                        <a class="btn public-home-primary-action" asp-controller="Home" asp-action="Products">Conheça nossos produtos</a>
-                    }
-                    @if (isAuthenticated)
-                    {
-                        <a class="btn public-home-secondary-action" asp-controller="Home" asp-action="Products">Conheça nossos produtos</a>
-                    }
-                    else
-                    {
-                        <a class="btn public-home-secondary-action" asp-controller="CustomerRegistration" asp-action="Register">Cadastre sua empresa</a>
-                    }
-                </div>
-                @if (!isAuthenticated)
-                {
-                    <p class="public-home-login-note">Já é cliente? <a href="@loginCatalogUrl">Entrar no portal</a></p>
-                }
-            </div>
-            <div class="public-home-hero-image">
-                <img src="~/images/orofoods-hero.png" asp-append-version="true" alt="Hambúrguer artesanal e pães em uma cozinha profissional" width="1672" height="941" fetchpriority="high" decoding="async" />
-                <div class="public-home-hero-caption"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Inspiração para cozinhas profissionais</span></div>
-            </div>
-        </div>
-    </section>
-
-    @if (Model.Categories.Count > 0)
-    {
-        <section class="public-home-category-section" aria-labelledby="public-home-categories-title">
-            <div class="container">
-                <div class="public-home-section-heading public-home-category-heading">
-                    <div>
-                        <p class="public-home-eyebrow"><span aria-hidden="true"></span> Navegue pelo catálogo</p>
-                        <h2 id="public-home-categories-title">Categorias disponíveis</h2>
-                    </div>
-                    <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Ver todos os produtos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-                </div>
-                <div class="public-home-categories">
-                    @foreach (var category in Model.Categories)
-                    {
-                        <a class="public-home-category-card" asp-controller="Home" asp-action="Products" asp-route-category="@category.Slug">
-                            <span class="public-home-category-icon"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
-                            <span>@category.Name</span>
-                            <i class="fa-solid fa-arrow-up-right-from-square public-home-category-arrow" aria-hidden="true"></i>
-                        </a>
-                    }
-                </div>
+    <div class="container public-home-shell">
+        <section class="public-home-hero" aria-labelledby="public-home-title">
+            <p class="public-home-eyebrow">Orofoods &middot; Food service</p>
+            <h1 id="public-home-title">Tudo para sua opera&ccedil;&atilde;o, em um s&oacute; lugar.</h1>
+            <p class="public-home-hero-description">P&atilde;es e produtos para hamburguerias, restaurantes e lanchonetes.</p>
+            <div class="public-home-hero-actions">
+                <a class="btn public-home-primary-action" asp-controller="Home" asp-action="Products">Comprar produtos</a>
+                <a class="btn public-home-secondary-action" href="@portalUrl">Meu portal</a>
             </div>
         </section>
-    }
 
-    <section class="public-home-featured" id="produtos" aria-labelledby="public-home-featured-title">
-        <div class="container">
+        <section class="public-home-search-panel" aria-label="Buscar produtos">
+            <form method="get" asp-controller="Home" asp-action="Products" class="public-home-search" role="search">
+                <label class="public-home-search-field">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input type="search" name="search" placeholder="O que voc&ecirc; procura para seu neg&oacute;cio?" aria-label="Buscar produtos no cat&aacute;logo" autocomplete="off" />
+                </label>
+                <button class="btn public-home-primary-action" type="submit">Buscar</button>
+            </form>
+            <nav class="public-home-chips" aria-label="Atalhos de categorias">
+                <a asp-controller="Home" asp-action="Products" asp-route-filtro="brioche">Brioche</a>
+                <a asp-controller="Home" asp-action="Products" asp-route-filtro="gergelim">Gergelim</a>
+                <a asp-controller="Home" asp-action="Products" asp-route-filtro="australiano">Australiano</a>
+                <a asp-controller="Home" asp-action="Products" asp-route-filtro="congelados">Congelados</a>
+            </nav>
+        </section>
+
+        <section class="public-home-featured public-products-section" id="produtos" aria-labelledby="public-home-featured-title">
             <div class="public-home-section-heading">
-                <div>
-                    <p class="public-home-eyebrow"><span aria-hidden="true"></span> Seleção Orofoods</p>
-                    <h2 id="public-home-featured-title">Produtos para sua operação</h2>
-                    <p class="public-home-section-description">Conheça os itens disponíveis no catálogo público e encontre opções para o dia a dia da sua cozinha.</p>
-                </div>
-                <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Explorar catálogo <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                <h2 id="public-home-featured-title">Produtos em destaque</h2>
+                <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Ver cat&aacute;logo <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
             </div>
 
             @if (Model.Products.Count == 0)
             {
                 <div class="public-home-empty" role="status">
                     <i class="fa-regular fa-rectangle-list" aria-hidden="true"></i>
-                    <p>Estamos preparando a seleção de produtos. Consulte o catálogo completo em breve.</p>
-                    <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Abrir catálogo</a>
+                    <p>Estamos preparando a sele&ccedil;&atilde;o de produtos. Consulte o cat&aacute;logo completo em breve.</p>
+                    <a class="public-home-text-link" asp-controller="Home" asp-action="Products">Abrir cat&aacute;logo</a>
                 </div>
             }
             else
             {
-                <div class="public-home-product-grid">
+                <div class="product-grid public-quick-buy-grid">
                     @foreach (var product in Model.Products)
                     {
-                        var officialImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);
-                        var image = officialImage?.UseCatalogImage == true ? null : product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
-                        <article class="public-home-product-card">
-                            <a class="public-home-product-media" style="--bimbo-image-scale:@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(image is null ? officialImage?.VisualScale ?? 1m : 1m))" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id" aria-label="Ver produto @(officialImage?.ModelName ?? product.Name)">
-                                @if (officialImage is not null || image is not null)
-                                {
-                                    <img data-product-image="true" data-fallback-stage="@(image is null ? "catalog" : "manual")" data-catalog-fallback="@(officialImage?.ImageUrl ?? string.Empty)" data-catalog-scale="@(Orofoods.Web.Services.Catalog.BimboProductImageCatalog.FormatVisualScale(officialImage?.VisualScale ?? 1m))" data-placeholder-src="@Url.Content("~/images/products/product-photo-unavailable.svg")" src="@(image is not null ? Url.RouteUrl("ProductMedia", new { imageId = image.Id }) : officialImage!.ImageUrl)" alt="@(image is not null && !string.IsNullOrWhiteSpace(image.AltText) ? image.AltText : officialImage?.ModelName ?? product.Name)" loading="lazy" decoding="async" />
-                                }
-                                else
-                                {
-                                    <span class="public-home-product-placeholder"><i class="fa-regular fa-image" aria-hidden="true"></i><span>Imagem indisponível</span></span>
-                                }
-                            </a>
-                            <div class="public-home-product-body">
-                                <p class="public-home-product-brand">@product.Brand</p>
-                                <h3><a asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">@(officialImage?.ModelName ?? product.Name)</a></h3>
-                                @if (officialImage is not null) { <small class="public-home-product-wmc">WMC @product.WmcCode</small> }
-                                <p class="public-home-product-unit">@product.UnitDescription</p>
-                                <a class="public-home-product-action" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">Ver produto <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-                            </div>
-                        </article>
+                        <partial name="_PublicProductCard" model="product" />
                     }
                 </div>
             }
+        </section>
+    </div>
+</div>
 
-        </div>
-    </section>
+@section Head {
+    <link rel="stylesheet" href="~/css/catalog.css" asp-append-version="true" />
+}
 
 @section Scripts {
     <script src="~/js/product-image-fallback.js" asp-append-version="true"></script>
+    @if (isCustomer) { <script src="~/js/catalog.js" asp-append-version="true"></script> }
 }
-</div>
