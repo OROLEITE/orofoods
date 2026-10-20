@@ -36,7 +36,13 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
         };
     }
 
-    public async Task AddAsync(int customerId, int productId, int quantity, ISession session, CartScope? scope = null)
+    public Task AddAsync(int customerId, int productId, int quantity, ISession session, CartScope? scope = null) =>
+        AddCoreAsync(customerId, productId, quantity, session, scope, accumulate: false);
+
+    public Task AddToCartAsync(int customerId, int productId, int quantity, ISession session) =>
+        AddCoreAsync(customerId, productId, quantity, session, scope: null, accumulate: true);
+
+    private async Task AddCoreAsync(int customerId, int productId, int quantity, ISession session, CartScope? scope, bool accumulate)
     {
         if (quantity <= 0)
         {
@@ -53,7 +59,10 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
 
         await MigrateLegacyCartAsync(session, scope);
         var quantities = Read(session, scope);
-        quantities[productId] = Math.Max(quantity, product.MinimumSalesQuantity);
+        var selectedQuantity = Math.Max(quantity, product.MinimumSalesQuantity);
+        quantities[productId] = accumulate
+            ? quantities.GetValueOrDefault(productId) + selectedQuantity
+            : selectedQuantity;
         Write(session, quantities, scope);
     }
 
