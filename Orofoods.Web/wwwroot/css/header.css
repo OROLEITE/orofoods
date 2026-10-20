@@ -7,6 +7,73 @@ body>.site-header,body>.auth-user-menu{display:none}.site-header-modern{position
 body.customer-experience .site-header-modern .catalog-header-cart .catalog-cart-count{border-color:#FFFFFF;background:#FFFFFF;color:#0E7490}
 @media(max-width:991.98px){.site-header-modern .catalog-header-cart{min-height:44px;padding-inline:14px}}
 
+/* Keep the shared cart button and keyboard ring inside the header layout. */
+.site-header-modern,
+.site-header-modern .navbar,
+.site-header-modern .navbar-collapse,
+.site-header-modern .header-account {
+    overflow: visible;
+}
+
+.site-header-modern .navbar-collapse {
+    min-width: 0;
+}
+
+.site-header-modern .header-account {
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.site-header-modern .catalog-header-cart,
+.site-header-modern .catalog-header-cart:visited,
+.site-header-modern .catalog-header-cart:active,
+.site-header-modern .catalog-header-cart:hover,
+.site-header-modern .catalog-header-cart:focus-visible {
+    box-sizing: border-box;
+    min-height: 44px;
+    align-items: center;
+    flex-shrink: 0;
+    color: #FFFFFF;
+    white-space: nowrap;
+}
+
+.site-header-modern .catalog-header-cart:hover,
+.site-header-modern .catalog-header-cart:active {
+    border-color: #0B5D75;
+    background: #0B5D75;
+}
+
+.site-header-modern .catalog-header-cart:focus-visible {
+    outline: 3px solid rgb(14 116 144 / 48%);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #FFFFFF;
+}
+
+.site-header-modern .catalog-header-cart > i {
+    flex: 0 0 auto;
+    color: #FFFFFF;
+    line-height: 1;
+}
+
+.site-header-modern .catalog-header-cart .catalog-cart-count {
+    flex: 0 0 auto;
+    background: #FFFFFF;
+    color: #0E7490;
+}
+
+@media (max-width: 991.98px) {
+    .site-header-modern .header-account {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+
+    .site-header-modern .catalog-header-cart {
+        min-height: 44px;
+        margin: 2px 0;
+    }
+}
+
 /* Shared dark navigation frame. The logo and dropdown behavior remain unchanged. */
 .site-header-modern {
     border-bottom: 1px solid var(--nav-border);
