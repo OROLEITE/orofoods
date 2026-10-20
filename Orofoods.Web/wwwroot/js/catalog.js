@@ -1,4 +1,5 @@
-document.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) => {
+const initializeCatalogProductInteractions = (root = document) => {
+    root.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) => {
     const input = stepper.querySelector('input[name="quantity"]');
     const minimum = Math.max(1, Number.parseInt(input.min, 10) || 1);
     const maximum = Number.parseInt(input.max, 10) || Number.POSITIVE_INFINITY;
@@ -33,7 +34,7 @@ document.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) =
     normalizeQuantity();
 });
 
-document.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
+    root.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
@@ -89,3 +90,7 @@ document.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
         }
     });
 });
+};
+
+window.initializeCatalogProductInteractions = initializeCatalogProductInteractions;
+initializeCatalogProductInteractions();
