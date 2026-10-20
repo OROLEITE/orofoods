@@ -62,21 +62,19 @@ public class ProductCatalogImagePresentationTests
     }
 
     [Fact]
-    public void Illustrative_bimbo_metadata_is_preserved_without_visible_badges_and_desktop_keeps_five_columns()
+    public void Illustrative_bimbo_images_are_disclosed_and_desktop_keeps_five_columns()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var publicCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Products.cshtml"));
-        var home = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
         var portalCatalog = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
+        var sharedCard = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "site.css"));
         var catalogStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
         var normalizedCatalogStyles = catalogStyles.Replace("\r\n", "\n", StringComparison.Ordinal);
         var imageCatalog = File.ReadAllText(Path.Combine(projectPath, "Services", "Catalog", "BimboProductImageCatalog.cs"));
 
         Assert.Contains("IsIllustrative", imageCatalog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Imagem ilustrativa", publicCatalog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Imagem ilustrativa", home, StringComparison.Ordinal);
-        Assert.DoesNotContain("Imagem ilustrativa", portalCatalog, StringComparison.Ordinal);
+        Assert.Contains("Imagem ilustrativa", sharedCard, StringComparison.Ordinal);
+        Assert.Contains("Imagem ilustrativa", portalCatalog, StringComparison.Ordinal);
         Assert.Contains(".public-quick-buy-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))", styles, StringComparison.Ordinal);
         Assert.Contains("@media(min-width:1200px){.portal-catalog-page .product-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}", styles, StringComparison.Ordinal);
         Assert.Contains("background: #F4F7FC", catalogStyles, StringComparison.Ordinal);

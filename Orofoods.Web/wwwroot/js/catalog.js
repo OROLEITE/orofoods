@@ -1,4 +1,15 @@
 const initializeCatalogProductInteractions = (root = document) => {
+    const updateHeaderCart = (quantity) => {
+        document.querySelectorAll('.catalog-header-cart').forEach((cartLink) => {
+            const cartCount = cartLink.querySelector('[data-cart-count]');
+            if (cartCount) {
+                cartCount.textContent = quantity;
+            }
+            cartLink.dataset.cartQuantity = quantity;
+            cartLink.setAttribute('aria-label', `Carrinho com ${quantity} unidades`);
+        });
+    };
+
     root.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) => {
     const input = stepper.querySelector('input[name="quantity"]');
     const minimum = Math.max(1, Number.parseInt(input.min, 10) || 1);
@@ -40,9 +51,6 @@ const initializeCatalogProductInteractions = (root = document) => {
 
         const button = form.querySelector('button[type="submit"]');
         const status = form.querySelector('.catalog-add-status');
-        const cartLink = document.querySelector('.catalog-header-cart');
-        let cartCount = cartLink?.querySelector('.catalog-cart-count');
-
         button.disabled = true;
         button.setAttribute('aria-busy', 'true');
         status.textContent = '';
@@ -61,17 +69,8 @@ const initializeCatalogProductInteractions = (root = document) => {
             button.disabled = false;
             status.textContent = payload.message || 'Produto adicionado ao carrinho.';
 
-            if (cartLink && payload.cartQuantity >= 0) {
-                if (cartCount) {
-                    cartCount.textContent = payload.cartQuantity;
-                } else {
-                    cartCount = document.createElement('span');
-                    cartCount.className = 'catalog-cart-count';
-                    cartCount.setAttribute('aria-live', 'polite');
-                    cartCount.textContent = payload.cartQuantity;
-                    cartLink.append(cartCount);
-                }
-                cartLink.setAttribute('aria-label', `Carrinho com ${payload.cartQuantity} unidades`);
+            if (Number.isInteger(payload.cartQuantity) && payload.cartQuantity >= 0) {
+                updateHeaderCart(payload.cartQuantity);
             }
         } catch (error) {
             button.disabled = false;

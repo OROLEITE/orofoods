@@ -19,9 +19,34 @@ public sealed class PublicCatalogModernizationTests
 
         Assert.Contains("P&atilde;es de alta qualidade para hamburguerias e food service.", view, StringComparison.Ordinal);
         Assert.Contains("catalogo-banner-orofoods.jpg", styles, StringComparison.Ordinal);
-        Assert.Contains("catalog-header-cart", header, StringComparison.Ordinal);
-        Assert.Contains("action is \"Index\" or \"Products\"", header, StringComparison.Ordinal);
+        Assert.Contains("Component.InvokeAsync(\"CatalogCart\")", header, StringComparison.Ordinal);
         Assert.DoesNotContain("public-catalog-cart-row", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Shared_header_uses_the_session_cart_component_and_cyan_cart_button_contract()
+    {
+        var header = ReadWebFile("Views", "Shared", "_SiteHeader.cshtml");
+        var cart = ReadWebFile("Views", "Shared", "Components", "CatalogCart", "Default.cshtml");
+        var styles = ReadWebFile("wwwroot", "css", "header.css");
+
+        Assert.Contains("Component.InvokeAsync(\"CatalogCart\")", header, StringComparison.Ordinal);
+        Assert.Contains("data-cart-quantity", cart, StringComparison.Ordinal);
+        Assert.Contains("asp-action=\"Cart\"", cart, StringComparison.Ordinal);
+        Assert.Contains("#0E7490", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#0B5D75", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("transition:background-color .2s ease", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("border-radius:8px", styles, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Quick_buy_stepper_has_fixed_button_columns_on_home_and_catalog_cards()
+    {
+        var styles = ReadWebFile("wwwroot", "css", "catalog.css");
+
+        Assert.Contains(".public-quick-buy-card .catalog-quantity-stepper", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: 36px minmax(0, 1fr) 36px", styles, StringComparison.Ordinal);
+        Assert.Contains("flex: 0 0 36px", styles, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -90,8 +115,10 @@ public sealed class PublicCatalogModernizationTests
             var submit;
             var form = { action: "/Portal/AddToCart", dataset: {}, addEventListener(name, callback) { if (name === "submit") submit = callback; }, querySelector(selector) { return selector === 'button[type="submit"]' ? button : selector === 'input[name="quantity"]' ? input : status; } };
             var count = { textContent: "2" };
-            var cart = { querySelector() { return count; }, setAttribute(name, value) { this[name] = value; } };
-            globalThis.document = { querySelectorAll(selector) { return selector.includes("stepper") ? [stepper] : [form]; }, querySelector() { return cart; } };
+            var secondCount = { textContent: "2" };
+            var cart = { dataset: {}, querySelector() { return count; }, setAttribute(name, value) { this[name] = value; } };
+            var secondCart = { dataset: {}, querySelector() { return secondCount; }, setAttribute(name, value) { this[name] = value; } };
+            globalThis.document = { querySelectorAll(selector) { if (selector.includes("stepper")) return [stepper]; if (selector.includes("catalog-header-cart")) return [cart, secondCart]; return [form]; }, querySelector() { return cart; } };
             globalThis.window = {};
             globalThis.Event = function() {};
             globalThis.FormData = function() {};
@@ -104,7 +131,7 @@ public sealed class PublicCatalogModernizationTests
                 const afterDecrease = input.value;
                 const beforeSubmitStatus = status.textContent;
                 await submit({ preventDefault() {} });
-                return JSON.stringify({ afterIncrease, afterDecrease, beforeSubmitStatus, label: button.innerHTML, selected: input.value, controlsEnabled: !input.disabled && !increase.disabled, buttonEnabled: !button.disabled, status: status.textContent, count: count.textContent, cartLabel: cart["aria-label"] });
+                return JSON.stringify({ afterIncrease, afterDecrease, beforeSubmitStatus, label: button.innerHTML, selected: input.value, controlsEnabled: !input.disabled && !increase.disabled, buttonEnabled: !button.disabled, status: status.textContent, count: count.textContent, secondCount: secondCount.textContent, cartLabel: cart["aria-label"] });
             })();
             """;
 
@@ -121,6 +148,7 @@ public sealed class PublicCatalogModernizationTests
         Assert.True(root.GetProperty("buttonEnabled").GetBoolean());
         Assert.Equal("Produto adicionado ao carrinho.", root.GetProperty("status").GetString());
         Assert.Equal("3", root.GetProperty("count").ToString());
+        Assert.Equal("3", root.GetProperty("secondCount").ToString());
         Assert.Equal("Carrinho com 3 unidades", root.GetProperty("cartLabel").GetString());
     }
 

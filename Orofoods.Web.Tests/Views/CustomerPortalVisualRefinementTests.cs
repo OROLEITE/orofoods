@@ -102,26 +102,38 @@ public class CustomerPortalVisualRefinementTests
     }
 
     [Fact]
-    public void Portal_catalog_uses_transparent_product_copies_only_for_the_matching_wmc_codes()
+    public void Portal_catalog_uses_transparent_product_copies_for_all_matching_wmc_codes()
     {
         var projectPath = GetWebProjectPath();
         var view = ReadText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
         var styles = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-dark.css"));
-        var transparentImages = new[] { "503768", "504342", "503811", "503813", "504338", "503805" };
+        var imageCatalog = ReadText(Path.Combine(projectPath, "Services", "Catalog", "BimboProductImageCatalog.cs"));
+        var transparentImages = new[]
+        {
+            (Code: "503768", File: "503768_corte_duplo"),
+            (Code: "503775", File: "503775_tradicional_gergelim"),
+            (Code: "503777", File: "503777_smart_gergelim"),
+            (Code: "503805", File: "503805_tradicional"),
+            (Code: "503811", File: "503811_hot_dog"),
+            (Code: "503813", File: "503813_smart"),
+            (Code: "503833", File: "503833_brioche_class"),
+            (Code: "503838", File: "503838_mini_brioche"),
+            (Code: "504338", File: "504338_brioche_max"),
+            (Code: "504342", File: "504342_australiano")
+        };
 
-        Assert.Contains("portalTransparentProductImages.TryGetValue(product.WmcCode", view);
+        Assert.Contains("var catalogImageUrl = officialImage?.ImageUrl", view);
         Assert.Contains("image is not null ? Url.RouteUrl(\"ProductMedia\"", view);
-        Assert.DoesNotContain("[\"503833\"]", view);
-        Assert.DoesNotContain("[\"503838\"]", view);
-        Assert.DoesNotContain("[\"503775\"]", view);
-        Assert.DoesNotContain("[\"503777\"]", view);
+        Assert.DoesNotContain("portalTransparentProductImages", view);
         Assert.DoesNotMatch(
             @"(?s)body\.portal-authenticated \.portal-app-main \.portal-catalog-page \.product-visual\s*\{[^}]*background:\s*#FFFFFF",
             styles);
 
-        foreach (var wmcCode in transparentImages)
+        foreach (var (wmcCode, fileName) in transparentImages)
         {
-            var assetPath = Path.Combine(projectPath, "wwwroot", "images", "products", "bimbo-portal-transparent", $"{wmcCode}.png");
+            Assert.Contains($"[\"{wmcCode}\"] = new(", imageCatalog, StringComparison.Ordinal);
+            Assert.Contains($"/images/products/bimbo-catalog-transparent/{fileName}.png", imageCatalog, StringComparison.Ordinal);
+            var assetPath = Path.Combine(projectPath, "wwwroot", "images", "products", "bimbo-catalog-transparent", $"{fileName}.png");
             Assert.True(File.Exists(assetPath), $"Portal transparent image for WMC {wmcCode} is missing.");
             var png = File.ReadAllBytes(assetPath);
             Assert.True(png.Length > 26, $"Portal transparent image for WMC {wmcCode} is incomplete.");

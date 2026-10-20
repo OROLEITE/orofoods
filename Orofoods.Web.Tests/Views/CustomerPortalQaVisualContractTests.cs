@@ -69,11 +69,10 @@ public sealed class CustomerPortalQaVisualContractTests
         var mediaController = Read("Controllers", "ProductMediaController.cs");
         var imageFallback = Read("wwwroot", "js", "product-image-fallback.js");
         var catalogImages = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.All;
-        var illustrativeCodes = new[] { "503838", "503833", "503777", "503775", "503805", "503768", "503811" };
+        var illustrativeCodes = new[] { "503838", "503833", "503777", "503775", "503805", "503768", "503811", "503813", "504338" };
 
         Assert.True(catalogImages["504342"].UseCatalogImage);
-        Assert.All(catalogImages.Where(image => image.Key != "504342" && !illustrativeCodes.Contains(image.Key)),
-            image => Assert.False(image.Value.UseCatalogImage));
+        Assert.All(catalogImages, image => Assert.True(image.Value.UseCatalogImage));
         Assert.All(illustrativeCodes, code =>
         {
             Assert.True(catalogImages[code].UseCatalogImage);
@@ -84,7 +83,7 @@ public sealed class CustomerPortalQaVisualContractTests
         Assert.Contains("product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault()", view);
         Assert.Contains("Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode)", view);
         Assert.Contains("if (officialImage is not null || image is not null)", view);
-        Assert.DoesNotContain("Imagem ilustrativa", view);
+        Assert.Contains("Imagem ilustrativa", view);
         Assert.Contains("image is not null ? Url.RouteUrl(\"ProductMedia\", new { imageId = image.Id })", view);
         Assert.Contains("data-fallback-stage=\"@(image is null ? \"catalog\" : \"manual\")\"", view);
         var compactView = Compact(view);

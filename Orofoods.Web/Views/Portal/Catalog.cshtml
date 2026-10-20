@@ -5,15 +5,6 @@
     var brands = (IEnumerable<string>)ViewBag.Brands;
     var cartQuantity = (int)ViewBag.CartQuantity;
     var cartProductQuantities = (Dictionary<int, int>)ViewBag.CartProductQuantities;
-    var portalTransparentProductImages = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["503768"] = "~/images/products/bimbo-portal-transparent/503768.png",
-        ["504342"] = "~/images/products/bimbo-portal-transparent/504342.png",
-        ["503811"] = "~/images/products/bimbo-portal-transparent/503811.png",
-        ["503813"] = "~/images/products/bimbo-portal-transparent/503813.png",
-        ["504338"] = "~/images/products/bimbo-portal-transparent/504338.png",
-        ["503805"] = "~/images/products/bimbo-portal-transparent/503805.png"
-    };
 }
 <section class="page-hero portal-catalog-hero">
     <div class="container">
@@ -61,10 +52,7 @@
                 var hasValidPrice = price > 0m;
                 var officialImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);
                 var image = officialImage?.UseCatalogImage == true ? null : product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
-                var portalTransparentImage = product.WmcCode is not null && portalTransparentProductImages.TryGetValue(product.WmcCode, out var transparentImagePath)
-                    ? Url.Content(transparentImagePath)
-                    : null;
-                var catalogImageUrl = portalTransparentImage ?? officialImage?.ImageUrl;
+                var catalogImageUrl = officialImage?.ImageUrl;
                 var isInCart = cartProductQuantities.TryGetValue(product.Id, out var cartProductQuantity);
                 var packageDescription = product.HasPackageSalesConfiguration
                     ? $"CX com {product.PackagesPerCase} PCT"
@@ -78,6 +66,10 @@
                         else
                         {
                             <img src="~/images/products/product-photo-unavailable.svg" alt="Foto do produto indispon&iacute;vel" loading="lazy" />
+                        }
+                        @if (officialImage?.IsIllustrative == true)
+                        {
+                            <small class="catalog-image-disclaimer">Imagem ilustrativa</small>
                         }
                         <small>@product.Category</small>
                         @if (!product.IsCommerciallyAvailable)
