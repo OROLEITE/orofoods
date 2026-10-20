@@ -40,10 +40,26 @@ public class HomeProductViewTests
         Assert.True(File.Exists(Path.Combine(ProjectPath, "wwwroot", "images", "home", "banner-paes-foodservice.webp")));
         Assert.Contains("public-home-hero-copy", markup);
         Assert.Contains("public-home-hero-media", markup);
-        Assert.Contains("grid-template-columns: 55fr 45fr;", styles);
+        Assert.Contains("container public-home-hero-inner", markup);
+        var heroIndex = markup.IndexOf("<section class=\"public-home-hero\"", StringComparison.Ordinal);
+        var shellIndex = markup.IndexOf("<div class=\"container public-home-shell\"", StringComparison.Ordinal);
+        var featuredIndex = markup.IndexOf("<section class=\"public-home-featured", StringComparison.Ordinal);
+        Assert.True(heroIndex >= 0 && heroIndex < shellIndex && shellIndex < featuredIndex);
+        Assert.Contains("width: 100%;", styles);
+        Assert.Contains("min-height: 260px;", styles);
+        Assert.Contains("mask-image: linear-gradient(90deg", styles);
         Assert.Contains("object-fit: cover;", styles);
         Assert.Contains("object-position: center;", styles);
-        Assert.Contains("@media (max-width: 575.98px)", styles);
+        var mobileStylesStart = styles.IndexOf("@media (max-width: 767.98px)", StringComparison.Ordinal);
+        var mobileStylesEnd = styles.IndexOf("@media (max-width: 420px)", mobileStylesStart, StringComparison.Ordinal);
+        Assert.True(mobileStylesStart >= 0 && mobileStylesEnd > mobileStylesStart);
+        var mobileStyles = styles[mobileStylesStart..mobileStylesEnd];
+        Assert.Contains(".public-home-hero {", mobileStyles);
+        Assert.Contains("height: auto;", mobileStyles);
+        Assert.Contains(".public-home-hero-media {", mobileStyles);
+        Assert.Contains("position: relative;", mobileStyles);
+        Assert.Contains("width: 100%;", mobileStyles);
+        Assert.Contains("max-width: 100%;", mobileStyles);
     }
 
     [Fact]
@@ -137,6 +153,37 @@ public class HomeProductViewTests
         Assert.Contains(".public-products-section .quick-buy-button,", catalogStyles);
         Assert.Contains("background: #0E7490;", catalogStyles);
         Assert.Contains("min-height: 44px;", catalogStyles);
+    }
+
+    [Fact]
+    public void Home_and_public_catalog_cards_share_two_row_quantity_and_add_controls()
+    {
+        var home = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
+        var products = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Products.cshtml"));
+        var card = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(ProjectPath, "wwwroot", "css", "catalog.css")).Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        Assert.Contains("partial name=\"_PublicProductCard\"", home);
+        Assert.Contains("partial name=\"_PublicProductCard\"", products);
+        Assert.Contains("class=\"catalog-add-controls quick-buy-controls\"", card);
+        Assert.Contains("data-catalog-quantity-decrease", card);
+        Assert.Contains("data-catalog-quantity-increase", card);
+        Assert.Contains("type=\"submit\">Adicionar</button>", card);
+
+        Assert.Contains(".public-quick-buy-card .catalog-add-controls {", styles);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr);", styles);
+        Assert.Contains("gap: 8px;", styles);
+        Assert.Contains("grid-template-columns: 36px minmax(0, 1fr) 36px;", styles);
+        Assert.Contains(".public-quick-buy-card .catalog-quantity-stepper > input", styles);
+        Assert.Contains("min-width: 0;", styles);
+        Assert.Contains(".public-quick-buy-card .catalog-add-controls > .quick-buy-button", styles);
+        Assert.Contains("width: 100%;", styles);
+        Assert.Contains(".public-products-section .quick-buy-button,", styles);
+        Assert.Contains("background: #0E7490;", styles);
+        Assert.Contains("background: #0B5D75;", styles);
+        Assert.Contains("body.catalog-modern-page.customer-experience .public-products-section .public-quick-buy-grid {", styles);
+        Assert.DoesNotContain(".public-home .quick-buy-controls", styles);
+        Assert.DoesNotContain("minmax(86px, .72fr)", styles);
     }
 
     [Fact]
