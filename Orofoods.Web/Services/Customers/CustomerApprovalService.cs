@@ -8,7 +8,6 @@ public class CustomerApprovalService(ApplicationDbContext db)
     public async Task<CustomerApprovalResult> ApplyAsync(CustomerApprovalRequest request, CancellationToken cancellationToken = default)
     {
         var customer = await db.Customers
-            .Include(x => x.CustomerPaymentTerms)
             .SingleAsync(x => x.Id == request.CustomerId, cancellationToken);
 
         if (request.Cnpj is not null
@@ -64,14 +63,6 @@ public class CustomerApprovalService(ApplicationDbContext db)
         customer.Status = request.Status;
         customer.MinimumOrder = request.MinimumOrder;
         customer.CreditLimit = request.CreditLimit;
-        customer.CreditOverrideEnabled = request.CreditOverrideEnabled;
-        customer.MaximumPaymentTermDays = request.CreditOverrideEnabled ? Math.Clamp(request.MaximumPaymentTermDays ?? 0, 0, 14) : null;
-        customer.CreditBlocked = request.CreditBlocked;
-        customer.CreditNotes = string.IsNullOrWhiteSpace(request.CreditNotes) ? null : request.CreditNotes.Trim();
-        if (request.CreditOverrideEnabled && customer.MaximumPaymentTermDays > 0 && customer.CreditReleaseDate is null)
-        {
-            customer.CreditReleaseDate = DateTime.UtcNow;
-        }
         customer.WmcCode = NormalizeWmcCode(request.WmcCode);
         customer.PriceTableId = request.PriceTableId;
         customer.SalesRepresentativeId = request.SalesRepresentativeId;
@@ -80,19 +71,6 @@ public class CustomerApprovalService(ApplicationDbContext db)
         customer.ApprovedAt = request.Status == CustomerStatus.Approved
             ? DateTime.UtcNow
             : null;
-
-        db.CustomerPaymentTerms.RemoveRange(customer.CustomerPaymentTerms);
-        customer.CustomerPaymentTerms.Clear();
-
-        foreach (var paymentTermId in request.PaymentTermIds.Distinct())
-        {
-            customer.CustomerPaymentTerms.Add(new CustomerPaymentTerm
-            {
-                CustomerId = customer.Id,
-                PaymentTermId = paymentTermId,
-                IsActive = true
-            });
-        }
 
         await db.SaveChangesAsync(cancellationToken);
         return CustomerApprovalResult.Success;
@@ -112,15 +90,10 @@ public sealed class CustomerApprovalRequest
     public CustomerStatus Status { get; set; }
     public decimal MinimumOrder { get; set; }
     public decimal CreditLimit { get; set; }
-    public bool CreditOverrideEnabled { get; set; }
-    public int? MaximumPaymentTermDays { get; set; }
-    public bool CreditBlocked { get; set; }
-    public string? CreditNotes { get; set; }
     public string? WmcCode { get; set; }
     public int? PriceTableId { get; set; }
     public int? SalesRepresentativeId { get; set; }
     public string? InternalSalesUserId { get; set; }
-    public IReadOnlyCollection<int> PaymentTermIds { get; set; } = [];
 }
 
 public sealed record CustomerApprovalResult(bool Succeeded, string? ErrorField = null, string? ErrorMessage = null)

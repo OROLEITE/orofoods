@@ -101,7 +101,6 @@ public class CustomerApprovalServiceTests
         {
             CustomerId = customer.Id,
             Cnpj = "00000000e08g12",
-            PaymentTermIds = []
         });
 
         Assert.True(result.Succeeded);
@@ -162,7 +161,6 @@ public class CustomerApprovalServiceTests
             SalesRepresentativeId = salesRepresentative.Id,
             InternalSalesUserId = internalUser.Id,
             WmcCode = "107072",
-            PaymentTermIds = [paymentTerm.Id]
         });
 
         var updatedCustomer = await db.Customers
@@ -177,6 +175,6 @@ public class CustomerApprovalServiceTests
         Assert.Equal(salesRepresentative.Id, updatedCustomer.SalesRepresentativeId);
         Assert.Equal(internalUser.Id, updatedCustomer.InternalSalesUserId);
         Assert.Equal("107072", updatedCustomer.WmcCode);
-        Assert.Single(updatedCustomer.CustomerPaymentTerms);
+        Assert.Empty(updatedCustomer.CustomerPaymentTerms);
     }
 }

@@ -109,41 +109,20 @@
                     </div>
                 </section>
 
-                <section class="registration-card registration-card--full">
-                    <header class="registration-card-heading"><span><i class="fa-solid fa-credit-card" aria-hidden="true"></i></span><div><small>05. Condições de pagamento</small><h2>Elegibilidade e prazos</h2></div></header>
-                    <div class="customer-payment-layout">
-                        <div class="customer-payment-indicators" aria-label="Indicadores de elegibilidade de pagamento">
-                            <div class="customer-payment-indicator"><small>Compras válidas</small><strong>@Model.ValidPurchaseCount</strong></div>
-                            <div class="customer-payment-indicator"><small>Condição atual</small><strong>@(Model.InvoiceCreditEnabled ? "Até 14 dias" : "À vista")</strong></div>
-                            <div class="customer-payment-indicator"><small>Prazo máximo</small><strong>@Model.EffectiveMaximumPaymentTermDays dias</strong></div>
-                            <div class="customer-payment-indicator"><small>Liberação</small><strong>@(Model.EffectiveCreditReleaseDate?.ToString("dd/MM/yyyy") ?? "Não liberado")</strong></div>
-                        </div>
-                        <div class="customer-payment-controls">
-                            <div class="form-check"><input asp-for="CreditBlocked" class="form-check-input" /><label asp-for="CreditBlocked" class="form-check-label">Bloquear boleto a prazo</label></div>
-                            <div class="form-check"><input asp-for="CreditOverrideEnabled" class="form-check-input" /><label asp-for="CreditOverrideEnabled" class="form-check-label">Definir prazo manualmente</label></div>
-                            <div><label asp-for="MaximumPaymentTermDays" class="form-label">Prazo manual (dias)</label><input asp-for="MaximumPaymentTermDays" class="form-control" inputmode="numeric" max="14" /></div>
-                        </div>
-                        <div>
-                            <fieldset class="customer-payment-terms">
-                                <legend>Condições de pagamento</legend>
-                                <div class="customer-payment-terms-grid">
-                                    @foreach (var term in Model.PaymentTerms)
-                                    {
-                                        var termId = $"payment-term-{term.Value}";
-                                        <label class="customer-payment-term" for="@termId">
-                                            <input id="@termId" type="checkbox" name="PaymentTermIds" value="@term.Value" checked="@(term.Selected ? "checked" : null)" />
-                                            <span>@term.Text</span>
-                                        </label>
-                                    }
-                                </div>
-                            </fieldset>
-                            <small class="customer-field-help">Selecione uma ou mais condições disponíveis para este cliente.</small>
-                        </div>
-                        <div><label asp-for="CreditNotes" class="form-label">Observações de crédito</label><textarea asp-for="CreditNotes" class="form-control" rows="3"></textarea></div>
-                    </div>
+                                <section class="registration-card registration-card--full">
+                    <header class="registration-card-heading"><span><i class="fa-solid fa-credit-card" aria-hidden="true"></i></span><div><small>05. Condições de pagamento</small><h2>Condição principal no WMC</h2></div></header>
+                    <p class="mb-1"><strong>@Model.WmcPaymentConditionDescription</strong></p>
+                    <p class="mb-1" data-wmc-payment-condition-eligible="@Model.WmcPaymentConditionEligible">@Model.WmcPaymentConditionStatus</p>
+                    @if (Model.WmcPaymentConditionCode is not null)
+                    {
+                        <small>Código WMC: @Model.WmcPaymentConditionCode · Situação: @(Model.WmcPaymentConditionSituation ?? "não informada") · Parcelas: @(Model.WmcPaymentConditionInstallmentCount?.ToString() ?? "não informado")</small>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.WmcPaymentConditionSource))
+                    {
+                        <small>Origem: @Model.WmcPaymentConditionSource · Consulta UTC: @Model.WmcPaymentConditionReadAtUtc?.ToString("O") · Última sincronização UTC: @(Model.WmcPaymentConditionSynchronizationAtUtc?.ToString("O") ?? "não informada pelo espelho")</small>
+                    }
                 </section>
-
-                @if (isPending)
+@if (isPending)
                 {
                     <aside class="customer-approval-aside">
                         <div class="customer-approval-summary">

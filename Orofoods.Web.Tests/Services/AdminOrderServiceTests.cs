@@ -238,7 +238,6 @@ public class AdminOrderServiceTests
             db,
             timeProvider,
             reservationService,
-            new PaymentEligibilityService(db, eligibilityOptions),
             new PaymentService(db, eligibilityOptions, new PendingBoletoProvider()));
     }
 

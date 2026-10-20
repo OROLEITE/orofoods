@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
+using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
@@ -56,6 +57,30 @@ public class WmcFileDropErpOrderIntegrationTests
         Assert.True(result.Succeeded);
         Assert.NotNull(result.ExternalOrderId);
         Assert.True(File.Exists(Path.Combine(directory, result.ExternalOrderId!)));
+    }
+
+    [Fact]
+    public async Task Automatic_credit_export_revalidates_current_wmc_term_before_writing_txt()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}");
+        var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = directory });
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = ApprovedOrder("ORO-2026-000790");
+        order.Customer!.WmcCode = "107072";
+        order.PaymentTerm = new PaymentTerm { Code = "BOLETO_14D", Name = "14 dias", DaysUntilDue = 14 };
+        await PersistOrderAsync(db, order);
+
+        var accepted = await CreateAdapter(options, db, new WmcCustomerPaymentCondition(
+            "107072", "3", "3", "14 DIAS", 1, 14, 0, "A", "WMC Firebird mirror", DateTimeOffset.UtcNow))
+            .SendOrderAsync(order);
+        Assert.True(accepted.Succeeded);
+        Assert.True(File.Exists(Path.Combine(directory, accepted.ExternalOrderId!)));
+
+        var changed = await CreateAdapter(options, db, new WmcCustomerPaymentCondition(
+            "107072", "2", "2", "7 DIAS", 1, 7, 0, "A", "WMC Firebird mirror", DateTimeOffset.UtcNow))
+            .SendOrderAsync(order);
+        Assert.False(changed.Succeeded);
+        Assert.Contains("Prazo bloqueado", changed.Error);
     }
 
     [Fact]
@@ -132,28 +157,36 @@ public class WmcFileDropErpOrderIntegrationTests
         Assert.Equal("arquivo de outro conteúdo/pedido", await File.ReadAllTextAsync(path));
     }
 
-    [Fact]
-    public async Task Card_on_delivery_is_blocked_before_file_write_with_explicit_mapping_marker()
+    [Theory]
+    [InlineData("CREDIT_CARD")]
+    [InlineData("CARD_ON_DELIVERY")]
+    public async Task Card_modes_are_exported_automatically_as_due_today_without_changing_the_payment_term(string code)
     {
         var directory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}");
         var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = directory });
         var order = new Order
         {
             Number = "ORO-2026-000779",
+            CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
             CustomerCnpjSnapshot = "03932292000199",
             Status = OrderStatus.Approved,
             Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega" },
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
         };
+        order.PaymentTerm!.Code = code;
+        order.PaymentTerm.DaysUntilDue = 14;
         await using var db = await TestDbContextFactory.CreateAsync();
         await PersistOrderAsync(db, order);
 
         var result = await CreateAdapter(options, db).SendOrderAsync(order);
 
-        Assert.False(result.Succeeded);
-        Assert.Contains("WMC_CARD_ON_DELIVERY_MAPPING_PENDING", result.Error);
-        Assert.False(Directory.Exists(directory));
+        Assert.True(result.Succeeded, result.Error);
+        var content = await File.ReadAllTextAsync(Path.Combine(directory, result.ExternalOrderId!));
+        Assert.Contains("000", content.Split(Environment.NewLine)[1]);
+        Assert.Contains("20260830", content.Split(Environment.NewLine)[1]);
+        Assert.Equal(14, order.PaymentTerm.DaysUntilDue);
+        Assert.Contains(db.WmcExportAudits, audit => audit.Outcome == WmcExportOutcome.Available && audit.Succeeded);
     }
 
     [Theory]
@@ -198,6 +231,11 @@ public class WmcFileDropErpOrderIntegrationTests
         }
     }
 
-    private static WmcFileDropErpOrderIntegration CreateAdapter(IOptions<WmcFileDropOptions> options, ApplicationDbContext db) =>
-        new(options, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
+    private static WmcFileDropErpOrderIntegration CreateAdapter(
+        IOptions<WmcFileDropOptions> options,
+        ApplicationDbContext db,
+        WmcCustomerPaymentCondition? condition = null,
+        bool failRead = false) =>
+        new(options, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db),
+            WmcTestPaymentEligibility.Create(db, condition, failRead));
 }

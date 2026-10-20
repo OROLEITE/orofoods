@@ -27,17 +27,12 @@ public class PriceService(ApplicationDbContext db)
                     x => x.PriceTableId == customer.PriceTableId.Value && x.ProductId == productId,
                     cancellationToken);
 
-        var isProvisionalBimboPrice = priceTableItem is null
-            && string.Equals(product.Brand, "BIMBO", StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrWhiteSpace(product.WmcCode)
-            && product.BasePrice == 1.00m
-            && product.PromotionalPrice is null;
-        var effectivePrice = isProvisionalBimboPrice ? 0m : priceTableItem?.PromotionalPrice
+        var effectivePrice = priceTableItem?.PromotionalPrice
             ?? priceTableItem?.Price
             ?? product.PromotionalPrice
             ?? product.BasePrice;
 
-        return new ResolvedPrice(product.BasePrice, product.PromotionalPrice, effectivePrice, !isProvisionalBimboPrice && effectivePrice > 0m);
+        return new ResolvedPrice(product.BasePrice, product.PromotionalPrice, effectivePrice, effectivePrice > 0m);
     }
 
     public async Task<Dictionary<int, decimal>> GetPricesAsync(

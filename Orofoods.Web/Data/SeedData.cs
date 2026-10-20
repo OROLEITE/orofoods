@@ -182,12 +182,8 @@ public static class SeedData
         await db.SaveChangesAsync();
 
         var burgerPriceTable = await db.PriceTables.SingleAsync(x => x.Name == "Tabela Hamburgueria");
-        var pix = await db.PaymentTerms.SingleAsync(x => x.Code == "PIX");
-        var fourteenDays = await db.PaymentTerms.SingleAsync(x => x.Code == "BOLETO_14D");
-
         var approvedCustomer = await db.Customers
             .Include(x => x.Addresses)
-            .Include(x => x.CustomerPaymentTerms)
             .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Cnpj == "12.345.678/0001-90");
         if (approvedCustomer is null)
@@ -212,8 +208,6 @@ public static class SeedData
             };
             approvedCustomer.Addresses.Add(new CustomerAddress { Label = "Loja Centro", Street = "Rua das Palmeiras", Number = "142", District = "Centro", City = "Campinas", State = "SP", ZipCode = "13000-000", DeliveryDay = "Quintas-feiras", IsPrimary = true, IsActive = true });
             approvedCustomer.Addresses.Add(new CustomerAddress { Label = "Unidade Cambui", Street = "Av. Norte-Sul", Number = "880", District = "Cambuí", City = "Campinas", State = "SP", ZipCode = "13000-100", DeliveryDay = "Sextas-feiras", IsPrimary = false, IsActive = true });
-            approvedCustomer.CustomerPaymentTerms.Add(new CustomerPaymentTerm { PaymentTermId = pix.Id, IsActive = true });
-            approvedCustomer.CustomerPaymentTerms.Add(new CustomerPaymentTerm { PaymentTermId = fourteenDays.Id, IsActive = true });
             db.Customers.Add(approvedCustomer);
             await db.SaveChangesAsync();
         }

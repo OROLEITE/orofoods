@@ -5,11 +5,8 @@
     var product = Model;
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var isSeller = User.IsInRole("Vendedor");
-    var isHomeShowcase = string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), "Home", StringComparison.OrdinalIgnoreCase)
-        && string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Index", StringComparison.OrdinalIgnoreCase);
     var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSeller;
     var prices = ViewBag.Prices as Dictionary<int, decimal> ?? new Dictionary<int, decimal>();
-    var availableQuantities = ViewBag.AvailableQuantities as Dictionary<int, int> ?? new Dictionary<int, int>();
     var cartProductQuantities = ViewBag.CartProductQuantities as Dictionary<int, int> ?? new Dictionary<int, int>();
     var sellerProducts = ViewBag.SellerProducts as Dictionary<int, SellerCatalogProductRow> ?? new Dictionary<int, SellerCatalogProductRow>();
     var customerId = ViewBag.CustomerId as int?;
@@ -17,7 +14,6 @@
     var catalogImage = Orofoods.Web.Services.Catalog.BimboProductImageCatalog.Find(product.WmcCode);
     var image = catalogImage?.UseCatalogImage == true ? null : product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();
     var isBimbo = catalogImage is not null;
-    var availableQuantity = availableQuantities.GetValueOrDefault(product.Id);
     var productText = $"{product.Name} {product.Description} {product.Category}";
     var storageText = $"{product.StorageInformation} {product.StorageTemperature} {product.AdditionalInformation}";
     var quickFilterTags = new List<string>();
@@ -53,22 +49,12 @@
         <h2>@product.Name</h2>
         <p class="quick-buy-packaging"><i class="fa-solid fa-box" aria-hidden="true"></i><span>@packageDescription</span></p>
 
-        @if (isHomeShowcase && !product.IsCommerciallyAvailable)
-        {
-            <p class="quick-buy-unavailable" role="status">Consulte disponibilidade</p>
-            <a class="btn quick-buy-button" asp-area="" asp-controller="Home" asp-action="Product" asp-route-id="@product.Id">Ver produto</a>
-        }
-        else if (isCustomer)
+        @if (isCustomer)
         {
             var price = prices.GetValueOrDefault(product.Id);
             var isInCart = cartProductQuantities.TryGetValue(product.Id, out var cartProductQuantity);
             if (price > 0m) { <div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ @product.PriceUnitLabel</span></div> }
-            if (!product.IsCommerciallyAvailable)
-            {
-                <p class="quick-buy-unavailable" role="status">Consulte disponibilidade</p>
-                <button class="quick-buy-button" type="button" disabled>Indispon&iacute;vel</button>
-            }
-            else if (price <= 0m)
+            if (price <= 0m)
             {
                 <p class="quick-buy-unavailable" role="status">Pre&ccedil;o indispon&iacute;vel para sua tabela</p>
                 <button class="quick-buy-button" type="button" disabled>Consultar pre&ccedil;o</button>
@@ -81,7 +67,7 @@
                     <div class="catalog-add-controls quick-buy-controls">
                         <div class="catalog-quantity-stepper" data-catalog-quantity-stepper>
                             <button class="catalog-quantity-button" type="button" data-catalog-quantity-decrease aria-label="Diminuir quantidade de @product.Name" disabled="@isInCart">&minus;</button>
-                            <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumSalesQuantity" max="@availableQuantity" step="1" value="@(isInCart ? cartProductQuantity : product.MinimumSalesQuantity)" inputmode="numeric" aria-label="Quantidade de @product.Name" disabled="@isInCart" />
+                            <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumSalesQuantity" step="1" value="@(isInCart ? cartProductQuantity : product.MinimumSalesQuantity)" inputmode="numeric" aria-label="Quantidade de @product.Name" disabled="@isInCart" />
                             <button class="catalog-quantity-button" type="button" data-catalog-quantity-increase aria-label="Aumentar quantidade de @product.Name" disabled="@isInCart">+</button>
                         </div>
                         <button class="btn quick-buy-button" type="submit" disabled="@isInCart">@(isInCart ? "No carrinho" : "Comprar")</button>
@@ -107,8 +93,8 @@
             }
             else if (customerId is > 0)
             {
-                <p class="quick-buy-unavailable" role="status">Consulte disponibilidade para este cliente</p>
-                <button class="quick-buy-button" type="button" disabled>Indispon&iacute;vel</button>
+                <p class="quick-buy-unavailable" role="status">Pre&ccedil;o indispon&iacute;vel para este cliente</p>
+                <button class="quick-buy-button" type="button" disabled>Consultar pre&ccedil;o</button>
             }
             else
             {
@@ -120,7 +106,7 @@
         {
             @if (!isAuthenticated)
             {
-                <a class="btn quick-buy-button" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">@(product.IsCommerciallyAvailable ? "Comprar" : "Consulte disponibilidade")</a>
+                <a class="btn quick-buy-button" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Comprar</a>
                 <p class="quick-buy-auth-hint">J&aacute; tem acesso? <a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@loginReturnUrl">Entrar</a> &middot; <a asp-area="" asp-controller="CustomerRegistration" asp-action="Register">Cadastrar</a></p>
             }
             else

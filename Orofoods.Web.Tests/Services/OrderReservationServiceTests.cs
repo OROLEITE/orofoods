@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Inventory;
@@ -12,21 +13,28 @@ namespace Orofoods.Web.Tests.Services;
 public class OrderReservationServiceTests
 {
     [Fact]
-    public async Task ReserveAsync_RejectsOrder_WhenInventoryIsInsufficient()
+    public async Task ReserveAsync_AcceptsOrder_WhenInventoryIsInsufficientOrMissing()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99", CreditLimit = 1000m };
         var product = CreateProduct();
+        var noInventoryProduct = CreateProduct();
+        noInventoryProduct.Sku = "SEM-ESTOQUE";
         var order = new Order { Customer = customer, CreatedByUser = CreateUser(), Total = 100m, PaymentMethod = "14 dias" };
         order.Items.Add(new OrderItem { Product = product, Quantity = 3, UnitPrice = 10m, Subtotal = 30m });
-        db.AddRange(order, new ProductInventory { Product = product, QuantityOnHand = 2 });
+        order.Items.Add(new OrderItem { Product = noInventoryProduct, Quantity = 2, UnitPrice = 10m, Subtotal = 20m });
+        db.AddRange(order, new ProductInventory { Product = product, QuantityOnHand = 0 });
         await db.SaveChangesAsync();
 
         var result = await new OrderReservationService(db).ReserveAsync(order);
 
-        Assert.False(result.IsValid);
-        Assert.Contains("Estoque insuficiente", result.ErrorMessage);
-        Assert.Equal(0, customer.CreditUsed);
+        Assert.True(result.IsValid);
+        Assert.All(db.ProductInventories, x => Assert.InRange(x.QuantityReserved, 0, x.QuantityOnHand));
+        Assert.Equal(0, (await db.ProductInventories.SingleAsync()).QuantityReserved);
+
+        await new OrderReservationService(db).ReleaseAsync(order);
+
+        Assert.All(db.ProductInventories, x => Assert.Equal(0, x.QuantityReserved));
     }
 
     [Fact]

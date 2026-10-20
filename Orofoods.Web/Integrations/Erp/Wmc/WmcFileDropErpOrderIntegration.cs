@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Integrations;
 
 namespace Orofoods.Web.Integrations.Erp.Wmc;
@@ -9,7 +10,8 @@ namespace Orofoods.Web.Integrations.Erp.Wmc;
 public sealed class WmcFileDropErpOrderIntegration(
     IOptions<WmcFileDropOptions> options,
     WmcOrderFileGenerator fileGenerator,
-    WmcExportAuditService auditService) : IErpOrderIntegration
+    WmcExportAuditService auditService,
+    IPaymentEligibilityService? paymentEligibilityService = null) : IErpOrderIntegration
 {
     public async Task<ErpOrderResult> SendOrderAsync(
         Order order,
@@ -19,15 +21,6 @@ public sealed class WmcFileDropErpOrderIntegration(
         if (order.Status != OrderStatus.Approved)
         {
             return new ErpOrderResult(false, Error: "Somente pedidos aprovados podem ser exportados para o WMC.");
-        }
-
-        if (order.PaymentTerm?.Code == "CARD_ON_DELIVERY")
-        {
-            return new ErpOrderResult(false, Error: "WMC_CARD_ON_DELIVERY_MAPPING_PENDING");
-        }
-        if (order.PaymentTerm?.Code == "CREDIT_CARD")
-        {
-            return new ErpOrderResult(false, Error: "WMC_CREDIT_CARD_MAPPING_PENDING");
         }
 
         var id = attemptId is null || attemptId == Guid.Empty ? Guid.NewGuid() : attemptId.Value;
@@ -44,6 +37,34 @@ public sealed class WmcFileDropErpOrderIntegration(
             if (string.IsNullOrWhiteSpace(settings.OutputDirectory))
             {
                 return await FailAsync(order, id, fileName, generatedAt, "Diretório de exportação WMC não configurado.", cancellationToken);
+            }
+
+            var paymentTermError = WmcOrderFileGenerator.GetPaymentTermExportError(order.PaymentTerm);
+            if (paymentTermError is not null)
+            {
+                return await FailAsync(order, id, fileName, generatedAt, paymentTermError, cancellationToken);
+            }
+
+            if (order.PaymentTerm is { DaysUntilDue: > 0 } && !WmcOrderFileGenerator.IsCardMode(order.PaymentTerm))
+            {
+                if (paymentEligibilityService is null)
+                {
+                    return await FailAsync(order, id, fileName, generatedAt,
+                        "Verificação da autorização WMC não configurada; exportação a prazo bloqueada.", cancellationToken);
+                }
+
+                if (order.PaymentTermId is null)
+                {
+                    return await FailAsync(order, id, fileName, generatedAt,
+                        "O pedido a prazo não possui uma condição WMC associada; exportação bloqueada.", cancellationToken);
+                }
+
+                var authorization = await paymentEligibilityService.ValidateAsync(order.CustomerId, order.PaymentTermId.Value, cancellationToken);
+                if (!authorization.IsAllowed)
+                {
+                    return await FailAsync(order, id, fileName, generatedAt,
+                        $"Prazo bloqueado: {authorization.ErrorMessage ?? "não autorizado pelo WMC"}", cancellationToken);
+                }
             }
 
             var export = fileGenerator.Build(order);

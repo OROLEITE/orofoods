@@ -130,6 +130,59 @@ public sealed class WmcManualExportServiceTests
     }
 
     [Fact]
+    public async Task Credit_txt_export_is_allowed_when_current_wmc_authorization_matches_the_order()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddCreditOrderAsync(db);
+        var condition = ActiveWmcCondition(days: 14);
+
+        var result = await CreateService(db, condition).ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Exported, result.Disposition);
+        Assert.Contains("14", result.Content);
+    }
+
+    [Fact]
+    public async Task Credit_txt_export_is_blocked_when_wmc_authorization_changed_or_is_unavailable()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddCreditOrderAsync(db);
+
+        var changed = await CreateService(db, ActiveWmcCondition(days: 7))
+            .ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, changed.Disposition);
+        Assert.Contains("Prazo bloqueado", changed.Error);
+
+        var inactive = await CreateService(db, ActiveWmcCondition(days: 14, situation: "I"))
+            .ExportAsync(order.Id, "admin-2", "admin2@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, inactive.Disposition);
+        Assert.Contains("Prazo bloqueado", inactive.Error);
+
+        var failedRead = await CreateService(db, failRead: true)
+            .ExportAsync(order.Id, "admin-3", "admin3@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, failedRead.Disposition);
+        Assert.Contains("Prazo bloqueado", failedRead.Error);
+
+        var absent = await CreateService(db)
+            .ExportAsync(order.Id, "admin-4", "admin4@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Rejected, absent.Disposition);
+        Assert.Contains("Prazo bloqueado", absent.Error);
+        Assert.Empty(await db.WmcManualExportArtifacts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Cash_txt_export_remains_available_without_wmc_credit_authorization()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+
+        var result = await CreateService(db).ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Exported, result.Disposition);
+        Assert.False(string.IsNullOrWhiteSpace(result.Content));
+    }
+
+    [Fact]
     public async Task Download_returns_verified_original_without_changing_state_or_audits()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -146,6 +199,155 @@ public sealed class WmcManualExportServiceTests
         Assert.Equal(generated.Content, downloaded.Content);
         Assert.Equal(stateVersion, (await db.WmcOrderExportStates.SingleAsync()).Version);
         Assert.Equal(auditCount, await db.WmcExportAudits.CountAsync());
+    }
+
+    [Theory]
+    [InlineData("CREDIT_CARD")]
+    [InlineData("CARD_ON_DELIVERY")]
+    public async Task Manual_export_maps_card_modes_to_due_today_without_changing_the_payment_term(string code)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.PaymentTerm!.Code = code;
+        order.PaymentTerm.Name = code;
+        order.PaymentTerm.DaysUntilDue = 14;
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        var export = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Exported, export.Disposition);
+        Assert.Contains("00020260830", export.Content);
+        Assert.Equal(14, order.PaymentTerm.DaysUntilDue);
+        Assert.Single(await db.WmcManualExportArtifacts.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("CREDIT_CARD")]
+    [InlineData("CARD_ON_DELIVERY")]
+    public async Task Archived_card_txt_download_remains_available_for_the_mapped_card_mode(string code)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.PaymentTerm!.Code = code;
+        order.PaymentTerm.Name = code;
+        order.PaymentTerm.DaysUntilDue = 14;
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+        var generated = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Exported, generated.Disposition);
+
+        var downloaded = await service.DownloadAsync(order.Id);
+
+        Assert.Equal(WmcManualExportDisposition.Downloaded, downloaded.Disposition);
+        Assert.Equal(generated.Content, downloaded.Content);
+        Assert.Contains("00020260830", downloaded.Content);
+        Assert.Equal(14, order.PaymentTerm.DaysUntilDue);
+    }
+
+    [Theory]
+    [InlineData("CREDIT_CARD")]
+    [InlineData("CARD_ON_DELIVERY")]
+    public async Task Regeneration_preserves_the_due_today_card_mapping(string code)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddEligibleOrderAsync(db);
+        order.PaymentTerm!.Code = code;
+        order.PaymentTerm.Name = code;
+        order.PaymentTerm.DaysUntilDue = 14;
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+        var generated = await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Exported, generated.Disposition);
+        await service.RejectAsync(order.Id, "Rejeitado no WMC", "admin-2", "admin2@orofoods.local");
+        var regenerated = await service.RegenerateRejectedAsync(
+            order.Id, "Pedido corrigido para reenvio", "admin-3", "admin3@orofoods.local");
+
+        Assert.Equal(WmcManualExportDisposition.Exported, regenerated.Disposition);
+        Assert.Contains("00020260830", regenerated.Content);
+        Assert.Equal(14, order.PaymentTerm.DaysUntilDue);
+        Assert.Equal(2, await db.WmcManualExportArtifacts.CountAsync());
+    }
+
+    [Fact]
+    public async Task Credit_txt_download_revalidates_current_wmc_authorization()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddCreditOrderAsync(db);
+        var generated = await CreateService(db, ActiveWmcCondition(days: 14))
+            .ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+        Assert.Equal(WmcManualExportDisposition.Exported, generated.Disposition);
+
+        var downloaded = await CreateService(db, ActiveWmcCondition(days: 7)).DownloadAsync(order.Id);
+
+        Assert.Equal(WmcManualExportDisposition.Rejected, downloaded.Disposition);
+        Assert.Null(downloaded.Content);
+        Assert.Contains("Prazo bloqueado", downloaded.Error);
+        Assert.Contains("WMC", downloaded.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Credit_txt_download_is_allowed_when_current_wmc_authorization_matches_the_order()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = await AddCreditOrderAsync(db);
+        var original = await CreateService(db, ActiveWmcCondition(days: 14))
+            .ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+
+        var downloaded = await CreateService(db, ActiveWmcCondition(days: 14)).DownloadAsync(order.Id);
+
+        Assert.Equal(WmcManualExportDisposition.Downloaded, downloaded.Disposition);
+        Assert.Equal(original.Content, downloaded.Content);
+    }
+
+    [Fact]
+    public async Task Credit_txt_download_fails_closed_when_wmc_condition_is_inactive_missing_or_unavailable()
+    {
+        foreach (var (condition, failRead) in new (WmcCustomerPaymentCondition?, bool)[]
+        {
+            (ActiveWmcCondition(days: 14, situation: "I"), false),
+            (null, false),
+            (null, true)
+        })
+        {
+            await using var db = await TestDbContextFactory.CreateAsync();
+            var order = await AddCreditOrderAsync(db);
+            var generated = await CreateService(db, ActiveWmcCondition(days: 14))
+                .ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+            Assert.Equal(WmcManualExportDisposition.Exported, generated.Disposition);
+
+            var downloaded = await CreateService(db, condition, failRead).DownloadAsync(order.Id);
+
+            Assert.Equal(WmcManualExportDisposition.Rejected, downloaded.Disposition);
+            Assert.Null(downloaded.Content);
+            Assert.Contains("Prazo bloqueado", downloaded.Error);
+        }
+    }
+
+    [Fact]
+    public async Task Rejected_credit_txt_cannot_be_regenerated_after_wmc_authorization_changes_or_becomes_inactive()
+    {
+        foreach (var currentCondition in new WmcCustomerPaymentCondition?[]
+        {
+            ActiveWmcCondition(days: 7),
+            ActiveWmcCondition(days: 14, situation: "I")
+        })
+        {
+            await using var db = await TestDbContextFactory.CreateAsync();
+            var order = await AddCreditOrderAsync(db);
+            var service = CreateService(db, ActiveWmcCondition(days: 14));
+            await service.ExportAsync(order.Id, "admin-1", "admin@orofoods.local");
+            await service.RejectAsync(order.Id, "Rejeitado no WMC", "admin-2", "admin2@orofoods.local");
+            var artifactId = (await db.WmcOrderExportStates.SingleAsync()).CurrentArtifactId;
+
+            var regenerated = await CreateService(db, currentCondition).RegenerateRejectedAsync(
+                order.Id, "Reprocessamento", "admin-3", "admin3@orofoods.local");
+
+            Assert.Equal(WmcManualExportDisposition.Rejected, regenerated.Disposition);
+            Assert.Contains("Prazo bloqueado", regenerated.Error);
+            Assert.Equal(artifactId, (await db.WmcOrderExportStates.SingleAsync()).CurrentArtifactId);
+            Assert.Single(await db.WmcManualExportArtifacts.ToListAsync());
+        }
     }
 
     [Fact]
@@ -700,8 +902,24 @@ public sealed class WmcManualExportServiceTests
         Assert.Equal(WmcOrderExportStatus.Exported, (await firstDb.WmcOrderExportStates.SingleAsync()).Status);
     }
 
-    private static WmcManualExportService CreateService(ApplicationDbContext db) =>
-        new(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
+    private static WmcManualExportService CreateService(
+        ApplicationDbContext db,
+        WmcCustomerPaymentCondition? condition = null,
+        bool failRead = false) =>
+        new(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db),
+            WmcTestPaymentEligibility.Create(db, condition, failRead));
+
+    private static WmcCustomerPaymentCondition ActiveWmcCondition(int days, string situation = "A") =>
+        new("107072", "3", "3", $"{days} DIAS", 1, days, 0, situation, "WMC Firebird mirror", DateTimeOffset.UtcNow);
+
+    private static async Task<Order> AddCreditOrderAsync(ApplicationDbContext db)
+    {
+        var order = await AddEligibleOrderAsync(db);
+        order.Customer!.WmcCode = "107072";
+        order.PaymentTerm = new PaymentTerm { Code = "BOLETO_14D", Name = "Boleto — 14 dias", DaysUntilDue = 14 };
+        await db.SaveChangesAsync();
+        return order;
+    }
 
     private static async Task<Order> AddEligibleOrderAsync(ApplicationDbContext db, OrderStatus status = OrderStatus.Approved)
     {

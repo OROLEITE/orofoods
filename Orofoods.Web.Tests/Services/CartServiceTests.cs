@@ -12,18 +12,69 @@ namespace Orofoods.Web.Tests.Services;
 public class CartServiceTests
 {
     [Fact]
-    public async Task AddAsync_rejects_product_without_available_inventory()
+    public async Task AddAsync_allows_active_product_with_zero_stock()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
         var product = await AddProductAsync(db, 0);
+        var session = new TestSession();
         var service = new CartService(db, new PriceService(db));
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.AddAsync(customer.Id, product.Id, 1, new TestSession()));
+        await service.AddAsync(customer.Id, product.Id, 3, session);
+
+        var line = Assert.Single((await service.GetAsync(customer.Id, session)).Items);
+        Assert.True(line.IsAvailable);
+        Assert.Equal(3, line.Quantity);
+        Assert.Equal(30m, line.Subtotal);
+    }
+
+    [Fact]
+    public async Task Cart_allows_active_product_without_inventory_record_or_with_pending_wmc_sync()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var withoutInventory = await AddProductAsync(db, 0);
+        db.ProductInventories.RemoveRange(db.ProductInventories.Where(x => x.ProductId == withoutInventory.Id));
+        var pendingSync = await AddProductAsync(db, 0);
+        pendingSync.WmcCode = "503833";
+        pendingSync.IsAvailable = false;
+        pendingSync.IsWmcActive = false;
+        pendingSync.WmcStockAvailable = false;
+        pendingSync.WmcInitialLoadReady = false;
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        var service = new CartService(db, new PriceService(db));
+
+        await service.AddAsync(customer.Id, withoutInventory.Id, 2, session);
+        await service.AddAsync(customer.Id, pendingSync.Id, 4, session);
+        await service.UpdateAsync(customer.Id, pendingSync.Id, 5, session);
+
+        var cart = await service.GetAsync(customer.Id, session);
+        Assert.All(cart.Items, item => Assert.True(item.IsAvailable));
+        Assert.Equal(2, cart.Items.Single(x => x.ProductId == withoutInventory.Id).Quantity);
+        Assert.Equal(5, cart.Items.Single(x => x.ProductId == pendingSync.Id).Quantity);
+        Assert.Equal(70m, cart.Subtotal);
+    }
+
+    [Fact]
+    public async Task AddAsync_still_rejects_inactive_products()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var product = await AddProductAsync(db, 10);
+        product.IsActive = false;
+        await db.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service().AddAsync(customer.Id, product.Id, 1, new TestSession()));
 
         Assert.Contains("Produto indispon", exception.Message);
+        CartService service() => new(db, new PriceService(db));
     }
 
     [Fact]
@@ -46,7 +97,7 @@ public class CartServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_marks_cart_line_unavailable_when_reserved_inventory_uses_all_stock()
+    public async Task GetAsync_keeps_cart_line_available_when_reserved_inventory_uses_all_stock()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
@@ -58,8 +109,8 @@ public class CartServiceTests
 
         var cart = await new CartService(db, new PriceService(db)).GetAsync(customer.Id, session);
 
-        Assert.False(Assert.Single(cart.Items).IsAvailable);
-        Assert.Equal(0m, cart.Subtotal);
+        Assert.True(Assert.Single(cart.Items).IsAvailable);
+        Assert.Equal(10m, cart.Subtotal);
     }
 
     [Fact]

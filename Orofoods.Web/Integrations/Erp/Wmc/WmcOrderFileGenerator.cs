@@ -9,7 +9,6 @@ namespace Orofoods.Web.Integrations.Erp.Wmc;
 
 public sealed class WmcOrderFileGenerator
 {
-    private static readonly int[] SupportedPaymentDays = [0, 7, 14];
     private readonly string supplierCnpj;
 
     public WmcOrderFileGenerator(IOptions<WmcOrderFileOptions> options)
@@ -54,10 +53,10 @@ public sealed class WmcOrderFileGenerator
     public IReadOnlyList<string> Validate(Order order)
     {
         var errors = new List<string>();
-        var paymentDays = GetWmcPaymentDays(order.PaymentTerm);
-        if (paymentDays is null || !SupportedPaymentDays.Contains(paymentDays.Value))
+        var paymentTermError = GetPaymentTermExportError(order.PaymentTerm);
+        if (paymentTermError is not null)
         {
-            errors.Add("WMC_PAYMENT_TERM_UNSUPPORTED");
+            errors.Add(paymentTermError);
         }
 
         if (!TryGetExportableCustomerCnpj(order, out _, out var customerCnpjError))
@@ -81,6 +80,12 @@ public sealed class WmcOrderFileGenerator
         }
 
         return errors;
+    }
+
+    public static string? GetPaymentTermExportError(PaymentTerm? paymentTerm)
+    {
+        var paymentDays = GetWmcPaymentDays(paymentTerm);
+        return paymentDays is null or < 0 or > 999 ? "WMC_PAYMENT_TERM_UNSUPPORTED" : null;
     }
 
     private static bool TryGetExportableCustomerCnpj(Order order, out string? normalizedCnpj, out string? error)
@@ -147,14 +152,25 @@ public sealed class WmcOrderFileGenerator
             + "10000";
     }
 
-    private static int? GetWmcPaymentDays(PaymentTerm? paymentTerm) => paymentTerm?.Code switch
+    // Cartão é cobrado à vista: o TXT usa prazo 000 sem alterar a condição do pedido.
+    public static bool IsCardMode(PaymentTerm? paymentTerm) =>
+        paymentTerm?.Code is "CREDIT_CARD" or "CARD_ON_DELIVERY";
+
+    private static int? GetWmcPaymentDays(PaymentTerm? paymentTerm)
     {
-        "PIX" or "CASH" when paymentTerm.DaysUntilDue == 0 => 0,
-        "CREDIT_CARD" or "CARD_ON_DELIVERY" => 0,
-        "BOLETO_7D" when paymentTerm.DaysUntilDue == 7 => 7,
-        "BOLETO_14D" when paymentTerm.DaysUntilDue == 14 => 14,
-        _ => null
-    };
+        if (paymentTerm is null)
+        {
+            return null;
+        }
+
+        return paymentTerm.Code switch
+        {
+            "CREDIT_CARD" or "CARD_ON_DELIVERY" => 0,
+            "PIX" or "CASH" when paymentTerm.DaysUntilDue == 0 => 0,
+            _ when paymentTerm.Code.StartsWith("BOLETO_", StringComparison.Ordinal) && paymentTerm.DaysUntilDue is > 0 and <= 999 => paymentTerm.DaysUntilDue,
+            _ => null
+        };
+    }
 
     private static string BuildItemRecord(OrderItem item, int sequence)
     {

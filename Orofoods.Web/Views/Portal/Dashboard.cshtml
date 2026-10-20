@@ -131,7 +131,7 @@
                 <div><dt>Sua tabela</dt><dd>@Model.Customer.PriceTableName</dd></div>
                 <div><dt>Pedido mínimo</dt><dd>@Model.MinimumOrder.ToString("C", ptBr)</dd></div>
                 <div><dt>Crédito disponível</dt><dd>@((Model.Customer.CreditLimit - Model.Customer.CreditUsed).ToString("C", ptBr))</dd></div>
-                <div><dt>Condição de pagamento</dt><dd>@Model.Customer.PaymentTerms</dd></div>
+                <div><dt>Condição de pagamento</dt><dd>@Model.AuthorizedPaymentTerms</dd></div>
             </dl>
             <a class="customer-commercial-link" asp-action="Catalog">Iniciar novo pedido <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         </section>

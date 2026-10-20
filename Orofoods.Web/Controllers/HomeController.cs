@@ -150,10 +150,7 @@ public class HomeController(
             .ToDictionaryAsync(item => item.ProductId, item => item.AvailableQuantity);
         foreach (var product in products)
         {
-            product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable
-                && (product.WmcCode is null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady))
-                && inventory.TryGetValue(product.Id, out var availableQuantity)
-                && availableQuantity >= product.MinimumSalesQuantity;
+            product.IsCommerciallyAvailable = product.IsActive;
         }
 
         ViewBag.AvailableQuantities = inventory;
@@ -222,10 +219,7 @@ public class HomeController(
             return NotFound();
         }
 
-        var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(item => item.ProductId == product.Id);
-        product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable
-            && (product.WmcCode is null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady))
-            && inventory is not null && inventory.AvailableQuantity >= product.MinimumSalesQuantity;
+        product.IsCommerciallyAvailable = product.IsActive;
 
         if (User.Identity?.IsAuthenticated == true && User.IsInRole("Cliente") && customerAccessService is not null)
         {

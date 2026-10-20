@@ -47,15 +47,13 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Home_product_cards_keep_unavailable_products_blocked_and_visitors_on_the_login_flow()
+    public void Home_product_cards_allow_purchase_of_active_products_and_keep_visitors_on_the_login_flow()
     {
         var card = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
 
-        Assert.Contains("if (!product.IsCommerciallyAvailable)", card);
-        Assert.Contains("Consulte disponibilidade", card);
-        Assert.Contains("if (isHomeShowcase && !product.IsCommerciallyAvailable)", card);
-        Assert.Contains("asp-controller=\"Home\" asp-action=\"Product\" asp-route-id=\"@product.Id\">Ver produto</a>", card);
-        Assert.Contains("if (!isAuthenticated)", card);
+        Assert.DoesNotContain("Consulte disponibilidade", card);
+        Assert.DoesNotContain("IsCommerciallyAvailable", card);
+        Assert.DoesNotContain("max=\"@availableQuantity\"", card);        Assert.Contains("if (!isAuthenticated)", card);
         Assert.Contains("asp-page=\"/Account/Login\"", card);
         Assert.Contains("asp-route-returnUrl=\"@loginReturnUrl\"", card);
         Assert.Contains("asp-controller=\"Portal\" asp-action=\"AddToCart\"", card);

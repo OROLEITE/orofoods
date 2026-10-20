@@ -16,9 +16,6 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
         var quantities = Read(session, scope);
         var customer = await db.Customers.AsNoTracking().SingleAsync(x => x.Id == customerId);
         var products = await db.Products.AsNoTracking().Where(x => quantities.Keys.Contains(x.Id) && x.IsActive).ToListAsync();
-        var inventories = await db.ProductInventories.AsNoTracking()
-            .Where(x => quantities.Keys.Contains(x.ProductId))
-            .ToDictionaryAsync(x => x.ProductId);
         var prices = await priceService.GetPricesAsync(customerId, products.Select(x => x.Id));
         return new CartViewModel
         {
@@ -29,7 +26,7 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
             {
                 var minimumQuantity = product.MinimumSalesQuantity;
                 var quantity = Math.Max(quantities[product.Id], minimumQuantity);
-                var isAvailable = product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= quantity;
+                var isAvailable = product.IsActive;
                 return new CartLineViewModel(product.Id, product.Sku, product.Name, product.UnitDescription,
                     quantity, minimumQuantity, prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice), isAvailable)
                 {
@@ -46,7 +43,7 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
             throw new InvalidOperationException("Informe uma quantidade válida.");
         }
 
-        var product = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
+        var product = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Id == productId && x.IsActive)
             ?? throw new InvalidOperationException("Produto indisponível.");
         var resolvedPrice = await priceService.GetPriceAsync(customerId, productId);
         if (resolvedPrice?.EffectivePrice is not > 0m)
@@ -56,12 +53,6 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
 
         await MigrateLegacyCartAsync(session, scope);
         var quantities = Read(session, scope);
-        var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId);
-        if (inventory is null || inventory.AvailableQuantity < Math.Max(quantity, product.MinimumSalesQuantity))
-        {
-            throw new InvalidOperationException("Produto indispon\u00edvel no estoque atual.");
-        }
-
         quantities[productId] = Math.Max(quantity, product.MinimumSalesQuantity);
         Write(session, quantities, scope);
     }
@@ -81,15 +72,9 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
         }
 
         var product = await db.Products.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == productId && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
+            .SingleOrDefaultAsync(x => x.Id == productId && x.IsActive)
             ?? throw new InvalidOperationException("Produto indisponível.");
         await MigrateLegacyCartAsync(session, scope);
-        var inventory = await db.ProductInventories.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId);
-        if (inventory is null || inventory.AvailableQuantity < Math.Max(quantity, product.MinimumSalesQuantity))
-        {
-            throw new InvalidOperationException("Produto indisponível no estoque atual.");
-        }
-
         Update(productId, quantity, session, scope);
     }
 
@@ -110,14 +95,10 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
     {
         await MigrateLegacyCartAsync(session, scope);
         var productIds = lines.Select(x => x.ProductId).Distinct().ToList();
-        var products = await db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id) && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady))).ToDictionaryAsync(x => x.Id);
-        var inventories = await db.ProductInventories.AsNoTracking()
-            .Where(x => productIds.Contains(x.ProductId))
-            .ToDictionaryAsync(x => x.ProductId);
-        var quantities = lines.Where(x => products.ContainsKey(x.ProductId) && x.Quantity > 0)
+        var products = await db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id)         && x.IsActive).ToDictionaryAsync(x => x.Id);
+               var quantities = lines.Where(x => products.ContainsKey(x.ProductId) && x.Quantity > 0)
             .GroupBy(x => x.ProductId)
             .Select(group => new { ProductId = group.Key, Quantity = Math.Max(group.Sum(item => item.Quantity), products[group.Key].MinimumSalesQuantity) })
-            .Where(item => inventories.TryGetValue(item.ProductId, out var inventory) && inventory.AvailableQuantity >= item.Quantity)
             .ToDictionary(item => item.ProductId, item => item.Quantity);
         Write(session, quantities, scope);
     }

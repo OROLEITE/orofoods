@@ -44,22 +44,18 @@ public sealed class AdminCompactVisualRegressionTests
     }
 
     [Fact]
-    public void Payment_terms_are_real_multi_value_checkboxes_with_responsive_layout()
+    public void Admin_customer_terms_are_read_only_and_source_is_wmc()
     {
         var view = ReadWebFile("Areas", "Admin", "Views", "Customers", "Edit.cshtml");
         var styles = ReadWebFile("wwwroot", "css", "admin-customer-config.css");
 
-        Assert.Contains("<fieldset class=\"customer-payment-terms\"", view, StringComparison.Ordinal);
-        Assert.Contains("class=\"customer-payment-indicators\"", view, StringComparison.Ordinal);
-        Assert.Contains("class=\"customer-payment-controls\"", view, StringComparison.Ordinal);
-        Assert.Contains("@foreach (var term in Model.PaymentTerms)", view, StringComparison.Ordinal);
-        Assert.Contains("type=\"checkbox\" name=\"PaymentTermIds\" value=\"@term.Value\"", view, StringComparison.Ordinal);
-        Assert.Contains("checked=\"@(term.Selected ? \"checked\" : null)\"", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("<select asp-for=\"PaymentTermIds\"", view, StringComparison.Ordinal);
-        Assert.Contains(".customer-payment-terms-grid", styles, StringComparison.Ordinal);
-        Assert.Contains(".customer-payment-indicators", styles, StringComparison.Ordinal);
-        Assert.Contains(".customer-payment-controls", styles, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns:repeat(auto-fit,minmax(210px,1fr))", styles, StringComparison.Ordinal);
+        Assert.Contains("Condição principal no WMC", view, StringComparison.Ordinal);
+        Assert.Contains("Model.WmcPaymentConditionStatus", view, StringComparison.Ordinal);
+        Assert.Contains("Model.WmcPaymentConditionEligible", view, StringComparison.Ordinal);
+        Assert.Contains("WmcPaymentConditionSource", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("name=\"PaymentTermIds\"", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Definir prazo manualmente", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Prazo manual", view, StringComparison.Ordinal);
     }
 
     private static string ReadWebFile(params string[] segments)

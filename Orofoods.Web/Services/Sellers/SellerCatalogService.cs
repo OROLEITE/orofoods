@@ -181,11 +181,7 @@ public sealed class SellerCatalogService(
     }
 
     private IQueryable<Models.Catalog.Product> BuildSelectableProductsQuery() => db.Products.AsNoTracking()
-        .Where(x =>
-            x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)) &&
-            db.ProductInventories.Any(inventory =>
-                inventory.ProductId == x.Id &&
-                inventory.QuantityOnHand - inventory.QuantityReserved >= (x.CommercialUnitCode == "PCT" ? 1 : x.MinimumCases)));
+        .Where(x => x.IsActive);
 
     private static bool MatchesSearch(ProductSearchCandidate product, string normalizedQuery) =>
         CatalogSearchText.Normalize(product.Name).Contains(normalizedQuery, StringComparison.Ordinal) ||

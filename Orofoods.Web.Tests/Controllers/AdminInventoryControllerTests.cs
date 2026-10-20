@@ -112,11 +112,11 @@ public class AdminInventoryControllerTests
         var catalogResult = await new CatalogController(db).Products();
         var catalogPage = Assert.IsType<Orofoods.Web.Api.PagedResult<ProductResponse>>(
             Assert.IsType<OkObjectResult>(catalogResult.Result).Value);
-        Assert.False(catalogPage.Items.Single(item => item.Id == product.Id).IsAvailable);
+        Assert.True(catalogPage.Items.Single(item => item.Id == product.Id).IsAvailable);
     }
 
     [Fact]
-    public async Task Catalog_availability_accounts_for_reserved_quantity_and_minimum_cases()
+    public async Task Catalog_keeps_active_product_purchasable_when_reserved_quantity_uses_all_stock()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
@@ -148,7 +148,7 @@ public class AdminInventoryControllerTests
         var page = Assert.IsType<Orofoods.Web.Api.PagedResult<ProductResponse>>(
             Assert.IsType<OkObjectResult>(result.Result).Value);
 
-        Assert.False(Assert.Single(page.Items).IsAvailable);
+        Assert.True(Assert.Single(page.Items).IsAvailable);
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public class AdminInventoryControllerTests
     }
 
     [Fact]
-    public async Task Catalog_keeps_wmc_availability_gate_after_manual_stock_adjustment()
+    public async Task Catalog_does_not_gate_active_product_on_wmc_stock_flag_after_manual_adjustment()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
@@ -213,7 +213,7 @@ public class AdminInventoryControllerTests
         var page = Assert.IsType<Orofoods.Web.Api.PagedResult<ProductResponse>>(
             Assert.IsType<OkObjectResult>(result.Result).Value);
 
-        Assert.False(Assert.Single(page.Items).IsAvailable);
+        Assert.True(Assert.Single(page.Items).IsAvailable);
     }
 
     [Fact]

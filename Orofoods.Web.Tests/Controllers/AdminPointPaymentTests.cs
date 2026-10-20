@@ -153,7 +153,7 @@ public sealed class AdminPointPaymentTests
         bool cardOnDeliveryEnabled = true)
     {
         var paymentOptions = Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled });
-        var service = new AdminOrderService(db, TimeProvider.System, new OrderReservationService(db), new PaymentEligibilityService(db, paymentOptions), new PaymentService(db, paymentOptions, new PendingBoletoProvider()));
+        var service = new AdminOrderService(db, TimeProvider.System, new OrderReservationService(db), new PaymentService(db, paymentOptions, new PendingBoletoProvider()));
         var controller = new OrdersController(
             db,
             service,

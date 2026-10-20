@@ -41,11 +41,4 @@ public class Customer
     [NotMapped]
     public string PriceTableName => PriceTable?.Name ?? "Sem tabela";
 
-    [NotMapped]
-    public string PaymentTerms => CustomerPaymentTerms.Count == 0
-        ? "A definir"
-        : string.Join(" ou ", CustomerPaymentTerms
-            .Where(x => x.IsActive && x.PaymentTerm is not null)
-            .OrderBy(x => x.PaymentTerm!.SortOrder)
-            .Select(x => x.PaymentTerm!.Name));
 }
