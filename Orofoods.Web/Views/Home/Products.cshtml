@@ -1,6 +1,7 @@
 @model Orofoods.Web.ViewModels.PublicProductCatalogViewModel
 @{
     ViewData["Title"] = "Produtos";
+    ViewData["BodyClass"] = "catalog-modern-page";
     var isSeller = User.IsInRole("Vendedor");
     var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSeller;
     var customerId = ViewBag.CustomerId as int?;
@@ -8,26 +9,18 @@
     ViewData["LoginReturnUrl"] = Url.Action("Products", "Home", new { search = Model.Search, category = Model.Category, customerId });
 }
 
-<section class="page-hero institutional-hero public-page-hero public-products-hero">
+<section class="page-hero institutional-hero public-page-hero public-products-hero" aria-labelledby="public-products-title">
     <div class="container">
-        <div class="eyebrow light"><span></span> Sele&ccedil;&atilde;o Orofoods</div>
-        <h1>Produtos para sua opera&ccedil;&atilde;o.</h1>
-        <p>Encontre produtos e compre direto pelo cat&aacute;logo.</p>
+        <div class="public-products-hero-copy">
+            <p class="public-products-eyebrow">CATÁLOGO OROFOODS</p>
+            <h1 id="public-products-title">Produtos para sua opera&ccedil;&atilde;o.</h1>
+            <p>P&atilde;es de alta qualidade para hamburguerias e food service.</p>
+        </div>
     </div>
 </section>
 
 <section class="section products-section public-products-section">
     <div class="container">
-        @if (isCustomer)
-        {
-            <div class="public-catalog-cart-row">
-                <a class="catalog-cart-link" asp-area="" asp-controller="Portal" asp-action="Cart" aria-label="Ver carrinho com @cartQuantity unidades">
-                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Ver carrinho
-                    @if (cartQuantity > 0) { <span class="catalog-cart-count" aria-hidden="true">@cartQuantity</span> }
-                </a>
-            </div>
-        }
-
         <form method="get" class="catalog-tools public-products-tools">
             <label class="public-products-search">
                 <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
@@ -49,7 +42,7 @@
             <button type="button" data-catalog-filter="brioche" aria-pressed="false">Brioche</button>
             <button type="button" data-catalog-filter="gergelim" aria-pressed="false">Gergelim</button>
             <button type="button" data-catalog-filter="australiano" aria-pressed="false">Australiano</button>
-            <button type="button" data-catalog-filter="congelados" aria-pressed="false">Congelados</button>
+            <button type="button" data-catalog-filter="tradicional" aria-pressed="false">Tradicional</button>
         </div>
 
         @if (!Model.Products.Any())

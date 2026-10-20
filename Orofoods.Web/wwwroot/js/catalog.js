@@ -42,8 +42,10 @@ const initializeCatalogProductInteractions = (root = document) => {
         const quantityInput = form.querySelector('input[name="quantity"]');
         const stepperButtons = form.querySelectorAll('.catalog-quantity-button');
         const status = form.querySelector('.catalog-add-status');
+        const canUpdateQuantity = form.dataset.catalogAllowQuantityUpdate === 'true';
         const originalLabel = button.innerHTML;
-        let cartCount = document.querySelector('.catalog-cart-count');
+        const cartLink = document.querySelector('.catalog-header-cart');
+        let cartCount = cartLink?.querySelector('.catalog-cart-count');
 
         button.disabled = true;
         button.setAttribute('aria-busy', 'true');
@@ -58,28 +60,34 @@ const initializeCatalogProductInteractions = (root = document) => {
             });
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.message || 'Não foi possível adicionar o produto ao carrinho.');
+                throw new Error(payload.message || 'Não foi possível atualizar o produto no carrinho.');
             }
 
             quantityInput.value = payload.quantity;
-            quantityInput.disabled = true;
-            stepperButtons.forEach((stepperButton) => { stepperButton.disabled = true; });
-            button.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> <span>No carrinho</span>';
-            button.setAttribute('aria-label', 'Produto no carrinho');
-            status.textContent = 'Produto adicionado ao carrinho.';
+            if (canUpdateQuantity) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fa-solid fa-cart-arrow-up" aria-hidden="true"></i> <span>Atualizar</span>';
+                button.setAttribute('aria-label', 'Atualizar quantidade no carrinho');
+                status.textContent = 'Quantidade do carrinho atualizada.';
+            } else {
+                quantityInput.disabled = true;
+                stepperButtons.forEach((stepperButton) => { stepperButton.disabled = true; });
+                button.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> <span>No carrinho</span>';
+                button.setAttribute('aria-label', 'Produto no carrinho');
+                status.textContent = 'Produto adicionado ao carrinho.';
+            }
 
-            if (payload.cartQuantity > 0) {
-                const cartLink = document.querySelector('.catalog-cart-link');
+            if (cartLink && payload.cartQuantity >= 0) {
                 if (cartCount) {
                     cartCount.textContent = payload.cartQuantity;
                 } else {
                     cartCount = document.createElement('span');
                     cartCount.className = 'catalog-cart-count';
-                    cartCount.setAttribute('aria-hidden', 'true');
+                    cartCount.setAttribute('aria-live', 'polite');
                     cartCount.textContent = payload.cartQuantity;
                     cartLink.append(cartCount);
                 }
-                cartLink.setAttribute('aria-label', `Ver carrinho com ${payload.cartQuantity} unidades`);
+                cartLink.setAttribute('aria-label', `Carrinho com ${payload.cartQuantity} unidades`);
             }
         } catch (error) {
             button.disabled = false;
