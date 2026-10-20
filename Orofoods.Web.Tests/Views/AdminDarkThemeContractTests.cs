@@ -301,6 +301,15 @@ public class AdminDarkThemeContractTests
     }
 
     [Fact]
+    public void ScopeAuditStillRejectsUnscopedHeaderThemeColors()
+    {
+        var styles = ReadStyles("header.css") + ".site-header-modern { color: #FFFFFF; }";
+
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+            AssertAdminDarkRulesExcludeWhatsApp(styles, "header.css"));
+    }
+
+    [Fact]
     public void ScopeAuditAcceptsLightAdminNavigationRulesWhenFullyScoped()
     {
         const string lightNavigationRule = "html:not([data-theme=\"dark\"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-nav-link > i { font-size: 16px; }";
@@ -961,19 +970,38 @@ public class AdminDarkThemeContractTests
                         (stylesheet is "admin-navigation.css" or "header.css" && IsScopedAdminLightSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
                         (stylesheet is "admin-customers.css" or "admin-integrations.css" or "admin-registrations.css" or "admin-shell.css" &&
                          IsScopedAdminCommonSelector(rule.Selector) && HasPermittedComponentScope(rule.Selector, stylesheet)) ||
-                        IsPermittedScopedPublicHeaderRule(rule.Selector, stylesheet) ||
+                        IsPermittedScopedPublicHeaderRule(rule, stylesheet) ||
                         IsPermittedScopedCustomerOpportunityLayoutRule(rule.Selector, stylesheet),
                 $"Additional/changed {stylesheet} rule requires both gates, WhatsApp exclusion, and positive component/page scope: {rule.Selector}");
         }
     }
 
-    private static bool IsPermittedScopedPublicHeaderRule(string selector, string stylesheet) =>
-        stylesheet == "header.css" &&
-        (selector.Contains(".site-header-modern .catalog-header-cart", StringComparison.Ordinal) ||
-         (selector.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page)", StringComparison.Ordinal) &&
-          selector.Contains(".site-header-modern .main-nav .nav-link", StringComparison.Ordinal) &&
-          (selector.StartsWith("html:not([data-theme=\"dark\"]) body:not", StringComparison.Ordinal) ||
-           selector.StartsWith("html[data-theme=\"dark\"] body:not", StringComparison.Ordinal))));
+    private static bool IsPermittedScopedPublicHeaderRule(CssRule rule, string stylesheet)
+    {
+        if (stylesheet != "header.css")
+            return false;
+
+        var selector = rule.Selector;
+        if (selector.Contains(".site-header-modern .catalog-header-cart", StringComparison.Ordinal) ||
+            (selector.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page)", StringComparison.Ordinal) &&
+             selector.Contains(".site-header-modern .main-nav .nav-link", StringComparison.Ordinal) &&
+             (selector.StartsWith("html:not([data-theme=\"dark\"]) body:not", StringComparison.Ordinal) ||
+              selector.StartsWith("html[data-theme=\"dark\"] body:not", StringComparison.Ordinal))))
+        {
+            return true;
+        }
+
+        // Shared header layout rules are structural, not dark-theme styling. Keep this
+        // exception declaration-limited so the audit still catches unscoped colors.
+        var declarations = Regex.Replace(rule.Declarations, @"\s+", string.Empty, RegexOptions.CultureInvariant).TrimEnd(';');
+        return (selector is ".site-header-modern" or ".site-header-modern .navbar" or
+                ".site-header-modern .navbar-collapse" or ".site-header-modern .header-account") &&
+               declarations == "overflow:visible" ||
+               selector == ".site-header-modern .navbar-collapse" && declarations == "min-width:0" ||
+               selector == ".site-header-modern .header-account" &&
+                   (declarations == "min-width:0;align-items:center;gap:10px" ||
+                    declarations == "flex-wrap:wrap;row-gap:10px");
+    }
 
     private static bool IsPermittedScopedCustomerOpportunityLayoutRule(string selector, string stylesheet) =>
         stylesheet == "admin-customers.css" &&
