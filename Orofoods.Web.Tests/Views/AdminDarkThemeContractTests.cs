@@ -969,10 +969,11 @@ public class AdminDarkThemeContractTests
 
     private static bool IsPermittedScopedPublicHeaderRule(string selector, string stylesheet) =>
         stylesheet == "header.css" &&
-        selector.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page)", StringComparison.Ordinal) &&
-        selector.Contains(".site-header-modern .main-nav .nav-link", StringComparison.Ordinal) &&
-        (selector.StartsWith("html:not([data-theme=\"dark\"]) body:not", StringComparison.Ordinal) ||
-         selector.StartsWith("html[data-theme=\"dark\"] body:not", StringComparison.Ordinal));
+        (selector.Contains(".site-header-modern .catalog-header-cart", StringComparison.Ordinal) ||
+         (selector.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page)", StringComparison.Ordinal) &&
+          selector.Contains(".site-header-modern .main-nav .nav-link", StringComparison.Ordinal) &&
+          (selector.StartsWith("html:not([data-theme=\"dark\"]) body:not", StringComparison.Ordinal) ||
+           selector.StartsWith("html[data-theme=\"dark\"] body:not", StringComparison.Ordinal))));
 
     private static bool IsPermittedScopedCustomerOpportunityLayoutRule(string selector, string stylesheet) =>
         stylesheet == "admin-customers.css" &&

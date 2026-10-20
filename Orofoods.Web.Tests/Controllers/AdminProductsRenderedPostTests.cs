@@ -20,6 +20,9 @@ using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Validation;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Orders;
+using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.Services.Storage;
 using Orofoods.Web.Tests.Infrastructure;
 
@@ -142,6 +145,8 @@ public sealed class AdminProductsRenderedPostTests
                     {
                         services.AddLogging();
                         services.AddRouting();
+                        services.AddDistributedMemoryCache();
+                        services.AddSession();
                         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connection));
                         services.AddAuthentication("AdminTest")
                             .AddScheme<AuthenticationSchemeOptions, AdminTestAuthenticationHandler>("AdminTest", _ => { });
@@ -152,12 +157,17 @@ public sealed class AdminProductsRenderedPostTests
                         services.AddSingleton(capture);
                         services.Configure<MvcOptions>(options => options.Filters.Add(new BindingCaptureFilter(capture)));
                         services.AddScoped<AdminCatalogService>();
+                        services.AddScoped<CustomerAccessService>();
+                        services.AddScoped<AdminCustomerContextService>();
+                        services.AddScoped<PriceService>();
+                        services.AddScoped<CartService>();
                         services.AddScoped<UserNotificationService>();
                         services.AddSingleton(Mock.Of<IProductImageStorage>());
                     })
                     .Configure(app =>
                     {
                         app.UseRouting();
+                        app.UseSession();
                         app.UseAuthentication();
                         app.UseAuthorization();
                         app.UseEndpoints(endpoints => endpoints.MapControllerRoute(
