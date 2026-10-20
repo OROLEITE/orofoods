@@ -8,7 +8,7 @@
     var action = ViewContext.RouteData.Values["action"]?.ToString();
     var isHomeActive = controller == "Home" && action == "Index";
     var isProductsActive = controller == "Home" && action is "Products" or "Product";
-    var showCatalogCart = controller == "Home" && action == "Products"
+    var showCatalogCart = controller == "Home" && action is "Index" or "Products"
         && (ViewBag.CustomerPurchaseAuthorized as bool?) == true && !User.IsInRole("Vendedor");
     var catalogCartQuantity = ViewBag.CartQuantity as int? ?? 0;
     var isAboutActive = controller == "Home" && action == "About";

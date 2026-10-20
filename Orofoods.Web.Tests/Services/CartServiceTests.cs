@@ -139,7 +139,7 @@ public class CartServiceTests
     }
 
     [Fact]
-    public async Task AddAsync_replaces_the_quantity_for_an_existing_product_instead_of_creating_another_line()
+    public async Task AddAsync_keeps_existing_replacement_behavior_for_scoped_callers()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
@@ -156,6 +156,26 @@ public class CartServiceTests
         var line = Assert.Single(cart.Items);
         Assert.Equal(product.Id, line.ProductId);
         Assert.Equal(3, line.Quantity);
+    }
+
+    [Fact]
+    public async Task AddToCartAsync_sums_the_quantity_for_an_existing_product_without_creating_another_line()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var product = await AddProductAsync(db, 10);
+        var session = new TestSession();
+        var service = new CartService(db, new PriceService(db));
+
+        await service.AddToCartAsync(customer.Id, product.Id, 1, session);
+        await service.AddToCartAsync(customer.Id, product.Id, 3, session);
+
+        var cart = await service.GetAsync(customer.Id, session);
+        var line = Assert.Single(cart.Items);
+        Assert.Equal(product.Id, line.ProductId);
+        Assert.Equal(4, line.Quantity);
     }
 
     [Fact]

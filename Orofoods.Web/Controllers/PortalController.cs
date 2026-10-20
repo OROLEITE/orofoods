@@ -320,7 +320,7 @@ public class PortalController(
         var customer = await GetCurrentCustomerAsync();
         try
         {
-            await cartService.AddAsync(customer.Id, productId, quantity, HttpContext.Session);
+            await cartService.AddToCartAsync(customer.Id, productId, quantity, HttpContext.Session);
         }
         catch (InvalidOperationException exception)
         {

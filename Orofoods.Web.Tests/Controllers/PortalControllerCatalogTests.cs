@@ -226,6 +226,7 @@ public class PortalControllerCatalogTests
         var product = CreateProduct("BIM-003", "Pao Australiano", category);
         product.BasePrice = 110m;
         product.MinimumCases = 3;
+        var otherProduct = CreateProduct("BIM-004", "Pao Brioche", category);
         var user = new ApplicationUser
         {
             Id = "customer-user",
@@ -236,10 +237,12 @@ public class PortalControllerCatalogTests
             Customer = customer,
             IsActive = true
         };
-        db.AddRange(customer, category, product, user);
+        db.AddRange(customer, category, product, otherProduct, user);
         await db.SaveChangesAsync();
         db.PriceTableItems.Add(new PriceTableItem { PriceTableId = priceTable.Id, ProductId = product.Id, Price = 94.50m });
+        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = priceTable.Id, ProductId = otherProduct.Id, Price = 8m });
         db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 20 });
+        db.ProductInventories.Add(new ProductInventory { ProductId = otherProduct.Id, QuantityOnHand = 0 });
         await db.SaveChangesAsync();
 
         var session = new TestSession();
@@ -251,13 +254,36 @@ public class PortalControllerCatalogTests
         Assert.Equal(3, response.RootElement.GetProperty("quantity").GetInt32());
         Assert.Equal(3, response.RootElement.GetProperty("cartQuantity").GetInt32());
 
+        addResult = Assert.IsType<JsonResult>(await controller.AddToCart(product.Id, 3));
+        using (var repeatedResponse = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(addResult.Value)))
+        {
+            Assert.Equal(6, repeatedResponse.RootElement.GetProperty("quantity").GetInt32());
+            Assert.Equal(6, repeatedResponse.RootElement.GetProperty("cartQuantity").GetInt32());
+        }
+
+        addResult = Assert.IsType<JsonResult>(await controller.AddToCart(otherProduct.Id, 2));
+        using (var multipleProductResponse = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(addResult.Value)))
+        {
+            Assert.Equal(2, multipleProductResponse.RootElement.GetProperty("quantity").GetInt32());
+            Assert.Equal(8, multipleProductResponse.RootElement.GetProperty("cartQuantity").GetInt32());
+        }
+
         var cartResult = Assert.IsType<ViewResult>(await controller.Cart());
         var cart = Assert.IsType<CartViewModel>(cartResult.Model);
-        var line = Assert.Single(cart.Items);
-        Assert.Equal(product.Id, line.ProductId);
-        Assert.Equal(3, line.Quantity);
+        Assert.Equal(2, cart.Items.Count);
+        var line = Assert.Single(cart.Items, item => item.ProductId == product.Id);
+        Assert.Equal(6, line.Quantity);
         Assert.Equal(94.50m, line.UnitPrice);
-        Assert.Equal(283.50m, line.Subtotal);
+        Assert.Equal(567m, line.Subtotal);
+        var otherLine = Assert.Single(cart.Items, item => item.ProductId == otherProduct.Id);
+        Assert.Equal(2, otherLine.Quantity);
+        Assert.Equal(8m, otherLine.UnitPrice);
+        Assert.Equal(16m, otherLine.Subtotal);
+
+        var checkoutResult = Assert.IsType<ViewResult>(await controller.Checkout());
+        var checkout = Assert.IsType<CheckoutViewModel>(checkoutResult.Model);
+        Assert.Equal(2, checkout.Cart.Items.Count);
+        Assert.Equal(8, checkout.Cart.Items.Sum(item => item.Quantity));
     }
 
     private static Product CreateProduct(string sku, string name, ProductCategory category) => new()

@@ -6,9 +6,7 @@
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var isSeller = User.IsInRole("Vendedor");
     var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSeller;
-    var isProductsCatalog = string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Products", StringComparison.OrdinalIgnoreCase);
     var prices = ViewBag.Prices as Dictionary<int, decimal> ?? new Dictionary<int, decimal>();
-    var cartProductQuantities = ViewBag.CartProductQuantities as Dictionary<int, int> ?? new Dictionary<int, int>();
     var sellerProducts = ViewBag.SellerProducts as Dictionary<int, SellerCatalogProductRow> ?? new Dictionary<int, SellerCatalogProductRow>();
     var customerId = ViewBag.CustomerId as int?;
     var loginReturnUrl = ViewData["LoginReturnUrl"] as string ?? Url.Action("Products", "Home", new { area = "" });
@@ -54,7 +52,6 @@
         @if (isCustomer)
         {
             var price = prices.GetValueOrDefault(product.Id);
-            var isInCart = cartProductQuantities.TryGetValue(product.Id, out var cartProductQuantity);
             if (price > 0m) { <div class="catalog-price"><strong>@price.ToString("C")</strong><span>/ @product.PriceUnitLabel</span></div> }
             if (price <= 0m)
             {
@@ -63,18 +60,18 @@
             }
             else
             {
-                <form asp-area="" asp-controller="Portal" asp-action="AddToCart" method="post" class="catalog-add-form quick-buy-form" data-catalog-add-form data-catalog-allow-quantity-update="@(isProductsCatalog ? "true" : "false")">
+                <form asp-area="" asp-controller="Portal" asp-action="AddToCart" method="post" class="catalog-add-form quick-buy-form" data-catalog-add-form>
                     <input type="hidden" name="productId" value="@product.Id" />
                     <label for="quantity-@product.Id">Quantidade (@product.PriceUnitLabel)</label>
                     <div class="catalog-add-controls quick-buy-controls">
                         <div class="catalog-quantity-stepper" data-catalog-quantity-stepper>
-                            <button class="catalog-quantity-button" type="button" data-catalog-quantity-decrease aria-label="Diminuir quantidade de @product.Name" disabled="@(isInCart && !isProductsCatalog)">&minus;</button>
-                            <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumSalesQuantity" step="1" value="@(isInCart ? cartProductQuantity : product.MinimumSalesQuantity)" inputmode="numeric" aria-label="Quantidade de @product.Name" disabled="@(isInCart && !isProductsCatalog)" />
-                            <button class="catalog-quantity-button" type="button" data-catalog-quantity-increase aria-label="Aumentar quantidade de @product.Name" disabled="@(isInCart && !isProductsCatalog)">+</button>
+                            <button class="catalog-quantity-button" type="button" data-catalog-quantity-decrease aria-label="Diminuir quantidade de @product.Name" disabled="@(product.MinimumSalesQuantity <= 1)">&minus;</button>
+                            <input id="quantity-@product.Id" class="form-control" type="number" name="quantity" min="@product.MinimumSalesQuantity" step="1" value="@product.MinimumSalesQuantity" inputmode="numeric" aria-label="Quantidade de @product.Name" />
+                            <button class="catalog-quantity-button" type="button" data-catalog-quantity-increase aria-label="Aumentar quantidade de @product.Name">+</button>
                         </div>
-                        <button class="btn quick-buy-button" type="submit" disabled="@(isInCart && !isProductsCatalog)">@(isInCart ? isProductsCatalog ? "Atualizar" : "No carrinho" : isProductsCatalog ? "Adicionar" : "Comprar")</button>
+                        <button class="btn quick-buy-button" type="submit">Adicionar</button>
                     </div>
-                    <p class="catalog-add-status" aria-live="polite">@(isInCart ? "Produto já está no carrinho." : "")</p>
+                    <p class="catalog-add-status" aria-live="polite"></p>
                 </form>
             }
         }
