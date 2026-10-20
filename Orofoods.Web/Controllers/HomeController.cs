@@ -7,7 +7,6 @@ using Orofoods.Web.Models;
 using Orofoods.Web.Services.Sellers;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Pricing;
-using Orofoods.Web.Services.Orders;
 using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Controllers;
@@ -17,7 +16,6 @@ public class HomeController(
     SellerCatalogService? sellerCatalogService = null,
     CustomerAccessService? customerAccessService = null,
     PriceService? priceService = null,
-    CartService? cartService = null,
     AdminCustomerContextService? adminCustomerContextService = null) : Controller
 {
     public async Task<IActionResult> Index(int? customerId = null)
@@ -157,8 +155,6 @@ public class HomeController(
         ViewBag.CustomerPurchaseAuthorized = false;
         ViewBag.CustomerId = customerId;
         ViewBag.Prices = new Dictionary<int, decimal>();
-        ViewBag.CartQuantity = 0;
-        ViewBag.CartProductQuantities = new Dictionary<int, int>();
         Orofoods.Web.Models.Customers.Customer? purchaseCustomer = null;
         if (User.Identity?.IsAuthenticated == true && customerAccessService is not null
             && User.IsInRole("Cliente") && !User.IsInRole("Vendedor"))
@@ -185,12 +181,6 @@ public class HomeController(
                 ? new Dictionary<int, decimal>()
                 : await priceService.GetPricesAsync(purchaseCustomer.Id, productIds);
 
-            if (cartService is not null)
-            {
-                var cart = await cartService.GetAsync(purchaseCustomer.Id, HttpContext.Session);
-                ViewBag.CartQuantity = cart.Items.Sum(item => item.Quantity);
-                ViewBag.CartProductQuantities = cart.Items.ToDictionary(item => item.ProductId, item => item.Quantity);
-            }
         }
 
         if (User.Identity?.IsAuthenticated == true && User.IsInRole("Vendedor")

@@ -5,7 +5,6 @@
     var isSeller = User.IsInRole("Vendedor");
     var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSeller;
     var customerId = ViewBag.CustomerId as int?;
-    var cartQuantity = ViewBag.CartQuantity as int? ?? 0;
     ViewData["LoginReturnUrl"] = Url.Action("Products", "Home", new { search = Model.Search, category = Model.Category, customerId });
 }
 

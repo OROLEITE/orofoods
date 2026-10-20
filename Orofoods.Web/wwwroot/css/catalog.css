@@ -1327,3 +1327,25 @@ body.catalog-modern-page .catalog-add-status {
         border-bottom: 1px solid #E2E8F0;
     }
 }
+
+/* Keep quantity controls bounded and aligned in shared Home and Products quick-buy cards. */
+.public-quick-buy-card .catalog-quantity-stepper {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.public-quick-buy-card .catalog-quantity-stepper > .catalog-quantity-button {
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+}
+
+.public-quick-buy-card .catalog-quantity-stepper > input {
+    width: 100%;
+    min-width: 0;
+    flex: 0 1 auto;
+}
