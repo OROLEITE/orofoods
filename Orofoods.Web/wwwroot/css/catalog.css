@@ -889,9 +889,9 @@ body.catalog-modern-page .catalog-header-cart .catalog-cart-count {
 
 body.catalog-modern-page .public-products-hero {
     display: flex;
-    min-height: 250px;
+    min-height: 220px;
     align-items: center;
-    padding: 34px 0;
+    padding: 20px 0;
     background-color: #F4F7FC !important;
     background-image: linear-gradient(90deg, rgb(244 247 252 / 98%) 0%, rgb(244 247 252 / 95%) 40%, rgb(244 247 252 / 78%) 57%, rgb(244 247 252 / 12%) 78%, transparent 100%), url("/images/catalogo-banner-orofoods.jpg") !important;
     background-position: center right !important;
@@ -911,21 +911,32 @@ body.catalog-modern-page .public-products-hero .container {
 }
 
 body.catalog-modern-page .public-products-hero-copy {
-    max-width: 650px;
+    max-width: 620px;
 }
 
 body.catalog-modern-page .public-products-eyebrow {
-    margin: 0 0 8px;
+    margin: 0 0 10px;
     color: #0E7490;
     font-size: .78rem;
     font-weight: 800;
     letter-spacing: .12em;
 }
 
+body.catalog-modern-page .public-products-eyebrow::after {
+    display: block;
+    width: 28px;
+    height: 2px;
+    margin-top: 7px;
+    border-radius: 2px;
+    background: #C6A15B;
+    content: "";
+}
+
 body.catalog-modern-page .public-products-hero h1 {
-    margin: 0 0 9px;
+    max-width: 550px;
+    margin: 0 0 8px;
     color: #0F172A;
-    font-size: clamp(2rem, 3.2vw, 2.75rem);
+    font-size: 42px;
     font-weight: 800;
     letter-spacing: -.04em;
     line-height: 1.08;
@@ -935,8 +946,12 @@ body.catalog-modern-page .public-products-hero-copy > p:last-child {
     max-width: 520px;
     margin: 0;
     color: #334155;
-    font-size: 1rem;
+    font-size: 16px;
     line-height: 1.5;
+}
+
+body.catalog-modern-page .public-products-hero + .public-products-section {
+    padding-top: 14px;
 }
 
 body.catalog-modern-page .public-products-section {
@@ -1189,6 +1204,10 @@ body.catalog-modern-page .catalog-add-status {
         min-height: 220px;
     }
 
+    body.catalog-modern-page .public-products-hero h1 {
+        font-size: clamp(32px, 6.5vw, 38px);
+    }
+
     body.catalog-modern-page .public-quick-buy-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1204,28 +1223,33 @@ body.catalog-modern-page .catalog-add-status {
     }
 
     body.catalog-modern-page .public-products-hero {
-        min-height: 190px;
-        padding: 26px 0;
+        min-height: 180px;
+        padding: 22px 0;
         background-image: linear-gradient(90deg, rgb(244 247 252 / 98%) 0%, rgb(244 247 252 / 91%) 54%, rgb(244 247 252 / 58%) 100%), url("/images/catalogo-banner-orofoods.jpg") !important;
-        background-position: 66% center !important;
+        background-position: 70% center !important;
     }
 
     body.catalog-modern-page .public-products-hero-copy {
-        max-width: 95%;
+        width: 100%;
+        max-width: 100%;
     }
 
     body.catalog-modern-page .public-products-hero h1 {
-        max-width: 330px;
-        font-size: clamp(1.8rem, 8vw, 2.25rem);
+        max-width: 300px;
+        font-size: clamp(30px, 8vw, 34px);
     }
 
     body.catalog-modern-page .public-products-hero-copy > p:last-child {
-        max-width: 320px;
-        font-size: .88rem;
+        max-width: 300px;
+        font-size: 16px;
     }
 
     body.catalog-modern-page .public-products-section {
         padding: 16px 0 32px;
+    }
+
+    body.catalog-modern-page .public-products-hero + .public-products-section {
+        padding-top: 12px;
     }
 
     body.catalog-modern-page .public-products-tools {
