@@ -402,10 +402,6 @@ body.portal-authenticated .portal-app-main .product-visual img {
     mix-blend-mode: normal;
 }
 
-body.portal-authenticated .portal-app-main .portal-catalog-page .product-visual {
-    background: #FFFFFF;
-}
-
 body.portal-authenticated .portal-app-main .portal-catalog-page .product-card.unavailable {
     opacity: 1;
 }
