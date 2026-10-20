@@ -106,7 +106,7 @@ public class ProductCatalogImagePresentationTests
         Assert.Contains("Brioche", publicCatalog, StringComparison.Ordinal);
         Assert.Contains("Gergelim", publicCatalog, StringComparison.Ordinal);
         Assert.Contains("Australiano", publicCatalog, StringComparison.Ordinal);
-        Assert.Contains("Congelados", publicCatalog, StringComparison.Ordinal);
+        Assert.Contains("Tradicional", publicCatalog, StringComparison.Ordinal);
         Assert.Contains("x.WmcCode", controller, StringComparison.Ordinal);
         Assert.Contains("x.Ean", controller, StringComparison.Ordinal);
         Assert.Contains("x.Ean13", controller, StringComparison.Ordinal);

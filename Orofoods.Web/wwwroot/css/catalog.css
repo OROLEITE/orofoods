@@ -834,3 +834,472 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* Public product catalog visual treatment, scoped to /Home/Products. */
+body.catalog-modern-page .site-header-modern .main-nav .nav-link.active {
+    box-shadow: inset 0 -2px 0 #0E7490;
+    color: #0E7490 !important;
+}
+
+body.catalog-modern-page .site-header-modern .header-account {
+    gap: 10px;
+}
+
+body.catalog-modern-page .catalog-header-cart {
+    display: inline-flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    background: #FFFFFF;
+    color: #0E7490;
+    font-size: .86rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+body.catalog-modern-page .catalog-header-cart:hover,
+body.catalog-modern-page .catalog-header-cart:focus-visible {
+    border-color: #0E7490;
+    color: #0B5D75;
+}
+
+body.catalog-modern-page .catalog-header-cart:focus-visible {
+    outline: 3px solid rgb(14 116 144 / 24%);
+    outline-offset: 2px;
+}
+
+body.catalog-modern-page .catalog-header-cart .catalog-cart-count {
+    display: inline-grid;
+    min-width: 22px;
+    height: 22px;
+    place-items: center;
+    margin: 0;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #0E7490;
+    color: #FFFFFF;
+    font-size: .72rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+body.catalog-modern-page .public-products-hero {
+    display: flex;
+    min-height: 250px;
+    align-items: center;
+    padding: 34px 0;
+    background-color: #F4F7FC !important;
+    background-image: linear-gradient(90deg, rgb(244 247 252 / 98%) 0%, rgb(244 247 252 / 95%) 40%, rgb(244 247 252 / 78%) 57%, rgb(244 247 252 / 12%) 78%, transparent 100%), url("/images/catalogo-banner-orofoods.jpg") !important;
+    background-position: center right !important;
+    background-size: cover !important;
+    color: #0F172A;
+}
+
+body.catalog-modern-page .public-products-hero::before {
+    content: none;
+}
+
+body.catalog-modern-page .public-products-hero .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1480px;
+}
+
+body.catalog-modern-page .public-products-hero-copy {
+    max-width: 650px;
+}
+
+body.catalog-modern-page .public-products-eyebrow {
+    margin: 0 0 8px;
+    color: #0E7490;
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+}
+
+body.catalog-modern-page .public-products-hero h1 {
+    margin: 0 0 9px;
+    color: #0F172A;
+    font-size: clamp(2rem, 3.2vw, 2.75rem);
+    font-weight: 800;
+    letter-spacing: -.04em;
+    line-height: 1.08;
+}
+
+body.catalog-modern-page .public-products-hero-copy > p:last-child {
+    max-width: 520px;
+    margin: 0;
+    color: #334155;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+body.catalog-modern-page .public-products-section {
+    min-height: 55vh;
+    padding: 22px 0 44px;
+    background: #F4F7FC;
+}
+
+body.catalog-modern-page .public-products-section > .container {
+    max-width: 1480px;
+}
+
+body.catalog-modern-page .public-products-tools {
+    grid-template-columns: minmax(0, 1fr) minmax(210px, .36fr) 132px;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+body.catalog-modern-page .public-products-search,
+body.catalog-modern-page .public-products-tools select,
+body.catalog-modern-page .public-products-tools > .btn {
+    min-height: 48px;
+    border-radius: 10px;
+}
+
+body.catalog-modern-page .public-products-search {
+    padding-inline: 16px;
+    background: #FFFFFF;
+    box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
+
+body.catalog-modern-page .public-products-tools select {
+    background-color: #FFFFFF;
+}
+
+body.catalog-modern-page .public-products-tools > .btn {
+    background: #0E7490;
+    border-color: #0E7490;
+    color: #FFFFFF;
+    font-weight: 750;
+}
+
+body.catalog-modern-page .public-products-tools > .btn:hover {
+    background: #0B5D75;
+    border-color: #0B5D75;
+}
+
+body.catalog-modern-page .public-catalog-quick-filters {
+    gap: 8px;
+    margin: 0 0 16px;
+}
+
+body.catalog-modern-page .public-catalog-quick-filters button {
+    min-height: 36px;
+    padding: 6px 14px;
+    background: #FFFFFF;
+    color: #334155;
+}
+
+body.catalog-modern-page .public-catalog-quick-filters button:hover,
+body.catalog-modern-page .public-catalog-quick-filters button.is-active {
+    border-color: #0E7490;
+    background: #0E7490;
+    color: #FFFFFF;
+}
+
+body.catalog-modern-page .public-quick-buy-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+    gap: 16px;
+}
+
+body.catalog-modern-page .public-quick-buy-card {
+    border-color: #E2E8F0;
+    border-radius: 14px;
+    background: #FFFFFF;
+    box-shadow: 0 4px 14px rgb(15 23 42 / 5%);
+}
+
+body.catalog-modern-page .public-quick-buy-card .product-visual {
+    aspect-ratio: 4 / 3;
+    border-bottom-color: #E2E8F0;
+    background: #FFFFFF;
+}
+
+body.catalog-modern-page .public-quick-buy-card-body {
+    padding: 14px !important;
+}
+
+body.catalog-modern-page .public-quick-buy-card-body h2 {
+    min-height: 2.55em;
+    color: #0F172A;
+}
+
+body.catalog-modern-page .quick-buy-packaging {
+    min-height: 2.8em;
+}
+
+body.catalog-modern-page .catalog-price strong {
+    color: #0F172A;
+    font-size: 1.18rem;
+    font-weight: 850;
+}
+
+body.catalog-modern-page .quick-buy-form {
+    gap: 6px;
+    padding-top: 8px;
+}
+
+body.catalog-modern-page .quick-buy-form > label {
+    margin: 0;
+    color: #64748B;
+    font-size: .72rem;
+    font-weight: 650;
+}
+
+body.catalog-modern-page .quick-buy-form .catalog-add-controls {
+    display: grid;
+    grid-template-columns: minmax(128px, auto) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+body.catalog-modern-page .catalog-quantity-stepper {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+body.catalog-modern-page .catalog-quantity-stepper::before,
+body.catalog-modern-page .catalog-quantity-stepper::after,
+body.catalog-modern-page .catalog-quantity-button::before,
+body.catalog-modern-page .catalog-quantity-button::after {
+    display: none;
+    content: none;
+}
+
+body.catalog-modern-page .catalog-quantity-button,
+body.catalog-modern-page .catalog-quantity-stepper input {
+    box-sizing: border-box;
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0;
+    border-radius: 8px;
+    font-size: .95rem;
+    line-height: 1;
+    text-align: center;
+}
+
+body.catalog-modern-page .catalog-quantity-button {
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid #0E7490;
+    background: #FFFFFF;
+    color: #0E7490;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+
+body.catalog-modern-page .catalog-quantity-button:hover:not(:disabled) {
+    border-color: #0B5D75;
+    background: #0B5D75;
+    color: #FFFFFF;
+}
+
+body.catalog-modern-page .catalog-quantity-button:focus-visible,
+body.catalog-modern-page .catalog-quantity-stepper input:focus-visible {
+    outline: 3px solid rgb(14 116 144 / 24%);
+    outline-offset: 2px;
+}
+
+body.catalog-modern-page .catalog-quantity-button:disabled {
+    border-color: #B8D4DC;
+    background: #EAF3F6;
+    color: #7298A3;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+body.catalog-modern-page .catalog-quantity-stepper input {
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #0F172A;
+    box-shadow: none;
+    appearance: textfield;
+}
+
+body.catalog-modern-page .catalog-quantity-stepper input::-webkit-inner-spin-button,
+body.catalog-modern-page .catalog-quantity-stepper input::-webkit-outer-spin-button {
+    margin: 0;
+    appearance: none;
+}
+
+body.catalog-modern-page .quick-buy-form .quick-buy-button {
+    min-width: 0;
+    min-height: 40px;
+    margin: 0;
+    padding-inline: 8px;
+    white-space: nowrap;
+    font-size: .78rem;
+}
+
+body.catalog-modern-page .catalog-add-status {
+    min-height: 18px;
+    margin: 1px 0 0;
+    color: #0E7490;
+    font-size: .7rem;
+    line-height: 1.3;
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    body.catalog-modern-page .public-quick-buy-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+    body.catalog-modern-page .quick-buy-form .catalog-add-controls {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.catalog-modern-page .catalog-quantity-stepper {
+        justify-content: flex-start;
+    }
+
+    body.catalog-modern-page .quick-buy-form .quick-buy-button {
+        width: 100%;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+    body.catalog-modern-page .public-products-hero {
+        min-height: 220px;
+    }
+
+    body.catalog-modern-page .public-quick-buy-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.catalog-modern-page .public-products-tools {
+        grid-template-columns: minmax(0, 1fr) minmax(180px, .55fr);
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.catalog-modern-page .catalog-header-cart-label {
+        display: none;
+    }
+
+    body.catalog-modern-page .public-products-hero {
+        min-height: 190px;
+        padding: 26px 0;
+        background-image: linear-gradient(90deg, rgb(244 247 252 / 98%) 0%, rgb(244 247 252 / 91%) 54%, rgb(244 247 252 / 58%) 100%), url("/images/catalogo-banner-orofoods.jpg") !important;
+        background-position: 66% center !important;
+    }
+
+    body.catalog-modern-page .public-products-hero-copy {
+        max-width: 95%;
+    }
+
+    body.catalog-modern-page .public-products-hero h1 {
+        max-width: 330px;
+        font-size: clamp(1.8rem, 8vw, 2.25rem);
+    }
+
+    body.catalog-modern-page .public-products-hero-copy > p:last-child {
+        max-width: 320px;
+        font-size: .88rem;
+    }
+
+    body.catalog-modern-page .public-products-section {
+        padding: 16px 0 32px;
+    }
+
+    body.catalog-modern-page .public-products-tools {
+        grid-template-columns: minmax(0, 1fr) 112px;
+        gap: 8px;
+    }
+
+    body.catalog-modern-page .public-products-search {
+        grid-column: 1 / -1;
+    }
+
+    body.catalog-modern-page .public-products-tools > .btn {
+        grid-column: 2;
+    }
+
+    body.catalog-modern-page .public-quick-buy-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    body.catalog-modern-page .public-quick-buy-card {
+        display: grid;
+        grid-template-columns: minmax(112px, 34%) minmax(0, 1fr);
+        align-items: stretch;
+    }
+
+    body.catalog-modern-page .public-quick-buy-card .product-visual {
+        align-self: stretch;
+        aspect-ratio: auto;
+        min-height: 100%;
+        border-right: 1px solid #E2E8F0;
+        border-bottom: 0;
+    }
+
+    body.catalog-modern-page .public-quick-buy-card-body {
+        padding: 12px !important;
+    }
+
+    body.catalog-modern-page .public-quick-buy-card-body h2 {
+        min-height: 0;
+        margin: 4px 0;
+        font-size: .95rem;
+    }
+
+    body.catalog-modern-page .quick-buy-packaging {
+        min-height: 0;
+        margin-bottom: 5px;
+        font-size: .7rem;
+    }
+
+    body.catalog-modern-page .quick-buy-form .catalog-add-controls {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+    }
+
+    body.catalog-modern-page .catalog-quantity-stepper {
+        justify-content: flex-start;
+    }
+
+    body.catalog-modern-page .quick-buy-form .quick-buy-button {
+        width: 100%;
+        min-height: 38px;
+        font-size: .72rem;
+    }
+}
+
+@media (max-width: 359.98px) {
+    body.catalog-modern-page .public-quick-buy-card {
+        grid-template-columns: 1fr;
+    }
+
+    body.catalog-modern-page .public-quick-buy-card .product-visual {
+        aspect-ratio: 16 / 9;
+        border-right: 0;
+        border-bottom: 1px solid #E2E8F0;
+    }
+}
