@@ -20,8 +20,10 @@ public class CustomerController(ApplicationDbContext db, PriceService priceServi
     [HttpGet("customer")]
     public async Task<ActionResult> Current(CancellationToken cancellationToken)
     {
-        var customer = await db.Customers.AsNoTracking().Include(x => x.CustomerPaymentTerms).ThenInclude(x => x.PaymentTerm).SingleOrDefaultAsync(x => x.Id == CustomerId, cancellationToken);
-        return customer is null ? Forbid() : Ok(new { customer.Id, customer.LegalName, customer.TradeName, customer.MinimumOrder, customer.CreditLimit, customer.CreditUsed, PaymentTerms = customer.PaymentTerms });
+        var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(x => x.Id == CustomerId, cancellationToken);
+        if (customer is null) return Forbid();
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(CustomerId, cancellationToken);
+        return Ok(new { customer.Id, customer.LegalName, customer.TradeName, customer.MinimumOrder, customer.CreditLimit, customer.CreditUsed, PaymentTerms = eligibility.PaymentMethods.Select(term => term.Name).ToArray(), WmcPaymentCondition = eligibility.WmcPaymentCondition });
     }
 
     [HttpGet("orders")]
@@ -51,10 +53,10 @@ public class CustomerController(ApplicationDbContext db, PriceService priceServi
     public async Task<ActionResult<PagedResult<object>>> PaymentTerms(int page = 1, int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var request = new PageRequest(page, pageSize);
-        var query = db.CustomerPaymentTerms.AsNoTracking().Where(x => x.CustomerId == CustomerId && x.IsActive && x.PaymentTerm!.IsActive);
-        var totalItems = await query.CountAsync(cancellationToken);
-        var items = await query.OrderBy(x => x.PaymentTerm!.SortOrder).Skip(request.Skip).Take(request.PageSize)
-            .Select(x => (object)new { x.PaymentTerm!.Id, x.PaymentTerm.Name, x.PaymentTerm.SortOrder }).ToListAsync(cancellationToken);
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(CustomerId, cancellationToken);
+        var items = eligibility.PaymentMethods.OrderBy(term => term.SortOrder).Skip(request.Skip).Take(request.PageSize)
+            .Select(term => (object)new { term.Id, term.Name, term.SortOrder }).ToList();
+        var totalItems = eligibility.PaymentMethods.Count;
         return Ok(new PagedResult<object>(items, request.Page, request.PageSize, totalItems));
     }
 

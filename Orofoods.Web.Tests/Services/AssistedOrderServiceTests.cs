@@ -59,7 +59,7 @@ public class AssistedOrderServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_RejectsTermBeforeThreeValidPurchases()
+    public async Task CreateAsync_RejectsCreditTermWithoutWmcAuthorization()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = CreateCustomer();
@@ -71,7 +71,7 @@ public class AssistedOrderServiceTests
         var result = await CreateService(db).CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
 
         Assert.False(result.Succeeded);
-        Assert.Contains("três primeiras", result.ErrorMessage);
+        Assert.Contains("WMC", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(db.Orders);
     }
 

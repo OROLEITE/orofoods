@@ -4,6 +4,7 @@ using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Services.Commercial;
+using Orofoods.Web.Integrations.Erp.Wmc;
 
 namespace Orofoods.Web.ViewModels;
 
@@ -27,6 +28,16 @@ public sealed class CustomerCommercialViewModel
     public CommercialAttentionCustomerViewModel? Attention { get; init; }
     public IReadOnlyList<CrmOpportunity> Opportunities { get; init; } = [];
     public long? WhatsAppConversationId { get; init; }
+    public WmcCustomerPaymentCondition? WmcPaymentCondition { get; init; }
+    public bool WmcPaymentConditionEligible { get; init; }
+    public string WmcPaymentConditionDescription => WmcPaymentCondition is { } condition
+        ? $"{condition.Description} ({condition.FirstInstallmentDays} dias)"
+        : "Nenhuma condição encontrada no espelho WMC";
+    public string WmcPaymentConditionStatus => WmcPaymentConditionEligible
+        ? "Encontrada no WMC e elegível para prazo."
+        : WmcPaymentCondition is null
+            ? "Nenhuma condição encontrada no espelho WMC; prazo não liberado."
+            : "Encontrada no WMC, mas não elegível para liberação de prazo.";
     public string? PhoneNumberForCall =>
         WhatsAppConversationService.TryNormalizePhone(Customer.Phone) is not null
             ? Customer.Phone

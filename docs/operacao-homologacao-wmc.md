@@ -12,7 +12,7 @@ O arquivo atual é baseado exclusivamente no exemplo recebido. Ele é adequado p
 2. Diretório compartilhado ou local autorizado para entrada do WMC.
 3. `WmcFileDrop:Enabled` configurado somente no ambiente de homologação.
 4. `WmcFileDrop:AutoRetryEnabled` mantido como `false`.
-5. Cliente aprovado com o código WMC preenchido.
+5. Cliente aprovado e com CNPJ fiscal válido. O uso de um código WMC do cliente no TXT depende de confirmação no contrato oficial.
 6. Todos os produtos do pedido com o código WMC preenchido.
 
 Exemplo de configuração de homologação:
@@ -27,7 +27,7 @@ Exemplo de configuração de homologação:
 
 ## Roteiro de teste
 
-1. No painel Orofoods/JPL, confirme o código WMC do cliente em **Clientes**.
+1. No painel Orofoods/JPL, confirme o CNPJ fiscal do cliente. O gerador atual escreve o CNPJ no registro 019; a necessidade de `CODCLIENTE` no layout ainda depende de confirmação da WMC.
 2. Confirme o código WMC de cada item em **Produtos**.
 3. Crie ou selecione um pedido confirmado com endereço e condição de pagamento válidos.
 4. Abra **Integrações ERP** e use **Exportar WMC** no pedido desejado.
@@ -39,7 +39,7 @@ Exemplo de configuração de homologação:
 ## Resultado esperado
 
 - Arquivo com o nome `WMC_<numero-do-pedido>.txt`.
-- Cliente e produtos sem código WMC impedem a exportação e registram uma auditoria de falha.
+- Produtos sem código WMC impedem a exportação e registram uma auditoria de falha. A ausência do código WMC do cliente não bloqueia o gerador; o identificador oficial do cliente continua pendente de homologação.
 - Exportação bem-sucedida registra usuário, e-mail, data e arquivo no pedido.
 - Uma falha resolvida por exportação posterior não permanece como pendência no indicador do painel.
 - O endpoint `/health` retorna `erp: homologation-file-drop-ready` quando o diretório configurado existe.

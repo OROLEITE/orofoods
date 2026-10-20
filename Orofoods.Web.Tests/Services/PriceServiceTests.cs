@@ -92,7 +92,7 @@ public class PriceServiceTests
     }
 
     [Fact]
-    public async Task Bimbo_import_placeholder_price_is_not_a_commercial_price()
+    public async Task Positive_bimbo_base_price_of_one_real_is_commercially_valid()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Paes", Slug = "paes", IsActive = true };
@@ -113,7 +113,7 @@ public class PriceServiceTests
         var result = await new PriceService(db).GetPriceAsync(customer.Id, product.Id);
 
         Assert.NotNull(result);
-        Assert.False(result!.IsCommerciallyValid);
-        Assert.Equal(0m, result.EffectivePrice);
+        Assert.True(result!.IsCommerciallyValid);
+        Assert.Equal(1m, result.EffectivePrice);
     }
 }

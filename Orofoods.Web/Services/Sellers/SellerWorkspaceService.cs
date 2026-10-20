@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Customers;
 
 namespace Orofoods.Web.Services.Sellers;
 
 public sealed class SellerWorkspaceService(
     ApplicationDbContext db,
-    SalesRepresentativeAccessService accessService)
+    SalesRepresentativeAccessService accessService,
+    IPaymentEligibilityService? paymentEligibilityService = null)
 {
     public async Task<SellerDashboardViewModel?> GetDashboardAsync(
         ClaimsPrincipal user,
@@ -168,23 +170,20 @@ public sealed class SellerWorkspaceService(
 
         var customer = await GetPortfolioQuery(scope.SalesRepresentativeId!.Value)
             .Include(x => x.SalesRepresentative)
-            .Include(x => x.CustomerPaymentTerms)
-            .ThenInclude(x => x.PaymentTerm)
             .SingleOrDefaultAsync(x => x.Id == customerId, cancellationToken);
         if (customer is null)
         {
             return null;
         }
 
+        var eligibility = paymentEligibilityService is null
+            ? null
+            : await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customerId, cancellationToken);
         return new SellerCustomerWorkspaceViewModel
         {
             Customer = ToRow(customer),
             SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Vendedor",
-            PaymentTerms = customer.CustomerPaymentTerms
-                .Where(x => x.IsActive && x.PaymentTerm?.IsActive == true)
-                .OrderBy(x => x.PaymentTerm!.SortOrder)
-                .Select(x => x.PaymentTerm!.Name)
-                .ToList()
+            PaymentTerms = eligibility?.PaymentMethods.Select(term => term.Name).ToList() ?? []
         };
     }
 

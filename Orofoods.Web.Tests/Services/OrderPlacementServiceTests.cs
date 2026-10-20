@@ -43,7 +43,7 @@ public class OrderPlacementServiceTests
     }
 
     [Fact]
-    public async Task PlaceLinesAsync_rejects_provisional_Bimbo_import_price()
+    public async Task PlaceLinesAsync_accepts_positive_bimbo_price_of_one_real()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
         fixture.Product.Brand = "BIMBO";
@@ -63,9 +63,9 @@ public class OrderPlacementServiceTests
             [(fixture.Product.Id, 1)],
             clearCart: false);
 
-        Assert.False(result.Succeeded);
-        Assert.NotEmpty(result.Errors);
-        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal(1m, Assert.Single(result.Order!.Items).UnitPrice);
+        Assert.Single(await fixture.Db.Orders.AsNoTracking().ToListAsync());
     }
 
     [Fact]
@@ -426,7 +426,7 @@ public class OrderPlacementServiceTests
     }
 
     [Fact]
-    public async Task PlaceAsync_rolls_back_when_inventory_reservation_fails()
+    public async Task PlaceAsync_places_order_for_active_product_with_zero_stock()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 0);
         fixture.Session.SetString("orofoods-cart-v2-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [fixture.Product.Id] = 1 }));
@@ -438,9 +438,8 @@ public class OrderPlacementServiceTests
             fixture.Session,
             fixture.Scope);
 
-        Assert.False(result.Succeeded);
-        Assert.Empty(await fixture.Db.Orders.ToListAsync());
-        Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
+        Assert.True(result.Succeeded);
+        Assert.Single(await fixture.Db.Orders.ToListAsync());
     }
 
     [Fact]

@@ -36,7 +36,6 @@ public sealed class AdminOrderStatusFeedbackTests
             db,
             TimeProvider.System,
             new OrderReservationService(db),
-            new PaymentEligibilityService(db, eligibility),
             new PaymentService(db, eligibility, new PendingBoletoProvider()));
         var wmcExport = new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
         var controller = new OrdersController(db, service, wmcManualExportService: wmcExport, pointPaymentService: null!, Options.Create(new MercadoPagoPointOptions()), Options.Create(new PaymentEligibilityOptions()), hostEnvironment: null!);

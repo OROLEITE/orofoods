@@ -104,7 +104,10 @@ public class PortalController(
     public async Task<IActionResult> Dashboard()
     {
         var customer = await GetCurrentCustomerAsync();
-        return View(await customerDashboardService.GetAsync(customer));
+        var dashboard = await customerDashboardService.GetAsync(customer);
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id);
+        dashboard.AuthorizedPaymentTerms = string.Join(", ", eligibility.PaymentMethods.Select(term => term.Name));
+        return View(dashboard);
     }
 
     public async Task<IActionResult> Catalog(string? q, string? category, string? brand, bool? available)
@@ -560,9 +563,9 @@ public class PortalController(
                 product.Name,
                 product.UnitDescription,
                 product.MinimumSalesQuantity,
-                product.IsAvailable && salesUnitMatches && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) ? item.Quantity : 0,
+                product.IsActive && salesUnitMatches ? item.Quantity : 0,
                 prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice),
-                product.IsAvailable && salesUnitMatches && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)),
+                product.IsActive && salesUnitMatches,
                 product.SubstituteProduct?.Name,
                 product.PriceUnitLabel);
         }).ToList();
@@ -696,16 +699,13 @@ public class PortalController(
         return customer;
     }
 
-    private async Task ApplyCommercialAvailabilityAsync(IEnumerable<Product> products)
+    private Task ApplyCommercialAvailabilityAsync(IEnumerable<Product> products)
     {
-        var productList = products.ToList();
-        var productIds = productList.Select(product => product.Id).ToList();
-        var inventories = await db.ProductInventories.AsNoTracking()
-            .Where(inventory => productIds.Contains(inventory.ProductId))
-            .ToDictionaryAsync(inventory => inventory.ProductId);
-        foreach (var product in productList)
+        foreach (var product in products)
         {
-            product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= product.MinimumSalesQuantity;
+            product.IsCommerciallyAvailable = product.IsActive;
         }
+
+        return Task.CompletedTask;
     }
 }

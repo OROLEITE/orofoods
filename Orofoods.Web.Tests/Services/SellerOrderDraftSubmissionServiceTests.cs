@@ -269,8 +269,11 @@ public sealed class SellerOrderDraftSubmissionServiceTests
     [Fact]
     public async Task Submit_rejects_insufficient_credit_without_reserving_stock_or_changing_the_draft()
     {
-        await using var fixture = await SubmissionFixture.CreateAsync();
-        fixture.PaymentTerm.Code = "BOLETO14";
+        var paymentConditionReader = new FixedWmcPaymentConditionReader(new Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition(
+            "5264", "3", "3", "14 DIAS", 1, 14, 0, "A", "WMC Firebird mirror", DateTimeOffset.UtcNow));
+        await using var fixture = await SubmissionFixture.CreateAsync(paymentConditionReader: paymentConditionReader);
+        fixture.Customer.WmcCode = "5264";
+        fixture.PaymentTerm.Code = "BOLETO_14D";
         fixture.PaymentTerm.Name = "Boleto 14 dias";
         fixture.PaymentTerm.DaysUntilDue = 14;
         fixture.Customer.CreditLimit = 10m;
@@ -296,7 +299,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         await using var fixture = await SubmissionFixture.CreateAsync();
         var secondProduct = await fixture.AddAvailableProductAsync("SUBMIT-002", price: 23m);
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m), (secondProduct.Id, 1, 0m));
-        secondProduct.IsAvailable = false;
+        secondProduct.IsActive = false;
         await fixture.Db.SaveChangesAsync();
 
         var result = await fixture.SubmitAsync(draft);
@@ -308,7 +311,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
     }
 
     [Fact]
-    public async Task Submit_rolls_back_the_order_history_and_reservations_when_any_item_has_insufficient_stock()
+    public async Task Submit_accepts_items_with_zero_stock_and_creates_the_order()
     {
         await using var fixture = await SubmissionFixture.CreateAsync();
         var secondProduct = await fixture.AddAvailableProductAsync("SUBMIT-002", price: 23m, stock: 0);
@@ -316,15 +319,8 @@ public sealed class SellerOrderDraftSubmissionServiceTests
 
         var result = await fixture.SubmitAsync(draft);
 
-        Assert.False(result.Succeeded);
-        Assert.Equal(SellerOrderDraftErrorCodes.InvalidOrder, result.ErrorCode);
-        Assert.Empty(await fixture.Db.Orders.ToListAsync());
-        Assert.Empty(await fixture.Db.OrderStatusHistories.ToListAsync());
-        Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
-        Assert.Equal(0m, fixture.Customer.CreditUsed);
-        var persistedDraft = await fixture.Db.SellerOrderDrafts.AsNoTracking().SingleAsync(x => x.Id == draft.Id);
-        Assert.Equal(SellerOrderDraftStatus.Draft, persistedDraft.Status);
-        Assert.Equal(draft.Version, persistedDraft.Version);
+        Assert.True(result.Succeeded);
+        Assert.Single(await fixture.Db.Orders.ToListAsync());
     }
 
     [Fact]
@@ -422,7 +418,8 @@ public sealed class SellerOrderDraftSubmissionServiceTests
     {
         private SubmissionFixture(ApplicationDbContext db, SalesRepresentative representative, ApplicationUser seller,
             ApplicationUser? otherSeller, Customer customer, CustomerAddress address, PaymentTerm paymentTerm,
-            Product product, PriceTableItem priceTableItem, bool cardOnDeliveryEnabled)
+            Product product, PriceTableItem priceTableItem, bool cardOnDeliveryEnabled,
+            Orofoods.Web.Integrations.Erp.Wmc.IWmcCustomerPaymentConditionReader? paymentConditionReader)
         {
             Db = db;
             Representative = representative;
@@ -440,7 +437,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
             var eligibility = new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions
             {
                 CardOnDeliveryEnabled = cardOnDeliveryEnabled
-            }));
+            }), paymentConditionReader);
             QuoteProtector = new SellerOrderDraftQuoteProtector(new EphemeralDataProtectionProvider());
             DraftService = new SellerOrderDraftService(db, access,
                 new SellerCatalogService(db, access, priceService), priceService, eligibility);
@@ -551,7 +548,8 @@ public sealed class SellerOrderDraftSubmissionServiceTests
             return product;
         }
 
-        public static async Task<SubmissionFixture> CreateAsync(bool addSecondSeller = false, bool cardOnDeliveryEnabled = false)
+        public static async Task<SubmissionFixture> CreateAsync(bool addSecondSeller = false, bool cardOnDeliveryEnabled = false,
+            Orofoods.Web.Integrations.Erp.Wmc.IWmcCustomerPaymentConditionReader? paymentConditionReader = null)
         {
             var db = await TestDbContextFactory.CreateAsync();
             var representative = new SalesRepresentative { Name = "Vendedor A", IsActive = true };
@@ -604,9 +602,16 @@ public sealed class SellerOrderDraftSubmissionServiceTests
             await db.SaveChangesAsync();
 
             return new SubmissionFixture(db, representative, seller, otherSeller, customer, address, paymentTerm,
-                product, priceTableItem, cardOnDeliveryEnabled);
+                product, priceTableItem, cardOnDeliveryEnabled, paymentConditionReader);
         }
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();
+    }
+
+    private sealed class FixedWmcPaymentConditionReader(Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition condition)
+        : Orofoods.Web.Integrations.Erp.Wmc.IWmcCustomerPaymentConditionReader
+    {
+        public Task<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition?> GetForCustomerAsync(string customerCode, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition?>(condition);
     }
 }

@@ -170,7 +170,7 @@ public sealed class OrderPlacementService(
         }
 
         var paymentTerm = await db.PaymentTerms.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == command.PaymentTermId && x.IsActive, cancellationToken);
+            .SingleOrDefaultAsync(x => x.Id == command.PaymentTermId, cancellationToken);
         if (paymentTerm is null)
         {
             return OrderPlacementResult.Failure("Condição de pagamento inválida.");
@@ -212,7 +212,7 @@ public sealed class OrderPlacementService(
 
         var productIds = lines.Select(x => x.ProductId).ToArray();
         var products = await db.Products.AsNoTracking()
-            .Where(x => productIds.Contains(x.Id) && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
+            .Where(x => productIds.Contains(x.Id) && x.IsActive)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         if (products.Count != lines.Count)
         {

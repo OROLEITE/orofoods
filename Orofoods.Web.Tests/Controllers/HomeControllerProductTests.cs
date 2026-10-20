@@ -15,7 +15,7 @@ namespace Orofoods.Web.Tests.Controllers;
 public class HomeControllerProductTests
 {
     [Fact]
-    public async Task Index_returns_active_catalog_products_without_granting_purchase_availability()
+    public async Task Index_returns_active_catalog_products_and_allows_purchase_regardless_of_stock_or_wmc_sync()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var visibleCategory = new ProductCategory { Name = "Pães", Slug = "paes", SortOrder = 1, IsActive = true };
@@ -46,8 +46,8 @@ public class HomeControllerProductTests
         Assert.Equal("Destaque", products[0].Name);
         Assert.Single(products[0].Images);
         Assert.Contains(products, product => product.Name == "Regular");
-        Assert.Contains(products, product => product.Name == "Indisponível" && !product.IsCommerciallyAvailable);
-        Assert.Contains(products, product => product.Name == "WMC pendente" && !product.IsCommerciallyAvailable);
+        Assert.Contains(products, product => product.Name == "Indisponível" && product.IsCommerciallyAvailable);
+        Assert.Contains(products, product => product.Name == "WMC pendente" && product.IsCommerciallyAvailable);
         Assert.Contains(products, product => product.Name == "Categoria inativa" && product.IsActive);
         Assert.DoesNotContain(products, product => product.Name == "Produto inativo");
         Assert.Equal(["Pães", "Molhos"], categories.Select(category => category.Name));
@@ -77,7 +77,7 @@ public class HomeControllerProductTests
         var model = Assert.IsType<PublicProductCatalogViewModel>(result.Model);
 
         Assert.Equal(frozen.Id, Assert.Single(model.Products).Id);
-        Assert.False(model.Products[0].IsCommerciallyAvailable);
+        Assert.True(model.Products[0].IsCommerciallyAvailable);
     }
 
     [Fact]
@@ -276,7 +276,7 @@ public class HomeControllerProductTests
     }
 
     [Fact]
-    public async Task Index_shows_ten_active_BIMBO_products_even_when_unavailable_without_duplicates()
+    public async Task Index_shows_ten_active_BIMBO_products_as_purchasable_without_duplicates()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
@@ -318,7 +318,7 @@ public class HomeControllerProductTests
         Assert.Equal(products.Count, products.Select(product => product.Id).Distinct().Count());
         Assert.Equal(bimboProducts.OrderBy(product => product.Name).Select(product => product.Name), products.Select(product => product.Name));
         Assert.All(products, product => Assert.True(product.IsActive));
-        Assert.All(products.Where(product => product.Brand == "BIMBO"), product => Assert.False(product.IsCommerciallyAvailable));
+        Assert.All(products.Where(product => product.Brand == "BIMBO"), product => Assert.True(product.IsCommerciallyAvailable));
     }
 
     [Fact]

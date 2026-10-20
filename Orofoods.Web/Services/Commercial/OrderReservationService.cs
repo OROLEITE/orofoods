@@ -58,24 +58,22 @@ public class OrderReservationService(ApplicationDbContext db)
             .Where(x => productIds.Contains(x.ProductId))
             .ToDictionaryAsync(x => x.ProductId, cancellationToken);
 
+        // Estoque é informativo: a venda não é bloqueada por saldo insuficiente ou ausência de inventário.
+        // Só se reserva o saldo realmente disponível, para QuantityReserved nunca exceder QuantityOnHand.
         foreach (var item in currentOrder.Items)
         {
-            if (!inventories.TryGetValue(item.ProductId, out var inventory) || inventory.AvailableQuantity < item.Quantity)
+            var reservedQuantity = 0;
+            if (inventories.TryGetValue(item.ProductId, out var inventory))
             {
-                var productName = item.Product?.Name ?? item.ProductNameSnapshot;
-                return CommercialValidationResult.Failure($"Estoque insuficiente para {productName}.");
+                reservedQuantity = Math.Clamp(item.Quantity, 0, inventory.AvailableQuantity);
+                inventory.QuantityReserved += reservedQuantity;
             }
-        }
 
-        foreach (var item in currentOrder.Items)
-        {
-            var inventory = inventories[item.ProductId];
-            inventory.QuantityReserved += item.Quantity;
             db.InventoryReservations.Add(new InventoryReservation
             {
                 OrderId = currentOrder.Id,
                 ProductId = item.ProductId,
-                Quantity = item.Quantity
+                Quantity = reservedQuantity
             });
         }
 
@@ -115,7 +113,10 @@ public class OrderReservationService(ApplicationDbContext db)
         var releasedAt = DateTime.UtcNow;
         foreach (var reservation in reservations)
         {
-            inventories[reservation.ProductId].QuantityReserved -= reservation.Quantity;
+            if (inventories.TryGetValue(reservation.ProductId, out var inventory))
+            {
+                inventory.QuantityReserved = Math.Max(0, inventory.QuantityReserved - reservation.Quantity);
+            }
             reservation.Status = InventoryReservationStatus.Released;
             reservation.ReleasedAt = releasedAt;
         }

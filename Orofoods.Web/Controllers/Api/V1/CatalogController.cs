@@ -25,7 +25,7 @@ public class CatalogController(ApplicationDbContext db) : ControllerBase
             .Select(product => new ProductProjection(product.Id, product.Sku, product.Name, product.Brand, product.Description,
                 product.ProductCategory!.Name, product.UnitsPerCase, product.Ean13, product.Dun14,
                 product.EffectiveSalesUnitCode, product.PackagesPerCase,
-                product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && db.ProductInventories.Any(inventory => inventory.ProductId == product.Id && inventory.QuantityOnHand - inventory.QuantityReserved >= (product.CommercialUnitCode == "PCT" ? 1 : product.MinimumCases)),
+                product.IsActive,
                 product.Images.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).Select(image => (int?)image.Id).FirstOrDefault()))
             .ToListAsync(cancellationToken);
         var responses = items.Select(product => new ProductResponse(

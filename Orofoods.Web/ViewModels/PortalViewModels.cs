@@ -23,6 +23,7 @@ public class DashboardVm
     public int MonthOrderCount { get; init; }
     public decimal AverageTicket { get; init; }
     public int OpenOrders { get; init; }
+    public string AuthorizedPaymentTerms { get; set; } = "Consulte o WMC para condições autorizadas.";
 }
 
 public sealed record MonthlyPurchaseVm(DateTime Month, decimal Total, int OrderCount);

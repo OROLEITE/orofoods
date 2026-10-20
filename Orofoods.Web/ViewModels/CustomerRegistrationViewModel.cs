@@ -74,23 +74,22 @@ public class AdminCustomerApprovalViewModel
     public CustomerStatus Status { get; set; }
     public decimal MinimumOrder { get; set; }
     public decimal CreditLimit { get; set; }
-    public int ValidPurchaseCount { get; set; }
-    public bool InvoiceCreditEnabled { get; set; }
-    public int EffectiveMaximumPaymentTermDays { get; set; }
-    public DateTime? EffectiveCreditReleaseDate { get; set; }
-    public bool CreditOverrideEnabled { get; set; }
-    [Range(0, 14)] public int? MaximumPaymentTermDays { get; set; }
-    public bool CreditBlocked { get; set; }
-    [StringLength(1000)] public string? CreditNotes { get; set; }
     [Display(Name = "Codigo WMC")]
     [StringLength(30)]
     public string? WmcCode { get; set; }
     public int? PriceTableId { get; set; }
     public int? SalesRepresentativeId { get; set; }
     public string? InternalSalesUserId { get; set; }
-    public List<int> PaymentTermIds { get; set; } = [];
     public List<SelectListItem> PriceTables { get; set; } = [];
     public List<SelectListItem> SalesRepresentatives { get; set; } = [];
     public List<SelectListItem> InternalSalesUsers { get; set; } = [];
-    public List<SelectListItem> PaymentTerms { get; set; } = [];
+    public string WmcPaymentConditionDescription { get; set; } = "Prazo indisponível sem autorização válida no WMC.";
+    public string WmcPaymentConditionStatus { get; set; } = "Nenhuma condição encontrada no espelho WMC.";
+    public bool WmcPaymentConditionEligible { get; set; }
+    public string? WmcPaymentConditionCode { get; set; }
+    public string? WmcPaymentConditionSituation { get; set; }
+    public int? WmcPaymentConditionInstallmentCount { get; set; }
+    public string? WmcPaymentConditionSource { get; set; }
+    public DateTimeOffset? WmcPaymentConditionReadAtUtc { get; set; }
+    public DateTimeOffset? WmcPaymentConditionSynchronizationAtUtc { get; set; }
 }

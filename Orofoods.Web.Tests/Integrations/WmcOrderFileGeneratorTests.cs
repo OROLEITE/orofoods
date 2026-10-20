@@ -265,8 +265,10 @@ public class WmcOrderFileGeneratorTests
         Assert.Contains(result.Errors, error => error.Contains("produto", StringComparison.OrdinalIgnoreCase));
     }
 
-    [Fact]
-    public void Exports_card_on_delivery_as_due_today_without_changing_the_payment_term()
+    [Theory]
+    [InlineData("CREDIT_CARD")]
+    [InlineData("CARD_ON_DELIVERY")]
+    public void Exports_card_payment_terms_as_due_today_without_changing_the_payment_term(string code)
     {
         var order = new Order
         {
@@ -279,6 +281,7 @@ public class WmcOrderFileGeneratorTests
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 63.20m, Subtotal = 63.20m }]
         };
 
+        order.PaymentTerm!.Code = code;
         var result = WmcTestOrderFileGenerator.Create().Build(order);
         var paymentRecord = result.Content?.Split(Environment.NewLine)[1];
 
@@ -286,6 +289,58 @@ public class WmcOrderFileGeneratorTests
         Assert.Equal(45, paymentRecord?.Length);
         Assert.Contains("00020260830", paymentRecord);
         Assert.Equal(14, order.PaymentTerm.DaysUntilDue);
+    }
+
+    [Theory]
+    [InlineData("PIX", 0)]
+    [InlineData("CASH", 0)]
+    [InlineData("BOLETO_14D", 14)]
+    public void Preserves_supported_payment_modes_and_due_days(string code, int days)
+    {
+        var order = new Order
+        {
+            Number = "ORO-2026-000781",
+            CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
+            PaymentTerm = new PaymentTerm { Code = code, Name = code, DaysUntilDue = days },
+            Total = 63.20m,
+            Items = [new OrderItem
+            {
+                Product = new Product { WmcCode = "610601552", Unit = "caixa" },
+                ProductNameSnapshot = "Pao",
+                Quantity = 1,
+                UnitPrice = 63.20m,
+                Subtotal = 63.20m
+            }]
+        };
+
+        var result = WmcTestOrderFileGenerator.Create().Build(order);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var paymentRecord = result.Content!.Split(Environment.NewLine)[1];
+        Assert.Equal(45, paymentRecord.Length);
+        Assert.Equal(days.ToString("D3"), paymentRecord.Substring(14, 3));
+    }
+
+    [Fact]
+    public void Exports_wmc_authorized_single_term_above_fourteen_days_in_the_existing_txt_record()
+    {
+        var order = new Order
+        {
+            Number = "ORO-2026-000780",
+            CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
+            PaymentTerm = new PaymentTerm { Code = "BOLETO_21D", Name = "21 dias", DaysUntilDue = 21 },
+            Total = 63.20m,
+            Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 63.20m, Subtotal = 63.20m }]
+        };
+
+        var result = WmcTestOrderFileGenerator.Create().Build(order);
+        var paymentRecord = result.Content?.Split(Environment.NewLine)[1];
+
+        Assert.True(result.Succeeded);
+        Assert.Contains("021  5  1  CD 02120260920", paymentRecord);
     }
 
     [Fact]

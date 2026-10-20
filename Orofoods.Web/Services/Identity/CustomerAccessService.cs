@@ -72,8 +72,6 @@ public class CustomerAccessService(ApplicationDbContext db)
                 db.Customers
                     .Include(customer => customer.Addresses)
                     .Include(customer => customer.PriceTable)
-                    .Include(customer => customer.CustomerPaymentTerms)
-                    .ThenInclude(link => link.PaymentTerm)
                     .Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved),
                 customerId => customerId,
                 customer => customer.Id,
@@ -86,8 +84,6 @@ public class CustomerAccessService(ApplicationDbContext db)
         return db.Customers
             .Include(customer => customer.Addresses)
             .Include(customer => customer.PriceTable)
-            .Include(customer => customer.CustomerPaymentTerms)
-            .ThenInclude(link => link.PaymentTerm)
             .SingleOrDefaultAsync(
                 customer => customer.Id == customerId && customer.IsActive && customer.Status == CustomerStatus.Approved,
                 cancellationToken);

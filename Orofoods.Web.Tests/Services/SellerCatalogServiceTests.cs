@@ -15,7 +15,7 @@ namespace Orofoods.Web.Tests.Services;
 public class SellerCatalogServiceTests
 {
     [Fact]
-    public async Task Catalog_uses_customer_price_and_only_commercially_available_products()
+    public async Task Catalog_uses_customer_price_and_lists_active_products_regardless_of_stock()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
@@ -36,9 +36,11 @@ public class SellerCatalogServiceTests
         var result = await new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db))
             .GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null);
 
-        var product = Assert.Single(Assert.IsType<SellerCatalogViewModel>(result).Products);
-        Assert.Equal(available.Id, product.Id);
-        Assert.Equal(42m, product.UnitPrice);
+        var products = Assert.IsType<SellerCatalogViewModel>(result).Products;
+        Assert.Equal(2, products.Count);
+        Assert.DoesNotContain(products, x => x.Id == inactive.Id);
+        Assert.Equal(42m, products.Single(x => x.Id == available.Id).UnitPrice);
+        Assert.Contains(products, x => x.Id == unavailable.Id);
     }
 
     [Fact]
@@ -105,7 +107,7 @@ public class SellerCatalogServiceTests
         baudUcco.WmcStockAvailable = true;
         baudUcco.WmcInitialLoadReady = true;
         baudUcco.Description = "Pão de grãos para o café da manhã.";
-        var unavailableBaudUcco = Product("SKU-BAUDUCCO-NO-STOCK", baudUcco.Name, true);
+        var unavailableBaudUcco = Product("SKU-BAUDUCCO-NO-STOCK", baudUcco.Name, false);
         unavailableBaudUcco.WmcCode = baudUcco.WmcCode;
         unavailableBaudUcco.IsWmcActive = true;
         unavailableBaudUcco.WmcStockAvailable = true;

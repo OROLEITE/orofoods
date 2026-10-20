@@ -323,6 +323,7 @@ builder.Services.AddScoped<IWmcConnectionFactory, WmcFirebirdConnectionFactory>(
 builder.Services.AddScoped<IWmcFirebirdReader, WmcFirebirdReader>();
 builder.Services.AddScoped<IWmcSchemaInspector, WmcSchemaInspector>();
 builder.Services.AddScoped<IWmcCustomerReader, WmcCustomerReader>();
+builder.Services.AddScoped<IWmcCustomerPaymentConditionReader, WmcCustomerPaymentConditionReader>();
 builder.Services.AddScoped<IWmcProductReader, WmcProductReader>();
 builder.Services.AddScoped<IWmcBrandReader, WmcBrandReader>();
 builder.Services.AddScoped<IWmcSellerReader, UndiscoveredWmcSellerReader>();

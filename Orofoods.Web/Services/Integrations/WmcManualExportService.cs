@@ -5,6 +5,7 @@ using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Orders;
+using Orofoods.Web.Services.Customers;
 
 namespace Orofoods.Web.Services.Integrations;
 
@@ -35,7 +36,8 @@ public sealed record WmcManualExportDiagnostic(bool CanExport, string? BlockReas
 public sealed class WmcManualExportService(
     ApplicationDbContext db,
     WmcOrderFileGenerator fileGenerator,
-    WmcExportAuditService auditService)
+    WmcExportAuditService auditService,
+    IPaymentEligibilityService? paymentEligibilityService = null)
 {
     private static readonly TimeSpan ProcessingTimeout = TimeSpan.FromMinutes(15);
 
@@ -75,14 +77,15 @@ public sealed class WmcManualExportService(
         }
 
         var state = claim.State!;
-        if (!TryPrepareExport(order, out var export, out var error))
+        var preparation = await TryPrepareExportAsync(order, cancellationToken);
+        if (!preparation.Succeeded)
         {
-            await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, false, error, null, cancellationToken);
-            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, fileName, Error: error);
+            await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, false, preparation.Error, null, cancellationToken);
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, fileName, Error: preparation.Error);
         }
 
-        await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, true, null, export, cancellationToken);
-        return new WmcManualExportResult(WmcManualExportDisposition.Exported, fileName, export!.Content);
+        await CompleteAttemptAsync(state, order.Id, userId, userEmail, fileName, true, null, preparation.Export, cancellationToken);
+        return new WmcManualExportResult(WmcManualExportDisposition.Exported, fileName, preparation.Export!.Content);
     }
 
     public async Task<WmcManualExportResult> DownloadAsync(int orderId, CancellationToken cancellationToken = default)
@@ -95,6 +98,35 @@ public sealed class WmcManualExportService(
         {
             return new WmcManualExportResult(WmcManualExportDisposition.Rejected,
                 Error: "O arquivo original não está armazenado para download.");
+        }
+
+        var order = await db.Orders.AsNoTracking()
+            .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
+            .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
+        if (order is null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.NotFound);
+        }
+
+        if (order.PaymentTerm is null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, artifact.FileName,
+                Error: "A condição de pagamento do pedido não está disponível; download bloqueado até confirmar a modalidade.");
+        }
+
+        var paymentTermError = WmcOrderFileGenerator.GetPaymentTermExportError(order.PaymentTerm);
+        if (paymentTermError is not null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, artifact.FileName,
+                Error: paymentTermError);
+        }
+
+        var creditAuthorization = await ValidateCreditAuthorizationAsync(order, cancellationToken);
+        if (creditAuthorization is not null)
+        {
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, artifact.FileName,
+                Error: creditAuthorization);
         }
 
         var actualHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(artifact.Content)));
@@ -209,11 +241,12 @@ public sealed class WmcManualExportService(
                 Error: "Outra ação alterou o estado WMC. Atualize a tela antes de regenerar.");
         }
 
-        if (!TryPrepareExport(order, out var export, out var error))
+        var preparation = await TryPrepareExportAsync(order, cancellationToken);
+        if (!preparation.Succeeded)
         {
             state.Status = WmcOrderExportStatus.Rejected;
             state.ProcessingStartedAt = null;
-            state.LastError = error;
+            state.LastError = preparation.Error;
             state.UpdatedAt = DateTime.UtcNow;
             state.Version++;
             await using var failedTransaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -221,16 +254,16 @@ public sealed class WmcManualExportService(
             {
                 OrderId = orderId, AttemptId = Guid.NewGuid(), Source = WmcExportSource.Manual,
                 Outcome = WmcExportOutcome.Failed, ExportedByUserId = userId, ExportedByEmail = userEmail,
-                FileName = state.FileName, Error = $"Regeneração: {reason}. Falha: {error}"
+                FileName = state.FileName, Error = $"Regeneração: {reason}. Falha: {preparation.Error}"
             }, cancellationToken);
             await failedTransaction.CommitAsync(cancellationToken);
-            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, state.FileName, Error: error);
+            return new WmcManualExportResult(WmcManualExportDisposition.Rejected, state.FileName, Error: preparation.Error);
         }
 
         var attemptId = Guid.NewGuid();
         var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        var artifact = CreateArtifact(orderId, fileName, export!.Content!, attemptId, userId, userEmail,
+        var artifact = CreateArtifact(orderId, fileName, preparation.Export!.Content!, attemptId, userId, userEmail,
             state.CurrentArtifactId, reason);
         db.WmcManualExportArtifacts.Add(artifact);
         await db.SaveChangesAsync(cancellationToken);
@@ -252,7 +285,7 @@ public sealed class WmcManualExportService(
             FileName = fileName, Error = reason, GeneratedAt = state.ExportedAt
         }, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return new WmcManualExportResult(WmcManualExportDisposition.Exported, fileName, export.Content);
+        return new WmcManualExportResult(WmcManualExportDisposition.Exported, fileName, preparation.Export.Content);
     }
 
     public bool CanManuallyExport(Order order)
@@ -651,24 +684,53 @@ public sealed class WmcManualExportService(
         }
     }
 
-    private bool TryPrepareExport(Order order, out WmcOrderFileResult? export, out string? error)
+    private async Task<(bool Succeeded, WmcOrderFileResult? Export, string? Error)> TryPrepareExportAsync(
+        Order order,
+        CancellationToken cancellationToken)
     {
-        export = null;
-        if (!TryValidateExport(order, out error))
+        if (!TryValidateExport(order, out var error))
         {
-            return false;
+            return (false, null, error);
         }
 
-        export = fileGenerator.Build(order);
+        var creditAuthorization = await ValidateCreditAuthorizationAsync(order, cancellationToken);
+        if (creditAuthorization is not null)
+        {
+            return (false, null, creditAuthorization);
+        }
+
+        var export = fileGenerator.Build(order);
         if (!export.Succeeded)
         {
-            error = string.Join(" ", export.Errors);
-            export = null;
-            return false;
+            return (false, null, string.Join(" ", export.Errors));
         }
 
-        error = null;
-        return true;
+        return (true, export, null);
+    }
+
+    private async Task<string?> ValidateCreditAuthorizationAsync(Order order, CancellationToken cancellationToken)
+    {
+        if (order.PaymentTerm is not { } term
+            || WmcOrderFileGenerator.IsCardMode(term)
+            || (term.DaysUntilDue <= 0 && !term.Code.StartsWith("BOLETO_", StringComparison.OrdinalIgnoreCase)))
+        {
+            return null;
+        }
+
+        if (paymentEligibilityService is null)
+        {
+            return "Verificação da autorização WMC não configurada; exportação/download a prazo bloqueado.";
+        }
+
+        if (order.PaymentTermId is null)
+        {
+            return "O pedido a prazo não possui uma condição local associada; exportação/download bloqueado.";
+        }
+
+        var authorization = await paymentEligibilityService.ValidateAsync(order.CustomerId, order.PaymentTermId.Value, cancellationToken);
+        return authorization.IsAllowed
+            ? null
+            : $"Prazo bloqueado: {authorization.ErrorMessage ?? "não autorizado pelo WMC"}";
     }
 
     private bool TryValidateExport(Order order, out string? error)

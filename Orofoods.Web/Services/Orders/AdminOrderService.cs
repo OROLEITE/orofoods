@@ -13,7 +13,6 @@ public class AdminOrderService(
     ApplicationDbContext db,
     TimeProvider timeProvider,
     OrderReservationService orderReservationService,
-    IPaymentEligibilityService paymentEligibilityService,
     PaymentService paymentService)
 {
     public async Task<AdminOrderStatusUpdateResult> UpdateStatusAsync(
@@ -57,17 +56,6 @@ public class AdminOrderService(
             ChangedByUserId = changedByUserId
         });
         await db.SaveChangesAsync(cancellationToken);
-
-        if (status is OrderStatus.Invoiced or OrderStatus.Delivered)
-        {
-            var customer = await db.Customers.SingleAsync(x => x.Id == order.CustomerId, cancellationToken);
-            var validPurchases = await paymentEligibilityService.GetValidPurchaseCountAsync(customer.Id, cancellationToken);
-            if (validPurchases >= 3 && customer.CreditReleaseDate is null)
-            {
-                customer.CreditReleaseDate = changedAt;
-                await db.SaveChangesAsync(cancellationToken);
-            }
-        }
 
         await paymentService.IssueForEligibleStatusAsync(order.Id, status, changedAt, cancellationToken);
         return AdminOrderStatusUpdateResult.Success;

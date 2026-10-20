@@ -22,7 +22,7 @@ public class InstitutionalViewTests
 
         Assert.Contains("asp-controller=\"CustomerRegistration\" asp-action=\"Register\"", card);
         Assert.Contains("asp-page=\"/Account/Login\" asp-route-returnUrl=\"@loginReturnUrl\"", card);
-        Assert.Contains("product.IsCommerciallyAvailable ? \"Comprar\" : \"Consulte disponibilidade\"", card);
+        Assert.Contains(">Comprar</a>", card);
         Assert.Contains("var loginCatalogUrl = Url.Page(\"/Account/Login\", values: new { area = \"Identity\", returnUrl = publicCatalogUrl })", markup);
         Assert.Contains("var publicCatalogUrl = Url.Action(\"Products\", \"Home\", new { area = \"\" }) ?? \"/produtos\"", markup);
         Assert.Contains("Url.Action(\"Dashboard\", \"Portal\", new { area = \"\" })", markup);
