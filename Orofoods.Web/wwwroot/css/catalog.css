@@ -1077,18 +1077,18 @@ body.catalog-modern-page .quick-buy-form > label {
 
 body.catalog-modern-page .quick-buy-form .catalog-add-controls {
     display: grid;
-    grid-template-columns: minmax(128px, auto) minmax(0, 1fr);
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
     gap: 8px;
     min-width: 0;
 }
 
 body.catalog-modern-page .catalog-quantity-stepper {
-    display: flex;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
     min-width: 0;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+    align-items: stretch;
+    gap: 4px;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -1103,13 +1103,25 @@ body.catalog-modern-page .catalog-quantity-button::after {
     content: none;
 }
 
-body.catalog-modern-page .catalog-quantity-button,
-body.catalog-modern-page .catalog-quantity-stepper input {
+body.catalog-modern-page .catalog-quantity-button {
     box-sizing: border-box;
     flex: 0 0 36px;
     width: 36px;
     min-width: 36px;
     height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0;
+    border-radius: 8px;
+    font-size: .95rem;
+    line-height: 1;
+    text-align: center;
+}
+
+body.catalog-modern-page .catalog-quantity-stepper input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
     min-height: 36px;
     margin: 0;
     padding: 0;
@@ -1304,7 +1316,7 @@ body.catalog-modern-page .catalog-add-status {
 
     body.catalog-modern-page .quick-buy-form .catalog-add-controls {
         grid-template-columns: minmax(0, 1fr);
-        gap: 6px;
+        gap: 8px;
     }
 
     body.catalog-modern-page .catalog-quantity-stepper {
@@ -1380,47 +1392,10 @@ body.catalog-modern-page .public-products-hero + .public-products-section {
     padding-top: 12px;
 }
 
-body.catalog-modern-page .quick-buy-controls {
-    grid-template-columns: minmax(0, 1fr) minmax(86px, .72fr);
-    align-items: center;
-    gap: 7px;
-}
-
-body.catalog-modern-page .quick-buy-controls .catalog-quantity-stepper {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) 36px;
-    align-items: stretch;
-    gap: 5px;
-}
-
-body.catalog-modern-page .quick-buy-controls .catalog-quantity-button {
-    box-sizing: border-box;
-    flex: 0 0 36px;
-    width: 36px;
-    min-width: 36px;
-    min-height: 40px;
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-}
-
-body.catalog-modern-page .quick-buy-controls .catalog-quantity-stepper > input {
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-    min-height: 40px;
-    margin: 0;
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-    box-shadow: none;
-    text-align: center;
-}
-
-body.catalog-modern-page .quick-buy-controls .quick-buy-button {
-    min-width: 0;
-    min-height: 40px;
-    margin: 0;
-    padding-inline: 8px;
-    white-space: nowrap;
+@media (max-width: 575.98px) {
+    body.catalog-modern-page.customer-experience .public-products-section .public-quick-buy-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -1444,10 +1419,6 @@ body.catalog-modern-page .quick-buy-controls .quick-buy-button {
     body.catalog-modern-page .public-products-hero-copy > p:last-child {
         max-width: 340px;
     }
-
-    body.catalog-modern-page .quick-buy-controls {
-        grid-template-columns: minmax(0, 1fr);
-    }
 }
 
 @media (max-width: 575.98px) {
@@ -1462,38 +1433,39 @@ body.catalog-modern-page .quick-buy-controls .quick-buy-button {
         max-width: 320px;
         font-size: clamp(28px, 7.5vw, 34px);
     }
-
-    body.catalog-modern-page .quick-buy-controls .catalog-quantity-stepper {
-        grid-template-columns: 36px minmax(0, 1fr) 36px;
-    }
 }
 
-.public-home .quick-buy-controls {
-    grid-template-columns: minmax(0, 1fr) minmax(82px, .72fr);
-    align-items: center;
-    gap: 7px;
-}
-
-.public-home .quick-buy-controls .catalog-quantity-stepper {
+/* Shared Home and Products card controls use the same two-row purchase layout. */
+.public-quick-buy-card .catalog-add-controls {
     display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+}
+
+.public-quick-buy-card .catalog-quantity-stepper {
+    display: grid;
+    width: 100%;
+    min-width: 0;
     grid-template-columns: 36px minmax(0, 1fr) 36px;
     align-items: stretch;
-    gap: 5px;
+    gap: 4px;
 }
 
-.public-home .quick-buy-controls .catalog-quantity-button {
+.public-quick-buy-card .catalog-quantity-stepper > .catalog-quantity-button {
     box-sizing: border-box;
+    flex: 0 0 36px;
     width: 36px;
     min-width: 36px;
-    min-height: 40px;
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
 }
 
-.public-home .quick-buy-controls .catalog-quantity-stepper > input {
+.public-quick-buy-card .catalog-quantity-stepper > input {
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
+    max-width: 100%;
     min-height: 40px;
     margin: 0;
     border: 1px solid #CBD5E1;
@@ -1502,16 +1474,16 @@ body.catalog-modern-page .quick-buy-controls .quick-buy-button {
     text-align: center;
 }
 
-.public-home .quick-buy-controls .quick-buy-button {
+.public-quick-buy-card .catalog-add-controls > .quick-buy-button {
+    box-sizing: border-box;
+    display: flex;
+    grid-column: 1;
+    width: 100%;
     min-width: 0;
-    min-height: 40px;
+    min-height: 44px;
     margin: 0;
     padding-inline: 8px;
+    align-items: center;
+    justify-content: center;
     white-space: nowrap;
-}
-
-@media (max-width: 767.98px) {
-    .public-home .quick-buy-controls {
-        grid-template-columns: minmax(0, 1fr);
-    }
 }

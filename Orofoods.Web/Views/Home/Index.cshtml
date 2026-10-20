@@ -35,8 +35,8 @@
         <div class="container pt-3"><div class="alert alert-success mb-0" role="status">@registrationSuccess</div></div>
     }
 
-    <div class="container public-home-shell">
-        <section class="public-home-hero" aria-labelledby="public-home-title">
+    <section class="public-home-hero" aria-labelledby="public-home-title">
+        <div class="container public-home-hero-inner">
             <div class="public-home-hero-copy">
                 <p class="public-home-eyebrow">Orofoods &middot; Food service</p>
                 <h1 id="public-home-title">Seu pr&oacute;ximo pedido come&ccedil;a aqui.</h1>
@@ -53,11 +53,13 @@
                     }
                 </div>
             </div>
-            <figure class="public-home-hero-media">
-                <img src="~/images/home/banner-paes-foodservice.webp" alt="Sele&ccedil;&atilde;o de p&atilde;es para food service" fetchpriority="high" />
-            </figure>
-        </section>
+        </div>
+        <figure class="public-home-hero-media">
+            <img src="~/images/home/banner-paes-foodservice.webp" alt="Sele&ccedil;&atilde;o de p&atilde;es para food service" fetchpriority="high" />
+        </figure>
+    </section>
 
+    <div class="container public-home-shell">
         <section class="public-home-featured public-products-section" id="produtos" aria-labelledby="public-home-featured-title">
             <div class="public-home-section-heading">
                 <h2 id="public-home-featured-title">Produtos em destaque</h2>
