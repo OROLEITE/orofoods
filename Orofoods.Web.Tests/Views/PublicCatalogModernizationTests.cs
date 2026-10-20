@@ -35,8 +35,33 @@ public sealed class PublicCatalogModernizationTests
         Assert.Contains("asp-action=\"Cart\"", cart, StringComparison.Ordinal);
         Assert.Contains("#0E7490", styles, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#0B5D75", styles, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("transition:background-color .2s ease", styles, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("border-radius:8px", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("transition: background-color .2s ease", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("border-radius: 8px", styles, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Shared_header_cart_keeps_its_label_icon_and_badge_visible_in_all_states()
+    {
+        var cart = ReadWebFile("Views", "Shared", "Components", "CatalogCart", "Default.cshtml");
+        var headerStyles = ReadWebFile("wwwroot", "css", "header.css");
+        var catalogStyles = ReadWebFile("wwwroot", "css", "catalog.css");
+
+        Assert.Contains("<i class=\"fa-solid fa-cart-shopping\"", cart, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"catalog-header-cart-label\">Carrinho</span>", cart, StringComparison.Ordinal);
+        Assert.Contains(".site-header-modern .catalog-header-cart:focus,", headerStyles, StringComparison.Ordinal);
+        Assert.Contains(".site-header-modern .catalog-header-cart:active", headerStyles, StringComparison.Ordinal);
+        Assert.Contains(".site-header-modern .catalog-header-cart:focus-visible", headerStyles, StringComparison.Ordinal);
+        Assert.Contains(".site-header-modern .catalog-header-cart > i", headerStyles, StringComparison.Ordinal);
+        Assert.Contains(".site-header-modern .catalog-header-cart .catalog-header-cart-label", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #0E7490;", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #0B5D75;", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("background: #FFFFFF;", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("color: #FFFFFF;", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("color: #0E7490;", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("border-radius: 8px;", headerStyles, StringComparison.Ordinal);
+        Assert.Contains("position: static;", headerStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain("body.catalog-modern-page .catalog-header-cart", catalogStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain("catalog-header-cart-label", catalogStyles, StringComparison.Ordinal);
     }
 
     [Fact]
