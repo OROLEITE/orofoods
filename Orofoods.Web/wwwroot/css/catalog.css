@@ -312,6 +312,8 @@
     }
 }
 
+
+
 @media (min-width: 1100px) and (max-width: 1399.98px) {
     .customer-experience .portal-catalog-page .product-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1348,4 +1350,168 @@ body.catalog-modern-page .catalog-add-status {
     width: 100%;
     min-width: 0;
     flex: 0 1 auto;
+}
+
+/* Final public banner and card-control alignment refinements. */
+body.catalog-modern-page .public-products-hero {
+    min-height: 230px;
+    padding-block: 20px;
+    background-color: #F7F2E8 !important;
+    background-image: linear-gradient(90deg, rgb(247 242 232 / 98%) 0%, rgb(247 242 232 / 95%) 38%, rgb(247 242 232 / 78%) 58%, rgb(247 242 232 / 14%) 80%, transparent 100%), url("/images/catalogo-banner-orofoods.jpg") !important;
+    background-position: center right !important;
+    background-size: cover !important;
+}
+
+/* Final typography, responsive banner, and quick-buy control alignment. */
+body.catalog-modern-page .public-products-hero h1 {
+    margin-bottom: 10px;
+    line-height: 1.1;
+}
+
+body.catalog-modern-page .public-products-eyebrow {
+    margin-bottom: 12px;
+}
+
+body.catalog-modern-page .public-products-hero-copy > p:last-child {
+    line-height: 1.45;
+}
+
+body.catalog-modern-page .public-products-hero + .public-products-section {
+    padding-top: 12px;
+}
+
+body.catalog-modern-page .quick-buy-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(86px, .72fr);
+    align-items: center;
+    gap: 7px;
+}
+
+body.catalog-modern-page .quick-buy-controls .catalog-quantity-stepper {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    align-items: stretch;
+    gap: 5px;
+}
+
+body.catalog-modern-page .quick-buy-controls .catalog-quantity-button {
+    box-sizing: border-box;
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    min-height: 40px;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+}
+
+body.catalog-modern-page .quick-buy-controls .catalog-quantity-stepper > input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    margin: 0;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    box-shadow: none;
+    text-align: center;
+}
+
+body.catalog-modern-page .quick-buy-controls .quick-buy-button {
+    min-width: 0;
+    min-height: 40px;
+    margin: 0;
+    padding-inline: 8px;
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    body.catalog-modern-page .public-products-hero {
+        min-height: 190px;
+        padding-block: 20px;
+        background-image: linear-gradient(90deg, rgb(247 242 232 / 98%) 0%, rgb(247 242 232 / 92%) 52%, rgb(247 242 232 / 66%) 100%), url("/images/catalogo-banner-orofoods.jpg") !important;
+        background-position: 70% center !important;
+    }
+
+    body.catalog-modern-page .public-products-hero-copy {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    body.catalog-modern-page .public-products-hero h1 {
+        max-width: 360px;
+        font-size: clamp(30px, 7vw, 38px);
+    }
+
+    body.catalog-modern-page .public-products-hero-copy > p:last-child {
+        max-width: 340px;
+    }
+
+    body.catalog-modern-page .quick-buy-controls {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.catalog-modern-page .public-products-hero {
+        min-height: 180px;
+        padding-block: 18px;
+        background-image: linear-gradient(90deg, rgb(247 242 232 / 98%) 0%, rgb(247 242 232 / 94%) 60%, rgb(247 242 232 / 74%) 100%), url("/images/catalogo-banner-orofoods.jpg") !important;
+        background-position: 72% center !important;
+    }
+
+    body.catalog-modern-page .public-products-hero h1 {
+        max-width: 320px;
+        font-size: clamp(28px, 7.5vw, 34px);
+    }
+
+    body.catalog-modern-page .quick-buy-controls .catalog-quantity-stepper {
+        grid-template-columns: 36px minmax(0, 1fr) 36px;
+    }
+}
+
+.public-home .quick-buy-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(82px, .72fr);
+    align-items: center;
+    gap: 7px;
+}
+
+.public-home .quick-buy-controls .catalog-quantity-stepper {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    align-items: stretch;
+    gap: 5px;
+}
+
+.public-home .quick-buy-controls .catalog-quantity-button {
+    box-sizing: border-box;
+    width: 36px;
+    min-width: 36px;
+    min-height: 40px;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+}
+
+.public-home .quick-buy-controls .catalog-quantity-stepper > input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    margin: 0;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    box-shadow: none;
+    text-align: center;
+}
+
+.public-home .quick-buy-controls .quick-buy-button {
+    min-width: 0;
+    min-height: 40px;
+    margin: 0;
+    padding-inline: 8px;
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .public-home .quick-buy-controls {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

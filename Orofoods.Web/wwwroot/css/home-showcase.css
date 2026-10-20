@@ -234,3 +234,76 @@
     }
 
 }
+
+/* Warm, integrated home hero with the bread photo fading into the copy surface. */
+.public-home-hero {
+    position: relative;
+    min-height: 260px;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+    padding: 30px clamp(22px, 4vw, 52px);
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(105deg, #F8F4EA 0%, #F7F2E6 58%, #EFE7D5 100%);
+    box-shadow: none;
+}
+
+.public-home-hero-copy {
+    position: relative;
+    z-index: 1;
+    width: min(58%, 680px);
+}
+
+.public-home-hero-media {
+    position: absolute;
+    z-index: 0;
+    inset: 0 0 0 auto;
+    width: 52%;
+    height: 100%;
+    border-radius: 0;
+    background: transparent;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 28%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 28%);
+}
+
+.public-home-hero-media img {
+    object-position: right center;
+}
+
+@media (max-width: 767.98px) {
+    .public-home-hero {
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+        padding: 24px 20px 16px;
+    }
+
+    .public-home-hero-copy {
+        width: 100%;
+        max-width: 620px;
+    }
+
+    .public-home-hero-media {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: clamp(120px, 34vw, 180px);
+        -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 16%);
+        mask-image: linear-gradient(180deg, transparent 0%, #000 16%);
+    }
+
+    .public-home-hero-media img {
+        object-position: center 58%;
+    }
+
+}
+
+@media (max-width: 420px) {
+    .public-home-hero {
+        padding-inline: 16px;
+    }
+
+    .public-home-hero h1 {
+        font-size: clamp(25px, 7vw, 30px);
+    }
+}
