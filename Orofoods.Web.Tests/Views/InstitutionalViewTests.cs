@@ -101,4 +101,28 @@ public class InstitutionalViewTests
         Assert.Contains("/images/orofoods-institutional-kitchen.png", styles);
         Assert.Contains(".institutional-photo", styles);
     }
+
+    [Fact]
+    public void Institutional_pages_use_a_scoped_blue_and_beige_backdrop_without_sticky_blank_space()
+    {
+        var webRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var views = new[]
+        {
+            File.ReadAllText(Path.Combine(webRoot, "Views/Home/About.cshtml")),
+            File.ReadAllText(Path.Combine(webRoot, "Views/Home/HowItWorks.cshtml")),
+            File.ReadAllText(Path.Combine(webRoot, "Views/Home/Contact.cshtml"))
+        };
+        var styles = File.ReadAllText(Path.Combine(webRoot, "wwwroot/css/customer-experience.css"));
+
+        Assert.All(views, view => Assert.Contains("public-institutional-page", view, StringComparison.Ordinal));
+        Assert.DoesNotContain("public-sticky-footer", string.Join(Environment.NewLine, views), StringComparison.Ordinal);
+        Assert.Contains("body.customer-experience.public-institutional-page", styles, StringComparison.Ordinal);
+        Assert.Contains("#F4F7FC", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#F8F5ED", styles, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(".page-hero.public-page-hero:not(.public-products-hero)", styles, StringComparison.Ordinal);
+        Assert.Contains("body.customer-experience.public-institutional-page > .site-footer", styles, StringComparison.Ordinal);
+        Assert.Contains("body.customer-experience.public-institutional-page .process-step", styles, StringComparison.Ordinal);
+        Assert.Contains("padding-left: 100px;", styles, StringComparison.Ordinal);
+        Assert.Contains("padding-left: 87px;", styles, StringComparison.Ordinal);
+    }
 }

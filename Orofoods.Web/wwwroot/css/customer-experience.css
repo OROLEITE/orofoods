@@ -2679,22 +2679,6 @@
 }
 
 
-/* Keep the short About and How It Works pages filling the viewport. */
-body.customer-experience.public-sticky-footer {
-    display: flex;
-    min-height: 100vh;
-    flex-direction: column;
-}
-
-body.customer-experience.public-sticky-footer > .site-main {
-    flex: 1 0 auto;
-}
-
-body.customer-experience.public-sticky-footer > .site-footer {
-    flex: 0 0 auto;
-    margin-top: auto;
-}
-
 .customer-experience .header-notifications .global-notification-trigger {
     border-color: rgba(229, 199, 125, .25);
     background: rgba(255, 255, 255, .06);
@@ -3580,5 +3564,48 @@ body.customer-registration-layout > .site-footer {
 
     .customer-experience.identity-recovery-page .identity-recovery-card {
         padding: 22px 18px;
+    }
+}
+
+/* Institutional pages share one cool canvas with a warm transition. */
+body.customer-experience.public-institutional-page {
+    background-color: #F4F7FC;
+}
+
+body.customer-experience.public-institutional-page > .site-main {
+    background-color: #F4F7FC;
+}
+
+body.customer-experience.public-institutional-page .page-hero.public-page-hero:not(.public-products-hero) {
+    border-bottom-color: rgba(41, 40, 32, .06);
+    background:
+        radial-gradient(ellipse at 88% 5%, rgba(201, 149, 40, .09), transparent 32%),
+        linear-gradient(112deg, #F4F7FC 0%, #F6F7F4 48%, #F8F5ED 100%);
+}
+
+body.customer-experience.public-institutional-page .page-hero.public-page-hero:not(.public-products-hero)::before {
+    background: linear-gradient(115deg, rgba(255, 255, 255, .24), transparent 60%);
+}
+
+body.customer-experience.public-institutional-page .public-institutional-section {
+    padding-block: clamp(28px, 3.2vw, 42px);
+    background:
+        radial-gradient(ellipse at 5% 0%, rgba(201, 149, 40, .06), transparent 30%),
+        linear-gradient(180deg, #F8F5ED 0%, #F6F7F5 45%, #F4F7FC 100%);
+}
+
+body.customer-experience.public-institutional-page > .site-footer {
+    margin-top: 0;
+}
+
+@media (max-width: 900px) {
+    body.customer-experience.public-institutional-page .process-step {
+        padding-left: 100px;
+    }
+}
+
+@media (max-width: 600px) {
+    body.customer-experience.public-institutional-page .process-step {
+        padding-left: 87px;
     }
 }
