@@ -7,6 +7,7 @@ using Orofoods.Web.Models.Delivery;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Models.Integrations;
+using Orofoods.Web.Models.Catalog;
 
 namespace Orofoods.Web.Data;
 
@@ -37,6 +38,8 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<WmcExportAudit> WmcExportAudits => Set<WmcExportAudit>();
     public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
+    public DbSet<WmcProductImportAudit> WmcProductImportAudits => Set<WmcProductImportAudit>();
+    public DbSet<WmcProductUnit> WmcProductUnits => Set<WmcProductUnit>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
     public DbSet<CommercialActivity> CommercialActivities => Set<CommercialActivity>();
@@ -291,6 +294,22 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WmcSyncRun>().Property(x => x.FailedStage).HasMaxLength(40);
         builder.Entity<WmcSyncRun>().Property(x => x.ErrorMessage).HasMaxLength(2000);
         builder.Entity<WmcSyncRun>().HasIndex(x => new { x.Status, x.StartedAt });
+        builder.Entity<WmcProductImportAudit>().Property(x => x.Status).HasMaxLength(24);
+        builder.Entity<WmcProductImportAudit>().Property(x => x.ErrorMessage).HasMaxLength(2000);
+        builder.Entity<WmcProductImportAudit>().Property(x => x.ResultsJson).HasColumnType("TEXT");
+        builder.Entity<WmcProductImportAudit>().HasIndex(x => x.CompletedAt);
+        builder.Entity<WmcProductUnit>(entity =>
+        {
+            entity.HasKey(unit => new { unit.ProductId, unit.UnitCode });
+            entity.Property(unit => unit.UnitCode).HasMaxLength(20);
+            entity.Property(unit => unit.Description).HasMaxLength(120);
+            entity.Property(unit => unit.Factor).HasPrecision(18, 6);
+            entity.Property(unit => unit.Barcode).HasMaxLength(80);
+            entity.HasOne(unit => unit.Product)
+                .WithMany(product => product.WmcUnits)
+                .HasForeignKey(unit => unit.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
         builder.Entity<PriceTableItem>().Property(x => x.Price).HasPrecision(12, 2);
         builder.Entity<PriceTableItem>().Property(x => x.PromotionalPrice).HasPrecision(12, 2);
         builder.Entity<Order>().Property(x => x.Subtotal).HasPrecision(12, 2);

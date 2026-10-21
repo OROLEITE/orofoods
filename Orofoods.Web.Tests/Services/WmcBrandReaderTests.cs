@@ -13,9 +13,11 @@ public sealed class WmcBrandReaderTests
 
         Assert.Contains("MARCAS", reader.Sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("PRODUTOS", reader.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SITUACAO", reader.Sql, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("Visconti", brands.Single().Description);
         Assert.Equal(5, brands.Single().Code);
         Assert.Equal(36, brands.Single().ProductCount);
+        Assert.Equal(8, brands.Single().ActiveProductCount);
     }
 
     private sealed class CapturingReader : IWmcFirebirdReader
@@ -28,7 +30,7 @@ public sealed class WmcBrandReaderTests
         {
             Sql = sql;
             object result = typeof(T) == typeof(WmcBrandRecord)
-                ? new List<WmcBrandRecord> { new(5, "Visconti", 36) }
+                ? new List<WmcBrandRecord> { new(5, "Visconti", 36, 8) }
                 : new List<T>();
             return Task.FromResult((IReadOnlyList<T>)result);
         }

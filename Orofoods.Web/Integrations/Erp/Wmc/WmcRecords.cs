@@ -18,4 +18,14 @@ public sealed record WmcProductRecord(
     decimal? PrecoCusto = null,
     decimal? PrecoVenda = null,
     decimal? EstoqueReservado = null,
-    DateTime? DataAlteracao = null);
+    DateTime? DataAlteracao = null,
+    string? Marca = null,
+    IReadOnlyList<WmcProductUnitRecord>? Units = null,
+    bool UnitsSnapshotComplete = false);
+
+public sealed record WmcProductUnitRecord(
+    string UnitCode,
+    string Description,
+    decimal? Factor,
+    string? Barcode,
+    bool IsMaster);

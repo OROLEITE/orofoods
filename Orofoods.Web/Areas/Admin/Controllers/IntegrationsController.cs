@@ -19,7 +19,8 @@ public class IntegrationsController(
     WmcSyncCoordinator wmcSyncCoordinator,
     WmcSyncService wmcSyncService,
     IWmcBrandReader wmcBrandReader,
-    WmcProductPreviewService wmcProductPreviewService) : Controller
+    WmcProductPreviewService wmcProductPreviewService,
+    WmcProductImportService wmcProductImportService) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -112,12 +113,62 @@ public class IntegrationsController(
         {
             TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
         }
-        return View(new WmcPreviewPageModel(brands, null, null));
+        return View(new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcPreview(short? brandCode, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcProducts(short brandCode, CancellationToken cancellationToken)
+    {
+        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        var brand = brands.SingleOrDefault(b => b.Code == brandCode);
+        if (brand is null) return BadRequest("Marca WMC inválida.");
+        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates,
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcConfirmSelection(short brandCode, string[]? selectedProductCodes, CancellationToken cancellationToken)
+    {
+        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        var brand = brands.SingleOrDefault(b => b.Code == brandCode);
+        if (brand is null) return BadRequest("Marca WMC inválida.");
+        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var requested = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
+        var selected = candidates.Where(c => requested.Contains(c.WmcCode, StringComparer.Ordinal) && c.Selectable).ToArray();
+        if (selected.Length == 0 || selected.Length != requested.Length)
+        {
+            ModelState.AddModelError("", "Seleção vazia ou desatualizada. Revise os produtos selecionados.");
+            return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, requested));
+        }
+        var summary = new WmcProductImportSummary(selected.Length, selected.Count(c => c.ProductId is null), selected.Count(c => c.ProductId is not null),
+            selected.Count(c => c.Changes.Count > 0), selected.Count(c => c.Changes.Count == 0));
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Confirmation", brandCode, brand.Description, candidates, requested, summary));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcImportProducts(short brandCode, string[]? selectedProductCodes, string reimportExisting, CancellationToken cancellationToken)
+    {
+        if (string.Equals(reimportExisting, "cancel", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction(nameof(Wmc));
+        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        var brand = brands.SingleOrDefault(b => b.Code == brandCode);
+        if (brand is null) return BadRequest("Marca WMC inválida.");
+        var codes = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
+        if (reimportExisting is not ("true" or "false")) return BadRequest("Decisão inválida.");
+        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
+            Candidates: candidates, SelectedProductCodes: codes, ImportResult: result,
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcPreview(short[]? brandCodes, CancellationToken cancellationToken)
     {
         IReadOnlyList<WmcBrandRecord> brands = [];
         try
@@ -128,10 +179,27 @@ public class IntegrationsController(
         {
             TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
         }
-        var preview = await wmcProductPreviewService.PreviewAsync(brandCode, cancellationToken);
+        var availableCodes = brands.Select(brand => (short)brand.Code).ToHashSet();
+        var selectedCodes = (brandCodes ?? [])
+            .Where(availableCodes.Contains)
+            .Distinct()
+            .ToArray();
+        if (selectedCodes.Length == 0)
+        {
+            selectedCodes = availableCodes.OrderBy(code => code).ToArray();
+        }
+
+        var batch = await wmcProductPreviewService.PreviewByBrandsAsync(selectedCodes, cancellationToken);
+        var previewsByBrand = batch.ByBrand
+            .Select(item => item with
+            {
+                Description = brands.FirstOrDefault(brand => brand.Code == item.Code)?.Description ?? item.Description
+            })
+            .ToList();
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, brandCode, preview));
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand,
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
 
     [HttpPost]

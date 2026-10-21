@@ -77,15 +77,36 @@ public sealed class WmcProductPreviewServiceTests
         Assert.Empty(db.WmcSyncRuns);
     }
 
+    [Fact]
+    public async Task Preview_supports_multiple_brands_and_keeps_unselected_products_out()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeProductReader(
+        [
+            new WmcProductRecord("A", "A", "A", "CX", null, 1, CodMarca: "5"),
+            new WmcProductRecord("B", "B", "A", "CX", null, 1, CodMarca: "4"),
+            new WmcProductRecord("C", "C", "A", "CX", null, 1, CodMarca: "1")
+        ]);
+        var service = new WmcProductPreviewService(db, reader);
+
+        var result = await service.PreviewByBrandsAsync(new short[] { 5, 4 });
+
+        Assert.Equal(2, result.Summary.ProductsRead);
+        Assert.Equal(new short?[] { 5, 4 }, reader.BrandCalls);
+        Assert.DoesNotContain(reader.BrandCalls, code => code == 1);
+    }
+
     private sealed class FakeProductReader(IReadOnlyList<WmcProductRecord> rows) : IWmcProductReader
     {
         public short? LastBrandCode { get; private set; }
+        public List<short?> BrandCalls { get; } = [];
 
         public Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult(rows);
 
         public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default)
         {
             LastBrandCode = brandCode;
+            BrandCalls.Add(brandCode);
             return Task.FromResult<IReadOnlyList<WmcProductRecord>>(brandCode is null
                 ? rows
                 : rows.Where(row => short.TryParse(row.CodMarca, out var code) && code == brandCode).ToList());
