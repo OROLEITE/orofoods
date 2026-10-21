@@ -3594,8 +3594,20 @@ body.customer-experience.public-institutional-page .public-institutional-section
         linear-gradient(180deg, #F8F5ED 0%, #F6F7F5 45%, #F4F7FC 100%);
 }
 
-body.customer-experience.public-institutional-page > .site-footer {
-    margin-top: 0;
+body.customer-experience.public-institutional-page:has(.about-story, .process-flow) {
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+    flex-direction: column;
+}
+
+body.customer-experience.public-institutional-page:has(.about-story, .process-flow) > .site-main {
+    flex: 1 0 auto;
+}
+
+body.customer-experience.public-institutional-page:has(.about-story, .process-flow) > .site-footer {
+    flex: 0 0 auto;
+    margin-top: auto;
 }
 
 @media (max-width: 900px) {

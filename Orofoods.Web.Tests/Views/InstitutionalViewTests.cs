@@ -106,13 +106,14 @@ public class InstitutionalViewTests
     public void Institutional_pages_use_a_scoped_blue_and_beige_backdrop_without_sticky_blank_space()
     {
         var webRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var views = new[]
-        {
-            File.ReadAllText(Path.Combine(webRoot, "Views/Home/About.cshtml")),
-            File.ReadAllText(Path.Combine(webRoot, "Views/Home/HowItWorks.cshtml")),
-            File.ReadAllText(Path.Combine(webRoot, "Views/Home/Contact.cshtml"))
-        };
+        var about = File.ReadAllText(Path.Combine(webRoot, "Views/Home/About.cshtml"));
+        var howItWorks = File.ReadAllText(Path.Combine(webRoot, "Views/Home/HowItWorks.cshtml"));
+        var contact = File.ReadAllText(Path.Combine(webRoot, "Views/Home/Contact.cshtml"));
+        var views = new[] { about, howItWorks, contact };
         var styles = File.ReadAllText(Path.Combine(webRoot, "wwwroot/css/customer-experience.css"));
+        var footerRule = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"body\.customer-experience\.public-institutional-page:has\([^)]*\)\s*>\s*\.site-footer\s*\{[^}]*\}").Value;
 
         Assert.All(views, view => Assert.Contains("public-institutional-page", view, StringComparison.Ordinal));
         Assert.DoesNotContain("public-sticky-footer", string.Join(Environment.NewLine, views), StringComparison.Ordinal);
@@ -120,9 +121,17 @@ public class InstitutionalViewTests
         Assert.Contains("#F4F7FC", styles, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#F8F5ED", styles, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(".page-hero.public-page-hero:not(.public-products-hero)", styles, StringComparison.Ordinal);
-        Assert.Contains("body.customer-experience.public-institutional-page > .site-footer", styles, StringComparison.Ordinal);
         Assert.Contains("body.customer-experience.public-institutional-page .process-step", styles, StringComparison.Ordinal);
         Assert.Contains("padding-left: 100px;", styles, StringComparison.Ordinal);
         Assert.Contains("padding-left: 87px;", styles, StringComparison.Ordinal);
+
+        Assert.Matches(@"ViewData\[""BodyClass""\]\s*=\s*""public-institutional-page""", about);
+        Assert.Matches(@"ViewData\[""BodyClass""\]\s*=\s*""public-institutional-page""", howItWorks);
+        Assert.DoesNotContain("about-story", contact, StringComparison.Ordinal);
+        Assert.DoesNotContain("process-flow", contact, StringComparison.Ordinal);
+        Assert.Matches(@"body\.customer-experience\.public-institutional-page:has\(\.about-story,\s*\.process-flow\)\s*\{\s*display:\s*flex;\s*min-height:\s*100vh;\s*min-height:\s*100dvh;\s*flex-direction:\s*column;", styles);
+        Assert.Matches(@"body\.customer-experience\.public-institutional-page:has\(\.about-story,\s*\.process-flow\)\s*>\s*\.site-main\s*\{\s*flex:\s*1 0 auto;", styles);
+        Assert.Matches(@"body\.customer-experience\.public-institutional-page:has\(\.about-story,\s*\.process-flow\)\s*>\s*\.site-footer\s*\{\s*flex:\s*0 0 auto;\s*margin-top:\s*auto;", styles);
+        Assert.DoesNotMatch(@"position:\s*(fixed|absolute)", footerRule);
     }
 }
