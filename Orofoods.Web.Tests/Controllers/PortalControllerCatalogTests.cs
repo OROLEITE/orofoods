@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Controllers;
@@ -29,6 +30,102 @@ public class PortalControllerCatalogTests
         public Task<PaymentGatewayOrder> CreateCreditCardPaymentAsync(CreateCreditCardPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<PaymentGatewayOrder> GetOrderAsync(string gatewayOrderId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<PaymentGatewayOrder> RefundAsync(RefundPaymentRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    [Theory]
+    [InlineData("bau")]
+    [InlineData("BAUDUCCO")]
+    [InlineData("pão")]
+    [InlineData("PÃO")]
+    [InlineData("pao")]
+    [InlineData("WMC-TEST-998")]
+    [InlineData("7891234567890")]
+    public async Task Catalog_search_matches_name_partial_case_and_accents_and_product_codes(string search)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true
+        };
+        var category = new ProductCategory { Name = "Mercearia", Slug = "mercearia", IsActive = true };
+        var product = CreateProduct("SKU-BAU-001", "BAUDUCCO PÃO GRÃOS CLÁSSICOS 390G", category);
+        product.Brand = "Bauducco";
+        product.WmcCode = "WMC-TEST-998";
+        product.Ean = "7891234567890";
+        var user = new ApplicationUser
+        {
+            Id = "customer-user", UserName = "customer@orofoods.local", NormalizedUserName = "CUSTOMER@OROFOODS.LOCAL",
+            Email = "customer@orofoods.local", NormalizedEmail = "CUSTOMER@OROFOODS.LOCAL", Customer = customer, IsActive = true
+        };
+        db.AddRange(customer, category, product, user);
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 20 });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new TestSession());
+        var result = Assert.IsType<ViewResult>(await controller.Catalog(search, null, null, null));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Equal(product.Id, Assert.Single(products).Id);
+        Assert.Contains(product.Id, Assert.IsType<Dictionary<int, decimal>>(controller.ViewBag.Prices).Keys);
+    }
+
+    [Fact]
+    public async Task Administrator_customer_selection_is_scoped_and_audited()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda",
+            TradeName = "Cliente Auditoria",
+            Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved,
+            IsActive = true
+        };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        var controller = CreateController(db, session);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "admin-user"),
+            new Claim(ClaimTypes.Email, "admin@orofoods.local"),
+            new Claim(ClaimTypes.Role, "Administrador")
+        ], "test"));
+
+        var result = await controller.SelectCustomer(customer.Id, "/Portal/Dashboard");
+
+        Assert.Equal("/Portal/Dashboard", Assert.IsType<LocalRedirectResult>(result).Url);
+        Assert.Equal(customer.Id, new AdminCustomerContextService().GetSelectedCustomerId(session, "admin-user"));
+        var audit = await db.AdminPortalAccessAudits.SingleAsync();
+        Assert.Equal("admin-user", audit.AdministratorUserId);
+        Assert.Equal(AdminPortalAccessType.Customer, audit.AccessType);
+        Assert.Equal(customer.Id, audit.TargetId);
+        Assert.Equal(customer.TradeName, audit.TargetName);
+    }
+
+    [Fact]
+    public async Task Invalid_customer_selection_does_not_load_the_customer_directory_or_write_context()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.Customers.Add(new Customer
+        {
+            LegalName = "Cliente Aprovado Ltda", TradeName = "Cliente Aprovado", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true
+        });
+        await db.SaveChangesAsync();
+        var session = new TestSession();
+        var controller = CreateController(db, session);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [new Claim(ClaimTypes.NameIdentifier, "admin-user"), new Claim(ClaimTypes.Role, "Administrador")], "test"));
+
+        var result = await controller.SelectCustomer(-1, "/Portal/Dashboard");
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<Customer>>(view.Model));
+        Assert.Null(new AdminCustomerContextService().GetSelectedCustomerId(session, "admin-user"));
+        Assert.Empty(await db.AdminPortalAccessAudits.ToListAsync());
     }
 
     [Fact]
@@ -64,7 +161,7 @@ public class PortalControllerCatalogTests
         await db.SaveChangesAsync();
 
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{firstProduct.Id}\":2,\"{secondProduct.Id}\":3}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{firstProduct.Id}\":2,\"{secondProduct.Id}\":3}}");
         var controller = CreateController(db, session);
 
         await controller.Catalog(null, null, null, null);
@@ -102,7 +199,7 @@ public class PortalControllerCatalogTests
         await db.SaveChangesAsync();
 
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":2}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":2}}");
         var controller = CreateController(db, session);
 
         await controller.Catalog(null, null, null, null);
@@ -129,6 +226,7 @@ public class PortalControllerCatalogTests
         var product = CreateProduct("BIM-003", "Pao Australiano", category);
         product.BasePrice = 110m;
         product.MinimumCases = 3;
+        var otherProduct = CreateProduct("BIM-004", "Pao Brioche", category);
         var user = new ApplicationUser
         {
             Id = "customer-user",
@@ -139,10 +237,12 @@ public class PortalControllerCatalogTests
             Customer = customer,
             IsActive = true
         };
-        db.AddRange(customer, category, product, user);
+        db.AddRange(customer, category, product, otherProduct, user);
         await db.SaveChangesAsync();
         db.PriceTableItems.Add(new PriceTableItem { PriceTableId = priceTable.Id, ProductId = product.Id, Price = 94.50m });
+        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = priceTable.Id, ProductId = otherProduct.Id, Price = 8m });
         db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 20 });
+        db.ProductInventories.Add(new ProductInventory { ProductId = otherProduct.Id, QuantityOnHand = 0 });
         await db.SaveChangesAsync();
 
         var session = new TestSession();
@@ -154,13 +254,36 @@ public class PortalControllerCatalogTests
         Assert.Equal(3, response.RootElement.GetProperty("quantity").GetInt32());
         Assert.Equal(3, response.RootElement.GetProperty("cartQuantity").GetInt32());
 
+        addResult = Assert.IsType<JsonResult>(await controller.AddToCart(product.Id, 3));
+        using (var repeatedResponse = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(addResult.Value)))
+        {
+            Assert.Equal(6, repeatedResponse.RootElement.GetProperty("quantity").GetInt32());
+            Assert.Equal(6, repeatedResponse.RootElement.GetProperty("cartQuantity").GetInt32());
+        }
+
+        addResult = Assert.IsType<JsonResult>(await controller.AddToCart(otherProduct.Id, 2));
+        using (var multipleProductResponse = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(addResult.Value)))
+        {
+            Assert.Equal(2, multipleProductResponse.RootElement.GetProperty("quantity").GetInt32());
+            Assert.Equal(8, multipleProductResponse.RootElement.GetProperty("cartQuantity").GetInt32());
+        }
+
         var cartResult = Assert.IsType<ViewResult>(await controller.Cart());
         var cart = Assert.IsType<CartViewModel>(cartResult.Model);
-        var line = Assert.Single(cart.Items);
-        Assert.Equal(product.Id, line.ProductId);
-        Assert.Equal(3, line.Quantity);
+        Assert.Equal(2, cart.Items.Count);
+        var line = Assert.Single(cart.Items, item => item.ProductId == product.Id);
+        Assert.Equal(6, line.Quantity);
         Assert.Equal(94.50m, line.UnitPrice);
-        Assert.Equal(283.50m, line.Subtotal);
+        Assert.Equal(567m, line.Subtotal);
+        var otherLine = Assert.Single(cart.Items, item => item.ProductId == otherProduct.Id);
+        Assert.Equal(2, otherLine.Quantity);
+        Assert.Equal(8m, otherLine.UnitPrice);
+        Assert.Equal(16m, otherLine.Subtotal);
+
+        var checkoutResult = Assert.IsType<ViewResult>(await controller.Checkout());
+        var checkout = Assert.IsType<CheckoutViewModel>(checkoutResult.Model);
+        Assert.Equal(2, checkout.Cart.Items.Count);
+        Assert.Equal(8, checkout.Cart.Items.Sum(item => item.Quantity));
     }
 
     private static Product CreateProduct(string sku, string name, ProductCategory category) => new()
@@ -199,7 +322,8 @@ public class PortalControllerCatalogTests
                 TimeProvider.System,
                 NullLogger<PaymentOrchestrationService>.Instance),
             Options.Create(new MercadoPagoOptions()),
-            new AssistedOrderService(db, priceService, new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())), new OrderReservationService(db)));
+            new AssistedOrderService(db, priceService, new PaymentEligibilityService(db, Options.Create(new PaymentEligibilityOptions())), new OrderReservationService(db)),
+            new AdminPortalAccessAuditService(db));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

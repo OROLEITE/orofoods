@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Integrations;
+using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Orders;
 
@@ -13,14 +16,17 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Authorize(Roles = "Administrador")]
 public class IntegrationsController(
     ApplicationDbContext db,
-    OrderIntegrationService integrationService,
-    WmcOrderFileGenerator wmcOrderFileGenerator,
-    WmcExportAuditService wmcExportAuditService,
+    WmcManualExportService wmcManualExportService,
     WmcSyncCoordinator wmcSyncCoordinator,
     WmcSyncService wmcSyncService,
+    IOptions<WmcSyncOptions> wmcSyncOptions,
     IWmcBrandReader wmcBrandReader,
     WmcProductPreviewService wmcProductPreviewService,
-    WmcProductImportService wmcProductImportService) : Controller
+    ILogger<IntegrationsController> logger,
+    IHostEnvironment hostEnvironment,
+    WmcBimboStagingImportService wmcBimboStagingImportService,
+    WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
+    IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions) : Controller
 {
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
@@ -28,6 +34,7 @@ public class IntegrationsController(
             .AsNoTracking()
             .Include(order => order.Customer)
             .Include(order => order.WmcExportAudits)
+            .Include(order => order.WmcOrderExportState)
             .AsQueryable();
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -42,10 +49,10 @@ public class IntegrationsController(
         switch (wmcStatus?.Trim().ToLowerInvariant())
         {
             case "failed":
-                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && !order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "succeeded":
-                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).Select(audit => audit.Succeeded).First());
+                query = query.Where(order => order.WmcExportAudits.Any() && order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).Select(audit => audit.Succeeded).First());
                 break;
             case "none":
                 query = query.Where(order => !order.WmcExportAudits.Any());
@@ -55,53 +62,43 @@ public class IntegrationsController(
         ViewBag.Query = q;
         ViewBag.Status = status;
         ViewBag.WmcStatus = wmcStatus;
-        return View(await query.OrderByDescending(order => order.LastIntegrationAttempt ?? order.CreatedAt).ToListAsync());
+        var orders = await query.OrderByDescending(order => order.LastIntegrationAttempt ?? order.CreatedAt).ToListAsync();
+        ViewData["WmcManualExportEligibleOrderIds"] = orders
+            .Where(wmcManualExportService.CanManuallyExport)
+            .Select(order => order.Id)
+            .ToHashSet();
+        return View(orders);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Reprocess(int id)
+    public Task<IActionResult> Reprocess(int id, CancellationToken cancellationToken = default)
     {
-        await integrationService.SendAsync(id);
-        return RedirectToAction(nameof(Index));
+        return ExportWmc(id, cancellationToken);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ExportWmc(int id, CancellationToken cancellationToken)
     {
-        var order = await db.Orders
-            .AsNoTracking()
-            .Include(item => item.Customer)
-            .Include(item => item.PaymentTerm)
-            .Include(item => item.Items)
-            .ThenInclude(item => item.Product)
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
-
-        if (order is null)
+        var result = await wmcManualExportService.ExportAsync(
+            id,
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            User.Identity?.Name,
+            cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
         {
-            return NotFound();
+            return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", result.FileName!);
         }
 
-        var result = wmcOrderFileGenerator.Build(order);
-        if (!result.Succeeded)
-        {
-            var error = string.Join(" ", result.Errors);
-            await wmcExportAuditService.RecordAsync(order.Id, CurrentUserId, CurrentUserEmail, null, false, error, cancellationToken);
-            TempData["WmcError"] = error;
-            return RedirectToAction(nameof(Index));
-        }
-
-        var fileName = $"WMC_{order.Number.Replace("-", string.Empty)}.txt";
-        await wmcExportAuditService.RecordAsync(order.Id, CurrentUserId, CurrentUserEmail, fileName, true, null, cancellationToken);
-        return File(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8", fileName);
+        if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
+        TempData["WmcError"] = result.Error ?? "Não foi possível exportar o pedido para o WMC.";
+        return RedirectToAction(nameof(Index));
     }
-
-    private string? CurrentUserId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    private string? CurrentUserEmail => User.Identity?.Name;
 
     public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {
+        await LoadBimboManagementRowsAsync(cancellationToken);
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
         IReadOnlyList<WmcBrandRecord> brands = [];
@@ -111,59 +108,10 @@ public class IntegrationsController(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
+            logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
+            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
         }
-        return View(new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcProducts(short brandCode, CancellationToken cancellationToken)
-    {
-        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
-        var brand = brands.SingleOrDefault(b => b.Code == brandCode);
-        if (brand is null) return BadRequest("Marca WMC inválida.");
-        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates,
-            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcConfirmSelection(short brandCode, string[]? selectedProductCodes, CancellationToken cancellationToken)
-    {
-        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
-        var brand = brands.SingleOrDefault(b => b.Code == brandCode);
-        if (brand is null) return BadRequest("Marca WMC inválida.");
-        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
-        var requested = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
-        var selected = candidates.Where(c => requested.Contains(c.WmcCode, StringComparer.Ordinal) && c.Selectable).ToArray();
-        if (selected.Length == 0 || selected.Length != requested.Length)
-        {
-            ModelState.AddModelError("", "Seleção vazia ou desatualizada. Revise os produtos selecionados.");
-            return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, requested));
-        }
-        var summary = new WmcProductImportSummary(selected.Length, selected.Count(c => c.ProductId is null), selected.Count(c => c.ProductId is not null),
-            selected.Count(c => c.Changes.Count > 0), selected.Count(c => c.Changes.Count == 0));
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Confirmation", brandCode, brand.Description, candidates, requested, summary));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcImportProducts(short brandCode, string[]? selectedProductCodes, string reimportExisting, CancellationToken cancellationToken)
-    {
-        if (string.Equals(reimportExisting, "cancel", StringComparison.OrdinalIgnoreCase))
-            return RedirectToAction(nameof(Wmc));
-        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
-        var brand = brands.SingleOrDefault(b => b.Code == brandCode);
-        if (brand is null) return BadRequest("Marca WMC inválida.");
-        var codes = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
-        if (reimportExisting is not ("true" or "false")) return BadRequest("Decisão inválida.");
-        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
-        var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
-            Candidates: candidates, SelectedProductCodes: codes, ImportResult: result,
-            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+        return View(new WmcPreviewPageModel(brands, [], null, []));
     }
 
     [HttpPost]
@@ -177,7 +125,8 @@ public class IntegrationsController(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            TempData["WmcPreviewError"] = "Não foi possível carregar as marcas WMC.";
+            logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
+            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
         }
         var availableCodes = brands.Select(brand => (short)brand.Code).ToHashSet();
         var selectedCodes = (brandCodes ?? [])
@@ -198,14 +147,99 @@ public class IntegrationsController(
             .ToList();
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand,
-            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+        await LoadBimboManagementRowsAsync(cancellationToken);
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand));
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcBimboSimulate(CancellationToken cancellationToken)
+    {
+        if (!hostEnvironment.IsStaging()) return Forbid();
+        var result = await wmcBimboStagingImportService.SimulateAsync(cancellationToken);
+        return Ok(new WmcBimboSimulationResponse(result.Succeeded, result.Products, result.ErrorCode));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcBimboImport(string[]? selectedWmcCodes, CancellationToken cancellationToken)
+    {
+        if (!hostEnvironment.IsStaging())
+        {
+            return Forbid();
+        }
+
+        var actorUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(actorUserId))
+        {
+            return Forbid();
+        }
+
+        var result = await wmcBimboStagingImportService.ImportSelectedAsync(actorUserId, selectedWmcCodes, cancellationToken);
+        var response = new WmcBimboImportResponse(
+            result.Succeeded,
+            result.ImportedWmcCodes.Count,
+            result.SkippedWmcCodes.Count,
+            result.ErrorSummary,
+            GetWmcBimboErrorMessage(result.ErrorSummary),
+            result.Products);
+        return result.Succeeded ? Ok(response) : Conflict(response);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcBimboActivate(int productId, string? reason, CancellationToken cancellationToken)
+    {
+        if (!hostEnvironment.IsStaging()) return Forbid();
+        var result = await initialLoadReadinessReleaseService.ActivateBimboAsync(
+            productId,
+            reason,
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            cancellationToken);
+        var succeeded = result.Status is WmcInitialLoadReleaseStatus.Released or WmcInitialLoadReleaseStatus.AlreadyReady;
+        return StatusCode(succeeded ? StatusCodes.Status200OK : StatusCodes.Status409Conflict,
+            new WmcBimboActivationResponse(succeeded, result.Status.ToString(), result.Message));
+    }
+
+    private async Task LoadBimboManagementRowsAsync(CancellationToken cancellationToken)
+    {
+        var canActivateBimbo = hostEnvironment.IsStaging() && initialLoadReleaseOptions.Value.Enabled;
+        ViewBag.BimboProducts = await wmcBimboStagingImportService.GetAdminProductsAsync(canActivateBimbo, cancellationToken);
+        ViewBag.CanManageBimbo = hostEnvironment.IsStaging();
+        ViewBag.CanActivateBimbo = canActivateBimbo;
+    }
+
+    private static string? GetWmcBimboErrorMessage(string? errorCode) => errorCode switch
+    {
+        "NO_PRODUCTS_SELECTED" => "Selecione ao menos um produto validado na simulação.",
+        "PRODUCT_NOT_APPROVED" => "A seleção contém códigos fora do lote BIMBO homologado.",
+        "WMC_READ_FAILED" => "Não foi possível consultar o espelho WMC.",
+        "PENDING_CATEGORY_ACTIVE" => "A categoria pendente está ativa e precisa ser revisada.",
+        "LOCAL_WMC_CODE_CONFLICT" => "Há códigos WMC duplicados no cadastro Orofoods.",
+        "SOURCE_WMC_CODE_CONFLICT" => "Há códigos WMC duplicados no espelho.",
+        "APPROVED_PRODUCT_MISSING" => "Um ou mais produtos selecionados não foram encontrados no WMC.",
+        "SOURCE_BRAND_MISMATCH" => "Um produto selecionado não pertence à marca BIMBO 104.",
+        "SOURCE_PRODUCT_NOT_ACTIVE" => "Um produto selecionado está inativo no WMC.",
+        "SOURCE_STOCK_UNIT_MISMATCH" => "A unidade de estoque do WMC não é PC.",
+        "SOURCE_PRODUCT_NAME_INVALID" => "A descrição de um produto selecionado é inválida.",
+        "SOURCE_EAN13_INVALID" => "O EAN-13 de um produto está ausente ou inválido.",
+        "SOURCE_EAN13_MISMATCH" => "Um EAN-13 não corresponde à referência homologada.",
+        "SOURCE_STOCK_INVALID" => "O estoque de um produto selecionado é inválido.",
+        "LOCAL_SKU_CONFLICT" => "O SKU WMC reservado já está sendo utilizado por outro produto.",
+        "IMPORT_FAILED" => "A importação falhou e a transação foi revertida.",
+        null => null,
+        _ => "A importação foi recusada após a validação. Revise os dados e tente novamente."
+    };
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WmcSyncNow(CancellationToken cancellationToken)
     {
+        if (!wmcSyncOptions.Value.Enabled)
+        {
+            return Forbid();
+        }
+
         var result = await wmcSyncCoordinator.RunExclusivelyAsync(() => wmcSyncService.SyncAllAsync(cancellationToken), cancellationToken);
         TempData["WmcSyncMessage"] = result is null
             ? "Sincroniza\u00e7\u00e3o j\u00e1 em andamento."
@@ -213,3 +247,18 @@ public class IntegrationsController(
         return RedirectToAction(nameof(Wmc));
     }
 }
+
+public sealed record WmcBimboImportResponse(
+    bool Succeeded,
+    int ImportedProducts,
+    int SkippedProducts,
+    string? ErrorCode,
+    string? ErrorMessage,
+    IReadOnlyList<WmcBimboProductOutcome> Products);
+
+public sealed record WmcBimboSimulationResponse(
+    bool Succeeded,
+    IReadOnlyList<WmcBimboProductSimulation> Products,
+    string? ErrorCode);
+
+public sealed record WmcBimboActivationResponse(bool Succeeded, string Status, string Message);

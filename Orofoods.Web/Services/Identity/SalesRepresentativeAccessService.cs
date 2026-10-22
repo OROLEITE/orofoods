@@ -15,12 +15,25 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
     public async Task<bool> HasActiveSellerAccessAsync(
         ClaimsPrincipal user,
         CancellationToken cancellationToken = default) =>
-        user.IsInRole(ApplicationRoles.Seller) && await GetActiveRepresentativeAsync(user, cancellationToken) is not null;
+        (user.IsInRole(ApplicationRoles.Seller) || user.IsInRole(ApplicationRoles.Administrator))
+        && await GetActiveRepresentativeAsync(user, cancellationToken) is not null;
 
     public Task<SalesRepresentative?> GetActiveRepresentativeAsync(
         ClaimsPrincipal user,
         CancellationToken cancellationToken = default)
     {
+        if (user.IsInRole(ApplicationRoles.Administrator))
+        {
+            var selectedRepresentativeId = user.FindFirstValue(AdminSellerContextService.SelectedRepresentativeClaimType);
+            if (!int.TryParse(selectedRepresentativeId, out var representativeId) || representativeId <= 0)
+            {
+                return Task.FromResult<SalesRepresentative?>(null);
+            }
+
+            return db.SalesRepresentatives
+                .SingleOrDefaultAsync(x => x.Id == representativeId && x.IsActive, cancellationToken);
+        }
+
         if (!user.IsInRole(ApplicationRoles.Seller))
         {
             return Task.FromResult<SalesRepresentative?>(null);
@@ -43,7 +56,7 @@ public class SalesRepresentativeAccessService(ApplicationDbContext db)
         int customerId,
         CancellationToken cancellationToken = default)
     {
-        if (!user.IsInRole(ApplicationRoles.Seller) || customerId <= 0)
+        if ((!user.IsInRole(ApplicationRoles.Seller) && !user.IsInRole(ApplicationRoles.Administrator)) || customerId <= 0)
         {
             return null;
         }

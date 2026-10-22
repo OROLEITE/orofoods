@@ -180,6 +180,24 @@ namespace Orofoods.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("CommercialUnitCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Dun14")
+                        .HasMaxLength(14)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Ean13")
+                        .HasMaxLength(13)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LogisticsUnitCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PackagesPerCase")
+                        .HasColumnType("INTEGER");
                     b.Property<string>("Accent")
                         .IsRequired()
                         .HasMaxLength(12)
@@ -428,6 +446,29 @@ namespace Orofoods.Web.Data.Migrations
                     b.ToTable("ContactMessages");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.OrderMinimumSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("MinimumAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OrderMinimumSettings", (string)null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderMinimumSettings_Singleton", "\"Id\" = 1");
+                        });
+                });
             modelBuilder.Entity("Orofoods.Web.Models.Customers.Customer", b =>
                 {
                     b.Property<int>("Id")
@@ -588,6 +629,56 @@ namespace Orofoods.Web.Data.Migrations
                     b.ToTable("CustomerAddresses");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Customers.CustomerCnpjAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChangedByEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChangedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NewCnpj")
+                        .IsRequired()
+                        .HasMaxLength(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PreviousCnpj")
+                        .HasMaxLength(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId", "ChangedAt");
+
+                    b.HasIndex("OrderId", "ChangedAt");
+
+                    b.ToTable("CustomerCnpjAudits");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Customers.SalesRepresentative", b =>
                 {
                     b.Property<int>("Id")
@@ -636,10 +727,18 @@ namespace Orofoods.Web.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("MustChangePassword")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("LockoutEnabled")
@@ -714,6 +813,13 @@ namespace Orofoods.Web.Data.Migrations
                     b.Property<int>("CustomerId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("CustomerCnpjSnapshot")
+                        .HasMaxLength(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SalesRepresentativeId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("DeliveryAddressId")
                         .HasColumnType("INTEGER");
 
@@ -763,6 +869,8 @@ namespace Orofoods.Web.Data.Migrations
 
                     b.HasIndex("PaymentTermId");
 
+                    b.HasIndex("SalesRepresentativeId");
+
                     b.ToTable("Orders");
                 });
 
@@ -777,6 +885,10 @@ namespace Orofoods.Web.Data.Migrations
 
                     b.Property<int>("ProductId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SalesUnitCodeSnapshot")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ProductNameSnapshot")
                         .IsRequired()
@@ -954,6 +1066,29 @@ namespace Orofoods.Web.Data.Migrations
                     b.ToTable("PriceTables");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcExportAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Error").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<Guid?>("AttemptId").HasColumnType("TEXT");
+                    b.Property<DateTime>("ExportedAt").HasColumnType("TEXT");
+                    b.Property<string>("ExportedByEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("ExportedByUserId").HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<string>("FileName").HasMaxLength(160).HasColumnType("TEXT");
+                    b.Property<DateTime?>("GeneratedAt").HasColumnType("TEXT");
+                    b.Property<int>("OrderId").HasColumnType("INTEGER");
+                    b.Property<int>("Outcome").HasColumnType("INTEGER");
+                    b.Property<int>("Source").HasColumnType("INTEGER");
+                    b.Property<bool>("Succeeded").HasColumnType("INTEGER");
+                    b.HasKey("Id");
+                    b.HasIndex("OrderId", "ExportedAt");
+                    b.HasIndex("OrderId", "AttemptId").IsUnique();
+                    b.ToTable("WmcExportAudits");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcSyncRun", b =>
                 {
                     b.Property<int>("Id")
@@ -976,6 +1111,81 @@ namespace Orofoods.Web.Data.Migrations
                     b.HasKey("Id");
                     b.HasIndex("Status", "StartedAt");
                     b.ToTable("WmcSyncRuns");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcInitialLoadReleaseAudit", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("AdminUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<int>("ProductId").HasColumnType("INTEGER");
+                    b.Property<string>("Reason").IsRequired().HasMaxLength(300).HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("ReleasedAtUtc").HasColumnType("TEXT");
+                    b.Property<string>("WmcCode").IsRequired().HasMaxLength(30).HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("ProductId", "ReleasedAtUtc");
+                    b.ToTable("WmcInitialLoadReleaseAudits");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcProductImportRun", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("ActorUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<short>("BrandCode").HasColumnType("INTEGER");
+                    b.Property<DateTimeOffset?>("CompletedAtUtc").HasColumnType("TEXT");
+                    b.Property<string>("ErrorSummary").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<string>("ImportedProductCodes").IsRequired().HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<string>("Outcome").IsRequired().HasMaxLength(20).HasColumnType("TEXT");
+                    b.Property<string>("SkippedProductCodes").IsRequired().HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<DateTimeOffset>("StartedAtUtc").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("BrandCode", "StartedAtUtc");
+                    b.ToTable("WmcProductImportRuns");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
+                {
+                    b.Property<int>("OrderId").HasColumnType("INTEGER");
+                    b.Property<int?>("CurrentArtifactId").HasColumnType("INTEGER");
+                    b.Property<string>("ExportedByEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("ExportedByUserId").HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<DateTime?>("ExportedAt").HasColumnType("TEXT");
+                    b.Property<string>("FileName").HasMaxLength(160).HasColumnType("TEXT");
+                    b.Property<string>("ImportedByEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("ImportedByUserId").HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<DateTime?>("ImportedAt").HasColumnType("TEXT");
+                    b.Property<string>("LastError").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<DateTime?>("ProcessingStartedAt").HasColumnType("TEXT");
+                    b.Property<bool>("RequiresManualReview").HasColumnType("INTEGER");
+                    b.Property<string>("ReviewedByEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("ReviewedByUserId").HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<DateTime?>("ReviewedAt").HasColumnType("TEXT");
+                    b.Property<string>("Status").IsRequired().HasMaxLength(20).HasColumnType("TEXT");
+                    b.Property<DateTime>("UpdatedAt").HasColumnType("TEXT");
+                    b.Property<long>("Version").IsConcurrencyToken().HasColumnType("INTEGER");
+                    b.HasKey("OrderId");
+                    b.HasIndex("CurrentArtifactId");
+                    b.ToTable("WmcOrderExportStates", (string)null, t =>
+                        t.HasCheckConstraint("CK_WmcOrderExportStates_Status", "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Rejected', 'Imported', 'Error')"));
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<Guid>("AttemptId").HasColumnType("TEXT");
+                    b.Property<string>("Content").IsRequired().HasColumnType("TEXT");
+                    b.Property<string>("ContentSha256").IsRequired().HasMaxLength(64).HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("TEXT");
+                    b.Property<string>("CreatedByEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("CreatedByUserId").HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<string>("FileName").IsRequired().HasMaxLength(160).HasColumnType("TEXT");
+                    b.Property<int>("OrderId").HasColumnType("INTEGER");
+                    b.Property<string>("RegenerationReason").HasMaxLength(1000).HasColumnType("TEXT");
+                    b.Property<int?>("SupersedesArtifactId").HasColumnType("INTEGER");
+                    b.HasKey("Id");
+                    b.HasIndex("AttemptId").IsUnique();
+                    b.HasIndex("OrderId", "CreatedAt");
+                    b.HasIndex("SupersedesArtifactId");
+                    b.ToTable("WmcManualExportArtifacts");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.PriceTableItem", b =>
@@ -1135,6 +1345,24 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("Customer");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Customers.CustomerCnpjAudit", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Identity.ApplicationUser", b =>
                 {
                     b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
@@ -1218,6 +1446,52 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("ChangedByUser");
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcExportAudit", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithMany("WmcExportAudits")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithOne("WmcOrderExportState")
+                        .HasForeignKey("Orofoods.Web.Models.Integrations.WmcOrderExportState", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcOrderExportState", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", "CurrentArtifact")
+                        .WithMany()
+                        .HasForeignKey("CurrentArtifactId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                    b.Navigation("CurrentArtifact");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithMany("WmcManualExportArtifacts")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.HasOne("Orofoods.Web.Models.Integrations.WmcManualExportArtifact", "SupersedesArtifact")
+                        .WithMany()
+                        .HasForeignKey("SupersedesArtifactId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                    b.Navigation("Order");
+                    b.Navigation("SupersedesArtifact");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Orders.SavedOrder", b =>
@@ -1319,6 +1593,12 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("StatusHistory");
+
+                    b.Navigation("WmcExportAudits");
+
+                    b.Navigation("WmcManualExportArtifacts");
+
+                    b.Navigation("WmcOrderExportState");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Orders.SavedOrder", b =>
@@ -1336,6 +1616,37 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("Customers");
 
                     b.Navigation("Items");
+                });
+            modelBuilder.Entity("Orofoods.Web.Models.Identity.AdminPortalAccessAudit", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("AccessType").IsRequired().HasMaxLength(32).HasColumnType("TEXT");
+                    b.Property<string>("AdministratorEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("AdministratorUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<string>("IpAddress").HasMaxLength(45).HasColumnType("TEXT");
+                    b.Property<DateTime>("SelectedAt").HasColumnType("TEXT");
+                    b.Property<int>("TargetId").HasColumnType("INTEGER");
+                    b.Property<string>("TargetName").IsRequired().HasMaxLength(200).HasColumnType("TEXT");
+                    b.Property<string>("UserAgent").HasMaxLength(512).HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("AccessType", "TargetId", "SelectedAt");
+                    b.HasIndex("AdministratorUserId", "SelectedAt");
+                    b.ToTable("AdminPortalAccessAudits");
+                });
+            modelBuilder.Entity("Orofoods.Web.Models.Identity.AdminUserChangeAudit", b =>
+                {
+                    b.Property<long>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("Action").IsRequired().HasMaxLength(64).HasColumnType("TEXT");
+                    b.Property<string>("ActorName").IsRequired().HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("ActorUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<DateTime>("ChangedAt").HasColumnType("TEXT");
+                    b.Property<string>("Summary").IsRequired().HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<string>("TargetName").IsRequired().HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("TargetUserId").IsRequired().HasMaxLength(450).HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("ActorUserId", "ChangedAt");
+                    b.HasIndex("TargetUserId", "ChangedAt");
+                    b.ToTable("AdminUserChangeAudits");
                 });
 #pragma warning restore 612, 618
         }

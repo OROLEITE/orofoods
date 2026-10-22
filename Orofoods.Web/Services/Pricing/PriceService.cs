@@ -32,7 +32,7 @@ public class PriceService(ApplicationDbContext db)
             ?? product.PromotionalPrice
             ?? product.BasePrice;
 
-        return new ResolvedPrice(product.BasePrice, product.PromotionalPrice, effectivePrice);
+        return new ResolvedPrice(product.BasePrice, product.PromotionalPrice, effectivePrice, effectivePrice > 0m);
     }
 
     public async Task<Dictionary<int, decimal>> GetPricesAsync(
@@ -55,4 +55,4 @@ public class PriceService(ApplicationDbContext db)
     }
 }
 
-public sealed record ResolvedPrice(decimal BasePrice, decimal? PromotionalPrice, decimal EffectivePrice);
+public sealed record ResolvedPrice(decimal BasePrice, decimal? PromotionalPrice, decimal EffectivePrice, bool IsCommerciallyValid = true);

@@ -142,6 +142,11 @@ public sealed class WmcSyncService(
                         WmcAlternateUnit = Clean(row.UnAltern),
                         WmcPackageQuantity = row.QtdeEmbalagem,
                         WmcConversionQuantity = row.QtdeConversao,
+                        Ean13 = Clean(row.Ean13),
+                        Dun14 = Clean(row.Dun14),
+                        CommercialUnitCode = Clean(row.CommercialUnitCode),
+                        LogisticsUnitCode = Clean(row.LogisticsUnitCode),
+                        PackagesPerCase = row.PackagesPerCase,
                         Sku = BuildPlaceholderSku(row.CodProduto),
                         Name = row.Produto,
                         Unit = string.IsNullOrWhiteSpace(row.Un) ? "caixa" : row.Un,
@@ -189,6 +194,15 @@ public sealed class WmcSyncService(
                     if (existing.WmcConversionQuantity != row.QtdeConversao)
                     {
                         existing.WmcConversionQuantity = row.QtdeConversao;
+                        changed = true;
+                    }
+                    changed |= UpdateWhenProvided(row.Ean13, existing.Ean13, value => existing.Ean13 = value);
+                    changed |= UpdateWhenProvided(row.Dun14, existing.Dun14, value => existing.Dun14 = value);
+                    changed |= UpdateWhenProvided(row.CommercialUnitCode, existing.CommercialUnitCode, value => existing.CommercialUnitCode = value);
+                    changed |= UpdateWhenProvided(row.LogisticsUnitCode, existing.LogisticsUnitCode, value => existing.LogisticsUnitCode = value);
+                    if (row.PackagesPerCase is > 0 && existing.PackagesPerCase != row.PackagesPerCase)
+                    {
+                        existing.PackagesPerCase = row.PackagesPerCase;
                         changed = true;
                     }
                     var wmcActive = ReadWmcActive(row.Situacao, code);
@@ -259,6 +273,13 @@ public sealed class WmcSyncService(
                 }
 
                 var inventory = inventories.GetValueOrDefault(product.Id);
+                product.WmcStockAvailable = product.IsWmcActive && quantity > 0;
+                if (inventory?.IsManuallyAdjusted == true)
+                {
+                    skipped++;
+                    continue;
+                }
+
                 if (inventory is null)
                 {
                     inventory = new ProductInventory { ProductId = product.Id, QuantityOnHand = quantity };
@@ -271,7 +292,6 @@ public sealed class WmcSyncService(
                     inventory.QuantityOnHand = quantity;
                     updated++;
                 }
-                product.WmcStockAvailable = product.IsWmcActive && quantity > 0;
                 if (inventory.QuantityOnHand == quantity && quantity == 0)
                 {
                     skipped++;
@@ -364,6 +384,13 @@ public sealed class WmcSyncService(
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool UpdateWhenProvided(string? incoming, string? current, Action<string> update)
+    {
+        if (string.IsNullOrWhiteSpace(incoming) || string.Equals(incoming.Trim(), current, StringComparison.Ordinal)) return false;
+        update(incoming.Trim());
+        return true;
+    }
 
     private bool ReadWmcActive(string? situation, string code)
     {

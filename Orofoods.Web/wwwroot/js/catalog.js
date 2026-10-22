@@ -1,12 +1,32 @@
-document.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) => {
+const initializeCatalogProductInteractions = (root = document) => {
+    const updateHeaderCart = (quantity) => {
+        document.querySelectorAll('.catalog-header-cart').forEach((cartLink) => {
+            const cartCount = cartLink.querySelector('[data-cart-count]');
+            if (cartCount) {
+                cartCount.textContent = quantity;
+            }
+            cartLink.dataset.cartQuantity = quantity;
+            cartLink.setAttribute('aria-label', `Carrinho com ${quantity} unidades`);
+        });
+    };
+
+    root.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) => {
     const input = stepper.querySelector('input[name="quantity"]');
     const minimum = Math.max(1, Number.parseInt(input.min, 10) || 1);
+    const maximum = Number.parseInt(input.max, 10) || Number.POSITIVE_INFINITY;
     const decrease = stepper.querySelector('[data-catalog-quantity-decrease]');
     const increase = stepper.querySelector('[data-catalog-quantity-increase]');
 
     const normalizeQuantity = () => {
+        if (input.disabled) {
+            decrease.disabled = true;
+            increase.disabled = true;
+            return;
+        }
         const value = Number.parseInt(input.value, 10);
-        input.value = Math.max(minimum, Number.isFinite(value) ? value : minimum);
+        input.value = Math.min(maximum, Math.max(minimum, Number.isFinite(value) ? value : minimum));
+        decrease.disabled = Number(input.value) <= minimum;
+        increase.disabled = Number(input.value) >= maximum;
     };
 
     decrease.addEventListener('click', () => {
@@ -22,22 +42,17 @@ document.querySelectorAll('[data-catalog-quantity-stepper]').forEach((stepper) =
     });
 
     input.addEventListener('change', normalizeQuantity);
+    normalizeQuantity();
 });
 
-document.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
+    root.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         const button = form.querySelector('button[type="submit"]');
-        const quantityInput = form.querySelector('input[name="quantity"]');
-        const stepperButtons = form.querySelectorAll('.catalog-quantity-button');
         const status = form.querySelector('.catalog-add-status');
-        const originalLabel = button.innerHTML;
-        let cartCount = document.querySelector('.catalog-cart-count');
-
         button.disabled = true;
         button.setAttribute('aria-busy', 'true');
-        button.textContent = 'Adicionando...';
         status.textContent = '';
 
         try {
@@ -48,35 +63,24 @@ document.querySelectorAll('[data-catalog-add-form]').forEach((form) => {
             });
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(payload.message || 'Não foi possível adicionar o produto ao carrinho.');
+                throw new Error(payload.message || 'Falha ao adicionar ao carrinho.');
             }
 
-            quantityInput.value = payload.quantity;
-            quantityInput.disabled = true;
-            stepperButtons.forEach((stepperButton) => { stepperButton.disabled = true; });
-            button.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> <span>No carrinho</span>';
-            button.setAttribute('aria-label', 'Produto no carrinho');
-            status.textContent = 'Produto adicionado ao carrinho.';
+            button.disabled = false;
+            status.textContent = payload.message || 'Produto adicionado ao carrinho.';
 
-            if (payload.cartQuantity > 0) {
-                const cartLink = document.querySelector('.catalog-cart-link');
-                if (cartCount) {
-                    cartCount.textContent = payload.cartQuantity;
-                } else {
-                    cartCount = document.createElement('span');
-                    cartCount.className = 'catalog-cart-count';
-                    cartCount.setAttribute('aria-hidden', 'true');
-                    cartCount.textContent = payload.cartQuantity;
-                    cartLink.append(cartCount);
-                }
-                cartLink.setAttribute('aria-label', `Ver carrinho com ${payload.cartQuantity} caixas`);
+            if (Number.isInteger(payload.cartQuantity) && payload.cartQuantity >= 0) {
+                updateHeaderCart(payload.cartQuantity);
             }
         } catch (error) {
             button.disabled = false;
-            button.innerHTML = originalLabel;
             status.textContent = error.message;
         } finally {
             button.removeAttribute('aria-busy');
         }
     });
 });
+};
+
+window.initializeCatalogProductInteractions = initializeCatalogProductInteractions;
+initializeCatalogProductInteractions();

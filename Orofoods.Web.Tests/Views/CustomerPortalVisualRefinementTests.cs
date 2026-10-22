@@ -10,8 +10,8 @@ public class CustomerPortalVisualRefinementTests
         var script = ReadText(Path.Combine(projectPath, "wwwroot", "js", "catalog.js"));
 
         Assert.Contains("asp-action=\"AddToCart\"", view);
-        Assert.Contains("asp-action=\"Product\"", view);
-        Assert.Contains("min=\"@product.MinimumCases\"", view);
+        Assert.DoesNotContain("catalog-details-link", view);
+        Assert.Contains("min=\"@product.MinimumSalesQuantity\"", view);
         Assert.Contains("data-catalog-quantity-stepper", view);
         Assert.Contains("data-catalog-quantity-decrease", view);
         Assert.Contains("data-catalog-quantity-increase", view);
@@ -40,6 +40,108 @@ public class CustomerPortalVisualRefinementTests
     }
 
     [Fact]
+    public void Portal_catalog_keeps_its_dark_palette_and_does_not_crop_product_images()
+    {
+        var projectPath = GetWebProjectPath();
+        var catalogStyles = ReadText(Path.Combine(projectPath, "wwwroot", "css", "catalog.css"));
+        var darkStyles = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-dark.css"));
+
+        Assert.DoesNotMatch(
+            @"(?s)(?:\.public-products-hero,\s*)?\.portal-catalog-hero\s*\{[^}]*background:\s*#F1F5FB\s*!important",
+            catalogStyles);
+        Assert.Contains("body.portal-authenticated .portal-app-main .portal-catalog-page", darkStyles);
+        Assert.Contains("background: #0B132B;", darkStyles);
+        Assert.Contains("body.portal-authenticated .portal-app-main .portal-catalog-hero", darkStyles);
+        Assert.Matches(
+            @"(?s)body\.portal-authenticated \.portal-app-main \.portal-catalog-hero\s*\{[^}]*background:\s*var\(--portal-dark-surface\);",
+            darkStyles);
+        Assert.Contains("color: #E5E7EB;", darkStyles);
+        Assert.Contains("grid-template-columns: repeat(5, minmax(0, 1fr));", catalogStyles);
+        Assert.Contains("object-fit: contain;", darkStyles);
+        Assert.Contains("object-position: center;", darkStyles);
+        Assert.Contains("transform: none;", darkStyles);
+        Assert.DoesNotContain("object-fit:cover", catalogStyles);
+    }
+
+    [Fact]
+    public void Portal_catalog_search_is_live_debounced_and_keeps_server_filters_and_identifier_matching()
+    {
+        var projectPath = GetWebProjectPath();
+        var view = ReadText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
+        var script = ReadText(Path.Combine(projectPath, "wwwroot", "js", "portal-catalog-search.js"));
+        var catalogInteractions = ReadText(Path.Combine(projectPath, "wwwroot", "js", "catalog.js"));
+        var controller = ReadText(Path.Combine(projectPath, "Controllers", "PortalController.cs"));
+
+        Assert.Contains("data-portal-catalog-search", view);
+        Assert.Contains("data-portal-catalog-grid", view);
+        Assert.Contains("autocomplete=\"off\"", view);
+        Assert.Contains("data-portal-catalog-results-status", view);
+        Assert.Contains("searchForm.addEventListener('submit'", script);
+        Assert.Contains("searchInput.addEventListener('input'", script);
+        Assert.Contains("categorySelect?.addEventListener('change'", script);
+        Assert.Contains("brandSelect?.addEventListener('change'", script);
+        Assert.Contains("setTimeout", script);
+        Assert.Contains("200", script);
+        Assert.Contains("AbortController", script);
+        Assert.Contains("X-Requested-With", script);
+        Assert.Contains("DOMParser", script);
+        Assert.Contains("replaceChildren", script);
+        Assert.Contains("window.initializeCatalogProductInteractions(searchGrid)", script);
+        Assert.Contains("window.initializeCatalogProductInteractions = initializeCatalogProductInteractions", catalogInteractions);
+        Assert.Contains("~/js/portal-catalog-search.js", view);
+        Assert.Contains("product.WmcCode", controller);
+        Assert.Contains("product.Ean", controller);
+        Assert.Contains("product.Ean13", controller);
+        Assert.Contains("product.Sku", controller);
+        Assert.Contains("product.Brand", controller);
+        Assert.Contains("product.Name", controller);
+
+        var normalizer = ReadText(Path.Combine(projectPath, "Services", "Catalog", "CatalogSearchText.cs"));
+        Assert.Contains("NormalizationForm.FormD", normalizer);
+        Assert.Contains("ToUpperInvariant()", normalizer);
+    }
+
+    [Fact]
+    public void Portal_catalog_uses_transparent_product_copies_for_all_matching_wmc_codes()
+    {
+        var projectPath = GetWebProjectPath();
+        var view = ReadText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
+        var styles = ReadText(Path.Combine(projectPath, "wwwroot", "css", "portal-dark.css"));
+        var imageCatalog = ReadText(Path.Combine(projectPath, "Services", "Catalog", "BimboProductImageCatalog.cs"));
+        var transparentImages = new[]
+        {
+            (Code: "503768", File: "503768_corte_duplo"),
+            (Code: "503775", File: "503775_tradicional_gergelim"),
+            (Code: "503777", File: "503777_smart_gergelim"),
+            (Code: "503805", File: "503805_tradicional"),
+            (Code: "503811", File: "503811_hot_dog"),
+            (Code: "503813", File: "503813_smart"),
+            (Code: "503833", File: "503833_brioche_class"),
+            (Code: "503838", File: "503838_mini_brioche"),
+            (Code: "504338", File: "504338_brioche_max"),
+            (Code: "504342", File: "504342_australiano")
+        };
+
+        Assert.Contains("var catalogImageUrl = officialImage?.ImageUrl", view);
+        Assert.Contains("image is not null ? Url.RouteUrl(\"ProductMedia\"", view);
+        Assert.DoesNotContain("portalTransparentProductImages", view);
+        Assert.DoesNotMatch(
+            @"(?s)body\.portal-authenticated \.portal-app-main \.portal-catalog-page \.product-visual\s*\{[^}]*background:\s*#FFFFFF",
+            styles);
+
+        foreach (var (wmcCode, fileName) in transparentImages)
+        {
+            Assert.Contains($"[\"{wmcCode}\"] = new(", imageCatalog, StringComparison.Ordinal);
+            Assert.Contains($"/images/products/bimbo-catalog-transparent/{fileName}.png", imageCatalog, StringComparison.Ordinal);
+            var assetPath = Path.Combine(projectPath, "wwwroot", "images", "products", "bimbo-catalog-transparent", $"{fileName}.png");
+            Assert.True(File.Exists(assetPath), $"Portal transparent image for WMC {wmcCode} is missing.");
+            var png = File.ReadAllBytes(assetPath);
+            Assert.True(png.Length > 26, $"Portal transparent image for WMC {wmcCode} is incomplete.");
+            Assert.Equal((byte)6, png[25]);
+        }
+    }
+
+    [Fact]
     public void Portal_navigation_inherits_admin_typography_and_has_no_broad_span_highlight_rule()
     {
         var projectPath = GetWebProjectPath();
@@ -54,7 +156,7 @@ public class CustomerPortalVisualRefinementTests
         Assert.Contains("font-size: 19px", portal);
         Assert.Contains(".portal-app-nav a.active {\n    background: var(--nav-item-hover);\n    color: var(--nav-text-active);\n}", portal);
         Assert.Contains(".portal-app-nav a.active::before {", portal);
-        Assert.Contains("    background: var(--gold);", portal);
+        Assert.Contains("    background: #38BDF8;", portal);
         Assert.Contains("width: 3px", portal);
         Assert.DoesNotContain(".portal-app-nav a span{", density);
         Assert.DoesNotContain(".portal-app-nav a.active span{", density);

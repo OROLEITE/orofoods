@@ -34,10 +34,10 @@ public class PaymentEligibilityServiceTests
     }
 
     [Fact]
-    public async Task Third_valid_purchase_releases_only_boleto_terms_up_to_fourteen_days()
+    public async Task Wmc_authorized_condition_beyond_local_fourteen_day_limit_is_available()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var customer = await CreateCustomerAsync(db);
+        var customer = await CreateCustomerAsync(db, wmcCode: "5264");
         await AddPaymentTermsAsync(db);
         var creator = TestDbContextFactory.CreateOrderCreator();
         db.Orders.AddRange(
@@ -46,16 +46,17 @@ public class PaymentEligibilityServiceTests
             new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Delivered });
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).GetAvailablePaymentOptionsAsync(customer.Id);
+        var result = await CreateService(db, reader: new TestWmcReader(new Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition(
+            "5264", "5", "5", "21 DIAS", 1, 21, 0, "A", "WMC Firebird mirror", DateTimeOffset.UtcNow))).GetAvailablePaymentOptionsAsync(customer.Id);
 
         Assert.Equal(3, result.ValidPurchases);
         Assert.True(result.InvoiceCreditEnabled);
-        Assert.Equal(14, result.MaximumTermDays);
-        Assert.Equal(["PIX", "CASH", "CREDIT_CARD", "BOLETO_7D", "BOLETO_14D"], result.PaymentMethods.Select(term => term.Code));
+        Assert.Equal(21, result.MaximumTermDays);
+        Assert.Equal(["PIX", "CASH", "CREDIT_CARD", "BOLETO_21D"], result.PaymentMethods.Select(term => term.Code));
     }
 
     [Fact]
-    public async Task Credit_block_overrides_purchase_history()
+    public async Task Legacy_local_credit_block_does_not_override_active_wmc_authorization()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = await CreateCustomerAsync(db, creditBlocked: true);
@@ -64,11 +65,13 @@ public class PaymentEligibilityServiceTests
         db.Orders.AddRange(Enumerable.Range(0, 3).Select(_ => new Order { CustomerId = customer.Id, CreatedByUser = creator, Status = OrderStatus.Invoiced }));
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).GetAvailablePaymentOptionsAsync(customer.Id);
+        customer.WmcCode = "5264";
+        await db.SaveChangesAsync();
+        var result = await CreateService(db, reader: new TestWmcReader(new Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition(
+            "5264", "3", "3", "14 DIAS", 1, 14, 0, "A", "WMC Firebird mirror", DateTimeOffset.UtcNow))).GetAvailablePaymentOptionsAsync(customer.Id);
 
-        Assert.False(result.InvoiceCreditEnabled);
-        Assert.Equal(0, result.MaximumTermDays);
-        Assert.DoesNotContain(result.PaymentMethods, term => term.DaysUntilDue > 0);
+        Assert.True(result.InvoiceCreditEnabled);
+        Assert.Contains(result.PaymentMethods, term => term.DaysUntilDue == 14);
     }
 
     [Fact]
@@ -105,12 +108,12 @@ public class PaymentEligibilityServiceTests
         Assert.True(validation.IsAllowed);
     }
 
-    private static PaymentEligibilityService CreateService(ApplicationDbContext db, bool cardOnDeliveryEnabled = false) =>
-        new(db, Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled }));
+    private static PaymentEligibilityService CreateService(ApplicationDbContext db, bool cardOnDeliveryEnabled = false, Orofoods.Web.Integrations.Erp.Wmc.IWmcCustomerPaymentConditionReader? reader = null) =>
+        new(db, Options.Create(new PaymentEligibilityOptions { CardOnDeliveryEnabled = cardOnDeliveryEnabled }), reader);
 
-    private static async Task<Customer> CreateCustomerAsync(ApplicationDbContext db, bool creditBlocked = false)
+    private static async Task<Customer> CreateCustomerAsync(ApplicationDbContext db, bool creditBlocked = false, string? wmcCode = null)
     {
-        var customer = new Customer { LegalName = "Payment Test Ltda", TradeName = "Payment Test", Cnpj = Guid.NewGuid().ToString(), CreditBlocked = creditBlocked };
+        var customer = new Customer { LegalName = "Payment Test Ltda", TradeName = "Payment Test", Cnpj = Guid.NewGuid().ToString(), CreditBlocked = creditBlocked, WmcCode = wmcCode };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
         return customer;
@@ -128,4 +131,12 @@ public class PaymentEligibilityServiceTests
             new PaymentTerm { Code = "BOLETO_21D", Name = "Boleto bancário — 21 dias", DaysUntilDue = 21, SortOrder = 7 });
         await db.SaveChangesAsync();
     }
+
+    private sealed class TestWmcReader(Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition condition)
+        : Orofoods.Web.Integrations.Erp.Wmc.IWmcCustomerPaymentConditionReader
+    {
+        public Task<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition?> GetForCustomerAsync(string customerCode, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerPaymentCondition?>(condition);
+    }
+
 }

@@ -6,6 +6,55 @@ public class AdminPrimaryActionTests
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
 
     [Fact]
+    public void Shared_button_contract_is_loaded_after_module_styles_and_defines_search_and_interaction_states()
+    {
+        var layout = File.ReadAllText(Path.Combine(WebProjectPath, "Views", "Shared", "_Layout.cshtml"));
+        var adminLayout = File.ReadAllText(Path.Combine(WebProjectPath, "Views", "Shared", "_AdminLayout.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(WebProjectPath, "wwwroot", "css", "primary-action-buttons.css"));
+        var headSection = layout.IndexOf("RenderSectionAsync(\"Head\"", StringComparison.Ordinal);
+        var sharedStyles = layout.IndexOf("primary-action-buttons.css", StringComparison.Ordinal);
+
+        Assert.True(headSection >= 0 && sharedStyles > headSection);
+        Assert.DoesNotContain("primary-action-buttons.css", adminLayout);
+        Assert.Contains(".btn-search", styles);
+        Assert.Contains("--action-search: #0E7490;", styles);
+        Assert.Contains("transition: background-color 180ms ease", styles);
+        Assert.Contains(":not(:disabled):not(.disabled):not([aria-disabled=\"true\"]):hover", styles);
+        Assert.Contains("@media (prefers-reduced-motion: reduce)", styles);
+        Assert.Contains(":focus-visible", styles);
+    }
+
+    [Fact]
+    public void Customer_seller_and_crm_search_buttons_use_the_shared_cyan_action_class()
+    {
+        var customerCatalog = File.ReadAllText(Path.Combine(WebProjectPath, "Views", "Portal", "Catalog.cshtml"));
+        var sellerCatalog = File.ReadAllText(Path.Combine(WebProjectPath, "Areas", "Vendedor", "Views", "Catalog", "Index.cshtml"));
+        var sellerOrders = File.ReadAllText(Path.Combine(WebProjectPath, "Areas", "Vendedor", "Views", "Orders", "Index.cshtml"));
+        var sellerCustomers = File.ReadAllText(Path.Combine(WebProjectPath, "Areas", "Vendedor", "Views", "Customers", "Index.cshtml"));
+        var customerOrders = File.ReadAllText(Path.Combine(WebProjectPath, "Views", "Portal", "Orders.cshtml"));
+        var customerOrderSearch = File.ReadAllText(Path.Combine(WebProjectPath, "Areas", "Admin", "Views", "Customers", "NewOrder.cshtml"));
+        var crmCalendar = File.ReadAllText(Path.Combine(WebProjectPath, "Areas", "Admin", "Views", "Commercial", "Calendar.cshtml"));
+        var adminCustomerFilters = ReadView("Customers", "Index.cshtml");
+        var adminOrderFilters = ReadView("Orders", "Index.cshtml");
+        var adminProductFilters = ReadView("Products", "Index.cshtml");
+        var adminUserFilters = ReadView("Users", "Index.cshtml");
+        var adminIntegrationFilters = ReadView("Integrations", "Index.cshtml");
+
+        Assert.Contains("btn-search", customerCatalog);
+        Assert.Contains("btn-search", sellerCatalog);
+        Assert.Contains("btn-search", sellerOrders);
+        Assert.Contains("btn-search", sellerCustomers);
+        Assert.Contains("btn-search", customerOrders);
+        Assert.Contains("btn-search", customerOrderSearch);
+        Assert.Contains("btn-search", crmCalendar);
+        Assert.Contains("btn-search", adminCustomerFilters);
+        Assert.Contains("btn-search", adminOrderFilters);
+        Assert.Contains("btn-search", adminProductFilters);
+        Assert.Contains("btn-search", adminUserFilters);
+        Assert.Contains("btn-search", adminIntegrationFilters);
+    }
+
+    [Fact]
     public void Primary_action_tokens_define_the_required_palette_and_states()
     {
         var styles = File.ReadAllText(Path.Combine(WebProjectPath, "wwwroot", "css", "primary-action-buttons.css"));
@@ -23,7 +72,7 @@ public class AdminPrimaryActionTests
         Assert.Contains("--bs-btn-hover-bg: var(--action-primary-hover);", styles);
         Assert.Contains("--bs-btn-active-bg: var(--action-primary-active);", styles);
         Assert.Contains("--bs-btn-disabled-bg: var(--action-primary-disabled-bg);", styles);
-        Assert.Contains("background: #d2aa52;", registrationStyles);
+        Assert.DoesNotContain("background: #d2aa52;", registrationStyles);
         Assert.DoesNotContain(":is(.btn-primary, .btn-gold)", tokens);
         Assert.Contains("html:not([data-theme=\"dark\"]) .btn-primary:active", styles);
         Assert.Contains("html[data-theme=\"dark\"] .btn-primary:active", styles);
@@ -74,14 +123,14 @@ public class AdminPrimaryActionTests
         Assert.Contains(".orders-filter-grid .admin-primary-action", styles);
         var registrationStyles = File.ReadAllText(Path.Combine(WebProjectPath, "wwwroot", "css", "admin-registrations.css"));
         Assert.Contains(".admin-secondary-action", registrationStyles);
-        Assert.Contains("class=\"btn admin-secondary-action erp-filter-submit\"", ReadView("Integrations", "Index.cshtml"));
+        Assert.Contains("class=\"btn admin-secondary-action erp-filter-submit btn-search\"", ReadView("Integrations", "Index.cshtml"));
         Assert.Contains(".commercial-calendar-filters .btn-primary", styles);
         Assert.Contains("html:not([data-theme=\"dark\"]) .commercial-calendar-filters .btn-primary", styles);
         Assert.Contains(".order-details-status-form .btn-primary", styles);
         Assert.Contains("admin-users-secondary\">Cancelar", ReadView("Users", "Create.cshtml"));
         Assert.Contains("class=\"btn btn-danger\"", ReadView("Users", "Index.cshtml"));
         Assert.Contains("btn-outline-danger", ReadView("Drivers", "Index.cshtml"));
-        Assert.Contains("class=\"btn admin-primary-action\"", ReadView("Integrations", "Wmc.cshtml"));
+        Assert.Contains("class=\"btn btn-primary\"", ReadView("Integrations", "Wmc.cshtml"));
     }
 
     [Fact]
@@ -153,6 +202,8 @@ public class AdminPrimaryActionTests
         Assert.True(ContrastRatio("#FFFFFF", "#2563EB") >= 4.5);
         Assert.True(ContrastRatio("#FFFFFF", "#1D4ED8") >= 4.5);
         Assert.True(ContrastRatio("#FFFFFF", "#1E40AF") >= 4.5);
+        Assert.True(ContrastRatio("#FFFFFF", "#0E7490") >= 4.5);
+        Assert.True(ContrastRatio("#FFFFFF", "#0B5D75") >= 4.5);
         Assert.True(ContrastRatio("#475569", "#E2E8F0") >= 4.5);
     }
 

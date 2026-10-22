@@ -28,11 +28,13 @@ using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
 using Orofoods.Web.Services.Sellers;
 using Orofoods.Web.Services.Storage;
+using Orofoods.Web.Models.Validation;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure;
 using Orofoods.Web.Infrastructure.Logging;
+using Orofoods.Web.Identity;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -149,7 +151,10 @@ var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationExcep
 builder.Services.AddAuthentication().AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"], ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"], ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), ValidateLifetime = true };
+    options.Events.OnTokenValidated = context => context.HttpContext.RequestServices
+        .GetRequiredService<ApiTokenSecurityStampValidator>().ValidateAsync(context);
 });
+builder.Services.AddScoped<ApiTokenSecurityStampValidator>();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("api", limiter =>
@@ -183,10 +188,16 @@ builder.Services.AddScoped<CustomerAccessService>();
 builder.Services.AddScoped<SalesRepresentativeAccessService>();
 builder.Services.AddScoped<SellerWorkspaceService>();
 builder.Services.AddScoped<SellerCatalogService>();
+builder.Services.AddScoped<SellerOrderDraftService>();
+builder.Services.AddScoped<SellerOrderDraftSubmissionService>();
+builder.Services.AddSingleton<SellerOrderDraftQuoteProtector>();
 builder.Services.AddScoped<SellerCheckoutService>();
 builder.Services.AddScoped<SellerOrderHistoryService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
+builder.Services.AddScoped<AdminSellerContextService>();
+builder.Services.AddScoped<AdminPortalAccessAuditService>();
 builder.Services.AddScoped<CustomerApprovalService>();
+builder.Services.AddScoped<CustomerCnpjSnapshotCorrectionService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
 builder.Services.Configure<PaymentEligibilityOptions>(builder.Configuration.GetSection(PaymentEligibilityOptions.SectionName));
 var mercadoPagoPointEnabled = builder.Configuration.GetValue<bool>(MercadoPagoPointOptions.ConfigurationKey);
@@ -227,6 +238,7 @@ builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
 builder.Services.AddScoped<AdminCommercialService>();
 builder.Services.AddScoped<AdminUserService>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ApiTokenService>();
 builder.Services.AddScoped<OrderIntegrationService>();
@@ -248,6 +260,7 @@ builder.Services.AddHttpClient<IWhatsAppMediaClient, MetaWhatsAppMediaClient>((s
     client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
 });
 builder.Services.AddScoped<WmcExportAuditService>();
+builder.Services.AddScoped<WmcManualExportService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();
 builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
@@ -302,22 +315,30 @@ else
 builder.Services.AddSingleton<PointPaymentAttemptGate>();
 builder.Services.AddScoped<IPointPaymentOrderConcurrencyLock, PointPaymentOrderConcurrencyLock>();
 builder.Services.AddScoped<IPointPaymentOrchestrationService, PointPaymentOrchestrationService>();
+builder.Services.AddOptions<WmcOrderFileOptions>()
+    .Bind(builder.Configuration.GetSection(WmcOrderFileOptions.SectionName))
+    .Validate(WmcOrderFileOptions.HasValidSupplierCnpj,
+        "WmcOrderFile:SupplierCnpj deve conter exatamente 14 digitos.")
+    .ValidateOnStart();
 builder.Services.AddSingleton<WmcOrderFileGenerator>();
 builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
 builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();
 builder.Services.AddHostedService<ErpRetryBackgroundService>();
 builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
 builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
+builder.Services.Configure<WmcInitialLoadReleaseOptions>(builder.Configuration.GetSection(WmcInitialLoadReleaseOptions.SectionName));
+builder.Services.AddScoped<WmcInitialLoadReadinessReleaseService>();
 builder.Services.AddScoped<IWmcConnectionFactory, WmcFirebirdConnectionFactory>();
 builder.Services.AddScoped<IWmcFirebirdReader, WmcFirebirdReader>();
 builder.Services.AddScoped<IWmcSchemaInspector, WmcSchemaInspector>();
 builder.Services.AddScoped<IWmcCustomerReader, WmcCustomerReader>();
+builder.Services.AddScoped<IWmcCustomerPaymentConditionReader, WmcCustomerPaymentConditionReader>();
 builder.Services.AddScoped<IWmcProductReader, WmcProductReader>();
 builder.Services.AddScoped<IWmcBrandReader, WmcBrandReader>();
 builder.Services.AddScoped<IWmcSellerReader, UndiscoveredWmcSellerReader>();
 builder.Services.AddScoped<WmcSyncService>();
 builder.Services.AddScoped<WmcProductPreviewService>();
-builder.Services.AddScoped<WmcProductImportService>();
+builder.Services.AddScoped<WmcBimboStagingImportService>();
 builder.Services.AddSingleton<WmcSyncCoordinator>();
 builder.Services.AddHostedService<WmcSyncWorker>();
 builder.Services.AddHealthChecks().AddCheck<WmcFirebirdHealthCheck>("wmc-firebird");
@@ -330,9 +351,9 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
     options.AddPolicy(
         OrofoodsPolicies.LinkedSalesRepresentative,
-        policy => policy.RequireAuthenticatedUser().RequireRole("Vendedor").AddRequirements(new LinkedSalesRepresentativeRequirement()));
+        policy => policy.RequireAuthenticatedUser().AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options => AdminModelBindingMessages.Configure(options));
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     var brazilianPortuguese = new CultureInfo("pt-BR");
@@ -371,6 +392,8 @@ app.UseRouting();
 app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
+app.UseMiddleware<MustChangePasswordMiddleware>();
+app.UseMiddleware<AdminSellerContextMiddleware>();
 app.UseMiddleware<AuthenticatedResponseCacheMiddleware>();
 app.UseAuthorization();
 
@@ -429,6 +452,8 @@ using (var scope = app.Services.CreateScope())
     else
     {
         await db.Database.MigrateAsync();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        await SeedData.EnsureSellerRoleAsync(roleManager);
     }
 }
 

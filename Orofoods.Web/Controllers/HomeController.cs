@@ -1,27 +1,54 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models;
+using Orofoods.Web.Services.Sellers;
+using Orofoods.Web.Services.Identity;
+using Orofoods.Web.Services.Pricing;
 using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Controllers;
 
-public class HomeController(ApplicationDbContext db) : Controller
+public class HomeController(
+    ApplicationDbContext db,
+    SellerCatalogService? sellerCatalogService = null,
+    CustomerAccessService? customerAccessService = null,
+    PriceService? priceService = null,
+    AdminCustomerContextService? adminCustomerContextService = null) : Controller
 {
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int? customerId = null)
     {
-        var products = await db.Products
+        var publicProducts = db.Products
             .AsNoTracking()
-            .Where(product => product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)))
-            .Include(product => product.ProductCategory)
-            .Include(product => product.Images)
-            .OrderByDescending(product => product.IsFeatured)
-            .ThenBy(product => product.Name)
+            .Where(product => product.IsActive);
+
+        var categories = await db.ProductCategories
+            .AsNoTracking()
+            .Where(category => category.IsActive && publicProducts.Any(product => product.ProductCategoryId == category.Id))
+            .OrderBy(category => category.SortOrder)
+            .ThenBy(category => category.Name)
             .Take(8)
             .ToListAsync();
 
-        return View(products);
+        var products = await publicProducts
+            .Include(product => product.ProductCategory)
+            .Include(product => product.Images)
+            .OrderByDescending(product => product.Brand == "BIMBO")
+            .ThenByDescending(product => product.Brand == "BIMBO" && product.Images.Any())
+            .ThenByDescending(product => product.IsFeatured)
+            .ThenBy(product => product.Name)
+            .Take(10)
+            .ToListAsync();
+
+        await PopulatePurchaseContextAsync(products, customerId);
+
+        return View(new PublicHomeViewModel
+        {
+            Categories = categories,
+            Products = products
+        });
     }
 
     public IActionResult Privacy()
@@ -68,7 +95,7 @@ public class HomeController(ApplicationDbContext db) : Controller
     }
 
     [HttpGet("/produtos")]
-    public async Task<IActionResult> Products(string? search, string? category)
+    public async Task<IActionResult> Products(string? search, string? category, int? customerId = null)
     {
         IQueryable<Product> query = db.Products
             .AsNoTracking()
@@ -81,7 +108,15 @@ public class HomeController(ApplicationDbContext db) : Controller
             var normalizedSearch = search.Trim().ToLower();
             query = query.Where(x => x.Name.ToLower().Contains(normalizedSearch)
                 || x.Sku.ToLower().Contains(normalizedSearch)
-                || x.Brand.ToLower().Contains(normalizedSearch));
+                || x.Brand.ToLower().Contains(normalizedSearch)
+                || x.Description.ToLower().Contains(normalizedSearch)
+                || (x.ProductCategory != null && x.ProductCategory.Name.ToLower().Contains(normalizedSearch))
+                || x.StorageInformation.ToLower().Contains(normalizedSearch)
+                || x.StorageTemperature.ToLower().Contains(normalizedSearch)
+                || x.AdditionalInformation.ToLower().Contains(normalizedSearch)
+                || (x.WmcCode != null && x.WmcCode.ToLower().Contains(normalizedSearch))
+                || (x.Ean != null && x.Ean.ToLower().Contains(normalizedSearch))
+                || (x.Ean13 != null && x.Ean13.ToLower().Contains(normalizedSearch)));
         }
 
         if (!string.IsNullOrWhiteSpace(category))
@@ -89,9 +124,12 @@ public class HomeController(ApplicationDbContext db) : Controller
             query = query.Where(x => x.ProductCategory != null && x.ProductCategory.Slug == category);
         }
 
+        var products = await query.OrderBy(x => x.Name).ToListAsync();
+        await PopulatePurchaseContextAsync(products, customerId);
+
         return View(new PublicProductCatalogViewModel
         {
-            Products = await query.OrderBy(x => x.Name).ToListAsync(),
+            Products = products,
             Categories = await db.ProductCategories.AsNoTracking()
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.SortOrder)
@@ -101,8 +139,64 @@ public class HomeController(ApplicationDbContext db) : Controller
         });
     }
 
+    // Fills the ViewBag data consumed by the shared _PublicProductCard partial (Home showcase and /produtos).
+    private async Task PopulatePurchaseContextAsync(IReadOnlyList<Product> products, int? customerId)
+    {
+        var productIds = products.Select(product => product.Id).ToArray();
+        var inventory = await db.ProductInventories.AsNoTracking()
+            .Where(item => productIds.Contains(item.ProductId))
+            .ToDictionaryAsync(item => item.ProductId, item => item.AvailableQuantity);
+        foreach (var product in products)
+        {
+            product.IsCommerciallyAvailable = product.IsActive;
+        }
+
+        ViewBag.AvailableQuantities = inventory;
+        ViewBag.CustomerPurchaseAuthorized = false;
+        ViewBag.CustomerId = customerId;
+        ViewBag.Prices = new Dictionary<int, decimal>();
+        Orofoods.Web.Models.Customers.Customer? purchaseCustomer = null;
+        if (User.Identity?.IsAuthenticated == true && customerAccessService is not null
+            && User.IsInRole("Cliente") && !User.IsInRole("Vendedor"))
+        {
+            purchaseCustomer = await customerAccessService.GetApprovedCustomerAsync(
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+        }
+        else if (User.Identity?.IsAuthenticated == true && customerAccessService is not null
+            && adminCustomerContextService is not null && User.IsInRole("Administrador"))
+        {
+            var selectedCustomerId = adminCustomerContextService.GetSelectedCustomerId(
+                HttpContext.Session,
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            if (selectedCustomerId is not null)
+            {
+                purchaseCustomer = await customerAccessService.GetApprovedCustomerByIdAsync(selectedCustomerId.Value);
+            }
+        }
+
+        if (purchaseCustomer is not null)
+        {
+            ViewBag.CustomerPurchaseAuthorized = true;
+            ViewBag.Prices = priceService is null
+                ? new Dictionary<int, decimal>()
+                : await priceService.GetPricesAsync(purchaseCustomer.Id, productIds);
+
+        }
+
+        if (User.Identity?.IsAuthenticated == true && User.IsInRole("Vendedor")
+            && customerId is > 0 && sellerCatalogService is not null)
+        {
+            var sellerProducts = await sellerCatalogService.GetSelectableProductsByIdsAsync(User, customerId.Value, productIds);
+            ViewBag.SellerProducts = sellerProducts?.ToDictionary(product => product.Id);
+        }
+        else
+        {
+            ViewBag.SellerProducts = new Dictionary<int, Orofoods.Web.Services.Sellers.SellerCatalogProductRow>();
+        }
+    }
+
     [HttpGet("/produtos/{id:int}")]
-    public async Task<IActionResult> Product(int id)
+    public async Task<IActionResult> Product(int id, int? customerId = null)
     {
         var product = await db.Products
             .AsNoTracking()
@@ -110,7 +204,31 @@ public class HomeController(ApplicationDbContext db) : Controller
             .Include(x => x.Images)
             .SingleOrDefaultAsync(x => x.Id == id && x.IsActive);
 
-        return product is null ? NotFound() : View(product);
+        if (product is null)
+        {
+            return NotFound();
+        }
+
+        product.IsCommerciallyAvailable = product.IsActive;
+
+        if (User.Identity?.IsAuthenticated == true && User.IsInRole("Cliente") && customerAccessService is not null)
+        {
+            var customer = await customerAccessService.GetApprovedCustomerAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            if (customer is not null)
+            {
+                ViewBag.CustomerPurchaseAuthorized = true;
+                ViewBag.CustomerPrice = priceService is null ? null : await priceService.GetPriceAsync(customer.Id, product.Id);
+            }
+        }
+
+        ViewBag.SellerCustomerId = customerId;
+        if (customerId is > 0 && User.IsInRole("Vendedor") && sellerCatalogService is not null)
+        {
+            var selectedProducts = await sellerCatalogService.GetSelectableProductsByIdsAsync(User, customerId.Value, [id]);
+            ViewBag.SellerProduct = selectedProducts?.SingleOrDefault();
+        }
+
+        return View(product);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

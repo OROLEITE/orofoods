@@ -1,0 +1,15 @@
+@model Orofoods.Web.Models.Commercial.OrderMinimumSettings
+@{ ViewData["Title"] = "Pedido mínimo"; }
+<section class="admin-page">
+    <header class="admin-page-header"><div><span class="eyebrow">CONFIGURAÇÕES</span><h1>Pedido mínimo</h1><p>Valor mínimo para confirmar novos pedidos em todos os portais.</p></div></header>
+    @if (TempData["Success"] is string success) { <div class="alert alert-success">@success</div> }
+    <form asp-area="Admin" asp-controller="OrderSettings" asp-action="Index" method="post" class="card p-3" style="max-width:32rem">
+        <input asp-for="Id" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <label asp-for="MinimumAmount" class="form-label">Pedido mínimo (R$)</label>
+        <input asp-for="MinimumAmount" class="form-control" inputmode="decimal" min="0.01" step="0.01" />
+        <span asp-validation-for="MinimumAmount" class="text-danger"></span>
+        <p class="form-text">Aplica-se ao subtotal dos itens após descontos e antes do frete. Regras individuais de cliente acima deste valor continuam válidas.</p>
+        <button class="btn admin-primary-action align-self-start" type="submit">Salvar configuração</button>
+    </form>
+</section>

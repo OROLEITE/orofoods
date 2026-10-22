@@ -358,3 +358,48 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         width: 100%;
     }
 }
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-tools {
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-tools label {
+    margin-bottom: 4px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-tools .form-control,
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-tools .form-select {
+    min-height: 44px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-panel {
+    border-radius: 12px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td:last-child .btn {
+    min-height: 40px;
+    white-space: normal;
+}
+
+@media (max-width: 767px) {
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-tools {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td:last-child {
+        flex-wrap: wrap;
+    }
+
+    body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .customer-list-table tbody td:last-child .btn {
+        min-height: 44px;
+    }
+}

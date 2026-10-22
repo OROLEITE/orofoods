@@ -1,32 +1,55 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
+using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Identity;
+using Orofoods.Web.Models.Inventory;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Roles = "Administrador")]
-public class InventoryController(ApplicationDbContext db, UserManager<ApplicationUser> userManager) : Controller
+public class InventoryController(
+    ApplicationDbContext db,
+    UserManager<ApplicationUser> userManager,
+    ILogger<InventoryController> logger,
+    WmcInitialLoadReadinessReleaseService readinessReleaseService,
+    IWebHostEnvironment environment,
+    IOptions<WmcInitialLoadReleaseOptions> releaseOptions) : Controller
 {
-    public async Task<IActionResult> Index() => View(await db.Products
+    public async Task<IActionResult> Index()
+    {
+        ViewBag.CanReleaseWmcInitialLoad = environment.IsStaging() && releaseOptions.Value.Enabled;
+        return View(await db.Products
         .AsNoTracking()
         .Where(x => x.IsActive)
         .OrderBy(x => x.Name)
         .GroupJoin(db.ProductInventories, product => product.Id, inventory => inventory.ProductId, (product, inventories) => new InventoryRow(
-            product.Id, product.Sku, product.Name, inventories.Select(x => (int?)x.QuantityOnHand).FirstOrDefault() ?? 0,
-            inventories.Select(x => (int?)x.QuantityReserved).FirstOrDefault() ?? 0))
+            product.Id, product.Sku, product.Name, product.Unit, product.UnitsPerCase,
+            inventories.Select(x => (int?)x.QuantityOnHand).FirstOrDefault() ?? 0,
+            inventories.Select(x => (int?)x.QuantityReserved).FirstOrDefault() ?? 0,
+            inventories.Select(x => (bool?)x.IsManuallyAdjusted).FirstOrDefault() ?? false,
+            product.WmcCode, product.WmcInitialLoadReady))
         .ToListAsync());
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Adjust(int productId, int quantityOnHand, string reason)
     {
-        if (quantityOnHand < 0 || string.IsNullOrWhiteSpace(reason))
+        if (quantityOnHand < 0 || string.IsNullOrWhiteSpace(reason) || reason.Length > 300)
         {
-            TempData["InventoryError"] = "Informe um saldo valido e o motivo do ajuste.";
+            TempData["InventoryError"] = "Informe um saldo válido e um motivo de até 300 caracteres.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!await db.Products.AnyAsync(product => product.Id == productId && product.IsActive))
+        {
+            TempData["InventoryError"] = "Produto ativo não encontrado para ajuste de estoque.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -39,12 +62,13 @@ public class InventoryController(ApplicationDbContext db, UserManager<Applicatio
 
         if (quantityOnHand < inventory.QuantityReserved)
         {
-            TempData["InventoryError"] = "O saldo fisico nao pode ser menor que o saldo reservado.";
+            TempData["InventoryError"] = "O saldo físico não pode ser menor que o saldo reservado.";
             return RedirectToAction(nameof(Index));
         }
 
         var previousQuantity = inventory.QuantityOnHand;
         inventory.QuantityOnHand = quantityOnHand;
+        inventory.IsManuallyAdjusted = true;
         db.InventoryAdjustments.Add(new InventoryAdjustment
         {
             ProductInventory = inventory,
@@ -53,12 +77,62 @@ public class InventoryController(ApplicationDbContext db, UserManager<Applicatio
             Reason = reason.Trim(),
             AdjustedByUserId = userManager.GetUserId(User)
         });
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException exception)
+        {
+            logger.LogError(exception, "Falha ao salvar ajuste de estoque para o produto {ProductId}.", productId);
+            TempData["InventoryError"] = "Não foi possível salvar o ajuste. Confira o saldo e tente novamente.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["InventorySuccess"] = "Ajuste salvo. O saldo manual permanecerá protegido da sincronização WMC até a liberação explícita.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReleaseWmcInitialLoad(int productId, string reason, CancellationToken cancellationToken)
+    {
+        var result = await readinessReleaseService.ReleaseAsync(productId, reason, userManager.GetUserId(User), cancellationToken);
+        if (result.Status is WmcInitialLoadReleaseStatus.Released or WmcInitialLoadReleaseStatus.AlreadyReady)
+            TempData["InventorySuccess"] = result.Message;
+        else
+            TempData["InventoryError"] = result.Message;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResumeWmcStockSync(int productId)
+    {
+        var inventory = await db.ProductInventories.SingleOrDefaultAsync(x => x.ProductId == productId);
+        if (inventory is null)
+        {
+            TempData["InventoryError"] = "Saldo do produto não encontrado.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        inventory.IsManuallyAdjusted = false;
         await db.SaveChangesAsync();
+        TempData["InventorySuccess"] = "A sincronização WMC poderá atualizar o saldo na próxima execução.";
         return RedirectToAction(nameof(Index));
     }
 }
 
-public sealed record InventoryRow(int ProductId, string Sku, string ProductName, int QuantityOnHand, int QuantityReserved)
+public sealed record InventoryRow(
+    int ProductId,
+    string Sku,
+    string ProductName,
+    string Unit,
+    int UnitsPerCase,
+    int QuantityOnHand,
+    int QuantityReserved,
+    bool IsManuallyAdjusted,
+    string? WmcCode,
+    bool WmcInitialLoadReady)
 {
-    public int AvailableQuantity => QuantityOnHand - QuantityReserved;
+    public int AvailableQuantity => Math.Max(0, QuantityOnHand - QuantityReserved);
 }

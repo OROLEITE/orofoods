@@ -8,6 +8,7 @@ using Orofoods.Web.Api;
 using Orofoods.Web.Data;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Customers;
+using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Payments;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
@@ -16,17 +17,61 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 public class OrdersController(
     ApplicationDbContext db,
     AdminOrderService service,
-    OrderIntegrationService integrationService,
+    WmcManualExportService wmcManualExportService,
     IPointPaymentOrchestrationService pointPaymentService,
     IOptions<MercadoPagoPointOptions> pointOptions,
     IOptions<PaymentEligibilityOptions> paymentOptions,
-    IHostEnvironment hostEnvironment) : Controller
+    IHostEnvironment hostEnvironment,
+    CustomerCnpjSnapshotCorrectionService? customerCnpjSnapshotCorrectionService = null,
+    TimeProvider? timeProvider = null) : Controller
 {
-    public async Task<IActionResult> Index(string? q, string? status, string sort = "date", string direction = "desc", int page = 1)
+    private static readonly TimeZoneInfo SaoPauloTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    public async Task<IActionResult> Index(
+        string? q = null,
+        string? status = null,
+        string sort = "date",
+        string direction = "desc",
+        int page = 1,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
+        string? wmcStatus = null,
+        string? scope = null)
     {
-        var query = db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).AsQueryable();
+        var awaitingActionScope = string.Equals(scope, "awaiting-action", StringComparison.OrdinalIgnoreCase);
+        if (!fromDate.HasValue && !toDate.HasValue && !awaitingActionScope)
+        {
+            var nowUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+            var localToday = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, SaoPauloTimeZone).Date;
+            fromDate = new DateOnly(localToday.Year, localToday.Month, 1);
+            toDate = fromDate.Value.AddMonths(1).AddDays(-1);
+        }
+
+        IQueryable<Order> query = db.Orders.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q)) query = query.Where(x => x.Number.Contains(q) || x.Customer!.TradeName.Contains(q));
         if (Enum.TryParse<OrderStatus>(status, true, out var parsed)) query = query.Where(x => x.Status == parsed);
+        if (awaitingActionScope) query = query.Where(AdminOrderMonitorQueries.AwaitingAction);
+
+        var invalidDateRange = fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value;
+        if (invalidDateRange)
+        {
+            ModelState.AddModelError(nameof(toDate), "A data final deve ser igual ou posterior à data inicial.");
+            query = query.Where(_ => false);
+        }
+        else
+        {
+            if (fromDate.HasValue) query = query.Where(order => order.CreatedAt >= SaoPauloDateStartUtc(fromDate.Value));
+            if (toDate.HasValue && toDate.Value < DateOnly.MaxValue)
+                query = query.Where(order => order.CreatedAt < SaoPauloDateStartUtc(toDate.Value.AddDays(1)));
+        }
+
+        query = AdminOrderMonitorQueries.ApplyWmcStatus(query, wmcStatus);
+
+        var totalItems = await query.CountAsync();
+        var awaitingActionCount = await query.CountAsync(AdminOrderMonitorQueries.AwaitingAction);
+        var wmcAwaitingConfirmationCount = await query.CountAsync(AdminOrderMonitorQueries.WmcAwaitingConfirmation);
+        var wmcAttentionCount = await query.CountAsync(AdminOrderMonitorQueries.WmcNeedsAttention);
+
         var descending = !string.Equals(direction, "asc", StringComparison.OrdinalIgnoreCase);
         query = (sort.ToLowerInvariant(), descending) switch
         {
@@ -42,27 +87,63 @@ public class OrdersController(
             _ => query.OrderByDescending(x => x.CreatedAt)
         };
 
-        var totalItems = await query.CountAsync();
         var request = new PageRequest(page, 25);
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)request.PageSize));
         if (request.Page > totalPages) request = new PageRequest(totalPages, request.PageSize);
-        var orders = await query.Skip(request.Skip).Take(request.PageSize).ToListAsync();
+        var orders = await query
+            .AsSplitQuery()
+            .Include(x => x.Customer)
+            .Include(x => x.PaymentTerm)
+            .Include(x => x.Items).ThenInclude(x => x.Product)
+            .Include(x => x.WmcOrderExportState).ThenInclude(x => x!.CurrentArtifact)
+            .Include(x => x.WmcExportAudits)
+            .Skip(request.Skip).Take(request.PageSize).ToListAsync();
+
+        ViewData["WmcManualExportEligibleOrderIds"] = orders
+            .Where(wmcManualExportService.CanManuallyExport)
+            .Select(order => order.Id)
+            .ToHashSet();
+        ViewData["DeliveredWmcPendingOrderIds"] = orders
+            .Where(order => order.Status == OrderStatus.Delivered && AdminOrderMonitorQueries.HasUnresolvedWmcExport(order))
+            .Select(order => order.Id)
+            .ToHashSet();
 
         ViewBag.Query = q;
         ViewBag.Status = status;
         ViewBag.Sort = sort;
         ViewBag.Direction = descending ? "desc" : "asc";
+        ViewBag.FromDate = fromDate;
+        ViewBag.ToDate = toDate;
+        ViewBag.WmcStatus = wmcStatus;
+        ViewBag.Scope = awaitingActionScope ? "awaiting-action" : null;
+        ViewBag.DateRangeError = invalidDateRange ? ModelState[nameof(toDate)]?.Errors.FirstOrDefault()?.ErrorMessage : null;
+        ViewBag.TotalOrders = totalItems;
+        ViewBag.AwaitingActionCount = awaitingActionCount;
+        ViewBag.WmcAwaitingConfirmationCount = wmcAwaitingConfirmationCount;
+        ViewBag.WmcAttentionCount = wmcAttentionCount;
         ViewBag.PagedResult = new PagedResult<Order>(orders, request.Page, request.PageSize, totalItems);
         return View(orders);
     }
 
+    private static DateTime SaoPauloDateStartUtc(DateOnly localDate)
+    {
+        var localMidnight = localDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(localMidnight, SaoPauloTimeZone);
+    }
+
     public async Task<IActionResult> Details(int id)
     {
-        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).Include(x => x.DeliveryAddress).Include(x => x.PaymentTerm)
+        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).ThenInclude(x => x.Product)
+            .Include(x => x.DeliveryAddress).Include(x => x.PaymentTerm).Include(x => x.WmcOrderExportState)
             .Include(x => x.Payments).ThenInclude(x => x!.DriverPaymentTerminalAssignment).ThenInclude(x => x!.Driver)
             .Include(x => x.Payments).ThenInclude(x => x!.DriverPaymentTerminalAssignment).ThenInclude(x => x!.PaymentTerminal)
             .Include(x => x.StatusHistory).ThenInclude(x => x.ChangedByUser).Include(x => x.WmcExportAudits).AsSplitQuery().SingleOrDefaultAsync(x => x.Id == id);
         if (order is null) return NotFound();
+        ViewBag.WmcManualExportDiagnostic = wmcManualExportService.DiagnoseManualExport(order);
+        ViewBag.CanCorrectCustomerCnpjSnapshot = CustomerCnpjSnapshotCorrectionService.CanCorrectSnapshot(
+            order.CustomerCnpjSnapshot,
+            order.WmcOrderExportState,
+            order.WmcExportAudits);
         var pointEnabled = IsPointEnabled() && order.PaymentTerm?.Code == "CARD_ON_DELIVERY";
         ViewBag.PointPaymentEnabled = pointEnabled;
         ViewBag.PointEligibleAssignments = pointEnabled
@@ -92,6 +173,29 @@ public class OrdersController(
                 .Include(x => x.AdminUser).OrderByDescending(x => x.OccurredAt).Take(20).ToListAsync();
         ViewBag.PointRequestKey = Guid.NewGuid().ToString("N");
         return View(order);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken, Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> CorrectCustomerCnpjSnapshot(int id, string? cnpj, string? reason, CancellationToken cancellationToken = default)
+    {
+        var correctionService = customerCnpjSnapshotCorrectionService ?? new CustomerCnpjSnapshotCorrectionService(db);
+        var result = await correctionService.CorrectAsync(
+            id,
+            cnpj,
+            reason,
+            User.FindFirstValue(ClaimTypes.NameIdentifier),
+            User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name,
+            cancellationToken);
+        if (result.Succeeded)
+        {
+            TempData["CustomerCnpjSnapshotMessage"] = "Snapshot fiscal do pedido atualizado com justificativa e auditoria.";
+        }
+        else
+        {
+            TempData["CustomerCnpjSnapshotError"] = result.ErrorMessage ?? "Não foi possível corrigir o snapshot fiscal do pedido.";
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -207,9 +311,107 @@ public class OrdersController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> ReprocessIntegration(int id)
+    public async Task<IActionResult> SendToWmc(int id, CancellationToken cancellationToken)
     {
-        await integrationService.SendAsync(id);
-        return RedirectToAction(nameof(Details), new { id });
+        var result = await wmcManualExportService.ExportAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
+        {
+            return WmcFile(result);
+        }
+
+        if (result.Disposition == WmcManualExportDisposition.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["WmcManualExportError"] = result.Error ?? "Não foi possível exportar o pedido para o WMC.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadWmcTxt(int id, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.DownloadAsync(id, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Downloaded)
+        {
+            return WmcFile(result);
+        }
+        if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
+        TempData["WmcManualExportError"] = result.Error;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectWmcTxt(int id, string? reason, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.RejectAsync(id, reason,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Rejected && result.Error is null)
+            TempData["WmcManualExportMessage"] = "Rejeição registrada. O TXT anterior e as auditorias foram preservados.";
+        else
+            TempData["WmcManualExportError"] = result.Error;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegenerateWmcTxt(int id, string? reason, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.RegenerateRejectedAsync(id, reason,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
+            return WmcFile(result);
+        if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
+        TempData["WmcManualExportError"] = result.Error;
+        return RedirectToAction(nameof(Index));
+    }
+
+    private static FileContentResult WmcFile(WmcManualExportResult result) =>
+        new(System.Text.Encoding.UTF8.GetBytes(result.Content!), "text/plain; charset=utf-8")
+        {
+            FileDownloadName = result.FileName!
+        };
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmWmcImported(int id, CancellationToken cancellationToken)
+    {
+        var result = await wmcManualExportService.ConfirmImportedAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Imported)
+        {
+            TempData["WmcManualExportMessage"] = "Importação no WMC confirmada manualmente.";
+        }
+        else
+        {
+            TempData["WmcManualExportError"] = result.Error ?? "Não foi possível confirmar a importação.";
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmPriorWmcExport(int id, bool exported, CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var email = User.Identity?.Name;
+        var result = exported
+            ? await wmcManualExportService.ConfirmPriorExportAsync(id, userId, email, cancellationToken)
+            : await wmcManualExportService.ConfirmPriorExportDidNotReachWmcAsync(id, userId, email, cancellationToken);
+        if (result.Disposition == WmcManualExportDisposition.Exported)
+        {
+            TempData["WmcManualExportMessage"] = "Histórico confirmado como exportado; a importação continua pendente de confirmação separada.";
+        }
+        else if (result.Error is not null)
+        {
+            TempData["WmcManualExportError"] = result.Error;
+        }
+        else
+        {
+            TempData["WmcManualExportMessage"] = "Histórico conferido. O pedido está pendente de envio manual.";
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> ReprocessIntegration(int id, CancellationToken cancellationToken = default)
+    {
+        return SendToWmc(id, cancellationToken);
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Inventory;
@@ -31,11 +32,281 @@ public class OrderPlacementServiceTests
             fixture.Scope);
 
         Assert.True(result.Succeeded, string.Join("; ", result.Errors));
-        Assert.Equal(OrderStatus.Received, result.Order!.Status);
-        Assert.Equal(fixture.SellerUser.Id, result.Order.CreatedByUserId);
-        Assert.Equal(fixture.CurrentPrice, Assert.Single(result.Order.Items).UnitPrice);
-        Assert.Equal(OrderStatus.Received, Assert.Single(result.Order.StatusHistory).Status);
-        Assert.False(fixture.Session.TryGetValue("orofoods-cart-product-ids:seller:7:customer:1", out _));
+        var order = result.Order!;
+        Assert.Equal(OrderStatus.Received, order.Status);
+        Assert.Equal(fixture.Customer.Cnpj, order.CustomerCnpjSnapshot);
+        Assert.Equal(fixture.SellerUser.Id, order.CreatedByUserId);
+        Assert.Equal(fixture.Customer.SalesRepresentativeId, order.SalesRepresentativeId);
+        Assert.Equal(fixture.CurrentPrice, Assert.Single(order.Items).UnitPrice);
+        Assert.Equal(OrderStatus.Received, Assert.Single(order.StatusHistory).Status);
+        Assert.False(fixture.Session.TryGetValue("orofoods-cart-v2-product-ids:seller:7:customer:1", out _));
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_accepts_positive_bimbo_price_of_one_real()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Product.Brand = "BIMBO";
+        fixture.Product.WmcCode = "503768";
+        fixture.Product.WmcBrandCode = "113";
+        fixture.Product.IsWmcActive = true;
+        fixture.Product.WmcStockAvailable = true;
+        fixture.Product.WmcInitialLoadReady = true;
+        fixture.Product.BasePrice = 1m;
+        fixture.Product.PromotionalPrice = null;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal(1m, Assert.Single(result.Order!.Items).UnitPrice);
+        Assert.Single(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Confirmed_order_keeps_customer_cnpj_snapshot_after_customer_correction()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var originalCnpj = fixture.Customer.Cnpj;
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        fixture.Customer.Cnpj = "00.000.000/E08G-12";
+        await fixture.Db.SaveChangesAsync();
+
+        var persistedOrder = await fixture.Db.Orders.AsNoTracking().SingleAsync(order => order.Id == result.Order!.Id);
+        Assert.Equal(originalCnpj, persistedOrder.CustomerCnpjSnapshot);
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_rejects_subtotal_below_minimum_even_when_customer_minimum_is_lower()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10, minimumOrderSetting: null);
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.False(result.Succeeded);
+        var minimumError = Assert.Single(result.Errors);
+        Assert.Contains("valor mínimo dos itens", minimumError, StringComparison.OrdinalIgnoreCase);
+        Assert.Matches(@"\b160\b", minimumError);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Package_sales_accepts_whole_pack_quantities_without_case_multiples_and_snapshots_the_unit()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Product.CommercialUnitCode = "PCT";
+        fixture.Product.LogisticsUnitCode = "CX";
+        fixture.Product.PackagesPerCase = 12;
+        fixture.Product.MinimumCases = 12;
+        fixture.Product.BasePrice = 99m;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 3)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var item = Assert.Single(result.Order!.Items);
+        Assert.Equal(3, item.Quantity);
+        Assert.Equal("PCT", item.SalesUnitCodeSnapshot);
+        Assert.Equal(297m, item.Subtotal);
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_accepts_the_configured_minimum_exactly()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10, minimumOrderSetting: 160m);
+        fixture.Product.BasePrice = 80m;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 2)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal(160m, result.Order!.Subtotal);
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_snapshots_the_customer_external_seller_separately_from_the_creator()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var internalOperator = new ApplicationUser { Id = "internal-operator", UserName = "internal-operator", Email = "operator@test.local", IsActive = true };
+        fixture.Db.Users.Add(internalOperator);
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            internalOperator.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var order = result.Order!;
+        Assert.Equal(fixture.Customer.SalesRepresentativeId, order.SalesRepresentativeId);
+        Assert.Equal(internalOperator.Id, order.CreatedByUserId);
+
+        var originalRepresentativeId = fixture.Customer.SalesRepresentativeId;
+        var replacementRepresentative = new SalesRepresentative { Name = "Novo vendedor", IsActive = true };
+        fixture.Db.SalesRepresentatives.Add(replacementRepresentative);
+        await fixture.Db.SaveChangesAsync();
+        fixture.Customer.SalesRepresentative = replacementRepresentative;
+        fixture.Customer.SalesRepresentativeId = replacementRepresentative.Id;
+        await fixture.Db.SaveChangesAsync();
+
+        var persistedOrder = await fixture.Db.Orders.AsNoTracking().SingleAsync(row => row.Id == order.Id);
+        Assert.NotEqual(originalRepresentativeId, fixture.Customer.SalesRepresentativeId);
+        Assert.Equal(originalRepresentativeId, persistedOrder.SalesRepresentativeId);
+    }
+
+    [Fact]
+    public async Task PlaceLinesAsync_keeps_sales_representative_snapshot_null_when_customer_has_no_external_seller()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Customer.SalesRepresentativeId = null;
+        fixture.Customer.SalesRepresentative = null;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            [(fixture.Product.Id, 1)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var persistedOrder = await fixture.Db.Orders.AsNoTracking().SingleAsync(order => order.Id == result.Order!.Id);
+        Assert.Null(persistedOrder.SalesRepresentativeId);
+    }
+
+    [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_creates_order_and_reservations_without_committing_callers_transaction()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Rascunho enviado");
+        var lines = new[] { (fixture.Product.Id, 2) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            command,
+            draft.Id,
+            lines,
+            quote);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.Equal(draft.Id, result.Order!.SellerOrderDraftId);
+        Assert.Equal(2, Assert.Single(result.Order.Items).Quantity);
+        Assert.Single(await fixture.Db.InventoryReservations.Where(x => x.OrderId == result.Order.Id).ToListAsync());
+        Assert.NotNull(fixture.Db.Database.CurrentTransaction);
+
+        await transaction.RollbackAsync();
+
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+        Assert.Equal(0, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id)
+            .Select(x => x.QuantityReserved).SingleAsync());
+    }
+
+    [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_rejects_the_whole_set_when_one_quantity_is_invalid()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var secondProduct = await fixture.AddAvailableProductAsync("PLACE-002");
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var lines = new[] { (fixture.Product.Id, 1), (secondProduct.Id, 0) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            command,
+            draft.Id,
+            lines,
+            quote);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_rejects_duplicate_lines_instead_of_merging_them()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var lines = new[] { (fixture.Product.Id, 1), (fixture.Product.Id, 2) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            command,
+            draft.Id,
+            lines,
+            quote);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task PlaceDraftLinesWithinTransactionAsync_rejects_below_minimum_instead_of_raising_quantity()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Product.MinimumCases = 3;
+        await fixture.Db.SaveChangesAsync();
+        var draft = await fixture.CreateDraftAsync();
+        await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
+        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var lines = new[] { (fixture.Product.Id, 1) };
+        var quote = await fixture.CreateQuoteAsync(command, lines);
+
+        var result = await fixture.Service.PlaceDraftLinesWithinTransactionAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            command,
+            draft.Id,
+            lines,
+            quote);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(await fixture.Db.Orders.AsNoTracking().ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.AsNoTracking().ToListAsync());
+        Assert.Equal(0, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id)
+            .Select(x => x.QuantityReserved).SingleAsync());
     }
 
     [Fact]
@@ -155,10 +426,10 @@ public class OrderPlacementServiceTests
     }
 
     [Fact]
-    public async Task PlaceAsync_rolls_back_when_inventory_reservation_fails()
+    public async Task PlaceAsync_places_order_for_active_product_with_zero_stock()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 0);
-        fixture.Session.SetString("orofoods-cart-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [fixture.Product.Id] = 1 }));
+        fixture.Session.SetString("orofoods-cart-v2-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [fixture.Product.Id] = 1 }));
 
         var result = await fixture.Service.PlaceAsync(
             fixture.Customer.Id,
@@ -167,9 +438,8 @@ public class OrderPlacementServiceTests
             fixture.Session,
             fixture.Scope);
 
-        Assert.False(result.Succeeded);
-        Assert.Empty(await fixture.Db.Orders.ToListAsync());
-        Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
+        Assert.True(result.Succeeded);
+        Assert.Single(await fixture.Db.Orders.ToListAsync());
     }
 
     [Fact]
@@ -203,7 +473,66 @@ public class OrderPlacementServiceTests
         public required TestSession Session { get; init; }
         public required CartScope Scope { get; init; }
 
-        public static async Task<PlacementFixture> CreateAsync(int availableQuantity, string paymentTermCode = "PIX")
+        public async Task<SellerOrderDraft> CreateDraftAsync()
+        {
+            var draft = new SellerOrderDraft
+            {
+                OwnerUserId = SellerUser.Id,
+                SalesRepresentativeId = Customer.SalesRepresentativeId!.Value,
+                CustomerId = Customer.Id,
+                DeliveryAddressId = Address.Id,
+                PaymentTermId = PaymentTerm.Id,
+                Status = SellerOrderDraftStatus.Draft,
+                Version = 1
+            };
+            Db.SellerOrderDrafts.Add(draft);
+            await Db.SaveChangesAsync();
+            return draft;
+        }
+
+        public async Task<OrderPlacementQuote> CreateQuoteAsync(
+            OrderPlacementCommand command,
+            IReadOnlyList<(int ProductId, int Quantity)> lines)
+        {
+            var prices = await new Orofoods.Web.Services.Pricing.PriceService(Db)
+                .GetPricesAsync(Customer.Id, lines.Select(line => line.ProductId).Distinct().ToArray());
+            var quotedLines = lines.Select(line =>
+            {
+                var unitPrice = prices.GetValueOrDefault(line.ProductId, Product.BasePrice);
+                return new OrderPlacementQuoteLine(line.ProductId, line.Quantity, unitPrice, 0m, unitPrice * line.Quantity);
+            }).ToArray();
+            var subtotal = quotedLines.Sum(line => line.Subtotal);
+            return new OrderPlacementQuote(
+                Customer.Id,
+                command.AddressId,
+                command.PaymentTermId,
+                command.RequestedDeliveryDate,
+                quotedLines,
+                subtotal,
+                0m,
+                subtotal);
+        }
+
+        public async Task<Product> AddAvailableProductAsync(string sku)
+        {
+            var product = new Product
+            {
+                Sku = sku,
+                Name = $"Produto {sku}",
+                Brand = "Orofoods",
+                Unit = "caixa",
+                BasePrice = 50m,
+                MinimumCases = 1,
+                IsActive = true,
+                IsAvailable = true,
+                ProductCategory = new ProductCategory { Name = $"Categoria {sku}", Slug = sku.ToLowerInvariant() }
+            };
+            Db.AddRange(product, new ProductInventory { Product = product, QuantityOnHand = 10 });
+            await Db.SaveChangesAsync();
+            return product;
+        }
+
+        public static async Task<PlacementFixture> CreateAsync(int availableQuantity, string paymentTermCode = "PIX", decimal? minimumOrderSetting = 1m)
         {
             var db = await TestDbContextFactory.CreateAsync();
             var representative = new SalesRepresentative { Id = 7, Name = "Vendedor", IsActive = true };
@@ -213,11 +542,12 @@ public class OrderPlacementServiceTests
             var product = new Product { Sku = "PLACE-001", Name = "Produto", Brand = "Orofoods", Unit = "caixa", BasePrice = 99m, MinimumCases = 1, IsActive = true, IsAvailable = true, ProductCategory = new ProductCategory { Name = "Categoria", Slug = "categoria" } };
             var seller = new ApplicationUser { Id = "seller", UserName = "seller", Email = "seller@test.local", IsActive = true, SalesRepresentative = representative };
             db.AddRange(representative, customer, address, term, product, seller, new ProductInventory { Product = product, QuantityOnHand = availableQuantity });
+            if (minimumOrderSetting.HasValue) db.OrderMinimumSettings.Add(new OrderMinimumSettings { MinimumAmount = minimumOrderSetting.Value });
             await db.SaveChangesAsync();
 
             var session = new TestSession();
             var scope = CartScope.ForSeller(representative.Id, customer.Id);
-            session.SetString("orofoods-cart-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [product.Id] = 1 }));
+            session.SetString("orofoods-cart-v2-product-ids:seller:7:customer:1", JsonSerializer.Serialize(new Dictionary<int, int> { [product.Id] = 1 }));
             return new PlacementFixture
             {
                 Db = db,

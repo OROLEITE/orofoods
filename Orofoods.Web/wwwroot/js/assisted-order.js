@@ -3,6 +3,9 @@
   const list = document.querySelector('#assisted-order-lines');
   const summary = document.querySelector('#assisted-summary-items');
   const total = document.querySelector('#assisted-total');
+  const minimumHost = document.querySelector('#assisted-minimum-order');
+  const minimumGap = document.querySelector('#assisted-minimum-gap');
+  const minimumOrder = Number(minimumHost?.dataset.minimumOrder) || 0;
   const form = document.querySelector('.assisted-order-form');
   const money = value => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   function render() {
@@ -18,6 +21,9 @@
       const summaryRow = document.createElement('div'); summaryRow.innerHTML = `<span>${item.quantity} x ${item.name}</span><strong>${money(subtotal)}</strong>`; summary.append(summaryRow);
     }
     total.textContent = money(sum);
+    if (minimumGap) minimumGap.textContent = sum < minimumOrder
+      ? `Faltam ${money(minimumOrder - sum)} para atingir o mínimo.`
+      : 'Pedido mínimo atingido.';
     form.querySelectorAll('input[name="ProductIds"],input[name="Quantities"]').forEach(x => x.remove());
     for (const item of lines.values()) { const id = document.createElement('input'); id.type = 'hidden'; id.name = 'ProductIds'; id.value = item.id; const quantity = document.createElement('input'); quantity.type = 'hidden'; quantity.name = 'Quantities'; quantity.value = item.quantity; form.append(id, quantity); }
   }

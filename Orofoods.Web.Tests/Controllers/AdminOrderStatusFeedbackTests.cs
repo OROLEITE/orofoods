@@ -7,10 +7,12 @@ using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Pricing;
+using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Orders;
 using Orofoods.Web.Services.Payments;
+using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Tests.Infrastructure;
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
@@ -34,9 +36,9 @@ public sealed class AdminOrderStatusFeedbackTests
             db,
             TimeProvider.System,
             new OrderReservationService(db),
-            new PaymentEligibilityService(db, eligibility),
             new PaymentService(db, eligibility, new PendingBoletoProvider()));
-        var controller = new OrdersController(db, service, integrationService: null!, pointPaymentService: null!, Options.Create(new MercadoPagoPointOptions()), Options.Create(new PaymentEligibilityOptions()), hostEnvironment: null!);
+        var wmcExport = new WmcManualExportService(db, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db));
+        var controller = new OrdersController(db, service, wmcManualExportService: wmcExport, pointPaymentService: null!, Options.Create(new MercadoPagoPointOptions()), Options.Create(new PaymentEligibilityOptions()), hostEnvironment: null!);
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id)], "test")) };
         controller.ControllerContext = new ControllerContext { HttpContext = context };
         controller.TempData = new TempDataDictionary(context, new TestTempDataProvider());

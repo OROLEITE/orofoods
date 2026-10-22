@@ -3,65 +3,121 @@ namespace Orofoods.Web.Tests.Views;
 public sealed class WmcProductPreviewViewTests
 {
     [Fact]
-    public void Wmc_product_import_exposes_the_three_step_selected_reimport_flow()
-    {
-        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
-        var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
-        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
-
-        Assert.Contains("WmcProducts", controller, StringComparison.Ordinal);
-        Assert.Contains("WmcConfirmSelection", controller, StringComparison.Ordinal);
-        Assert.Contains("WmcImportProducts", controller, StringComparison.Ordinal);
-        Assert.Contains("name=\"selectedProductCodes\"", view, StringComparison.Ordinal);
-        Assert.Contains("data-product-search", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("WmcPreco", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("WmcFator", view, StringComparison.Ordinal);
-        Assert.Contains("Unidade de refer&#234;ncia", view, StringComparison.Ordinal);
-        Assert.Contains("Unidades oficiais WMC", view, StringComparison.Ordinal);
-        Assert.Contains("data-testid=\"WmcUnit-", view, StringComparison.Ordinal);
-        Assert.Contains("fator @(unit.Factor", view, StringComparison.Ordinal);
-        Assert.Contains("EAN/DUN", view, StringComparison.Ordinal);
-        Assert.Contains("tabelas de pre&#231;o, imagens", view, StringComparison.Ordinal);
-        Assert.Contains("<dialog", view, StringComparison.Ordinal);
-        Assert.Contains("reimportExisting", view, StringComparison.Ordinal);
-        Assert.Contains("Existem @Model.Confirmation.ExistingProducts produtos", view, StringComparison.Ordinal);
-        Assert.Contains("value=\"true\">Sim", view, StringComparison.Ordinal);
-        Assert.Contains("value=\"false\">Não, somente novos", view, StringComparison.Ordinal);
-        Assert.Contains("value=\"cancel\">Cancelar", view, StringComparison.Ordinal);
-        Assert.Contains("<summary>Prévia técnica de leitura</summary>", view, StringComparison.Ordinal);
-        Assert.Contains("cancelar", view, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
     public void Wmc_preview_is_admin_antiforgery_protected_and_separate_from_sync()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
         var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
 
         Assert.Contains("Authorize(Roles = \"Administrador\")", controller, StringComparison.Ordinal);
         Assert.Contains("public async Task<IActionResult> WmcPreview", controller, StringComparison.Ordinal);
         Assert.Contains("[ValidateAntiForgeryToken]", controller, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
         Assert.Contains("WmcProductPreviewService", controller, StringComparison.Ordinal);
+        Assert.Contains("logger.LogError(ex, \"WMC brand loading failed. Operation={Operation}\", \"LoadBrands\")", controller, StringComparison.Ordinal);
+        Assert.Contains("if (!wmcSyncOptions.Value.Enabled)", controller, StringComparison.Ordinal);
+        Assert.Contains("return Forbid();", controller, StringComparison.Ordinal);
         Assert.Contains("short[]? brandCodes", controller, StringComparison.Ordinal);
         Assert.Contains("name=\"brandCodes\"", view, StringComparison.Ordinal);
-        Assert.Contains("Selecionar todas as marcas filtradas", view, StringComparison.Ordinal);
-        Assert.Contains("Limpar sele\u00e7\u00e3o", view, StringComparison.Ordinal);
+        Assert.Contains("Selecionar filtradas", view, StringComparison.Ordinal);
+        Assert.Contains("Limpar sele&ccedil;&atilde;o", view, StringComparison.Ordinal);
         Assert.DoesNotContain("asp-action=\"WmcSyncNow\"", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-preview-card", view, StringComparison.Ordinal);
+        Assert.Contains("Novos ativos", view, StringComparison.Ordinal);
+        Assert.Contains("Existentes", view, StringComparison.Ordinal);
+        Assert.Contains("Ignorados", view, StringComparison.Ordinal);
+        Assert.Contains("Conflitos", view, StringComparison.Ordinal);
+        Assert.Contains("Detalhes da simula&ccedil;&atilde;o", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-product-grid", view, StringComparison.Ordinal);
+        Assert.Contains("btn-primary", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("CÃƒ", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("ÃƒÂ§", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-product-filter", view, StringComparison.Ordinal);
+        Assert.Contains("data-product-status=\"@product.Status\"", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-product-status--@product.Status.ToLowerInvariant()", view, StringComparison.Ordinal);
+        Assert.Contains("@product.Status", view, StringComparison.Ordinal);
+        Assert.Contains("Todos", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-page-header", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-hero-card", view, StringComparison.Ordinal);
+        Assert.Contains("data-icon=\"refresh-cw\"", view, StringComparison.Ordinal);
+        Assert.Contains("Integra&ccedil;&atilde;o Firebird", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-status-badge", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-last-sync", view, StringComparison.Ordinal);
+        Assert.Contains("data-icon=\"package\"", view, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page{padding-top:28px}", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-page-header{margin-bottom:8px}", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-brand-grid{display:grid;grid-template-columns:repeat(2", css, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Wmc_cancel_returns_before_reading_or_importing_any_products()
+    public void Wmc_brand_grid_uses_admin_dark_tokens_for_rows_selection_and_scrollbar()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
+
+        Assert.Contains(".wmc-brand-row:has", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-grid::-webkit-scrollbar-thumb", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-grid input[type=checkbox]", css, StringComparison.Ordinal);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-brand-grid", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-surface)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-surface-secondary)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-text)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-muted)", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-border)", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Wmc_preview_section_uses_compact_spacing_and_keeps_brand_count_colors()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
+
+        Assert.Contains(".admin-wmc-page section[aria-labelledby=\"wmc-preview-title\"]", css, StringComparison.Ordinal);
+        Assert.Contains("margin-top: 0.5rem !important", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page > .container > p.mt-3", css, StringComparison.Ordinal);
+        Assert.Contains("margin-bottom: 8px", css, StringComparison.Ordinal);
+        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-preview-heading{display:flex;align-items:center;gap:8px;margin:0 0 2px}", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-preview-heading + p", css, StringComparison.Ordinal);
+        Assert.Contains("margin: 0 0 2px", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-toolbar{", css, StringComparison.Ordinal);
+        Assert.Contains("margin:2px 0 8px", css, StringComparison.Ordinal);
+        Assert.Contains("font-size:11.5px", css, StringComparison.Ordinal);
+        Assert.Contains("font-weight:600", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-brand-count{color:#687166;font-size:11.5px;font-weight:600;white-space:nowrap}", css, StringComparison.Ordinal);
+        Assert.Contains("color: var(--muted)", css, StringComparison.Ordinal);
+        Assert.Contains("color: var(--admin-dark-muted)", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Bimbo_panel_has_staging_admin_simulation_selection_reason_and_individual_activation_contracts()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
-        var actionStart = controller.IndexOf("public async Task<IActionResult> WmcImportProducts", StringComparison.Ordinal);
-        var actionEnd = controller.IndexOf("public async Task<IActionResult> WmcPreview", actionStart, StringComparison.Ordinal);
-        var action = controller[actionStart..actionEnd];
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var releaseService = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcInitialLoadReadinessReleaseService.cs"));
+        var importService = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcBimboStagingImportService.cs"));
+        var productRules = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcBimboProductRules.cs"));
 
-        Assert.True(actionStart >= 0 && actionEnd > actionStart);
-        Assert.True(action.IndexOf("reimportExisting, \"cancel\"", StringComparison.Ordinal) < action.IndexOf("wmcBrandReader.GetAllAsync", StringComparison.Ordinal));
-        Assert.True(action.IndexOf("reimportExisting, \"cancel\"", StringComparison.Ordinal) < action.IndexOf("wmcProductImportService.ImportAsync", StringComparison.Ordinal));
+        Assert.Contains("WmcBimboSimulate", controller, StringComparison.Ordinal);
+        Assert.Contains("WmcBimboImport", controller, StringComparison.Ordinal);
+        Assert.Contains("WmcBimboActivate", controller, StringComparison.Ordinal);
+        Assert.Contains("if (!hostEnvironment.IsStaging()) return Forbid();", controller, StringComparison.Ordinal);
+        Assert.Contains("selectedWmcCodes", controller, StringComparison.Ordinal);
+        Assert.Contains("wmcBimboSimulateForm", view, StringComparison.Ordinal);
+        Assert.Contains("Simular importa&ccedil;&atilde;o", view, StringComparison.Ordinal);
+        Assert.Contains("wmcBimboImportForm", view, StringComparison.Ordinal);
+        Assert.Contains("Importar selecionados", view, StringComparison.Ordinal);
+        Assert.Contains("window.confirm", view, StringComparison.Ordinal);
+        Assert.Contains("Importando...", view, StringComparison.Ordinal);
+        Assert.Contains("@product.CommercialStatus", view, StringComparison.Ordinal);
+        Assert.Contains("product.Reasons", view, StringComparison.Ordinal);
+        Assert.Contains("var canActivateBimbo = hostEnvironment.IsStaging() && initialLoadReleaseOptions.Value.Enabled;", controller, StringComparison.Ordinal);
+        Assert.Contains("WmcBimboProductRules.ValidateStagingActivationData(product, inventory)", releaseService, StringComparison.Ordinal);
+        Assert.Contains("var issues = allowStagingActivation", importService, StringComparison.Ordinal);
+        Assert.Contains("? WmcBimboProductRules.ValidateStagingActivationData(product, inventory)", importService, StringComparison.Ordinal);
+        Assert.Contains(": WmcBimboProductRules.ValidateCommercialData(product, product.ProductCategory, inventory)", importService, StringComparison.Ordinal);
+        Assert.Contains("if (category is null || !category.IsActive)", productRules, StringComparison.Ordinal);
+        Assert.Contains("if (!IsValidBarcode(product.Dun14, 14))", productRules, StringComparison.Ordinal);
     }
 }

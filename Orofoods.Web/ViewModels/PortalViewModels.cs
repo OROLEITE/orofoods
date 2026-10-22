@@ -9,11 +9,12 @@ using OrderModel = Orofoods.Web.Models.Orders.Order;
 
 namespace Orofoods.Web.ViewModels;
 
-public record RepeatItemVm(int ProductId, string Sku, string Name, string Unit, int Minimum, int Quantity, decimal Price, bool Available, string? Substitute);
+public record RepeatItemVm(int ProductId, string Sku, string Name, string Unit, int Minimum, int Quantity, decimal Price, bool Available, string? Substitute, string PriceUnitLabel = "caixa");
 
 public class DashboardVm
 {
     public required CustomerModel Customer { get; init; }
+    public decimal MinimumOrder { get; init; } = 160m;
     public OrderModel? LastOrder { get; init; }
     public required List<FrequentProduct> FrequentProducts { get; init; }
     public required List<OrderModel> RecentOrders { get; init; }
@@ -22,6 +23,7 @@ public class DashboardVm
     public int MonthOrderCount { get; init; }
     public decimal AverageTicket { get; init; }
     public int OpenOrders { get; init; }
+    public string AuthorizedPaymentTerms { get; set; } = "Consulte o WMC para condições autorizadas.";
 }
 
 public sealed record MonthlyPurchaseVm(DateTime Month, decimal Total, int OrderCount);
@@ -33,6 +35,8 @@ public class RepeatOrderVm
     public required List<RepeatItemVm> Items { get; init; }
     public required List<CustomerAddressModel> Addresses { get; init; }
     public required List<PaymentTerm> PaymentTerms { get; init; }
+    public required string AttemptKey { get; init; }
+    public decimal MinimumOrder { get; init; } = 160m;
 }
 
 public class ConfirmOrderVm
@@ -44,4 +48,5 @@ public class ConfirmOrderVm
     public string Notes { get; set; } = "";
     public int[] ProductIds { get; set; } = [];
     public int[] Quantities { get; set; } = [];
+    public string AttemptKey { get; set; } = "";
 }

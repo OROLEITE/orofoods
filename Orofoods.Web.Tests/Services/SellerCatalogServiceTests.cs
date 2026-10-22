@@ -15,7 +15,7 @@ namespace Orofoods.Web.Tests.Services;
 public class SellerCatalogServiceTests
 {
     [Fact]
-    public async Task Catalog_uses_customer_price_and_only_commercially_available_products()
+    public async Task Catalog_uses_customer_price_and_lists_active_products_regardless_of_stock()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
@@ -36,9 +36,11 @@ public class SellerCatalogServiceTests
         var result = await new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db))
             .GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null);
 
-        var product = Assert.Single(Assert.IsType<SellerCatalogViewModel>(result).Products);
-        Assert.Equal(available.Id, product.Id);
-        Assert.Equal(42m, product.UnitPrice);
+        var products = Assert.IsType<SellerCatalogViewModel>(result).Products;
+        Assert.Equal(2, products.Count);
+        Assert.DoesNotContain(products, x => x.Id == inactive.Id);
+        Assert.Equal(42m, products.Single(x => x.Id == available.Id).UnitPrice);
+        Assert.Contains(products, x => x.Id == unavailable.Id);
     }
 
     [Fact]
@@ -56,6 +58,98 @@ public class SellerCatalogServiceTests
             .GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null);
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task Catalog_searches_by_ean_and_limits_results_to_requested_page()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "33.333.333/0001-33", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        db.AddRange(representative, seller, customer);
+        var products = Enumerable.Range(1, 25).Select(index =>
+        {
+            var product = Product($"SKU-{index:00}", $"Produto {index:00}", true);
+            product.Ean = $"789000000{index.ToString("D5")}";
+            return product;
+        }).ToArray();
+        db.Products.AddRange(products);
+        await db.SaveChangesAsync();
+        db.ProductInventories.AddRange(products.Select(product => new ProductInventory { ProductId = product.Id, QuantityOnHand = 10 }));
+        await db.SaveChangesAsync();
+        Assert.Equal("78900000000001", products[0].Ean);
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        var secondPage = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, "789000000", page: 2, pageSize: 20);
+        var eanMatch = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, "78900000000001", page: 1, pageSize: 20);
+
+        Assert.NotNull(secondPage);
+        Assert.Equal(2, secondPage.Page);
+        Assert.Equal(2, secondPage.TotalPages);
+        Assert.Equal(5, secondPage.Products.Count);
+        Assert.Single(Assert.IsType<SellerCatalogViewModel>(eanMatch).Products);
+    }
+
+    [Fact]
+    public async Task Catalog_search_is_case_and_accent_insensitive_across_name_sku_wmc_code_and_ean()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "55.555.555/0001-55", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        var baudUcco = Product("SKU-BAUDUCCO-390", "BAUDUCCO PÃO GRÃOS CLÁSSICOS 390G", true);
+        baudUcco.WmcCode = "WMC-BAU-390";
+        baudUcco.Ean = "7891234567890";
+        baudUcco.Ean13 = "0123456789012";
+        baudUcco.Dun14 = "00012345678905";
+        baudUcco.IsWmcActive = true;
+        baudUcco.WmcStockAvailable = true;
+        baudUcco.WmcInitialLoadReady = true;
+        baudUcco.Description = "Pão de grãos para o café da manhã.";
+        var unavailableBaudUcco = Product("SKU-BAUDUCCO-NO-STOCK", baudUcco.Name, false);
+        unavailableBaudUcco.WmcCode = baudUcco.WmcCode;
+        unavailableBaudUcco.IsWmcActive = true;
+        unavailableBaudUcco.WmcStockAvailable = true;
+        unavailableBaudUcco.WmcInitialLoadReady = true;
+        db.AddRange(representative, seller, customer, baudUcco);
+        db.Products.Add(unavailableBaudUcco);
+        await db.SaveChangesAsync();
+        db.ProductInventories.AddRange(
+            new ProductInventory { ProductId = baudUcco.Id, QuantityOnHand = 10 },
+            new ProductInventory { ProductId = unavailableBaudUcco.Id, QuantityOnHand = 0 });
+        await db.SaveChangesAsync();
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        foreach (var query in new[] { "bau", "BAU", "WMC-bau", "graos clas", "sku-bauducco", "912345678", "0123456789012", "00012345678905" })
+        {
+            var catalog = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, query, page: 1);
+            Assert.Equal(baudUcco.Id, Assert.Single(Assert.IsType<SellerCatalogViewModel>(catalog).Products).Id);
+        }
+    }
+
+    [Fact]
+    public async Task Catalog_clamps_page_size_to_prevent_unbounded_product_results()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "44.444.444/0001-44", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        db.AddRange(representative, seller, customer);
+        var products = Enumerable.Range(1, 30).Select(index => Product($"SKU-{index:00}", $"Produto {index:00}", true)).ToArray();
+        db.Products.AddRange(products);
+        await db.SaveChangesAsync();
+        db.ProductInventories.AddRange(products.Select(product => new ProductInventory { ProductId = product.Id, QuantityOnHand = 10 }));
+        await db.SaveChangesAsync();
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        var legacyCatalog = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null);
+        var result = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null, page: 1, pageSize: 1000);
+
+        Assert.NotNull(result);
+        Assert.Equal(20, result.Products.Count);
+        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(30, Assert.IsType<SellerCatalogViewModel>(legacyCatalog).Products.Count);
     }
 
     private static Product Product(string sku, string name, bool active) => new()

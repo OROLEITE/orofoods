@@ -52,6 +52,43 @@ public class WmcSyncServiceTests
     }
 
     [Fact]
+    public async Task Product_sync_maps_new_optional_commercial_fields_only_when_reader_supplies_them()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Congelados", Slug = "congelados", IsActive = true };
+        var product = new Product
+        {
+            WmcCode = "PKG-1", Sku = "LOCAL-PKG-1", Name = "Produto", ProductCategory = category,
+            Ean13 = "4006381333931", Dun14 = "17899679702656", CommercialUnitCode = "PCT",
+            LogisticsUnitCode = "CX", PackagesPerCase = 24
+        };
+        db.AddRange(category, product);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db, products: [new WmcProductRecord(
+            "PKG-1", "Produto WMC", "A", "CX", null, 10,
+            Ean13: "0123456789012", Dun14: "00012345678905", CommercialUnitCode: "PCT",
+            LogisticsUnitCode: "CX", PackagesPerCase: 12)]);
+
+        await service.SyncProductsAsync();
+
+        Assert.Equal("0123456789012", product.Ean13);
+        Assert.Equal("00012345678905", product.Dun14);
+        Assert.Equal("PCT", product.CommercialUnitCode);
+        Assert.Equal("CX", product.LogisticsUnitCode);
+        Assert.Equal(12, product.PackagesPerCase);
+
+        var emptyReader = CreateService(db, products: [new WmcProductRecord("PKG-1", "Produto WMC", "A", "CX", null, 10)]);
+        await emptyReader.SyncProductsAsync();
+
+        Assert.Equal("0123456789012", product.Ean13);
+        Assert.Equal("00012345678905", product.Dun14);
+        Assert.Equal("PCT", product.CommercialUnitCode);
+        Assert.Equal("CX", product.LogisticsUnitCode);
+        Assert.Equal(12, product.PackagesPerCase);
+    }
+
+    [Fact]
     public async Task Negative_or_null_wmc_stock_does_not_release_sales()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

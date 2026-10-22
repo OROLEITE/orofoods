@@ -8,31 +8,31 @@
 
 <section class="order-page">
     <div class="container contact-wrap">
-        <a class="back-link" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para a Administra&#231;&#227;o Orofoods</a>
+        <a class="back-link" href="/Admin/Portais"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Central de Acesso</a>
         <div class="contact-form customer-selector-card mt-4">
             <div class="eyebrow"><span></span> CONTEXTO DE COMPRA</div>
             <h1>Escolha o cliente</h1>
             <p>Voc&#234; acessar&#225; o portal usando as condi&#231;&#245;es comerciais da empresa selecionada.</p>
-            <form method="post" class="customer-selector-form">
-                <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
-                <input type="hidden" name="returnUrl" value="@returnUrl" />
-                <div class="row g-3 align-items-start">
-                    <div class="col-md customer-selector-field">
-                        <label class="form-label" for="customerId">Cliente ativo</label>
-                        <select id="customerId" name="customerId" class="form-select form-select-lg" required>
-                            <option value="">Selecione uma empresa</option>
-                            @foreach (var customer in Model)
-                            {
-                                <option value="@customer.Id">@customer.TradeName</option>
-                            }
-                        </select>
-                        <div class="form-text">As condi&#231;&#245;es comerciais ser&#227;o aplicadas ao abrir o portal.</div>
-                    </div>
-                    <div class="col-md-auto d-grid customer-selector-action">
-                        <button class="btn btn-gold customer-selector-submit" type="submit"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Abrir portal</button>
-                    </div>
-                </div>
-            </form>
+            <form method="post" class="customer-selector-form customer-search" data-customer-search data-search-url="/Admin/Portais/Clientes" data-search-mode="select">
+    <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
+    <input type="hidden" name="returnUrl" value="@returnUrl" />
+    <label class="form-label" for="customer-search-input">Cliente ativo</label>
+    <input id="customer-search-input" class="form-control form-control-lg" type="search" maxlength="100" autocomplete="organization" placeholder="Buscar por nome, CNPJ ou código WMC" aria-autocomplete="list" aria-controls="customer-search-results" data-customer-search-input />
+    <input type="hidden" name="customerId" data-customer-search-selected-id />
+    <div class="customer-search__results" id="customer-search-results" role="listbox" aria-label="Clientes encontrados" data-customer-search-results></div>
+    <div class="customer-search__status" role="status" aria-live="polite" data-customer-search-status>Digite pelo menos um caractere para buscar clientes.</div>
+    <div class="customer-search__submit-row">
+        <button data-customer-search-submit disabled class="btn btn-gold customer-selector-submit" type="submit"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Abrir portal</button>
+    </div>
+</form>
         </div>
     </div>
 </section>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/customer-search.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/customer-search.js" asp-append-version="true"></script>
+}

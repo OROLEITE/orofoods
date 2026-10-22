@@ -1,10 +1,10 @@
-namespace Orofoods.Web.Tests.Data;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Orofoods.Web.Data;
+
+namespace Orofoods.Web.Tests.Data;
 
 public class WmcProductSyncMigrationTests
 {
@@ -45,7 +45,6 @@ public class WmcProductSyncMigrationTests
         var initializedSnapshot = context.GetService<IModelRuntimeInitializer>()
             .Initialize(snapshot!.Model, designTime: true);
         var differ = context.GetService<IMigrationsModelDiffer>();
-
         var differences = differ.GetDifferences(
             initializedSnapshot.GetRelationalModel(),
             designModel.GetRelationalModel());
@@ -53,9 +52,14 @@ public class WmcProductSyncMigrationTests
         {
             Microsoft.EntityFrameworkCore.Migrations.Operations.AlterColumnOperation alter
                 => $"ALTER {alter.Table}.{alter.Name}: {alter.OldColumn?.ColumnType} -> {alter.ColumnType}",
+            Microsoft.EntityFrameworkCore.Migrations.Operations.DropIndexOperation drop
+                => $"DROP INDEX {drop.Table}.{drop.Name}",
+            Microsoft.EntityFrameworkCore.Migrations.Operations.CreateIndexOperation create
+                => $"CREATE INDEX {create.Table}.{create.Name}",
             _ => operation.GetType().Name
         }));
 
         Assert.True(differences.Count == 0, summary);
     }
+
 }

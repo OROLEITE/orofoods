@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -6,8 +7,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Authorization;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services.Customers;
+using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Commercial;
 using Orofoods.Web.Services.Payments;
@@ -31,7 +34,8 @@ public class PortalController(
     IPaymentEligibilityService paymentEligibilityService,
     PaymentOrchestrationService paymentOrchestrationService,
     IOptions<MercadoPagoOptions> mercadoPagoOptions,
-    AssistedOrderService assistedOrderService) : Controller
+    AssistedOrderService assistedOrderService,
+    AdminPortalAccessAuditService? adminPortalAccessAuditService = null) : Controller
 {
     private static readonly TimeZoneInfo BrazilTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
@@ -40,11 +44,12 @@ public class PortalController(
         context.ActionDescriptor.RouteValues.TryGetValue("action", out var action);
         if (User.IsInRole("Administrador") && !string.Equals(action, nameof(SelectCustomer), StringComparison.Ordinal))
         {
-            var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session);
+            var administratorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session, administratorUserId);
             var customer = customerId is null ? null : await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value);
             if (customer is null)
             {
-                adminCustomerContextService.Clear(HttpContext.Session);
+                adminCustomerContextService.Clear(HttpContext.Session, administratorUserId);
                 context.Result = RedirectToAction(nameof(SelectCustomer), new { returnUrl = Request.Path + Request.QueryString });
                 return;
             }
@@ -57,11 +62,8 @@ public class PortalController(
     [HttpGet]
     public async Task<IActionResult> SelectCustomer(string? returnUrl)
     {
-        ViewBag.ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(Dashboard));
-        return View(await db.Customers
-            .Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved)
-            .OrderBy(customer => customer.TradeName)
-            .ToListAsync());
+        ViewBag.ReturnUrl = SafeReturnUrl(returnUrl, "/Portal/Dashboard");
+        return View(Array.Empty<Customer>());
     }
 
     [Authorize(Roles = "Administrador")]
@@ -69,21 +71,43 @@ public class PortalController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SelectCustomer(int customerId, string? returnUrl)
     {
-        if (await customerAccessService.GetApprovedCustomerByIdAsync(customerId) is null)
+        var customer = await customerAccessService.GetApprovedCustomerByIdAsync(customerId);
+        if (customer is null)
         {
             ModelState.AddModelError(string.Empty, "Selecione um cliente ativo e aprovado.");
-            ViewBag.ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(Dashboard));
-            return View(await db.Customers.Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved).OrderBy(customer => customer.TradeName).ToListAsync());
+            ViewBag.ReturnUrl = SafeReturnUrl(returnUrl, "/Portal/Dashboard");
+            return View(Array.Empty<Customer>());
         }
 
-        adminCustomerContextService.SetSelectedCustomerId(HttpContext.Session, customerId);
-        return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : Url.Action(nameof(Dashboard))!);
+        var administratorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(administratorUserId))
+        {
+            return Forbid();
+        }
+
+        if (adminPortalAccessAuditService is not null && customer is not null)
+        {
+            await adminPortalAccessAuditService.RecordSelectionAsync(
+                administratorUserId,
+                User.FindFirstValue(ClaimTypes.Email),
+                Orofoods.Web.Models.Identity.AdminPortalAccessType.Customer,
+                customer.Id,
+                customer.TradeName,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Request.Headers.UserAgent.ToString());
+        }
+        adminCustomerContextService.SetSelectedCustomerId(HttpContext.Session, administratorUserId, customerId);
+
+        return LocalRedirect(SafeReturnUrl(returnUrl, "/Portal/Dashboard"));
     }
 
     public async Task<IActionResult> Dashboard()
     {
         var customer = await GetCurrentCustomerAsync();
-        return View(await customerDashboardService.GetAsync(customer));
+        var dashboard = await customerDashboardService.GetAsync(customer);
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id);
+        dashboard.AuthorizedPaymentTerms = string.Join(", ", eligibility.PaymentMethods.Select(term => term.Name));
+        return View(dashboard);
     }
 
     public async Task<IActionResult> Catalog(string? q, string? category, string? brand, bool? available)
@@ -97,12 +121,36 @@ public class PortalController(
 
         if (!string.IsNullOrWhiteSpace(q))
         {
-            query = query.Where(x =>
-                x.Name.Contains(q) ||
-                x.Sku.Contains(q) ||
-                x.Brand.Contains(q) ||
-                x.Description.Contains(q) ||
-                x.ProductCategory!.Name.Contains(q));
+            var normalizedQuery = CatalogSearchText.Normalize(q.Trim());
+            var candidates = await query.Select(product => new
+            {
+                product.Id,
+                product.Name,
+                product.Sku,
+                product.Brand,
+                product.Description,
+                CategoryName = product.ProductCategory!.Name,
+                product.WmcCode,
+                product.Ean,
+                product.Ean13,
+                product.Dun14
+            }).ToListAsync();
+
+            var matchingIds = candidates
+                .Where(product =>
+                    CatalogSearchText.Normalize(product.Name).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.Sku).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.Brand).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.Description).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    CatalogSearchText.Normalize(product.CategoryName).Contains(normalizedQuery, StringComparison.Ordinal) ||
+                    (product.WmcCode is not null && CatalogSearchText.Normalize(product.WmcCode).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+                    (product.Ean is not null && CatalogSearchText.Normalize(product.Ean).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+                    (product.Ean13 is not null && CatalogSearchText.Normalize(product.Ean13).Contains(normalizedQuery, StringComparison.Ordinal)) ||
+                    (product.Dun14 is not null && CatalogSearchText.Normalize(product.Dun14).Contains(normalizedQuery, StringComparison.Ordinal)))
+                .Select(product => product.Id)
+                .ToArray();
+
+            query = query.Where(product => matchingIds.Contains(product.Id));
         }
 
         if (!string.IsNullOrWhiteSpace(category))
@@ -188,6 +236,9 @@ public class PortalController(
 
         await ApplyCommercialAvailabilityAsync([product]);
         ViewBag.Price = await priceService.GetPriceAsync(customer.Id, product.Id);
+        var cart = await cartService.GetAsync(customer.Id, HttpContext.Session);
+        ViewBag.CartQuantity = cart.Items.Sum(item => item.Quantity);
+        ViewBag.CartProductQuantities = cart.Items.ToDictionary(item => item.ProductId, item => item.Quantity);
         return View(product);
     }
 
@@ -264,16 +315,27 @@ public class PortalController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddToCart(int productId, int quantity = 1)
+    public async Task<IActionResult> AddToCart(int productId, int quantity = 1, bool returnToProduct = false)
     {
         var customer = await GetCurrentCustomerAsync();
         try
         {
-            await cartService.AddAsync(customer.Id, productId, quantity, HttpContext.Session);
+            await cartService.AddToCartAsync(customer.Id, productId, quantity, HttpContext.Session);
         }
-        catch (InvalidOperationException exception) when (IsCatalogRequest())
+        catch (InvalidOperationException exception)
         {
-            return BadRequest(new { message = exception.Message });
+            if (IsCatalogRequest())
+            {
+                return BadRequest(new { message = exception.Message });
+            }
+
+            if (returnToProduct)
+            {
+                TempData["CartError"] = exception.Message;
+                return RedirectToAction(nameof(Product), new { id = productId });
+            }
+
+            throw;
         }
 
         if (IsCatalogRequest())
@@ -284,6 +346,12 @@ public class PortalController(
                 cartQuantity = cart.Items.Sum(item => item.Quantity),
                 quantity = cart.Items.Single(item => item.ProductId == productId).Quantity
             });
+        }
+
+        if (returnToProduct)
+        {
+            TempData["CartSuccess"] = "Produto adicionado ao carrinho.";
+            return RedirectToAction(nameof(Product), new { id = productId });
         }
 
         return RedirectToAction(nameof(Catalog));
@@ -309,6 +377,14 @@ public class PortalController(
         Request.Headers["X-Requested-With"],
         "XMLHttpRequest",
         StringComparison.OrdinalIgnoreCase);
+
+    private static string SafeReturnUrl(string? returnUrl, string fallback) =>
+        !string.IsNullOrWhiteSpace(returnUrl)
+        && (returnUrl.StartsWith('/') && !returnUrl.StartsWith("//", StringComparison.Ordinal)
+            || returnUrl.StartsWith("~/", StringComparison.Ordinal))
+        && !returnUrl.Contains('\\')
+            ? returnUrl
+            : fallback;
 
     public async Task<IActionResult> Checkout()
     {
@@ -478,16 +554,20 @@ public class PortalController(
         var items = order.Items.Select(item =>
         {
             var product = products[item.ProductId];
+            var salesUnitMatches = item.SalesUnitCodeSnapshot is null
+                ? string.IsNullOrWhiteSpace(product.CommercialUnitCode)
+                : string.Equals(item.SalesUnitCodeSnapshot, product.EffectiveSalesUnitCode, StringComparison.OrdinalIgnoreCase);
             return new RepeatItemVm(
                 product.Id,
                 product.Sku,
                 product.Name,
                 product.UnitDescription,
-                product.MinimumCases,
-                product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) ? item.Quantity : 0,
+                product.MinimumSalesQuantity,
+                product.IsActive && salesUnitMatches ? item.Quantity : 0,
                 prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice),
-                product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)),
-                product.SubstituteProduct?.Name);
+                product.IsActive && salesUnitMatches,
+                product.SubstituteProduct?.Name,
+                product.PriceUnitLabel);
         }).ToList();
 
         return View(new RepeatOrderVm
@@ -496,7 +576,11 @@ public class PortalController(
             SourceOrder = order,
             Items = items,
             Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-            PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList()
+            PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList(),
+            AttemptKey = Guid.NewGuid().ToString("N"),
+            MinimumOrder = OrderMinimumPolicy.Resolve(
+                await db.OrderMinimumSettings.AsNoTracking().Select(setting => (decimal?)setting.MinimumAmount).SingleOrDefaultAsync(),
+                customer.MinimumOrder)
         });
     }
 
@@ -512,93 +596,42 @@ public class PortalController(
             return Forbid();
         }
 
-        var isCustomerOrder = await db.Orders.AnyAsync(order =>
-            order.Id == input.SourceOrderId && order.CustomerId == customer.Id);
-        if (!isCustomerOrder)
+        var sourceOrder = await db.Orders
+            .Include(order => order.Items)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(order => order.Id == input.SourceOrderId && order.CustomerId == customer.Id);
+        if (sourceOrder is null)
         {
             return Forbid();
         }
 
-        var eligibility = await paymentEligibilityService.ValidateAsync(customer.Id, input.PaymentTermId);
-        if (!eligibility.IsAllowed)
+        if (string.IsNullOrWhiteSpace(input.AttemptKey) || input.AttemptKey.Length > 128)
         {
-            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = eligibility.ErrorMessage });
+            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = "Atualize a pagina e tente novamente." });
         }
 
-        var paymentTerm = await db.PaymentTerms.SingleOrDefaultAsync(term => term.Id == input.PaymentTermId && term.IsActive);
-        if (paymentTerm is null) return Forbid();
+        var sourceProductIds = sourceOrder.Items.Select(item => item.ProductId).ToHashSet();
+        if (input.ProductIds.Any(productId => !sourceProductIds.Contains(productId)))
+        {
+            return Forbid();
+        }
 
         var userId = userManager.GetUserId(User) ?? throw new InvalidOperationException("Authenticated user id not found.");
-        var products = await db.Products
-            .Where(x => input.ProductIds.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id);
-        var prices = await priceService.GetPricesAsync(customer.Id, input.ProductIds);
-        var order = new Order
+        var requestedLines = Enumerable.Range(0, Math.Min(input.ProductIds.Length, input.Quantities.Length))
+            .Select(index => (input.ProductIds[index], input.Quantities[index]))
+            .ToList();
+        var result = await assistedOrderService.PlaceLinesAsync(
+            customer.Id,
+            userId,
+            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDate, input.Notes, input.AttemptKey),
+            requestedLines);
+        if (!result.Succeeded)
         {
-            CustomerId = customer.Id,
-            CreatedByUserId = userId,
-            DeliveryAddressId = input.AddressId,
-            RequestedDeliveryDate = input.RequestedDate,
-            Status = OrderStatus.Received,
-            PaymentTermId = paymentTerm.Id,
-            PaymentMethod = paymentTerm.Name,
-            Notes = input.Notes,
-            CreatedAt = DateTime.UtcNow
-        };
-        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Received, ChangedAt = order.CreatedAt, ChangedByUserId = userId });
-
-        for (var i = 0; i < Math.Min(input.ProductIds.Length, input.Quantities.Length); i++)
-        {
-            if (!products.TryGetValue(input.ProductIds[i], out var product) || !product.IsActive || !product.IsAvailable || (product.WmcCode != null && (!product.IsWmcActive || !product.WmcStockAvailable || !product.WmcInitialLoadReady)) || input.Quantities[i] <= 0)
-            {
-                continue;
-            }
-
-            var quantity = Math.Max(input.Quantities[i], product.MinimumCases);
-            var unitPrice = prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice);
-            order.Items.Add(new OrderItem
-            {
-                ProductId = product.Id,
-                Quantity = quantity,
-                UnitPrice = unitPrice,
-                ProductNameSnapshot = product.Name,
-                SkuSnapshot = product.Sku,
-                Subtotal = quantity * unitPrice
-            });
+            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = result.Errors[0] });
         }
 
-        order.Subtotal = order.Items.Sum(x => x.Subtotal);
-        order.Total = order.Subtotal + order.Freight;
-
-        var error = !order.Items.Any()
-            ? "Nenhum item deste pedido está disponível no momento. Escolha produtos disponíveis no catálogo."
-            : order.Total < customer.MinimumOrder
-            ? $"O pedido mínimo é {customer.MinimumOrder:C}."
-            : paymentTerm.DaysUntilDue > 0 && order.Total > customer.CreditLimit - customer.CreditUsed
-                ? "O total ultrapassa o credito disponivel."
-            : null;
-
-        if (error is not null)
-        {
-            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error });
-        }
-
-        db.Orders.Add(order);
-        await db.SaveChangesAsync();
-        var reservation = await orderReservationService.ReserveAsync(order);
-        if (!reservation.IsValid)
-        {
-            db.Orders.Remove(order);
-            await db.SaveChangesAsync();
-            return RedirectToAction(nameof(Repeat), new { id = input.SourceOrderId, error = reservation.ErrorMessage });
-        }
-
-        order.Number = $"ORO-{DateTime.Now:yyyy}-{order.Id:000000}";
-        order.ConfirmedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
-        return RedirectToAction(nameof(Success), new { id = order.Id });
+        return RedirectToAction(nameof(Success), new { id = result.Order!.Id });
     }
-
     public async Task<IActionResult> Success(int id)
     {
         var customer = await GetCurrentCustomerAsync();
@@ -642,7 +675,9 @@ public class PortalController(
         Customer? customer = null;
         if (User.IsInRole("Administrador"))
         {
-            var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session);
+            var customerId = adminCustomerContextService.GetSelectedCustomerId(
+                HttpContext.Session,
+                User.FindFirstValue(ClaimTypes.NameIdentifier));
             if (customerId is not null)
             {
                 var selectedCustomer = await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value);
@@ -664,16 +699,13 @@ public class PortalController(
         return customer;
     }
 
-    private async Task ApplyCommercialAvailabilityAsync(IEnumerable<Product> products)
+    private Task ApplyCommercialAvailabilityAsync(IEnumerable<Product> products)
     {
-        var productList = products.ToList();
-        var productIds = productList.Select(product => product.Id).ToList();
-        var inventories = await db.ProductInventories.AsNoTracking()
-            .Where(inventory => productIds.Contains(inventory.ProductId))
-            .ToDictionaryAsync(inventory => inventory.ProductId);
-        foreach (var product in productList)
+        foreach (var product in products)
         {
-            product.IsCommerciallyAvailable = product.IsActive && product.IsAvailable && (product.WmcCode == null || (product.IsWmcActive && product.WmcStockAvailable && product.WmcInitialLoadReady)) && inventories.TryGetValue(product.Id, out var inventory) && inventory.AvailableQuantity >= product.MinimumCases;
+            product.IsCommerciallyAvailable = product.IsActive;
         }
+
+        return Task.CompletedTask;
     }
 }

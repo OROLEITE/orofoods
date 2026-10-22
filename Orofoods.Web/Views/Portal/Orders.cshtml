@@ -12,7 +12,7 @@
                     <option value="@status" selected="@(Model.Status == status.ToString())">@status.ToDisplayName()</option>
                 }
             </select>
-            <button class="btn btn-dark" type="submit">Filtrar</button>
+            <button class="btn btn-gold btn-search" type="submit">Filtrar</button>
         </form>
         @if (!Model.Orders.Any())
         {

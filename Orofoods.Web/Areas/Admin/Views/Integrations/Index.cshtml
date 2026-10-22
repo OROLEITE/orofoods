@@ -1,16 +1,19 @@
 @using Orofoods.Web.Models.Integrations
+@using Orofoods.Web.Models.Orders
 @model IReadOnlyList<Orofoods.Web.Models.Orders.Order>
-@{ ViewData["Title"] = "Integra&ccedil;&otilde;es ERP"; }
+@{ ViewData["Title"] = "Integra&ccedil;&otilde;es ERP"; var eligibleOrderIds = ViewData["WmcManualExportEligibleOrderIds"] as IReadOnlySet<int> ?? new HashSet<int>(); }
 
 <section class="section admin-integrations-page">
     <div class="container">
-        <header class="admin-page-header">
+        <header class="admin-page-header erp-page-header">
             <div>
                 <div class="eyebrow"><span></span> Opera&ccedil;&atilde;o</div>
                 <h1>Integra&ccedil;&otilde;es ERP</h1>
                 <p>Acompanhe as tentativas de envio, erros e refer&ecirc;ncias do ERP.</p>
             </div>
-            <a class="btn btn-outline-dark btn-sm" asp-action="Wmc">Sincroniza&ccedil;&atilde;o WMC <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+            <div class="erp-header-actions">
+                <a class="btn btn-outline-dark btn-sm erp-header-action" asp-action="Wmc">Sincroniza&ccedil;&atilde;o WMC <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+            </div>
         </header>
 
         @if (TempData["WmcError"] is string wmcError)
@@ -23,7 +26,7 @@
                 <div><label for="erpQuery">N&uacute;mero ou cliente</label><div class="erp-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="erpQuery" name="q" value="@ViewBag.Query" class="form-control" placeholder="N&uacute;mero ou cliente" /></div></div>
                 <div><label for="integrationStatus">Integra&ccedil;&atilde;o</label><select id="integrationStatus" name="status" class="form-select"><option value="">Todos os status</option>@foreach (var item in Enum.GetValues<IntegrationStatus>()) { <option value="@item" selected="@(ViewBag.Status?.ToString() == item.ToString())">@item.ToDisplayName()</option> }</select></div>
                 <div><label for="wmcStatus">Exporta&ccedil;&atilde;o WMC</label><select id="wmcStatus" name="wmcStatus" class="form-select"><option value="">Todas as exporta&ccedil;&otilde;es WMC</option><option value="failed" selected="@(ViewBag.WmcStatus == "failed")">&Uacute;ltima exporta&ccedil;&atilde;o com falha</option><option value="succeeded" selected="@(ViewBag.WmcStatus == "succeeded")">&Uacute;ltima exporta&ccedil;&atilde;o gerada</option><option value="none" selected="@(ViewBag.WmcStatus == "none")">Sem exporta&ccedil;&atilde;o</option></select></div>
-                <button class="btn admin-secondary-action erp-filter-submit" type="submit">Filtrar</button>
+                <button class="btn admin-secondary-action erp-filter-submit btn-search" type="submit">Filtrar</button>
             </div>
         </form>
 
@@ -49,14 +52,64 @@
                 <tbody>
                     @foreach (var order in Model)
                     {
-                        var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).FirstOrDefault();
-                        var integrationStatusClass = order.IntegrationStatus.ToString().ToLowerInvariant();
+                        var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).ThenByDescending(item => item.Id).FirstOrDefault();
+                        var manualState = order.WmcOrderExportState;
+                        var wmcOutcome = lastWmcExport is null || lastWmcExport.Outcome == WmcExportOutcome.Unknown
+                            ? (lastWmcExport?.Succeeded == true ? WmcExportOutcome.Generated : WmcExportOutcome.Failed)
+                            : lastWmcExport.Outcome;
+                        var wmcOutcomeLabel = wmcOutcome switch
+                        {
+                            WmcExportOutcome.Generated => "TXT gerado",
+                            WmcExportOutcome.Available => "Arquivo disponibilizado",
+                            WmcExportOutcome.Imported => "Importado",
+                            _ => "Falhou"
+                        };
+                        var manualStatusLabel = manualState?.Status switch
+                        {
+                            WmcOrderExportStatus.Exported => "TXT gerado",
+                            WmcOrderExportStatus.Imported => "Importa&ccedil;&atilde;o confirmada",
+                            WmcOrderExportStatus.Processing => "Processando",
+                            WmcOrderExportStatus.Rejected => "Rejeitado",
+                            WmcOrderExportStatus.Error => "Falhou",
+                            WmcOrderExportStatus.Pending => "Pendente",
+                            _ => null
+                        };
+                        var manualStatusClass = manualState?.Status switch
+                        {
+                            WmcOrderExportStatus.Exported or WmcOrderExportStatus.Imported => "erp-status-badge--succeeded",
+                            WmcOrderExportStatus.Rejected => "erp-status-badge--failed",
+                            WmcOrderExportStatus.Error => "erp-status-badge--failed",
+                            WmcOrderExportStatus.Processing => "erp-status-badge--processing",
+                            _ => "erp-status-badge--pending"
+                        };
+                        var wmcSummaryLabel = manualStatusLabel ?? (lastWmcExport is null ? null : wmcOutcomeLabel);
+                        var wmcSummaryClass = manualState is not null
+                            ? manualStatusClass
+                            : lastWmcExport?.Succeeded == true ? "erp-status-badge--succeeded" : "erp-status-badge--failed";
+                        var wmcSummaryDate = lastWmcExport?.ExportedAt ?? manualState?.ExportedAt;
+                        var integrationStatusClass = order.IntegrationStatus == IntegrationStatus.Pending && order.Status is OrderStatus.Received or OrderStatus.UnderReview or OrderStatus.Cancelled
+                            ? "order-context"
+                            : order.IntegrationStatus.ToString().ToLowerInvariant();
+                        var integrationStatusLabel = order.Status switch
+                        {
+                            OrderStatus.Received or OrderStatus.UnderReview => "Aguardando aprovação",
+                            OrderStatus.Cancelled => "Não elegível para envio",
+                            _ => null
+                        };
+                        var integrationStatusDisplay = order.Status == OrderStatus.Approved && order.IntegrationStatus == IntegrationStatus.Pending
+                            ? "Aguardando envio WMC"
+                            : order.IntegrationStatus.ToDisplayName();
                         var hasIntegrationError = !string.IsNullOrWhiteSpace(order.IntegrationError);
                         <tr>
                             <td><a class="erp-order-number" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.Number</a></td>
                             <td><span class="erp-customer" title="@order.Customer?.TradeName">@order.Customer?.TradeName</span></td>
                             <td>
-                                <span class="erp-status-badge erp-status-badge--@integrationStatusClass">@order.IntegrationStatus.ToDisplayName()</span>
+                                <span class="erp-status-badge erp-status-badge--order">@order.Status.ToDisplayName()</span>
+                                <span class="erp-status-badge erp-status-badge--@integrationStatusClass">@integrationStatusDisplay</span>
+                                @if (integrationStatusLabel is not null)
+                                {
+                                    <small class="erp-status-context">@integrationStatusLabel</small>
+                                }
                                 @if (hasIntegrationError)
                                 {
                                     <button class="btn erp-error-toggle" type="button" data-bs-toggle="modal" data-bs-target="#erpErrorModal" data-order-number="@order.Number" data-customer="@order.Customer?.TradeName" data-attempt="@(order.LastIntegrationAttempt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")" data-reference="@(order.ErpOrderNumber ?? order.ExternalOrderId ?? "Pendente")" data-error="@order.IntegrationError">Ver detalhes</button>
@@ -65,34 +118,63 @@
                             <td class="erp-nowrap">@(order.LastIntegrationAttempt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</td>
                             <td>@(order.ErpOrderNumber ?? order.ExternalOrderId ?? "Pendente")</td>
                             <td>
-                                @if (lastWmcExport is null)
-                                {
-                                    <span class="text-muted">Nunca</span>
-                                }
-                                else
-                                {
-                                    <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@(lastWmcExport.Succeeded ? "Gerado" : "Falhou")</span>
-                                    <small class="d-block">@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
-                                    @if (!string.IsNullOrWhiteSpace(lastWmcExport.FileName))
+                                <div class="erp-wmc-summary">
+                                    @if (wmcSummaryLabel is not null)
                                     {
-                                        <small class="d-block">@lastWmcExport.FileName</small>
+                                        <span class="erp-status-badge @wmcSummaryClass">@Html.Raw(wmcSummaryLabel)</span>
                                     }
-                                    @if (!string.IsNullOrWhiteSpace(lastWmcExport.Error))
+                                    @if (wmcSummaryDate is not null)
                                     {
-                                        <small class="d-block text-danger">@lastWmcExport.Error</small>
+                                        <time class="erp-wmc-summary-date" datetime="@wmcSummaryDate.Value.ToString("O")">@wmcSummaryDate.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
                                     }
-                                }
+                                    else
+                                    {
+                                        <span class="erp-wmc-summary-date text-muted">Nunca</span>
+                                    }
+                                    @if (manualState is not null || lastWmcExport is not null)
+                                    {
+                                        <button class="erp-wmc-details-toggle" type="button"
+                                                data-bs-toggle="popover"
+                                                data-bs-title="Detalhes da exporta&ccedil;&atilde;o WMC"
+                                                data-bs-placement="auto"
+                                                data-bs-content-target="#erpWmcDetails-@order.Id"
+                                                aria-label="Ver detalhes da exporta&ccedil;&atilde;o WMC do pedido @order.Number"
+                                                aria-expanded="false">Ver detalhes</button>
+                                        <template id="erpWmcDetails-@order.Id" class="erp-wmc-details-template">
+                                            <div class="erp-wmc-popover-content">
+                                                <dl class="erp-wmc-popover-meta">
+                                                    @if (manualState is not null)
+                                                    {
+                                                        <div><dt>Exporta&ccedil;&atilde;o manual</dt><dd>@Html.Raw(manualStatusLabel)</dd></div>
+                                                        @if (manualState.ExportedAt is not null) { <div><dt>Data manual</dt><dd>@manualState.ExportedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div> }
+                                                        @if (!string.IsNullOrWhiteSpace(manualState.FileName)) { <div><dt>Arquivo manual</dt><dd>@manualState.FileName</dd></div> }
+                                                        @if (!string.IsNullOrWhiteSpace(manualState.LastError)) { <div><dt>Erro manual</dt><dd class="erp-wmc-popover-error">@manualState.LastError</dd></div> }
+                                                    }
+                                                    @if (lastWmcExport is not null)
+                                                    {
+                                                        <div><dt>Hist&oacute;rico mais recente</dt><dd>@wmcOutcomeLabel</dd></div>
+                                                        <div><dt>Modalidade</dt><dd>@(lastWmcExport.Source == WmcExportSource.Automatic ? "Autom&aacute;tica" : "Manual")</dd></div>
+                                                        <div><dt>Data da tentativa</dt><dd>@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
+                                                        @if (lastWmcExport.GeneratedAt is not null) { <div><dt>TXT gerado</dt><dd>@lastWmcExport.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div> }
+                                                        @if (!string.IsNullOrWhiteSpace(lastWmcExport.FileName)) { <div><dt>Arquivo</dt><dd>@lastWmcExport.FileName</dd></div> }
+                                                        @if (!string.IsNullOrWhiteSpace(lastWmcExport.Error)) { <div><dt>Erro</dt><dd class="erp-wmc-popover-error">@lastWmcExport.Error</dd></div> }
+                                                    }
+                                                </dl>
+                                                <a class="erp-wmc-history-link" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">Consultar hist&oacute;rico completo</a>
+                                            </div>
+                                        </template>
+                                    }
+                                </div>
                             </td>
                             <td class="text-end">
                                 <div class="erp-row-actions">
-                                    <form asp-action="ExportWmc" method="post">
-                                        <input type="hidden" name="id" value="@order.Id" />
-                                        <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>
-                                    </form>
-                                    <form asp-action="Reprocess" method="post">
-                                        <input type="hidden" name="id" value="@order.Id" />
-                                        <button class="btn btn-sm btn-erp-reprocess" type="submit">Reprocessar</button>
-                                    </form>
+                                    @if (order.Status == OrderStatus.Approved && eligibleOrderIds.Contains(order.Id))
+                                    {
+                                        <form asp-action="ExportWmc" method="post">
+                                            <input type="hidden" name="id" value="@order.Id" />
+                                            <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>
+                                        </form>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -128,6 +210,47 @@
             document.getElementById('erpErrorAttempt').textContent = trigger.dataset.attempt;
             document.getElementById('erpErrorReference').textContent = trigger.dataset.reference;
             document.getElementById('erpErrorMessage').textContent = trigger.dataset.error;
+        });
+
+        const wmcDetailButtons = [...document.querySelectorAll('.erp-wmc-details-toggle')];
+        wmcDetailButtons.forEach(function (button) {
+            const template = document.querySelector(button.dataset.bsContentTarget);
+            if (!template || !window.bootstrap?.Popover) return;
+
+            new bootstrap.Popover(button, {
+                container: 'body',
+                customClass: 'erp-wmc-popover admin-integrations-page',
+                html: true,
+                sanitize: true,
+                trigger: 'click',
+                content: function () { return template.content.firstElementChild?.cloneNode(true); }
+            });
+
+            button.addEventListener('show.bs.popover', function () {
+                wmcDetailButtons.forEach(function (otherButton) {
+                    if (otherButton !== button) bootstrap.Popover.getInstance(otherButton)?.hide();
+                });
+            });
+            button.addEventListener('shown.bs.popover', function () {
+                button.setAttribute('aria-expanded', 'true');
+                if (button.matches(':focus-visible')) {
+                    document.getElementById(button.getAttribute('aria-describedby'))?.querySelector('.erp-wmc-history-link')?.focus();
+                }
+            });
+            button.addEventListener('hidden.bs.popover', function () { button.setAttribute('aria-expanded', 'false'); });
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!window.bootstrap?.Popover) return;
+            if (event.target.closest('.erp-wmc-details-toggle, .erp-wmc-popover')) return;
+            wmcDetailButtons.forEach(function (button) { bootstrap.Popover.getInstance(button)?.hide(); });
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape' || !window.bootstrap?.Popover) return;
+            const openButton = wmcDetailButtons.find(function (button) { return button.getAttribute('aria-expanded') === 'true'; });
+            if (!openButton) return;
+            bootstrap.Popover.getInstance(openButton)?.hide();
+            openButton.focus();
         });
     </script>
 }

@@ -8,7 +8,8 @@
         "Catalog" or "Product" => "catalog",
         "Orders" or "Order" => "orders",
         "Favorites" => "favorites",
-        "Cart" or "Checkout" or "Pix" or "Success" or "Repeat" or "SavedOrders" or "EditSavedOrder" => "cart",
+        "SavedOrders" or "EditSavedOrder" => "saved-orders",
+        "Cart" or "Checkout" or "Pix" or "Success" or "Repeat" => "cart",
         _ => "dashboard"
     };
     var customerName = ViewData["PortalCustomerName"] as string ?? "Portal do Cliente";
@@ -18,16 +19,29 @@
     <button class="portal-menu-overlay" type="button" aria-label="Fechar menu" data-portal-menu-close></button>
     <aside id="portalSidebar" class="portal-app-sidebar" aria-label="Navegação do portal">
         <button class="portal-sidebar-toggle" type="button" data-portal-sidebar-toggle aria-controls="portalSidebar" aria-expanded="true" aria-label="Recolher menu lateral" title="Recolher menu lateral"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
-        <div class="portal-company"><small>PORTAL DO CLIENTE</small><h3>@customerName</h3><span>Conta comercial ativa</span></div>
+        <div class="portal-company"><small>PORTAL DO CLIENTE</small><h3 title="@customerName">@customerName</h3><span>Conta comercial ativa</span></div>
         <button class="portal-menu-close" type="button" aria-label="Fechar menu" data-portal-menu-close><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         <nav class="portal-app-nav">
             <a class="@(activeSection == "dashboard" ? "active" : null)" asp-controller="Portal" asp-action="Dashboard"><span class="portal-nav-icon"><i class="fa-solid fa-house" aria-hidden="true"></i></span><span class="portal-nav-label">Vis&atilde;o geral</span></a>
             <a class="@(activeSection == "catalog" ? "active" : null)" asp-controller="Portal" asp-action="Catalog"><span class="portal-nav-icon"><i class="fa-solid fa-box-open" aria-hidden="true"></i></span><span class="portal-nav-label">Cat&aacute;logo</span></a>
             <a class="@(activeSection == "orders" ? "active" : null)" asp-controller="Portal" asp-action="Orders"><span class="portal-nav-icon"><i class="fa-solid fa-receipt" aria-hidden="true"></i></span><span class="portal-nav-label">Meus pedidos</span></a>
+            <a class="@(activeSection == "saved-orders" ? "active" : null)" asp-controller="Portal" asp-action="SavedOrders"><span class="portal-nav-icon"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span><span class="portal-nav-label">Meus modelos de pedido</span></a>
             <a class="@(activeSection == "favorites" ? "active" : null)" asp-controller="Portal" asp-action="Favorites"><span class="portal-nav-icon"><i class="fa-solid fa-heart" aria-hidden="true"></i></span><span class="portal-nav-label">Favoritos</span></a>
             <a class="@(activeSection == "cart" ? "active" : null)" asp-controller="Portal" asp-action="Cart"><span class="portal-nav-icon"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></span><span class="portal-nav-label">Carrinho</span></a>
         </nav>
-        <div class="side-help"><span>Precisa de ajuda?</span><a asp-controller="Home" asp-action="Contact">Falar com a Orofoods</a></div>
+        <div class="side-help">
+            @if (User.IsInRole("Administrador"))
+            {
+                <span>Acesso administrativo</span>
+                <a href="/Portal/SelectCustomer">Trocar cliente</a>
+                <a href="/Admin/Portais">Central de Acesso</a>
+            }
+            else
+            {
+                <span>Precisa de ajuda?</span>
+                <a asp-controller="Home" asp-action="Contact">Falar com a Orofoods</a>
+            }
+        </div>
     </aside>
     <div class="portal-app-content">
         <div class="portal-app-toolbar">

@@ -1,0 +1,616 @@
+.admin-authenticated .customer-approval-page {
+    --customer-config-page: #f8fafc;
+    --customer-config-surface: #fff;
+    --customer-config-soft: #f8fafc;
+    --customer-config-border: #dbe3ec;
+    --customer-config-text: #172033;
+    --customer-config-muted: #64748b;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 0 2rem;
+    background:var(--customer-config-page);
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-container {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+    margin: 0 0 1rem;
+    color: var(--customer-config-muted);
+    font-size: .85rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-breadcrumb a {
+    color: #8b641c;
+    text-decoration: none;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-breadcrumb a:hover,
+.admin-authenticated .customer-approval-page .customer-approval-breadcrumb a:focus-visible {
+    color: #60430f;
+    text-decoration: underline;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin: 0 0 1rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--customer-config-border);
+    border-radius: 14px;
+    background: var(--customer-config-surface);
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-hero .eyebrow {
+    margin: 0 0 .4rem;
+    color: var(--customer-config-muted);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-hero h1 {
+    margin: 0;
+    color: var(--customer-config-text);
+    font-size: clamp(1.55rem, 2.5vw, 2rem);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-hero p {
+    margin: .45rem 0 0;
+    color: var(--customer-config-muted);
+    overflow-wrap: anywhere;
+}
+
+.admin-authenticated .customer-approval-page .customer-status-panel {
+    display: grid;
+    flex: 0 0 auto;
+    gap: .35rem;
+    min-width: 190px;
+    padding: .85rem 1rem;
+    border: 1px solid var(--customer-config-border);
+    border-radius: 10px;
+    background: var(--customer-config-soft);
+}
+
+.admin-authenticated .customer-approval-page .customer-status-panel small {
+    color: var(--customer-config-muted);
+}
+
+.admin-authenticated .customer-approval-page .customer-status-panel strong {
+    color: var(--customer-config-text);
+    font-weight: 700;
+}
+
+.admin-authenticated .customer-approval-page .customer-status-panel strong.is-pending {
+    color: #8a5b00;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-layout {
+    display: block;
+    width: 100%;
+    margin: 0;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-layout > .text-danger {
+    display: block;
+    margin: 0 0 1rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-authenticated .customer-approval-page .registration-card {
+    min-width: 0;
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--customer-config-border);
+    border-radius: 12px;
+    background: var(--customer-config-surface);
+    color: var(--customer-config-text);
+    box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
+
+.admin-authenticated .customer-approval-page .registration-card--full,
+.admin-authenticated .customer-approval-page .customer-approval-aside,
+.admin-authenticated .customer-approval-page .registration-actions {
+    grid-column: 1 / -1;
+}
+
+.admin-authenticated .customer-approval-page .registration-card-heading {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    margin: 0 0 1rem;
+}
+
+.admin-authenticated .customer-approval-page .registration-card-heading > span {
+    display: inline-grid;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 10px;
+    background: #fff3d6;
+    color: #845b12;
+}
+
+.admin-authenticated .customer-approval-page .registration-card-heading small {
+    display: block;
+    margin-bottom: .15rem;
+    color: var(--customer-config-muted);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.admin-authenticated .customer-approval-page .registration-card-heading h2 {
+    margin: 0;
+    color: var(--customer-config-text);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .row {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: .9rem;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-label {
+    margin-bottom: .35rem;
+    color: var(--customer-config-text);
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-label em {
+    color: var(--customer-config-muted);
+    font-size: .75rem;
+    font-style: normal;
+    font-weight: 500;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-control,
+.admin-authenticated .customer-approval-page .registration-card .form-select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    border-color: var(--customer-config-border);
+    background-color: var(--customer-config-surface);
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .registration-card textarea.form-control {
+    min-height: 88px;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-control:focus,
+.admin-authenticated .customer-approval-page .registration-card .form-select:focus {
+    border-color: #b8892e;
+    outline: 3px solid rgb(184 137 46 / 22%);
+    outline-offset: 1px;
+    box-shadow: none;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-control:disabled,
+.admin-authenticated .customer-approval-page .registration-card .form-select:disabled,
+.admin-authenticated .customer-approval-page .registration-card .form-control[readonly] {
+    background: var(--customer-config-soft);
+    color: var(--customer-config-muted);
+}
+
+.admin-authenticated .customer-approval-page .registration-card .input-group-text {
+    border-color: var(--customer-config-border);
+    background: var(--customer-config-soft);
+    color: var(--customer-config-muted);
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-control-plaintext {
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .customer-field-help,
+.admin-authenticated .customer-approval-page .registration-card .row > div > small {
+    color: var(--customer-config-muted);
+}
+
+.admin-authenticated .customer-approval-page .customer-field-help {
+    display: block;
+    margin-top: .35rem;
+    font-size: .8rem;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-check {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    min-height: 44px;
+    margin: 0;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-check-input {
+    flex: 0 0 auto;
+    margin: 0;
+    border-color: #94a3b8;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-check-input:focus {
+    outline: 3px solid rgb(184 137 46 / 22%);
+    outline-offset: 1px;
+    box-shadow: none;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-check-input:checked {
+    border-color: #8b641c;
+    background-color: #8b641c;
+}
+
+.admin-authenticated .customer-approval-page .registration-card .form-check-label {
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-terms {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-layout {
+    display: grid;
+    gap: .85rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-indicators {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .6rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-indicator {
+    display: grid;
+    gap: .2rem;
+    min-width: 0;
+    padding: .65rem .75rem;
+    border: 1px solid var(--customer-config-border);
+    border-radius: 9px;
+    background: var(--customer-config-soft);
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-indicator small {
+    color: var(--customer-config-muted);
+    font-size: .73rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-indicator strong {
+    overflow: hidden;
+    color: var(--customer-config-text);
+    font-size: .9rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-controls {
+    display: grid;
+    grid-template-columns: minmax(190px, 1fr) minmax(210px, 1fr) minmax(180px, .7fr);
+    gap: .6rem;
+    align-items: end;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-controls .form-check {
+    padding: .65rem .75rem;
+    border: 1px solid var(--customer-config-border);
+    border-radius: 9px;
+    background: var(--customer-config-soft);
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-terms legend {
+    margin: 0 0 .5rem;
+    color: var(--customer-config-text);
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-terms-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap: .6rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-term {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    min-height: 42px;
+    padding: .65rem .75rem;
+    border: 1px solid var(--customer-config-border);
+    border-radius: 9px;
+    background: var(--customer-config-soft);
+    color: var(--customer-config-text);
+    cursor: pointer;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-term:has(input:checked) {
+    border-color: #0284C7;
+    background: rgb(2 132 199 / 12%);
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-term input {
+    flex: 0 0 auto;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: #0284C7;
+}
+
+.admin-authenticated .customer-approval-page .customer-payment-term:focus-within {
+    outline: 3px solid rgb(56 189 248 / 30%);
+    outline-offset: 2px;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-hint {
+    margin: .9rem 0 0;
+    color: var(--customer-config-muted);
+    font-size: .85rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-summary {
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--customer-config-border);
+    border-radius: 12px;
+    background: var(--customer-config-soft);
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-summary .eyebrow,
+.admin-authenticated .customer-approval-page .customer-approval-summary > p:last-child {
+    color: var(--customer-config-muted);
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-summary h2 {
+    margin: .25rem 0 .6rem;
+    color: var(--customer-config-text);
+    font-size: 1rem;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-summary ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.5rem;
+    margin: 0 0 .5rem;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-summary li {
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-summary li i {
+    margin-right: .3rem;
+    color: #17803d;
+}
+
+.admin-authenticated .customer-approval-page .customer-approval-summary > p:last-child {
+    margin: 0;
+    font-size: .85rem;
+}
+
+.admin-authenticated .customer-approval-page .registration-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-top: .25rem;
+}
+
+.admin-authenticated .customer-approval-page .registration-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 44px;
+    padding: .65rem 1rem;
+    font-weight: 600;
+}
+
+.admin-authenticated .customer-approval-page .registration-actions .btn-gold {
+    border-color:#0284C7;
+    background:#0284C7;
+    color:#FFFFFF;
+}
+
+.admin-authenticated .customer-approval-page .registration-actions .btn-gold:hover,
+.admin-authenticated .customer-approval-page .registration-actions .btn-gold:focus-visible {
+    border-color: #0369A1;
+    background: #0369A1;
+    color: #FFFFFF;
+}
+
+.admin-authenticated .customer-approval-page .registration-actions .btn-outline-dark {
+    border-color: var(--customer-config-border);
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .registration-actions .btn-outline-dark:hover {
+    border-color: #b8892e;
+    background: var(--customer-config-soft);
+    color: var(--customer-config-text);
+}
+
+.admin-authenticated .customer-approval-page .registration-actions .btn:focus-visible {
+    outline: 3px solid rgb(184 137 46 / 35%);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page {
+    --customer-config-page:#0B132B;
+    --customer-config-surface:#111827;
+    --customer-config-soft: #0f172a;
+    --customer-config-border: #334155;
+    --customer-config-text:#E5E7EB;
+    --customer-config-muted: #a1adbd;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .customer-approval-breadcrumb a {
+    color: #f0c66b;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .customer-approval-breadcrumb a:hover,
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .customer-approval-breadcrumb a:focus-visible {
+    color: #ffdc8d;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .customer-status-panel strong.is-pending {
+    color: #fcd34d;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card-heading > span {
+    border: 1px solid #665321;
+    background: #302814;
+    color: #f0c66b;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-control,
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-select {
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-control::placeholder {
+    color: #94a3b8;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-control:disabled,
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-select:disabled,
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-control[readonly] {
+    background: #1e293b;
+    color: #a1adbd;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .input-group-text {
+    background: #1e293b;
+    color: #cbd5e1;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-check-input {
+    border-color: #94a3b8;
+    background-color: #0f172a;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-check-input:checked {
+    border-color: #f0c66b;
+    background-color: #d2a94c;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-check-input:focus {
+    outline-color: rgb(240 198 107 / 35%);
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-check-label {
+    color: #e5e7eb;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-control:focus,
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-card .form-select:focus {
+    border-color: #d2a94c;
+    outline-color: rgb(240 198 107 / 32%);
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .customer-approval-summary li i {
+    color: #4ade80;
+}
+
+html[data-theme="dark"] body.admin-authenticated .customer-approval-page .registration-actions .btn-outline-dark:hover {
+    border-color: #d2a94c;
+    color: #fff;
+}
+
+@media (max-width: 991.98px) {
+    .admin-authenticated .customer-approval-page .customer-approval-hero {
+        align-items: flex-start;
+    }
+
+    .admin-authenticated .customer-approval-page .customer-payment-indicators {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-authenticated .customer-approval-page .customer-payment-controls {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .admin-authenticated .customer-approval-page {
+        padding-bottom: 1.25rem;
+    }
+
+    .admin-authenticated .customer-approval-page .customer-approval-hero {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .admin-authenticated .customer-approval-page .customer-status-panel {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .admin-authenticated .customer-approval-page .customer-approval-form {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .75rem;
+    }
+
+    .admin-authenticated .customer-approval-page .registration-card,
+    .admin-authenticated .customer-approval-page .customer-approval-aside,
+    .admin-authenticated .customer-approval-page .registration-actions {
+        grid-column: 1;
+    }
+
+    .admin-authenticated .customer-approval-page .registration-card {
+        padding: 1rem;
+    }
+
+    .admin-authenticated .customer-approval-page .registration-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .admin-authenticated .customer-approval-page .registration-actions .btn {
+        width: 100%;
+    }
+
+    .admin-authenticated .customer-approval-page .customer-approval-summary ul {
+        flex-direction: column;
+        gap: .4rem;
+    }
+
+    .admin-authenticated .customer-approval-page .customer-payment-terms-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-authenticated .customer-approval-page .customer-payment-indicators {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

@@ -41,6 +41,16 @@
     <link rel="stylesheet" href="~/css/admin-products-mobile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-products-light.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-registrations.css" asp-append-version="true" />
+    @if (ViewContext.RouteData.Values["controller"]?.ToString() == "AdminPortalAccess")
+    {
+        <link rel="stylesheet" href="~/css/admin-portal-access.css" asp-append-version="true" />
+    }
+    @if (ViewContext.RouteData.Values["area"]?.ToString() == "Admin" &&
+         ViewContext.RouteData.Values["controller"]?.ToString() == "Customers" &&
+         ViewContext.RouteData.Values["action"]?.ToString() == "Edit")
+    {
+        <link rel="stylesheet" href="~/css/admin-customer-config.css" asp-append-version="true" />
+    }
     @if (ViewContext.RouteData.Values["area"]?.ToString() == "Admin" &&
          ViewContext.RouteData.Values["controller"]?.ToString() == "Customers" &&
          ViewContext.RouteData.Values["action"]?.ToString() == "Details")
@@ -54,7 +64,6 @@
         <link rel="stylesheet" href="~/css/admin-customer-new-order.css" asp-append-version="true" />
     }
     @await RenderSectionAsync("Head", required: false)
-    <link rel="stylesheet" href="~/css/primary-action-buttons.css" asp-append-version="true" />
 }
 
 @section Scripts {

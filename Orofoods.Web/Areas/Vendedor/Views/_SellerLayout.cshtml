@@ -1,0 +1,97 @@
+@inject Orofoods.Web.Services.Identity.SalesRepresentativeAccessService RepresentativeAccessService
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["LayoutBodyHasMain"] = true;
+
+    var bodyClasses = (ViewData["BodyClass"]?.ToString() ?? string.Empty)
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .ToList();
+    if (!bodyClasses.Contains("seller-area-page", StringComparer.Ordinal))
+    {
+        bodyClasses.Add("seller-area-page");
+    }
+    if (!bodyClasses.Contains("seller-app-page", StringComparer.Ordinal))
+    {
+        bodyClasses.Add("seller-app-page");
+    }
+    ViewData["BodyClass"] = string.Join(" ", bodyClasses);
+
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var activeSection = currentController switch
+    {
+        "Dashboard" => "dashboard",
+        "Customers" => "customers",
+        "OrderDrafts" => "drafts",
+        _ => string.Empty
+    };
+    var isAdministrator = User.IsInRole("Administrador");
+    var selectedRepresentative = isAdministrator
+        ? await RepresentativeAccessService.GetActiveRepresentativeAsync(User)
+        : null;
+}
+
+@section Head {
+    @await RenderSectionAsync("Head", required: false)
+}
+
+<a class="seller-app-skip-link" href="#sellerMain">Pular para o conteúdo principal</a>
+<div class="seller-app-shell">
+    <aside id="sellerSidebar" class="seller-app-sidebar offcanvas-md offcanvas-start" tabindex="-1" aria-labelledby="sellerSidebarTitle">
+        <div class="offcanvas-header seller-app-sidebar-mobile-header">
+            <h2 id="sellerSidebarTitle" class="seller-app-sidebar-title">Portal do Vendedor</h2>
+            <button class="seller-app-close" type="button" data-bs-dismiss="offcanvas" aria-label="Fechar menu do vendedor">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="offcanvas-body seller-app-sidebar-body">
+            <a class="seller-app-brand" asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index" aria-label="Orofoods, painel do vendedor">
+                <img src="~/images/logo-orofoods-transparent.png" asp-append-version="true" alt="Orofoods" />
+                <span><small>PORTAL</small><strong>DO VENDEDOR</strong></span>
+            </a>
+            <p class="seller-app-sidebar-caption">OPERAÇÃO COMERCIAL</p>
+            <nav class="seller-app-nav" aria-label="Navegação do vendedor">
+                <a class="@(activeSection == "dashboard" ? "active" : null)" aria-current="@(activeSection == "dashboard" ? "page" : null)" asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index">
+                    <i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span>Painel</span>
+                </a>
+                <a class="@(activeSection == "customers" ? "active" : null)" aria-current="@(activeSection == "customers" ? "page" : null)" asp-area="Vendedor" asp-controller="Customers" asp-action="Index">
+                    <i class="fa-solid fa-building" aria-hidden="true"></i><span>Minha carteira</span>
+                </a>
+                <a class="@(activeSection == "drafts" ? "active" : null)" aria-current="@(activeSection == "drafts" ? "page" : null)" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">
+                    <i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>Meus rascunhos</span>
+                </a>
+            </nav>
+            @if (isAdministrator)
+            {
+                <div class="seller-app-admin-group">
+                    <div class="seller-app-admin-context">
+                        <span>Acesso administrativo</span>
+                        <strong>@(selectedRepresentative?.Name ?? "Vendedor não selecionado")</strong>
+                    </div>
+                    <p class="seller-app-sidebar-caption">ADMINISTRAÇÃO</p>
+                    <nav class="seller-app-nav seller-app-admin-nav" aria-label="Acesso administrativo">
+                        <a href="/Admin/Dashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span>Painel Administrativo</span></a>
+                        <a href="/Admin/Portais"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Central de Acesso</span></a>
+                        <a href="/Admin/Portais/SelecionarVendedor"><i class="fa-solid fa-users-gear" aria-hidden="true"></i><span>Trocar vendedor</span></a>
+                        <a href="/Portal/SelectCustomer"><i class="fa-solid fa-building-user" aria-hidden="true"></i><span>Portal do Cliente</span></a>
+                    </nav>
+                </div>
+            }
+        </div>
+    </aside>
+
+    <div class="seller-app-content">
+        <div class="seller-app-mobile-toolbar">
+            <button class="seller-app-menu-trigger" type="button" data-bs-toggle="offcanvas" data-bs-target="#sellerSidebar" aria-controls="sellerSidebar" aria-label="Abrir menu do vendedor">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i><span>Menu</span>
+            </button>
+            <span class="seller-app-mobile-title">Portal do Vendedor</span>
+        </div>
+        <main id="sellerMain" class="seller-app-main" tabindex="-1">
+            @RenderBody()
+        </main>
+    </div>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

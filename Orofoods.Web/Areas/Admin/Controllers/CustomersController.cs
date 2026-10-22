@@ -65,7 +65,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
     public async Task<IActionResult> Edit(int id)
     {
         var customer = await db.Customers
-            .Include(x => x.CustomerPaymentTerms)
             .SingleAsync(x => x.Id == id);
 
         return View(await BuildViewModelAsync(customer));
@@ -80,8 +79,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             .Include(x => x.SalesRepresentative)
             .Include(x => x.InternalSalesUser)
             .Include(x => x.Addresses)
-            .Include(x => x.CustomerPaymentTerms)
-            .ThenInclude(x => x.PaymentTerm)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (customer is null)
         {
@@ -207,6 +204,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
                 .ToListAsync();
 
         var completedOrders = orders.Where(order => order.Status != OrderStatus.Cancelled).ToList();
+        var paymentEligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id);
         var timeline = activities.Select(activity => new CustomerTimelineItemViewModel(
                 activity.CompletedAt ?? activity.ScheduledAt,
                 activity.Title,
@@ -241,6 +239,8 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             ,Attention = (await attentionService.GetAsync(User, DateTime.Now)).Customers.SingleOrDefault(x => x.CustomerId == id)
             ,Opportunities = opportunities
             ,WhatsAppConversationId = conversationId
+            ,WmcPaymentCondition = paymentEligibility.WmcPaymentCondition
+            ,WmcPaymentConditionEligible = paymentEligibility.InvoiceCreditEnabled
         });
     }
 
@@ -254,7 +254,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             .SingleOrDefaultAsync(x => x.Id == id && x.IsActive && x.Status == CustomerStatus.Approved);
         if (customer is null) return Forbid();
 
-        var productsQuery = db.Products.AsNoTracking().Where(x => x.IsActive && x.IsAvailable);
+        var productsQuery = db.Products.AsNoTracking().Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(q)) productsQuery = productsQuery.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || x.Brand.Contains(q));
         var products = await productsQuery.OrderBy(x => x.Name).Take(30).ToListAsync();
         var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id);
@@ -265,9 +265,11 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             CustomerName = customer.TradeName,
             SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Não atribuído",
             Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-            PaymentTerms = eligibility.PaymentMethods,
             PaymentEligibility = eligibility,
-            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.PromotionalPrice ?? x.BasePrice), x.MinimumCases, true)).ToList(),
+            MinimumOrder = OrderMinimumPolicy.Resolve(
+                await db.OrderMinimumSettings.AsNoTracking().Select(x => (decimal?)x.MinimumAmount).SingleOrDefaultAsync(),
+                customer.MinimumOrder),
+            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.PromotionalPrice ?? x.BasePrice), x.MinimumSalesQuantity, true, x.PriceUnitLabel)).ToList(),
             Query = q
         });
     }
@@ -353,38 +355,51 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             var customer = await db.Customers.Include(x => x.CustomerPaymentTerms).SingleAsync(x => x.Id == input.Id);
             var viewModel = await BuildViewModelAsync(customer);
             viewModel.Status = input.Status;
+            viewModel.Cnpj = input.Cnpj;
+            viewModel.CnpjChangeReason = input.CnpjChangeReason;
             viewModel.MinimumOrder = input.MinimumOrder;
             viewModel.CreditLimit = input.CreditLimit;
-            viewModel.CreditOverrideEnabled = input.CreditOverrideEnabled;
-            viewModel.MaximumPaymentTermDays = input.MaximumPaymentTermDays;
-            viewModel.CreditBlocked = input.CreditBlocked;
-            viewModel.CreditNotes = input.CreditNotes;
             viewModel.WmcCode = input.WmcCode;
             viewModel.PriceTableId = input.PriceTableId;
             viewModel.SalesRepresentativeId = input.SalesRepresentativeId;
             viewModel.InternalSalesUserId = input.InternalSalesUserId;
-            viewModel.PaymentTermIds = input.PaymentTermIds;
             return View(viewModel);
         }
 
-        await customerApprovalService.ApplyAsync(new CustomerApprovalRequest
+        var approvalResult = await customerApprovalService.ApplyAsync(new CustomerApprovalRequest
         {
             CustomerId = input.Id,
+            Cnpj = input.Cnpj,
+            CnpjChangeReason = input.CnpjChangeReason,
+            ChangedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            ChangedByEmail = User.FindFirstValue(ClaimTypes.Email),
             Status = input.Status,
             MinimumOrder = input.MinimumOrder,
             CreditLimit = input.CreditLimit,
-            CreditOverrideEnabled = input.CreditOverrideEnabled,
-            MaximumPaymentTermDays = input.MaximumPaymentTermDays,
-            CreditBlocked = input.CreditBlocked,
-            CreditNotes = input.CreditNotes,
             WmcCode = input.WmcCode,
             PriceTableId = input.PriceTableId,
             SalesRepresentativeId = input.SalesRepresentativeId,
             InternalSalesUserId = input.InternalSalesUserId,
-            PaymentTermIds = input.PaymentTermIds
         });
 
-        TempData["CustomerApprovalSuccess"] = input.Status == CustomerStatus.Approved
+        if (!approvalResult.Succeeded)
+        {
+            ModelState.AddModelError(approvalResult.ErrorField ?? nameof(input.Cnpj), approvalResult.ErrorMessage ?? "Não foi possível salvar o CNPJ.");
+            var customer = await db.Customers.Include(x => x.CustomerPaymentTerms).SingleAsync(x => x.Id == input.Id);
+            var viewModel = await BuildViewModelAsync(customer);
+            viewModel.Status = input.Status;
+            viewModel.Cnpj = input.Cnpj;
+            viewModel.CnpjChangeReason = input.CnpjChangeReason;
+            viewModel.MinimumOrder = input.MinimumOrder;
+            viewModel.CreditLimit = input.CreditLimit;
+            viewModel.WmcCode = input.WmcCode;
+            viewModel.PriceTableId = input.PriceTableId;
+            viewModel.SalesRepresentativeId = input.SalesRepresentativeId;
+            viewModel.InternalSalesUserId = input.InternalSalesUserId;
+            return View(viewModel);
+        }
+
+        TempData["CustomerApprovalSuccess"] = approve
             ? "Cliente aprovado e acesso comercial liberado com sucesso."
             : "Configurações comerciais salvas com sucesso.";
         return RedirectToAction(nameof(Index));
@@ -393,6 +408,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
     private async Task<AdminCustomerApprovalViewModel> BuildViewModelAsync(Customer customer)
     {
         var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id);
+        var wmcCondition = eligibility.WmcPaymentCondition;
         return new AdminCustomerApprovalViewModel
         {
             Id = customer.Id,
@@ -402,19 +418,25 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             Status = customer.Status,
             MinimumOrder = customer.MinimumOrder,
             CreditLimit = customer.CreditLimit,
-            ValidPurchaseCount = eligibility.ValidPurchases,
-            InvoiceCreditEnabled = eligibility.InvoiceCreditEnabled,
-            EffectiveMaximumPaymentTermDays = eligibility.MaximumTermDays,
-            EffectiveCreditReleaseDate = customer.CreditReleaseDate,
-            CreditOverrideEnabled = customer.CreditOverrideEnabled,
-            MaximumPaymentTermDays = customer.MaximumPaymentTermDays,
-            CreditBlocked = customer.CreditBlocked,
-            CreditNotes = customer.CreditNotes,
+            WmcPaymentConditionDescription = wmcCondition is { } condition
+                ? $"{condition.Description ?? "Descrição não informada"} ({condition.FirstInstallmentDays?.ToString() ?? "?"} dias)"
+                : "Nenhuma condição encontrada no espelho WMC.",
+            WmcPaymentConditionStatus = eligibility.InvoiceCreditEnabled
+                ? "Encontrada no WMC e elegível para prazo."
+                : wmcCondition is null
+                    ? "Nenhuma condição encontrada no espelho WMC; prazo não liberado."
+                    : "Encontrada no WMC, mas não elegível para liberação de prazo.",
+            WmcPaymentConditionEligible = eligibility.InvoiceCreditEnabled,
+            WmcPaymentConditionCode = wmcCondition?.ConditionCode,
+            WmcPaymentConditionSituation = wmcCondition?.Situation,
+            WmcPaymentConditionInstallmentCount = wmcCondition?.InstallmentCount,
+            WmcPaymentConditionSource = wmcCondition?.Source,
+            WmcPaymentConditionReadAtUtc = wmcCondition?.ReadAtUtc,
+            WmcPaymentConditionSynchronizationAtUtc = wmcCondition?.SynchronizationAtUtc,
             WmcCode = customer.WmcCode,
             PriceTableId = customer.PriceTableId,
             SalesRepresentativeId = customer.SalesRepresentativeId,
             InternalSalesUserId = customer.InternalSalesUserId,
-            PaymentTermIds = customer.CustomerPaymentTerms.Select(x => x.PaymentTermId).ToList(),
             PriceTables = await db.PriceTables
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.Name)
@@ -430,11 +452,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
                 .OrderBy(x => x.Email)
                 .Select(x => new SelectListItem(x.Email ?? x.UserName!, x.Id, x.Id == customer.InternalSalesUserId))
                 .ToListAsync(),
-            PaymentTerms = await db.PaymentTerms
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.SortOrder)
-                .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-                .ToListAsync()
         };
     }
 }

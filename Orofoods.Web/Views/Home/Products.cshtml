@@ -1,4 +1,72 @@
 @model Orofoods.Web.ViewModels.PublicProductCatalogViewModel
-@{ ViewData["Title"] = "Produtos"; }
-<section class="page-hero institutional-hero public-page-hero public-products-hero"><div class="container"><div class="eyebrow light"><span></span> Sele&ccedil;&atilde;o Orofoods</div><h1>Produtos para sua opera&ccedil;&atilde;o.</h1><p>Conhe&ccedil;a nossa linha para hamburguerias, lanchonetes e food service.</p></div></section>
-<section class="section products-section public-products-section"><div class="container"><form method="get" class="catalog-tools"><input name="search" value="@Model.Search" placeholder="Buscar por nome, SKU ou marca"/><select name="category"><option value="">Todas as categorias</option>@foreach(var category in Model.Categories){<option value="@category.Slug" selected="@(Model.Category == category.Slug)">@category.Name</option>}</select><button class="btn btn-gold" type="submit">Buscar</button></form>@if (!Model.Products.Any()){<div class="empty-state"><h2>Nenhum produto encontrado.</h2><p>Tente ajustar sua busca ou categoria.</p></div>}else{<div class="product-grid">@foreach(var product in Model.Products){var image = product.Images.OrderByDescending(item => item.IsPrimary).ThenBy(item => item.SortOrder).FirstOrDefault();<article class="product-card public-product-card"><div class="product-visual" style="--accent:@product.Accent">@if(image is not null){<img src="@Url.RouteUrl("ProductMedia", new { imageId = image.Id })" alt="@image.AltText"/>}else{<span>&bull;</span>}<small>@product.Category</small></div><div class="p-4 public-product-card-body"><small>@product.Sku &middot; @product.UnitDescription</small><h3>@product.Name</h3><p>@product.Description</p><a asp-action="Product" asp-route-id="@product.Id">Conhecer produto &rarr;</a></div></article>}</div>}</div></section>
+@{
+    ViewData["Title"] = "Produtos";
+    ViewData["BodyClass"] = "catalog-modern-page";
+    var isSeller = User.IsInRole("Vendedor");
+    var isCustomer = ViewBag.CustomerPurchaseAuthorized as bool? == true && !isSeller;
+    var customerId = ViewBag.CustomerId as int?;
+    ViewData["LoginReturnUrl"] = Url.Action("Products", "Home", new { search = Model.Search, category = Model.Category, customerId });
+}
+
+<section class="page-hero institutional-hero public-page-hero public-products-hero" aria-labelledby="public-products-title">
+    <div class="container">
+        <div class="public-products-hero-copy">
+            <p class="public-products-eyebrow">CATÁLOGO OROFOODS</p>
+            <h1 id="public-products-title">Produtos para sua opera&ccedil;&atilde;o.</h1>
+            <p>P&atilde;es de alta qualidade para hamburguerias e food service.</p>
+        </div>
+    </div>
+</section>
+
+<section class="section products-section public-products-section">
+    <div class="container">
+        <form method="get" class="catalog-tools public-products-tools">
+            <label class="public-products-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input name="search" value="@Model.Search" placeholder="Buscar por nome, SKU, WMC ou EAN" aria-label="Buscar por nome, SKU, WMC ou EAN" />
+            </label>
+            <select name="category" aria-label="Categoria">
+                <option value="">Todas as categorias</option>
+                @foreach (var category in Model.Categories)
+                {
+                    <option value="@category.Slug" selected="@(Model.Category == category.Slug)">@category.Name</option>
+                }
+            </select>
+            @if (isSeller && customerId is > 0) { <input type="hidden" name="customerId" value="@customerId" /> }
+            <button class="btn btn-gold" type="submit">Buscar</button>
+        </form>
+
+        <div class="public-catalog-quick-filters" role="group" aria-label="Filtros r&aacute;pidos por tipo de produto">
+            <button type="button" class="is-active" data-catalog-filter="all" aria-pressed="true">Todos</button>
+            <button type="button" data-catalog-filter="brioche" aria-pressed="false">Brioche</button>
+            <button type="button" data-catalog-filter="gergelim" aria-pressed="false">Gergelim</button>
+            <button type="button" data-catalog-filter="australiano" aria-pressed="false">Australiano</button>
+            <button type="button" data-catalog-filter="tradicional" aria-pressed="false">Tradicional</button>
+        </div>
+
+        @if (!Model.Products.Any())
+        {
+            <div class="empty-state"><h2>Nenhum produto encontrado.</h2><p>Tente ajustar sua busca ou categoria.</p></div>
+        }
+        else
+        {
+            <div class="product-grid public-quick-buy-grid">
+                @foreach (var product in Model.Products)
+                {
+                    <partial name="_PublicProductCard" model="product" />
+                }
+            </div>
+        }
+        <div class="public-catalog-filter-empty" data-catalog-filter-empty hidden role="status">Nenhum produto desta categoria r&aacute;pida est&aacute; nos resultados atuais.</div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/product-image-fallback.js" asp-append-version="true"></script>
+    <script src="~/js/public-catalog-filters.js" asp-append-version="true"></script>
+    @if (isCustomer) { <script src="~/js/catalog.js" asp-append-version="true"></script> }
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/catalog.css" asp-append-version="true" />
+}

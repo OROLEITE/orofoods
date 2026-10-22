@@ -10,8 +10,13 @@ public class Order
     public int Id { get; set; }
     [MaxLength(30)] public string Number { get; set; } = "";
     public int CustomerId { get; set; }
+    [MaxLength(18)] public string? CustomerCnpjSnapshot { get; set; }
     [MaxLength(128)] public string? CheckoutAttemptKey { get; set; }
+    public int? SellerOrderDraftId { get; set; }
+    public SellerOrderDraft? SellerOrderDraft { get; set; }
     public Customer? Customer { get; set; }
+    public int? SalesRepresentativeId { get; set; }
+    public SalesRepresentative? SalesRepresentative { get; set; }
     [MaxLength(450)] public string CreatedByUserId { get; set; } = "";
     public ApplicationUser? CreatedByUser { get; set; }
     public int? DeliveryAddressId { get; set; }
@@ -40,4 +45,6 @@ public class Order
     public List<OrderStatusHistory> StatusHistory { get; set; } = [];
     public List<Payment> Payments { get; set; } = [];
     public List<WmcExportAudit> WmcExportAudits { get; set; } = [];
+    public WmcOrderExportState? WmcOrderExportState { get; set; }
+    public List<WmcManualExportArtifact> WmcManualExportArtifacts { get; set; } = [];
 }

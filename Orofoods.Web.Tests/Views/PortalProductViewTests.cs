@@ -20,7 +20,7 @@ public class PortalProductViewTests
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Catalog.cshtml"));
 
         Assert.Contains("asp-action=\"AddToCart\"", markup);
-        Assert.Contains("Adicionar ao carrinho", markup);
+        Assert.Contains(">Comprar</span>", markup);
         Assert.Contains("IsCommerciallyAvailable", markup);
         Assert.DoesNotContain("Favoritar", markup);
     }

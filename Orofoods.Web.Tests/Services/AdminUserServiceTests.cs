@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
@@ -10,6 +12,24 @@ namespace Orofoods.Web.Tests.Services;
 
 public class AdminUserServiceTests
 {
+    [Fact]
+    public async Task Create_seller_user_links_the_active_sales_representative()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var seller = await fixture.AddSellerAsync("Vendedor ativo");
+        Assert.True(seller.IsActive);
+
+        var result = await fixture.Sut.CreateAsync(new CreateAdminUserInput(
+            "Vendedor ativo", "vendedor@test.local", "Valid!Pass123", ApplicationRoles.Seller, true, null, seller.Id));
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors.Select(x => x.Description)));
+        var created = await fixture.UserManager.FindByEmailAsync("vendedor@test.local");
+        Assert.NotNull(created);
+        Assert.True(created!.IsActive);
+        Assert.Equal(seller.Id, created.SalesRepresentativeId);
+        Assert.True(await fixture.UserManager.IsInRoleAsync(created, ApplicationRoles.Seller));
+    }
+
     [Fact]
     public async Task Create_uses_Identity_and_assigns_existing_role_and_links()
     {
@@ -123,6 +143,11 @@ public class AdminUserServiceTests
         Assert.NotEqual(originalStamp, updated.SecurityStamp);
         Assert.True(await fixture.UserManager.IsInRoleAsync(updated, "Vendedor"));
         Assert.False(await fixture.UserManager.IsInRoleAsync(updated, "Operador"));
+        var audit = await fixture.Db.AdminUserChangeAudits.SingleAsync();
+        Assert.Equal("Updated", audit.Action);
+        Assert.Contains("perfil", audit.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("cliente vinculado", audit.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("vendedor vinculado", audit.Summary, StringComparison.OrdinalIgnoreCase);
 
         var unlinkResult = await fixture.Sut.UpdateAsync(new UpdateAdminUserInput(
             updated.Id, updated.UserName!, updated.Email!, "Vendedor", true, null, null, updated.ConcurrencyStamp!));
@@ -242,7 +267,14 @@ public class AdminUserServiceTests
             Db = db;
             UserManager = userManager;
             RoleManager = roleManager;
-            Sut = new AdminUserService(db, userManager, roleManager);
+            Sut = new AdminUserService(db, userManager, roleManager, new TestHttpContextAccessor
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, "admin-actor")], "tests"))
+                }
+            });
         }
 
         public ApplicationDbContext Db { get; }
@@ -287,5 +319,10 @@ public class AdminUserServiceTests
         }
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();
+    }
+
+    private sealed class TestHttpContextAccessor : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; }
     }
 }

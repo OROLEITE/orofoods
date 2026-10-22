@@ -1,9 +1,14 @@
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
+using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Pricing;
+using Orofoods.Web.Services.Integrations;
+using Orofoods.Web.Tests.Infrastructure;
 
 namespace Orofoods.Web.Tests.Integrations;
 
@@ -25,7 +30,12 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000777",
-            Customer = new Customer { WmcCode = "107072" },
+            CustomerCnpjSnapshot = "03932292000199",
+            CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            Total = 100m,
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
+            Status = OrderStatus.Approved,
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             Items =
             [
                 new OrderItem
@@ -38,8 +48,11 @@ public class WmcFileDropErpOrderIntegrationTests
                 }
             ]
         };
+        await using var db = await TestDbContextFactory.CreateAsync();
+        await PersistOrderAsync(db, order);
+        Assert.True(order.Id > 0 && await db.Orders.AnyAsync(existing => existing.Id == order.Id), $"Order id after test seed: {order.Id}");
 
-        var result = await new WmcFileDropErpOrderIntegration(options, new WmcOrderFileGenerator()).SendOrderAsync(order);
+        var result = await CreateAdapter(options, db).SendOrderAsync(order);
 
         Assert.True(result.Succeeded);
         Assert.NotNull(result.ExternalOrderId);
@@ -47,12 +60,38 @@ public class WmcFileDropErpOrderIntegrationTests
     }
 
     [Fact]
+    public async Task Automatic_credit_export_revalidates_current_wmc_term_before_writing_txt()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}");
+        var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = directory });
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = ApprovedOrder("ORO-2026-000790");
+        order.Customer!.WmcCode = "107072";
+        order.PaymentTerm = new PaymentTerm { Code = "BOLETO_14D", Name = "14 dias", DaysUntilDue = 14 };
+        await PersistOrderAsync(db, order);
+
+        var accepted = await CreateAdapter(options, db, new WmcCustomerPaymentCondition(
+            "107072", "3", "3", "14 DIAS", 1, 14, 0, "A", "WMC Firebird mirror", DateTimeOffset.UtcNow))
+            .SendOrderAsync(order);
+        Assert.True(accepted.Succeeded);
+        Assert.True(File.Exists(Path.Combine(directory, accepted.ExternalOrderId!)));
+
+        var changed = await CreateAdapter(options, db, new WmcCustomerPaymentCondition(
+            "107072", "2", "2", "7 DIAS", 1, 7, 0, "A", "WMC Firebird mirror", DateTimeOffset.UtcNow))
+            .SendOrderAsync(order);
+        Assert.False(changed.Succeeded);
+        Assert.Contains("Prazo bloqueado", changed.Error);
+    }
+
+    [Fact]
     public async Task Does_not_write_files_when_the_adapter_is_disabled()
     {
         var options = Options.Create(new WmcFileDropOptions { Enabled = false });
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = ApprovedOrder("ORO-2026-000781");
+        await PersistOrderAsync(db, order);
 
-        var result = await new WmcFileDropErpOrderIntegration(options, new WmcOrderFileGenerator())
-            .SendOrderAsync(new Order());
+        var result = await CreateAdapter(options, db).SendOrderAsync(order);
 
         Assert.False(result.Succeeded);
         Assert.Contains("desativada", result.Error!, StringComparison.OrdinalIgnoreCase);
@@ -66,38 +105,137 @@ public class WmcFileDropErpOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000778",
-            Customer = new Customer { WmcCode = "107072" },
+            CustomerCnpjSnapshot = "03932292000199",
+            CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            Total = 50m,
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
+            Status = OrderStatus.Approved,
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
         };
-        var sut = new WmcFileDropErpOrderIntegration(options, new WmcOrderFileGenerator());
+        await using var db = await TestDbContextFactory.CreateAsync();
+        await PersistOrderAsync(db, order);
+        var sut = CreateAdapter(options, db);
 
         var first = await sut.SendOrderAsync(order);
         var path = Path.Combine(directory, first.ExternalOrderId!);
-        await File.WriteAllTextAsync(path, "arquivo-original");
+        var originalContent = await File.ReadAllTextAsync(path);
         var second = await sut.SendOrderAsync(order);
 
         Assert.True(second.Succeeded);
         Assert.Equal(first.ExternalOrderId, second.ExternalOrderId);
-        Assert.Equal("arquivo-original", await File.ReadAllTextAsync(path));
+        Assert.Equal(originalContent, await File.ReadAllTextAsync(path));
     }
 
     [Fact]
-    public async Task Card_on_delivery_is_blocked_before_file_write_with_explicit_mapping_marker()
+    public async Task Existing_file_with_content_that_does_not_match_the_order_is_not_reported_as_success()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}");
+        var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = directory });
+        var order = new Order
+        {
+            Number = "ORO-2026-000780",
+            CustomerCnpjSnapshot = "03932292000199",
+            CreatedAt = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
+            Total = 50m,
+            Status = OrderStatus.Approved,
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0 },
+            Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
+        };
+        await using var db = await TestDbContextFactory.CreateAsync();
+        await PersistOrderAsync(db, order);
+        var sut = CreateAdapter(options, db);
+        var first = await sut.SendOrderAsync(order);
+        var path = Path.Combine(directory, first.ExternalOrderId!);
+        await File.WriteAllTextAsync(path, "arquivo de outro conteúdo/pedido");
+
+        var retry = await sut.SendOrderAsync(order);
+
+        Assert.False(retry.Succeeded);
+        Assert.Contains("conteúdo", retry.Error!, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("arquivo de outro conteúdo/pedido", await File.ReadAllTextAsync(path));
+    }
+
+    [Theory]
+    [InlineData("CREDIT_CARD")]
+    [InlineData("CARD_ON_DELIVERY")]
+    public async Task Card_modes_are_exported_automatically_as_due_today_without_changing_the_payment_term(string code)
     {
         var directory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}");
         var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = directory });
         var order = new Order
         {
             Number = "ORO-2026-000779",
-            Customer = new Customer { WmcCode = "107072" },
+            CreatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc),
+            CustomerCnpjSnapshot = "03932292000199",
+            Status = OrderStatus.Approved,
+            Customer = new Customer { WmcCode = "107072", Cnpj = "03.932.292/0001-99" },
             PaymentTerm = new PaymentTerm { Code = "CARD_ON_DELIVERY", Name = "Cartão na entrega" },
             Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
         };
+        order.PaymentTerm!.Code = code;
+        order.PaymentTerm.DaysUntilDue = 14;
+        await using var db = await TestDbContextFactory.CreateAsync();
+        await PersistOrderAsync(db, order);
 
-        var result = await new WmcFileDropErpOrderIntegration(options, new WmcOrderFileGenerator()).SendOrderAsync(order);
+        var result = await CreateAdapter(options, db).SendOrderAsync(order);
+
+        Assert.True(result.Succeeded, result.Error);
+        var content = await File.ReadAllTextAsync(Path.Combine(directory, result.ExternalOrderId!));
+        Assert.Contains("000", content.Split(Environment.NewLine)[1]);
+        Assert.Contains("20260830", content.Split(Environment.NewLine)[1]);
+        Assert.Equal(14, order.PaymentTerm.DaysUntilDue);
+        Assert.Contains(db.WmcExportAudits, audit => audit.Outcome == WmcExportOutcome.Available && audit.Succeeded);
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.UnderReview)]
+    [InlineData(OrderStatus.Cancelled)]
+    public async Task Does_not_export_or_audit_an_unapproved_order(OrderStatus status)
+    {
+        var options = Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-{Guid.NewGuid():N}") });
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = ApprovedOrder("ORO-2026-000782");
+        order.Status = status;
+        await PersistOrderAsync(db, order);
+
+        var result = await CreateAdapter(options, db).SendOrderAsync(order);
 
         Assert.False(result.Succeeded);
-        Assert.Contains("WMC_CARD_ON_DELIVERY_MAPPING_PENDING", result.Error);
-        Assert.False(Directory.Exists(directory));
+        Assert.Empty(db.WmcExportAudits);
+        Assert.False(Directory.Exists(options.Value.OutputDirectory));
     }
+
+    private static Order ApprovedOrder(string number) => new()
+    {
+        Number = number,
+        CustomerCnpjSnapshot = "03932292000199",
+        Status = OrderStatus.Approved,
+        Customer = new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "03.932.292/0001-99", WmcCode = "107072" },
+        Items = [new OrderItem { Product = new Product { WmcCode = "610601552", Unit = "caixa" }, ProductNameSnapshot = "Pao", Quantity = 1, UnitPrice = 50m, Subtotal = 50m }]
+    };
+
+    private static async Task PersistOrderAsync(ApplicationDbContext db, Order order)
+    {
+        order.Customer ??= new Customer { LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "03.932.292/0001-99", WmcCode = "107072" };
+        order.CreatedByUser = TestDbContextFactory.CreateOrderCreator($"wmc-{Guid.NewGuid():N}");
+        var items = order.Items.ToList();
+        order.Items.Clear();
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+        db.Entry(order).State = EntityState.Detached;
+        foreach (var item in items)
+        {
+            order.Items.Add(item);
+        }
+    }
+
+    private static WmcFileDropErpOrderIntegration CreateAdapter(
+        IOptions<WmcFileDropOptions> options,
+        ApplicationDbContext db,
+        WmcCustomerPaymentCondition? condition = null,
+        bool failRead = false) =>
+        new(options, WmcTestOrderFileGenerator.Create(), new WmcExportAuditService(db),
+            WmcTestPaymentEligibility.Create(db, condition, failRead));
 }

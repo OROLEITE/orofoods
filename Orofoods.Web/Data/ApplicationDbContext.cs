@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Delivery;
@@ -26,6 +27,9 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<PriceTableItem> PriceTableItems => Set<PriceTableItem>();
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<CustomerPaymentTerm> CustomerPaymentTerms => Set<CustomerPaymentTerm>();
+    public DbSet<CustomerCnpjAudit> CustomerCnpjAudits => Set<CustomerCnpjAudit>();
+    public DbSet<AdminPortalAccessAudit> AdminPortalAccessAudits => Set<AdminPortalAccessAudit>();
+    public DbSet<AdminUserChangeAudit> AdminUserChangeAudits => Set<AdminUserChangeAudit>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PointPaymentAuditEvent> PointPaymentAuditEvents => Set<PointPaymentAuditEvent>();
@@ -37,21 +41,60 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<WmcExportAudit> WmcExportAudits => Set<WmcExportAudit>();
+    public DbSet<WmcOrderExportState> WmcOrderExportStates => Set<WmcOrderExportState>();
+    public DbSet<WmcManualExportArtifact> WmcManualExportArtifacts => Set<WmcManualExportArtifact>();
     public DbSet<WmcSyncRun> WmcSyncRuns => Set<WmcSyncRun>();
-    public DbSet<WmcProductImportAudit> WmcProductImportAudits => Set<WmcProductImportAudit>();
-    public DbSet<WmcProductUnit> WmcProductUnits => Set<WmcProductUnit>();
+    public DbSet<WmcInitialLoadReleaseAudit> WmcInitialLoadReleaseAudits => Set<WmcInitialLoadReleaseAudit>();
+    public DbSet<WmcProductImportRun> WmcProductImportRuns => Set<WmcProductImportRun>();
     public DbSet<SavedOrder> SavedOrders => Set<SavedOrder>();
     public DbSet<SavedOrderItem> SavedOrderItems => Set<SavedOrderItem>();
+    public DbSet<SellerOrderDraft> SellerOrderDrafts => Set<SellerOrderDraft>();
+    public DbSet<SellerOrderDraftItem> SellerOrderDraftItems => Set<SellerOrderDraftItem>();
     public DbSet<CommercialActivity> CommercialActivities => Set<CommercialActivity>();
     public DbSet<CrmOpportunity> CrmOpportunities => Set<CrmOpportunity>();
     public DbSet<CrmOpportunityHistory> CrmOpportunityHistories => Set<CrmOpportunityHistory>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<WhatsAppConversation> WhatsAppConversations => Set<WhatsAppConversation>();
     public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
+    public DbSet<OrderMinimumSettings> OrderMinimumSettings => Set<OrderMinimumSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<AdminPortalAccessAudit>(entity =>
+        {
+            entity.Property(x => x.AccessType).HasConversion<string>().HasMaxLength(32);
+            entity.Property(x => x.AdministratorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.AdministratorEmail).HasMaxLength(256);
+            entity.Property(x => x.TargetName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.IpAddress).HasMaxLength(45);
+            entity.Property(x => x.UserAgent).HasMaxLength(512);
+            entity.HasIndex(x => new { x.AdministratorUserId, x.SelectedAt });
+            entity.HasIndex(x => new { x.AccessType, x.TargetId, x.SelectedAt });
+        });
+
+        builder.Entity<AdminUserChangeAudit>(entity =>
+        {
+            entity.Property(x => x.ActorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ActorName).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.TargetUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.TargetName).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.Action).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Summary).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(x => new { x.TargetUserId, x.ChangedAt });
+            entity.HasIndex(x => new { x.ActorUserId, x.ChangedAt });
+        });
+
+        builder.Entity<ApplicationUser>().Property(x => x.FullName).HasMaxLength(256).IsRequired();
+
+        builder.Entity<OrderMinimumSettings>(entity =>
+        {
+            entity.ToTable("OrderMinimumSettings", table => table.HasCheckConstraint("CK_OrderMinimumSettings_Singleton", "\"Id\" = 1"));
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.MinimumAmount).HasPrecision(12, 2);
+            entity.Property(x => x.UpdatedByUserId).HasMaxLength(450);
+        });
 
         // Preserve the established PostgreSQL Identity schema widths across EF provider upgrades.
         builder.Entity<IdentityUserLogin<string>>().Property(x => x.LoginProvider).HasMaxLength(128);
@@ -74,6 +117,19 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<Customer>()
             .HasIndex(x => x.Cnpj)
             .IsUnique();
+
+        builder.Entity<CustomerCnpjAudit>().HasIndex(x => new { x.CustomerId, x.ChangedAt });
+        builder.Entity<CustomerCnpjAudit>().HasIndex(x => new { x.OrderId, x.ChangedAt });
+        builder.Entity<CustomerCnpjAudit>()
+            .HasOne(x => x.Customer)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CustomerCnpjAudit>()
+            .HasOne(x => x.Order)
+            .WithMany()
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Customer>()
             .HasOne(x => x.PriceTable)
@@ -120,6 +176,72 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
 
         builder.Entity<SavedOrderItem>()
             .HasIndex(x => new { x.SavedOrderId, x.ProductId })
+            .IsUnique();
+
+        builder.Entity<SellerOrderDraft>(entity =>
+        {
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
+            entity.Property(x => x.Version).IsConcurrencyToken().HasDefaultValue(1);
+            entity.Property(x => x.Notes).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreateRequestKey })
+                .IsUnique()
+                .HasDatabaseName("IX_SellerOrderDrafts_OwnerUserId_CreateRequestKey");
+            entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.UpdatedAt });
+            entity.HasIndex(x => new { x.SalesRepresentativeId, x.CustomerId, x.Status, x.UpdatedAt })
+                .HasDatabaseName("IX_SellerDrafts_Rep_Customer_Status_Updated");
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_SellerOrderDrafts_Status", "\"Status\" IN ('Draft', 'Submitted')");
+                table.HasCheckConstraint("CK_SellerOrderDrafts_Version", "\"Version\" > 0");
+            });
+            entity.HasOne(x => x.OwnerUser)
+                .WithMany()
+                .HasForeignKey(x => x.OwnerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.SalesRepresentative)
+                .WithMany()
+                .HasForeignKey(x => x.SalesRepresentativeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer)
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.DeliveryAddress)
+                .WithMany()
+                .HasForeignKey(x => x.DeliveryAddressId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.PaymentTerm)
+                .WithMany()
+                .HasForeignKey(x => x.PaymentTermId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(x => x.Items)
+                .WithOne(x => x.SellerOrderDraft)
+                .HasForeignKey(x => x.SellerOrderDraftId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.SubmittedOrder)
+                .WithOne(x => x.SellerOrderDraft)
+                .HasForeignKey<Order>(x => x.SellerOrderDraftId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SellerOrderDraftItem>(entity =>
+        {
+            entity.HasIndex(x => new { x.SellerOrderDraftId, x.ProductId }).IsUnique();
+            entity.Property(x => x.RequestedDiscountAmount).HasPrecision(12, 2);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_SellerOrderDraftItems_Quantity", "\"Quantity\" > 0");
+                table.HasCheckConstraint("CK_SellerOrderDraftItems_RequestedDiscountAmount", "\"RequestedDiscountAmount\" >= 0");
+            });
+            entity.HasOne(x => x.Product)
+                .WithMany()
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Order>()
+            .HasIndex(x => x.SellerOrderDraftId)
+            .HasDatabaseName("IX_Orders_SellerOrderDraftId")
             .IsUnique();
 
         builder.Entity<CommercialActivity>()
@@ -212,6 +334,20 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey")
             .IsUnique();
 
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            builder.Entity<Order>()
+                .HasOne(x => x.SalesRepresentative)
+                .WithMany()
+                .HasForeignKey(x => x.SalesRepresentativeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+        else
+        {
+            // SQLite cannot add this FK to the existing Orders table without rebuilding it.
+            builder.Entity<Order>().Ignore(x => x.SalesRepresentative);
+        }
+
         builder.Entity<OrderStatusHistory>()
             .HasOne(x => x.ChangedByUser)
             .WithMany()
@@ -281,6 +417,49 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WmcExportAudit>()
             .HasIndex(x => new { x.OrderId, x.ExportedAt });
 
+        builder.Entity<WmcExportAudit>()
+            .HasIndex(x => new { x.OrderId, x.AttemptId })
+            .IsUnique();
+
+        builder.Entity<WmcOrderExportState>()
+            .HasKey(x => x.OrderId);
+        builder.Entity<WmcOrderExportState>()
+            .Property(x => x.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+        builder.Entity<WmcOrderExportState>()
+            .Property(x => x.Version)
+            .IsConcurrencyToken();
+        builder.Entity<WmcOrderExportState>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_WmcOrderExportStates_Status",
+                "\"Status\" IN ('Pending', 'Processing', 'Exported', 'Rejected', 'Imported', 'Error')"));
+        builder.Entity<WmcOrderExportState>()
+            .HasOne(x => x.Order)
+            .WithOne(x => x.WmcOrderExportState)
+            .HasForeignKey<WmcOrderExportState>(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WmcOrderExportState>()
+            .HasOne(x => x.CurrentArtifact)
+            .WithMany()
+            .HasForeignKey(x => x.CurrentArtifactId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<WmcManualExportArtifact>()
+            .HasIndex(x => x.AttemptId)
+            .IsUnique();
+        builder.Entity<WmcManualExportArtifact>()
+            .HasIndex(x => new { x.OrderId, x.CreatedAt });
+        builder.Entity<WmcManualExportArtifact>()
+            .HasOne(x => x.Order)
+            .WithMany(x => x.WmcManualExportArtifacts)
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WmcManualExportArtifact>()
+            .HasOne(x => x.SupersedesArtifact)
+            .WithMany()
+            .HasForeignKey(x => x.SupersedesArtifactId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);
         builder.Entity<Customer>().Property(x => x.CreditLimit).HasPrecision(12, 2);
@@ -294,22 +473,21 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WmcSyncRun>().Property(x => x.FailedStage).HasMaxLength(40);
         builder.Entity<WmcSyncRun>().Property(x => x.ErrorMessage).HasMaxLength(2000);
         builder.Entity<WmcSyncRun>().HasIndex(x => new { x.Status, x.StartedAt });
-        builder.Entity<WmcProductImportAudit>().Property(x => x.Status).HasMaxLength(24);
-        builder.Entity<WmcProductImportAudit>().Property(x => x.ErrorMessage).HasMaxLength(2000);
-        builder.Entity<WmcProductImportAudit>().Property(x => x.ResultsJson).HasColumnType("TEXT");
-        builder.Entity<WmcProductImportAudit>().HasIndex(x => x.CompletedAt);
-        builder.Entity<WmcProductUnit>(entity =>
+
+        builder.Entity<WmcProductImportRun>(entity =>
         {
-            entity.HasKey(unit => new { unit.ProductId, unit.UnitCode });
-            entity.Property(unit => unit.UnitCode).HasMaxLength(20);
-            entity.Property(unit => unit.Description).HasMaxLength(120);
-            entity.Property(unit => unit.Factor).HasPrecision(18, 6);
-            entity.Property(unit => unit.Barcode).HasMaxLength(80);
-            entity.HasOne(unit => unit.Product)
-                .WithMany(product => product.WmcUnits)
-                .HasForeignKey(unit => unit.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(x => x.ActorUserId).HasMaxLength(450).IsRequired();
+            entity.Property(x => x.Outcome).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.ImportedProductCodes).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.SkippedProductCodes).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.ErrorSummary).HasMaxLength(2000);
+            entity.HasIndex(x => new { x.BrandCode, x.StartedAtUtc });
         });
+        builder.Entity<WmcInitialLoadReleaseAudit>().HasKey(x => x.Id);
+        builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.WmcCode).HasMaxLength(30).IsRequired();
+        builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.AdminUserId).HasMaxLength(450).IsRequired();
+        builder.Entity<WmcInitialLoadReleaseAudit>().Property(x => x.Reason).HasMaxLength(300).IsRequired();
+        builder.Entity<WmcInitialLoadReleaseAudit>().HasIndex(x => new { x.ProductId, x.ReleasedAtUtc });
         builder.Entity<PriceTableItem>().Property(x => x.Price).HasPrecision(12, 2);
         builder.Entity<PriceTableItem>().Property(x => x.PromotionalPrice).HasPrecision(12, 2);
         builder.Entity<Order>().Property(x => x.Subtotal).HasPrecision(12, 2);

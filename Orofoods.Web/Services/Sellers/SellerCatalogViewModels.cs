@@ -8,7 +8,12 @@ public sealed record SellerCatalogProductRow(
     string UnitDescription,
     decimal UnitPrice,
     int MinimumCases,
-    int? ImageId);
+    int? ImageId,
+    string? Ean = null,
+    string PriceUnitLabel = "caixa",
+    string? Ean13 = null,
+    string? Dun14 = null,
+    string? WmcCode = null);
 
 public sealed class SellerCatalogViewModel
 {
@@ -16,5 +21,11 @@ public sealed class SellerCatalogViewModel
     public required string CustomerName { get; init; }
     public string? Query { get; init; }
     public int CartItemCount { get; set; }
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
+    public int TotalCount { get; init; }
+    public int TotalPages { get; init; }
+    public bool HasPreviousPage => Page > 1;
+    public bool HasNextPage => Page < TotalPages;
     public IReadOnlyList<SellerCatalogProductRow> Products { get; init; } = [];
 }

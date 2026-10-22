@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Jint;
 
 namespace Orofoods.Web.Tests.Services;
@@ -38,7 +39,10 @@ public class WhatsAppPollingUiTests
         Assert.Contains("if (sendInFlight)", script);
         Assert.Contains("await synchronize()", script);
         Assert.Contains("whatsapp-send-feedback", view);
-        Assert.Contains("data-theme=\"@(isAdminArea ? \"dark\" : null)\"", layout);
+        var rootElement = Regex.Match(layout, @"<html\b[^>]*>").Value;
+        Assert.Contains("data-theme", rootElement);
+        Assert.Contains("isAdminExperience", rootElement);
+        Assert.Matches(@"var\s+isAdminExperience\s*=\s*isAdminArea\s*\|\|\s*isAdminShell\s*;", layout);
         Assert.DoesNotContain("orofoods.crm.theme", layout);
         Assert.DoesNotContain("orofoods.crm.theme", script);
         Assert.DoesNotContain("whatsapp-theme-toggle", view);

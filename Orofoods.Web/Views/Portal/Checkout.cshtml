@@ -37,14 +37,6 @@
 
                 <section class="checkout-panel">
                     <header><span>02</span><div><small>PAGAMENTO</small><h2>Condi&ccedil;&atilde;o e observa&ccedil;&otilde;es</h2></div></header>
-                    @if (Model.PaymentEligibility?.InvoiceCreditEnabled == true)
-                    {
-                        <p class="checkout-security"><strong>Condi&ccedil;&atilde;o de pagamento liberada</strong><br />Agora voc&ecirc; possui condi&ccedil;&otilde;es de pagamento de at&eacute; 14 dias.</p>
-                    }
-                    else
-                    {
-                        <p class="checkout-security"><strong>Condi&ccedil;&otilde;es iniciais de pagamento</strong><br />Nas tr&ecirc;s primeiras compras, os pedidos Orofoods s&atilde;o realizados &agrave; vista, via PIX ou cart&atilde;o de cr&eacute;dito. Ap&oacute;s esse per&iacute;odo, poder&atilde;o ser disponibilizados boletos de at&eacute; 14 dias.</p>
-                    }
                     <div class="checkout-form-grid">
                         <div class="checkout-field">
                             <label asp-for="PaymentTermId">Condi&ccedil;&atilde;o de pagamento</label>
