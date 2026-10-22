@@ -20,6 +20,9 @@ public sealed class AdminCompactVisualRegressionTests
         Assert.Contains("min-width:980px", styles, StringComparison.Ordinal);
         Assert.Contains("table-layout:fixed", styles, StringComparison.Ordinal);
         Assert.Contains(".wmc-description-cell", styles, StringComparison.Ordinal);
+        Assert.Contains(".wmc-price-cell", styles, StringComparison.Ordinal);
+        Assert.Contains("line-height:1.15", styles, StringComparison.Ordinal);
+        Assert.Contains("font-size:10.5px", styles, StringComparison.Ordinal);
         Assert.Contains("white-space:nowrap", styles, StringComparison.Ordinal);
         Assert.Contains("overflow-x:auto", styles, StringComparison.Ordinal);
     }
