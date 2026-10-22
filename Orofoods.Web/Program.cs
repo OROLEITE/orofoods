@@ -105,7 +105,16 @@ else
     }
 }
 
-var connectionString = DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
+var isWmcTestHost = builder.Environment.IsEnvironment("Testing");
+var connectionString = isWmcTestHost
+    ? WmcTestDatabaseGuard.GetRequiredConnectionString(builder.Configuration)
+    : DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
+
+if (isWmcTestHost)
+{
+    // This read-only identity check must finish before EF can run migrations or seed data.
+    await WmcTestDatabaseGuard.AssertConnectedToDisposableDatabaseAsync(connectionString);
+}
 
 builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
