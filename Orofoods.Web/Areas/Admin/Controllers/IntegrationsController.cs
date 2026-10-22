@@ -29,24 +29,6 @@ public class IntegrationsController(
     WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
     IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions) : Controller
 {
-    public IntegrationsController(
-        ApplicationDbContext db,
-        WmcManualExportService wmcManualExportService,
-        WmcSyncCoordinator wmcSyncCoordinator,
-        WmcSyncService wmcSyncService,
-        IOptions<WmcSyncOptions> wmcSyncOptions,
-        IWmcBrandReader wmcBrandReader,
-        WmcProductPreviewService wmcProductPreviewService,
-        ILogger<IntegrationsController> logger,
-        IHostEnvironment hostEnvironment,
-        WmcBimboStagingImportService wmcBimboStagingImportService,
-        WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
-        IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions)
-        : this(db, wmcManualExportService, wmcSyncCoordinator, wmcSyncService, wmcSyncOptions,
-            wmcBrandReader, wmcProductPreviewService, null!, logger, hostEnvironment,
-            wmcBimboStagingImportService, initialLoadReadinessReleaseService, initialLoadReleaseOptions)
-    {
-    }
 
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
