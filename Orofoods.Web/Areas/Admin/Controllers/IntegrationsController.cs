@@ -124,6 +124,7 @@ public class IntegrationsController(
         var brand = brands.SingleOrDefault(item => item.Code == brandCode);
         if (brand is null) return BadRequest("Marca WMC inválida.");
         var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        SetWmcViewState();
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
@@ -141,10 +142,12 @@ public class IntegrationsController(
         if (selected.Length == 0 || selected.Length != requested.Length)
         {
             ModelState.AddModelError("", "Seleção vazia ou desatualizada. Revise os produtos selecionados.");
+            SetWmcViewState();
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, requested));
         }
         var summary = new WmcProductImportSummary(selected.Length, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
             selected.Count(item => item.Changes.Count > 0), selected.Count(item => item.Changes.Count == 0));
+        SetWmcViewState();
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Confirmation", brandCode, brand.Description, candidates, requested, summary));
     }
 
@@ -161,9 +164,16 @@ public class IntegrationsController(
         var codes = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
         var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
         var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
+        SetWmcViewState();
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
             Candidates: candidates, SelectedProductCodes: codes, ImportResult: result,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+    }
+
+    private void SetWmcViewState()
+    {
+        ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
+        ViewBag.LastRun = wmcSyncCoordinator.LastRun;
     }
 
     [HttpPost]

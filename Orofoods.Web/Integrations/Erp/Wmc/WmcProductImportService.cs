@@ -49,7 +49,8 @@ public sealed class WmcProductImportService(ApplicationDbContext db, IWmcProduct
                         unit.Factor,
                         Clean(unit.Barcode),
                         unit.IsMaster))
-                    .ToArray());
+                    .ToArray(),
+                Stock: row.EstoqueDisponivel);
         }).ToArray();
     }
 
