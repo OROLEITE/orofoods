@@ -87,6 +87,7 @@ public class AdminWmcMonitorControllerTests
             null!,
             null!,
             null!,
+            null!,
             null!);
         var context = new DefaultHttpContext
         {

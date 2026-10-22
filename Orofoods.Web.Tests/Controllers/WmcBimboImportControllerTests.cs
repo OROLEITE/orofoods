@@ -115,6 +115,7 @@ public sealed class WmcBimboImportControllerTests
             Options.Create(new WmcSyncOptions()),
             null!,
             null!,
+            null!,
             NullLogger<IntegrationsController>.Instance,
             new TestHostEnvironment(environmentName),
             service,
