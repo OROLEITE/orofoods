@@ -62,8 +62,12 @@ internal static class WmcTestDatabaseGuard
 
         var database = reader.GetString(0);
         var serverAddress = reader.IsDBNull(1) ? null : reader.GetString(1);
-        var address = IPAddress.TryParse(serverAddress, out var parsedAddress) ? parsedAddress : null;
-        ValidateServerIdentity(database, address);
+        ValidateServerIdentity(database, serverAddress);
+    }
+
+    internal static void ValidateServerIdentity(string database, string? serverAddress)
+    {
+        ValidateServerIdentity(database, ParsePostgreSqlServerAddress(serverAddress));
     }
 
     internal static void ValidateServerIdentity(string database, IPAddress? address)
@@ -73,6 +77,42 @@ internal static class WmcTestDatabaseGuard
             throw new InvalidOperationException(
                 "O PostgreSQL conectado não corresponde ao banco descartável da homologação WMC.");
         }
+    }
+
+    private static IPAddress? ParsePostgreSqlServerAddress(string? serverAddress)
+    {
+        if (string.IsNullOrWhiteSpace(serverAddress))
+            return null;
+
+        var slashIndex = serverAddress.IndexOf('/');
+        var addressText = slashIndex < 0 ? serverAddress : serverAddress[..slashIndex];
+        if (!IPAddress.TryParse(addressText, out var address))
+            return null;
+
+        if (slashIndex >= 0)
+        {
+            if (slashIndex == 0
+                || slashIndex != serverAddress.LastIndexOf('/')
+                || slashIndex == serverAddress.Length - 1)
+            {
+                return null;
+            }
+
+            var expectedPrefix = address.AddressFamily switch
+            {
+                System.Net.Sockets.AddressFamily.InterNetwork => "32",
+                System.Net.Sockets.AddressFamily.InterNetworkV6 => "128",
+                _ => null
+            };
+
+            if (!string.Equals(serverAddress[(slashIndex + 1)..], expectedPrefix, StringComparison.Ordinal))
+                return null;
+        }
+
+        return address.AddressFamily is System.Net.Sockets.AddressFamily.InterNetwork
+            or System.Net.Sockets.AddressFamily.InterNetworkV6
+                ? address
+                : null;
     }
 
     private static bool IsPrivateAddress(IPAddress address)

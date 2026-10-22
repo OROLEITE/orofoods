@@ -57,18 +57,32 @@ public sealed class WmcTestDatabaseGuardTests
     }
 
     [Theory]
-    [InlineData("orofoods_local", "172.20.0.2")]
-    [InlineData("orofoods_wmc_teste", "127.0.0.1")]
-    [InlineData("orofoods_wmc_teste", "8.8.8.8")]
-    public void Rejects_a_connected_database_or_server_outside_the_disposable_target(string database, string address)
+    [InlineData("172.21.0.2/32")]
+    [InlineData("172.21.0.2")]
+    public void Accepts_the_expected_database_on_a_private_docker_address(string address)
     {
-        Assert.Throws<InvalidOperationException>(
-            () => WmcTestDatabaseGuard.ValidateServerIdentity(database, System.Net.IPAddress.Parse(address)));
+        WmcTestDatabaseGuard.ValidateServerIdentity("orofoods_wmc_teste", address);
     }
 
-    [Fact]
-    public void Accepts_the_expected_database_on_a_private_docker_address()
+    [Theory]
+    [InlineData("172.21.0.2/not-a-prefix")]
+    [InlineData("172.21.0.2/24")]
+    [InlineData("172.21.0.2/33")]
+    [InlineData("172.21.0.256/32")]
+    [InlineData("172.21.0.2/32/32")]
+    public void Rejects_an_invalid_postgresql_server_address_format(string address)
     {
-        WmcTestDatabaseGuard.ValidateServerIdentity("orofoods_wmc_teste", System.Net.IPAddress.Parse("172.20.0.2"));
+        Assert.Throws<InvalidOperationException>(
+            () => WmcTestDatabaseGuard.ValidateServerIdentity("orofoods_wmc_teste", address));
+    }
+
+    [Theory]
+    [InlineData("orofoods_local", "172.21.0.2/32")]
+    [InlineData("orofoods_wmc_teste", "8.8.8.8/32")]
+    [InlineData("orofoods_wmc_teste", "127.0.0.1/32")]
+    public void Rejects_an_incorrect_connected_database_identity(string database, string address)
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => WmcTestDatabaseGuard.ValidateServerIdentity(database, address));
     }
 }
