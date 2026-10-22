@@ -134,14 +134,21 @@
                         <div><span class="wmc-step-kicker">Etapa 2</span><h4>Confira @Model.SelectedBrandDescription</h4></div>
                         <a asp-action="Wmc" class="btn btn-outline-secondary btn-sm">Trocar marca</a>
                     </header>
+                    <div class="alert alert-warning py-2" role="note">
+                        <strong>Aplicação de preços bloqueada:</strong> valide a Lista 1 e a unidade comercial antes de qualquer aplicação. O preço WMC abaixo é somente informativo nesta etapa.
+                    </div>
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
                     <form method="post" asp-action="WmcConfirmSelection" id="wmcImportSelectionForm">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
+                        <div class="small text-muted mb-2" aria-label="Origem dos dados">
+                            <span class="me-3">Dados WMC · Firebird, somente leitura</span>
+                            <span>Cadastro Orofoods · local, somente leitura</span>
+                        </div>
                         <div class="wmc-product-table-scroll">
                             <table class="wmc-import-table">
                                 <caption class="visually-hidden">Produtos da marca selecionada</caption>
-                                <thead><tr><th>Sel.</th><th>Código</th><th>Descrição</th><th>EAN</th><th>DUN</th><th>Unidade / fator</th><th>Estoque</th><th>Situação</th></tr></thead>
+                                <thead><tr><th>Sel.</th><th>Código</th><th>Descrição</th><th>EAN</th><th>DUN</th><th>Preço WMC</th><th>Preço local</th><th>Unidade / fator</th><th>Estoque</th><th>Situação</th></tr></thead>
                                 <tbody>
                                 @foreach (var item in Model.Candidates)
                                 {
@@ -155,6 +162,32 @@
                                         <td class="wmc-description-cell" title="@item.Name">@item.Name</td>
                                         <td class="wmc-code-cell">@(item.Ean ?? "—")</td>
                                         <td class="wmc-code-cell">@(masterUnit?.Barcode ?? "—")</td>
+                                        <td class="wmc-price-cell">
+                                            @if (item.PrecoVenda is decimal precoVenda)
+                                            {
+                                                <strong>@precoVenda.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                                                <small class="text-muted d-block">PRODUTOS.PRECOVENDA</small>
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                            }
+                                        </td>
+                                        <td class="wmc-price-cell">
+                                            @if (item.LocalBasePrice is decimal localBasePrice)
+                                            {
+                                                <strong>@localBasePrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) / @(item.LocalCommercialUnit ?? "unidade não definida")</strong>
+                                                <small class="text-muted d-block">Cadastro Orofoods; não é preço WMC.</small>
+                                                @if (localBasePrice == 1.00m && string.Equals(item.LocalCommercialUnit, "PCT", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <small class="text-warning d-block">R$ 1,00/PCT é placeholder local de homologação.</small>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                            }
+                                        </td>
                                         <td class="wmc-unit-cell">@(primaryUnit is null ? "—" : $"{primaryUnit.UnitCode} / {primaryUnit.Factor?.ToString() ?? "—"}")</td>
                                         <td class="wmc-stock-cell">@(item.Stock?.ToString("0.###") ?? "—")</td>
                                         <td>
@@ -168,7 +201,9 @@
                                                         <ul class="wmc-unit-list">
                                                             @foreach (var unit in item.Units)
                                                             {
-                                                                <li><strong>@unit.UnitCode</strong> · fator @(unit.Factor?.ToString() ?? "—") · @(unit.Barcode ?? "—")@(unit.IsMaster ? " · master" : null)</li>
+                                                                var unitCode = unit.UnitCode.Trim().ToUpperInvariant();
+                                                                var barcodeLabel = unitCode switch { "PC" => "EAN da PC", "CX" => "DUN da CX", _ => "CODBARRAS" };
+                                                                <li><strong>@unitCode</strong> · FATOR @(unit.Factor?.ToString() ?? "—") · @barcodeLabel: @(unit.Barcode ?? "—") · UNMASTER=@(unit.IsMaster ? "true" : "false")</li>
                                                             }
                                                         </ul>
                                                     }

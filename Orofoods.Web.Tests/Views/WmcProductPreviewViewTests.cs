@@ -50,6 +50,26 @@ public sealed class WmcProductPreviewViewTests
     }
 
     [Fact]
+    public void Official_product_preview_separates_WMC_source_from_local_commercial_data()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var importService = File.ReadAllText(Path.Combine(root, "Integrations", "Erp", "Wmc", "WmcProductImportService.cs"));
+
+        Assert.Contains("Dados WMC · Firebird, somente leitura", view, StringComparison.Ordinal);
+        Assert.Contains("Cadastro Orofoods · local, somente leitura", view, StringComparison.Ordinal);
+        Assert.Contains("PRODUTOS.PRECOVENDA", view, StringComparison.Ordinal);
+        Assert.Contains("EAN da PC", view, StringComparison.Ordinal);
+        Assert.Contains("DUN da CX", view, StringComparison.Ordinal);
+        Assert.Contains("UNMASTER=", view, StringComparison.Ordinal);
+        Assert.Contains("Aplicação de preços bloqueada", view, StringComparison.Ordinal);
+        Assert.Contains("R$ 1,00/PCT é placeholder local de homologação", view, StringComparison.Ordinal);
+        Assert.Contains("PrecoVenda: row.PrecoVenda", importService, StringComparison.Ordinal);
+        Assert.Contains("LocalBasePrice: product?.BasePrice", importService, StringComparison.Ordinal);
+        Assert.Contains("ApplyMappedFields(current, row)", importService, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Wmc_brand_grid_uses_admin_dark_tokens_for_rows_selection_and_scrollbar()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

@@ -71,7 +71,10 @@ public sealed record WmcProductImportCandidate(
     bool Selectable,
     IReadOnlyList<WmcProductFieldChange> Changes,
     IReadOnlyList<WmcProductUnitPreview> Units,
-    decimal? Stock = null);
+    decimal? Stock = null,
+    decimal? PrecoVenda = null,
+    decimal? LocalBasePrice = null,
+    string? LocalCommercialUnit = null);
 
 public sealed record WmcProductFieldChange(string Field, string CurrentValue, string WmcValue);
 
