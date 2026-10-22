@@ -37,6 +37,9 @@ public sealed class WmcProductImportService(ApplicationDbContext db, IWmcProduct
             var changed = changes.Length > 0;
             var invalidSituation = !string.IsNullOrWhiteSpace(row.Situacao) && WmcProductRules.ClassifySituation(row.Situacao) == WmcProductSituation.Unknown;
             var status = duplicate ? "Inválido" : product is null ? "Novo" : changed ? "Com alterações" : "Já cadastrado";
+            var localCommercialUnit = product is null
+                ? null
+                : string.IsNullOrWhiteSpace(product.CommercialUnitCode) ? product.Unit : product.CommercialUnitCode;
             if (invalidSituation) status += " · situação inválida; venda bloqueada ao reimportar";
             return new WmcProductImportCandidate(
                 code, row.Produto, Clean(row.Ean), row.Situacao, Clean(row.CodMarca), Clean(row.Marca), Clean(row.Un),
@@ -50,7 +53,10 @@ public sealed class WmcProductImportService(ApplicationDbContext db, IWmcProduct
                         Clean(unit.Barcode),
                         unit.IsMaster))
                     .ToArray(),
-                Stock: row.EstoqueDisponivel);
+                Stock: row.EstoqueDisponivel,
+                PrecoVenda: row.PrecoVenda,
+                LocalBasePrice: product?.BasePrice,
+                LocalCommercialUnit: localCommercialUnit);
         }).ToArray();
     }
 
