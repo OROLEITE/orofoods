@@ -11,7 +11,7 @@ public sealed class WmcTestDatabaseGuardTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Host=127.0.0.1;Port=5432;Database=orofoods_local;Username=local;Password=secret"
+                ["ConnectionStrings:DefaultConnection"] = "Host=127.0.0.1;Port=5432;Database=orofoods_local;Username=local;Password=<TEST_PASSWORD>"
             })
             .Build();
 
@@ -27,7 +27,7 @@ public sealed class WmcTestDatabaseGuardTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["OROFOODS_WMC_TEST_POSTGRES_CONNECTION"] = "Host=wmc-postgres-persistente;Port=5432;Database=orofoods_wmc_teste;Username=test;Password=secret"
+                ["OROFOODS_WMC_TEST_POSTGRES_CONNECTION"] = "Host=wmc-postgres-persistente;Port=5432;Database=orofoods_wmc_teste;Username=test;Password=<TEST_PASSWORD>"
             })
             .Build();
 
@@ -37,9 +37,9 @@ public sealed class WmcTestDatabaseGuardTests
     }
 
     [Theory]
-    [InlineData("Host=localhost;Port=5432;Database=orofoods_wmc_teste;Username=test;Password=secret")]
-    [InlineData("Host=wmc-postgres-persistente;Port=5433;Database=orofoods_wmc_teste;Username=test;Password=secret")]
-    [InlineData("Host=wmc-postgres-persistente;Port=5432;Database=orofoods_local;Username=test;Password=secret")]
+    [InlineData("Host=localhost;Port=5432;Database=orofoods_wmc_teste;Username=test;Password=<TEST_PASSWORD>")]
+    [InlineData("Host=wmc-postgres-persistente;Port=5433;Database=orofoods_wmc_teste;Username=test;Password=<TEST_PASSWORD>")]
+    [InlineData("Host=wmc-postgres-persistente;Port=5432;Database=orofoods_local;Username=test;Password=<TEST_PASSWORD>")]
     public void Rejects_connection_strings_that_could_target_an_existing_database(string connectionString)
     {
         Assert.Throws<InvalidOperationException>(
@@ -51,9 +51,9 @@ public sealed class WmcTestDatabaseGuardTests
     {
         var exception = Assert.Throws<InvalidOperationException>(
             () => WmcTestDatabaseGuard.ValidateConnectionString(
-                "Host=wmc-postgres-persistente;Port=not-a-port;Database=orofoods_wmc_teste;Password=secret"));
+                "Host=wmc-postgres-persistente;Port=not-a-port;Database=orofoods_wmc_teste;Password=<TEST_PASSWORD>"));
 
-        Assert.DoesNotContain("secret", exception.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("TEST_PASSWORD", exception.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
