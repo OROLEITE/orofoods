@@ -196,6 +196,29 @@
                                                 <summary>Detalhes</summary>
                                                 <div class="wmc-row-details-content">
                                                     <span class="wmc-detail-status">@item.Status</span>
+                                                    @if (item.UnitProposal is { } proposal)
+                                                    {
+                                                        <dl class="wmc-unit-proposal">
+                                                            <dt>EAN atual</dt>
+                                                            <dd>@(proposal.CurrentEan13 ?? "—") &rarr; @(proposal.ProposedEan13 ?? "—")</dd>
+                                                            <dt>DUN atual</dt>
+                                                            <dd>@(proposal.CurrentDun14 ?? "—")</dd>
+                                                            <dt>DUN proposto</dt>
+                                                            <dd>@(proposal.ProposedDun14 ?? "—")</dd>
+                                                            <dt>Fator PC atual</dt>
+                                                            <dd>@(proposal.CurrentPcFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator PC proposto</dt>
+                                                            <dd>@(proposal.ProposedPcFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator CX atual</dt>
+                                                            <dd>@(proposal.CurrentCxFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator CX proposto</dt>
+                                                            <dd>@(proposal.ProposedCxFactor?.ToString() ?? "—")</dd>
+                                                        </dl>
+                                                        @if (!proposal.SafeToApply)
+                                                        {
+                                                            <small class="text-warning">Bloqueado: @proposal.BlockReason</small>
+                                                        }
+                                                    }
                                                     @if (item.Units.Count > 0)
                                                     {
                                                         <ul class="wmc-unit-list">

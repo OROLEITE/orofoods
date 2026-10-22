@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Tests.Infrastructure;
 
@@ -31,10 +32,106 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal(1.00m, candidate.LocalBasePrice);
         Assert.Equal("PCT", candidate.LocalCommercialUnit);
         Assert.Equal(42.5m, candidate.Stock);
+        Assert.Equal("7899679701348", candidate.Ean);
+        Assert.NotNull(candidate.UnitProposal);
+        Assert.Equal("7899679701348", candidate.UnitProposal!.ProposedEan13);
+        Assert.Equal("17899679701345", candidate.UnitProposal.ProposedDun14);
+        Assert.Equal(1m, candidate.UnitProposal.ProposedPcFactor);
+        Assert.Equal(18m, candidate.UnitProposal.ProposedCxFactor);
         Assert.Collection(candidate.Units,
             unit => { Assert.Equal("CX", unit.UnitCode); Assert.Equal(18m, unit.Factor); Assert.Equal("17899679701345", unit.Barcode); Assert.True(unit.IsMaster); },
             unit => { Assert.Equal("PC", unit.UnitCode); Assert.Equal(1m, unit.Factor); Assert.Equal("7899679701348", unit.Barcode); Assert.False(unit.IsMaster); });
         Assert.Equal(1.00m, (await db.Products.SingleAsync(product => product.WmcCode == "503813")).BasePrice);
+    }
+
+    [Fact]
+    public async Task Reimport_maps_valid_official_pc_and_cx_identifiers_without_touching_price_or_stock()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "503813", Sku = "WMC-503813", Name = "Produto", ProductCategoryId = 1,
+            Ean = "EAN-LOCAL", Ean13 = "7890000000000", Dun14 = "17890000000000", BasePrice = 1m
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 360, QuantityReserved = 4 });
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null,
+            PrecoVenda: 20.39m,
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["503813"], true);
+
+        var persisted = await db.Products.AsNoTracking().SingleAsync(item => item.WmcCode == "503813");
+        var units = await db.WmcProductUnits.AsNoTracking().Where(unit => unit.ProductId == product.Id).ToListAsync();
+        var inventory = await db.ProductInventories.AsNoTracking().SingleAsync(item => item.ProductId == product.Id);
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal("7899679701348", persisted.Ean);
+        Assert.Equal("7899679701348", persisted.Ean13);
+        Assert.Equal("17899679701345", persisted.Dun14);
+        Assert.Equal(1m, persisted.BasePrice);
+        Assert.Equal(360, inventory.QuantityOnHand);
+        Assert.Equal(4, inventory.QuantityReserved);
+        Assert.Equal(18m, Assert.Single(units, unit => unit.UnitCode == "CX").Factor);
+    }
+
+    [Fact]
+    public async Task Duplicate_official_units_fail_without_overwriting_local_identifiers()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "503813", Sku = "WMC-503813", Name = "Produto", ProductCategoryId = 1,
+            Ean = "EAN-LOCAL", Ean13 = "7890000000000", Dun14 = "17890000000000"
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null,
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("PC", "PACOTE 2", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["503813"], true);
+
+        var persisted = await db.Products.AsNoTracking().SingleAsync(item => item.WmcCode == "503813");
+        Assert.Equal("Failed", result.Status);
+        Assert.Equal("EAN-LOCAL", persisted.Ean);
+        Assert.Equal("7890000000000", persisted.Ean13);
+        Assert.Equal("17890000000000", persisted.Dun14);
+    }
+
+    [Fact]
+    public async Task Empty_or_invalid_unit_barcodes_preserve_local_identifiers_but_keep_valid_cx_factor()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "503813", Sku = "WMC-503813", Name = "Produto", ProductCategoryId = 1,
+            Ean = "EAN-LOCAL", Ean13 = "7890000000000", Dun14 = "17890000000000"
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.WmcProductUnits.AddRange(
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "PC", Factor = 2m, Barcode = "EAN-LOCAL-UNIT" },
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "CX", Factor = 6m, Barcode = "DUN-LOCAL-UNIT", IsMaster = true });
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null,
+            Units: [new("PC", "PACOTE", 1m, null, false), new("CX", "CAIXA", 18m, "invalido", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["503813"], true);
+
+        var persisted = await db.Products.AsNoTracking().SingleAsync(item => item.WmcCode == "503813");
+        var units = await db.WmcProductUnits.AsNoTracking().Where(unit => unit.ProductId == product.Id).ToListAsync();
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal("EAN-LOCAL", persisted.Ean);
+        Assert.Equal("7890000000000", persisted.Ean13);
+        Assert.Equal("17890000000000", persisted.Dun14);
+        Assert.Equal(1m, Assert.Single(units, unit => unit.UnitCode == "PC").Factor);
+        Assert.Equal("EAN-LOCAL-UNIT", Assert.Single(units, unit => unit.UnitCode == "PC").Barcode);
+        Assert.Equal(18m, Assert.Single(units, unit => unit.UnitCode == "CX").Factor);
+        Assert.Equal("DUN-LOCAL-UNIT", Assert.Single(units, unit => unit.UnitCode == "CX").Barcode);
     }
 
     [Fact]
@@ -48,7 +145,7 @@ public sealed class WmcProductImportServiceTests
         {
             WmcCode = "P1", Sku = "LOCAL-SKU", Name = "Antigo", ProductCategoryId = 1, Brand = "Marca antiga",
             Unit = "UN antiga", BasePrice = 20, PromotionalPrice = 18, IsPromotional = true, IsActive = true,
-            IsAvailable = true, Ean = "ean-antigo", WmcPackageQuantity = 2, WmcConversionQuantity = 3,
+            IsAvailable = true, Ean = "EAN local", WmcPackageQuantity = 2, WmcConversionQuantity = 3,
             UnitsPerPackage = 8, UnitsPerCase = 24, MinimumCases = 2, IsFeatured = true,
             Images = [new ProductImage { Url = "/uploads/local-product.webp", AltText = "Imagem local", IsPrimary = true }]
         };
@@ -69,7 +166,7 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal(1, result.Updated);
         Assert.Equal("Novo nome", product.Name);
         Assert.Equal("Marca WMC", product.Brand);
-        Assert.Equal("EAN1", product.Ean);
+        Assert.Equal("EAN local", product.Ean);
         Assert.Equal("FD", product.WmcAlternateUnit);
         Assert.Equal(20m, product.BasePrice);
         Assert.Equal(18m, product.PromotionalPrice);
@@ -220,7 +317,7 @@ public sealed class WmcProductImportServiceTests
             new WmcProductUnit { ProductId = product.Id, UnitCode = "UN", Description = "UNIDADE", Factor = 1m, Barcode = "OBSOLETO", IsMaster = false });
         await db.SaveChangesAsync();
         var reader = new FakeReader([new WmcProductRecord("P1", "Produto", "A", "PC", null, null,
-            Units: [new("PC", "PACOTE", 1m, "7890001", false), new("CX", "CAIXA", 18m, "17890001", true)])]);
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
 
         var result = await new WmcProductImportService(db, reader).ImportAsync(3, ["P1"], true);
 
@@ -229,8 +326,8 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal(1, result.Updated);
         Assert.Equal(2, units.Count);
         Assert.Collection(units,
-            unit => { Assert.Equal("CX", unit.UnitCode); Assert.Equal(18m, unit.Factor); Assert.Equal("17890001", unit.Barcode); Assert.True(unit.IsMaster); },
-            unit => { Assert.Equal("PC", unit.UnitCode); Assert.Equal(1m, unit.Factor); Assert.Equal("7890001", unit.Barcode); Assert.False(unit.IsMaster); });
+            unit => { Assert.Equal("CX", unit.UnitCode); Assert.Equal(18m, unit.Factor); Assert.Equal("17899679701345", unit.Barcode); Assert.True(unit.IsMaster); },
+            unit => { Assert.Equal("PC", unit.UnitCode); Assert.Equal(1m, unit.Factor); Assert.Equal("7899679701348", unit.Barcode); Assert.False(unit.IsMaster); });
         Assert.DoesNotContain(units, unit => unit.UnitCode == "UN");
     }
 
@@ -294,6 +391,31 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal(2, units.Count);
         Assert.Contains(units, unit => unit.UnitCode == "PC" && unit.Barcode == "EAN-PC");
         Assert.Contains(units, unit => unit.UnitCode == "CX" && unit.Barcode == "DUN-CX");
+    }
+
+    [Fact]
+    public async Task Reimport_does_not_remove_local_units_when_the_official_unit_list_is_empty()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        await db.SaveChangesAsync();
+        var product = new Product { WmcCode = "P1", Sku = "P1", Name = "Produto", ProductCategoryId = 1, Ean = "EAN-LOCAL" };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.WmcProductUnits.Add(new WmcProductUnit { ProductId = product.Id, UnitCode = "CX", Factor = 18m, Barcode = "DUN-LOCAL", IsMaster = true });
+        await db.SaveChangesAsync();
+        var reader = new FakeReader(
+            [new WmcProductRecord("P1", "Produto", "A", "PC", null, null, Ean: "EAN-WMC", Units: [])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(3, ["P1"], true);
+
+        var units = await db.WmcProductUnits.AsNoTracking().Where(unit => unit.ProductId == product.Id).ToListAsync();
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal("EAN-LOCAL", product.Ean);
+        var unit = Assert.Single(units);
+        Assert.Equal("CX", unit.UnitCode);
+        Assert.Equal("DUN-LOCAL", unit.Barcode);
+        Assert.Equal(18m, unit.Factor);
     }
 
     [Fact]
