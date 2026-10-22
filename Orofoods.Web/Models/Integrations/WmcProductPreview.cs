@@ -58,6 +58,20 @@ public sealed record WmcProductUnitPreview(
     string? Barcode,
     bool IsMaster);
 
+public sealed record WmcProductUnitImportProposal(
+    string? CurrentEan,
+    string? ProposedEan,
+    string? CurrentEan13,
+    string? ProposedEan13,
+    string? CurrentDun14,
+    string? ProposedDun14,
+    decimal? CurrentPcFactor,
+    decimal? ProposedPcFactor,
+    decimal? CurrentCxFactor,
+    decimal? ProposedCxFactor,
+    bool SafeToApply,
+    string? BlockReason);
+
 public sealed record WmcProductImportCandidate(
     string WmcCode,
     string Name,
@@ -74,7 +88,8 @@ public sealed record WmcProductImportCandidate(
     decimal? Stock = null,
     decimal? PrecoVenda = null,
     decimal? LocalBasePrice = null,
-    string? LocalCommercialUnit = null);
+    string? LocalCommercialUnit = null,
+    WmcProductUnitImportProposal? UnitProposal = null);
 
 public sealed record WmcProductFieldChange(string Field, string CurrentValue, string WmcValue);
 

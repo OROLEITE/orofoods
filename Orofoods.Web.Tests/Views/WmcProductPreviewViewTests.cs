@@ -38,6 +38,12 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains(".wmc-product-status--existing", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-product-status--blocked", css, StringComparison.Ordinal);
         Assert.Contains("wmc-row-details", view, StringComparison.Ordinal);
+        Assert.Contains("UnitProposal", view, StringComparison.Ordinal);
+        Assert.Contains("EAN atual", view, StringComparison.Ordinal);
+        Assert.Contains("DUN proposto", view, StringComparison.Ordinal);
+        Assert.Contains("Fator PC atual", view, StringComparison.Ordinal);
+        Assert.Contains("Fator CX atual", view, StringComparison.Ordinal);
+        Assert.Contains("Fator CX proposto", view, StringComparison.Ordinal);
         Assert.Contains("wmc-import-summary", view, StringComparison.Ordinal);
         Assert.Contains("Confirmar importação", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmc-preview-form", view, StringComparison.Ordinal);
