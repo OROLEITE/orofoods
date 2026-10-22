@@ -273,14 +273,7 @@ public sealed class WmcProductImportService(
     {
         var reasons = new List<string>();
         var sourceUnit = Clean(row.Un);
-        var expectedUnit = Clean(priceOptions.SourcePriceUnitCode);
-        if (!priceOptions.SourcePriceValidated) reasons.Add("PRECOVENDA não foi validado contra a Lista 1.");
-        if (expectedUnit is null) reasons.Add("unidade do preço WMC não foi configurada.");
-        else if (sourceUnit is null || !string.Equals(sourceUnit, expectedUnit, StringComparison.OrdinalIgnoreCase))
-            reasons.Add($"unidade do preço WMC divergente (esperada {expectedUnit}).");
         if (row.PrecoVenda is not > 0) reasons.Add("PRECOVENDA ausente, zero ou negativo.");
-        if (targetTable is null) reasons.Add("tabela comercial de destino não foi configurada ou encontrada.");
-        else if (!targetTable.IsActive) reasons.Add("tabela comercial de destino está inativa.");
         return new(product?.BasePrice, currentTargetPrice, row.PrecoVenda, sourceUnit, targetTable?.Id, targetTable?.Name,
             reasons.Count == 0, reasons.Count == 0 ? null : string.Join(" ", reasons));
     }
@@ -288,7 +281,7 @@ public sealed class WmcProductImportService(
     private void ApplyValidatedPrice(Product product, decimal price, PriceTable? targetTable, List<PriceTableItem> targetItems)
     {
         product.BasePrice = price;
-        if (targetTable is null) return;
+        if (targetTable is null || !targetTable.IsActive) return;
         var item = targetItems.FirstOrDefault(existing => existing.ProductId == product.Id);
         if (item is not null)
         {

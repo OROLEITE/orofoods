@@ -125,7 +125,7 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
-    public async Task Reimport_updates_WMC_fields_and_preserves_local_prices_packaging_images_and_commercial_settings()
+    public async Task Reimport_updates_WMC_fields_and_direct_price_while_preserving_local_packaging_images_and_commercial_settings()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
@@ -147,7 +147,7 @@ public sealed class WmcProductImportServiceTests
         var reader = new FakeReader([new WmcProductRecord("P1", "Novo nome", "A", "CX", null, null, "EAN1", "9", "FD", 6, 7, null, 1m, Marca: "Marca WMC")]);
         var service = new WmcProductImportService(db, reader);
         var candidate = (await service.GetCandidatesAsync(9)).Single();
-        Assert.DoesNotContain(candidate.Changes, change => change.Field.Contains("preço", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(candidate.Changes, change => change.Field == "Preço base");
 
         var result = await service.ImportAsync(9, ["P1"], true);
 
@@ -157,7 +157,7 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal("Marca WMC", product.Brand);
         Assert.Equal("EAN local", product.Ean);
         Assert.Equal("FD", product.WmcAlternateUnit);
-        Assert.Equal(20m, product.BasePrice);
+        Assert.Equal(1m, product.BasePrice);
         Assert.Equal(18m, product.PromotionalPrice);
         Assert.Equal(2m, product.WmcPackageQuantity);
         Assert.Equal(3m, product.WmcConversionQuantity);
@@ -477,7 +477,7 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
-    public async Task Price_update_is_blocked_without_proven_lista_1_and_units_still_persist()
+    public async Task Direct_price_update_uses_precovenda_without_lista_validation_and_units_still_persist()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
@@ -495,11 +495,53 @@ public sealed class WmcProductImportServiceTests
 
         var persisted = await db.Products.AsNoTracking().SingleAsync();
         Assert.Equal("Succeeded", result.Status);
-        Assert.True(result.Blocked > 0);
-        Assert.Contains(result.Items, item => item.Detail != null && item.Detail.Contains("Lista 1", StringComparison.Ordinal));
-        Assert.Equal(1m, persisted.BasePrice);
+        Assert.Equal(0, result.Blocked);
+        Assert.Equal(20.39m, persisted.BasePrice);
         Assert.Equal("7899679701348", persisted.Ean13);
         Assert.Equal("17899679701345", persisted.Dun14);
+    }
+
+    [Fact]
+    public async Task Direct_price_is_written_for_new_product_without_price_table_or_commercial_options()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord("503813", "Pao BIMBO", "A", "PC", null, null,
+            PrecoVenda: 20.39m,
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["503813"], true);
+
+        var persisted = await db.Products.AsNoTracking().SingleAsync(item => item.WmcCode == "503813");
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal(1, result.Created);
+        Assert.Equal(0, result.Blocked);
+        Assert.Equal(20.39m, persisted.BasePrice);
+        Assert.Empty(await db.PriceTableItems.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Direct_price_updates_base_when_explicit_target_table_is_inactive_without_changing_table_item()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var table = new PriceTable { Name = "Tabela inativa", IsActive = false };
+        db.PriceTables.Add(table);
+        await db.SaveChangesAsync();
+        var product = new Product { WmcCode = "503813", Sku = "503813", Name = "Produto", ProductCategoryId = 1, BasePrice = 1m };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = table.Id, ProductId = product.Id, Price = 7m, PromotionalPrice = 6m });
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null, PrecoVenda: 20.39m)]);
+        var options = Options.Create(new WmcPriceImportOptions { TargetPriceTableId = table.Id });
+
+        var result = await new WmcProductImportService(db, reader, options).ImportAsync(104, ["503813"], true);
+
+        var persistedItem = await db.PriceTableItems.AsNoTracking().SingleAsync();
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal(20.39m, product.BasePrice);
+        Assert.Equal(7m, persistedItem.Price);
+        Assert.Equal(6m, persistedItem.PromotionalPrice);
     }
 
     [Theory]

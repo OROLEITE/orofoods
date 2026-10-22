@@ -174,9 +174,10 @@ public class IntegrationsController(
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, codes));
         }
         var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
+        var refreshedCandidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
         SetWmcViewState();
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
-            Candidates: candidates, SelectedProductCodes: codes, ImportResult: result,
+            Candidates: refreshedCandidates, SelectedProductCodes: codes, ImportResult: result,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
 

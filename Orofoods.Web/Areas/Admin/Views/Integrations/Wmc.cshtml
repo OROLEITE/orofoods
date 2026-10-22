@@ -127,9 +127,6 @@
                         <div><span class="wmc-step-kicker">Etapa 2</span><h4>Confira @Model.SelectedBrandDescription</h4></div>
                         <a asp-action="Wmc" class="btn btn-outline-secondary btn-sm">Trocar marca</a>
                     </header>
-                    <div class="alert alert-warning py-2" role="note">
-                        <strong>Aplicação de preços bloqueada:</strong> valide a Lista 1 e a unidade comercial antes de qualquer aplicação. O preço WMC abaixo é somente informativo nesta etapa.
-                    </div>
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
                     <form method="post" asp-action="WmcConfirmSelection" id="wmcImportSelectionForm">
                         @Html.AntiForgeryToken()
@@ -211,7 +208,7 @@
                                                 <strong>@proposedPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
                                                 @if (item.PriceProposal.SafeToApply)
                                                 {
-                                                    <small class="text-success d-block">Lista 1/unidade/tabela validadas</small>
+                                                    <small class="text-success d-block">Será gravado no preço base</small>
                                                 }
                                                 else
                                                 {
@@ -293,7 +290,7 @@
                         <div class="wmc-wizard-actions">
                             <a asp-action="Wmc" class="btn btn-outline-secondary">Voltar</a>
                             <span class="wmc-action-hint">Selecione apenas produtos liberados para continuar.</span>
-                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection">Conferir alterações</button>
+                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection">Confirmar alterações</button>
                         </div>
                     </form>
                 }
@@ -315,6 +312,13 @@
                             {
                                 <li>
                                     <strong>@item.WmcCode</strong> · @item.Status
+                                    @if (item.PriceProposal is { } pricePreview)
+                                    {
+                                        <ul class="wmc-change-list">
+                                            <li><strong>Preço anterior:</strong> @(pricePreview.CurrentBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
+                                            <li><strong>Novo preço WMC:</strong> @(pricePreview.ProposedPrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
+                                        </ul>
+                                    }
                                     @if (item.Changes.Count > 0)
                                     {
                                         <ul class="wmc-change-list">@foreach (var change in item.Changes) { <li><strong>@change.Field:</strong> @change.CurrentValue &rarr; @change.WmcValue</li> }</ul>
@@ -353,6 +357,15 @@
                     @if (Model.ImportResult.Items.Any(item => item.Detail is not null))
                     {
                         <details class="wmc-confirmation-details"><summary>Ver detalhes do resultado</summary><ul>@foreach (var item in Model.ImportResult.Items.Where(item => item.Detail is not null)) { <li><strong>@item.WmcCode</strong> · @item.Status · @item.Detail</li> }</ul></details>
+                    }
+                    @if (Model.Candidates is { Count: > 0 })
+                    {
+                        <details class="wmc-confirmation-details"><summary>Ver preços recarregados após a gravação</summary><ul>
+                            @foreach (var item in Model.Candidates.Where(item => (Model.SelectedProductCodes ?? []).Contains(item.WmcCode, StringComparer.Ordinal)))
+                            {
+                                <li><strong>@item.WmcCode</strong> · WMC: @(item.PrecoVenda?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—") · BasePrice persistido: @(item.LocalBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
+                            }
+                        </ul></details>
                     }
                     <div class="wmc-wizard-actions"><a asp-action="Wmc" class="btn btn-primary">Nova importação</a></div>
                 }
