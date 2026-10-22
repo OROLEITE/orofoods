@@ -299,7 +299,7 @@ public sealed class WmcProductImportService(ApplicationDbContext db, IWmcProduct
         .OrderBy(unit => unit.UnitCode, StringComparer.Ordinal)
         .Select(unit => FormatUnit(unit.UnitCode, unit.Description, unit.Factor, unit.Barcode, unit.IsMaster)));
 
-    private static string FormatUnit(string code, string description, decimal? factor, string? barcode, bool isMaster) =>
+    private static string FormatUnit(string code, string? description, decimal? factor, string? barcode, bool isMaster) =>
         $"{NormalizeUnitCode(code)} ({Clean(description) ?? "sem descrição"}) × {factor?.ToString() ?? "sem fator"} · {Clean(barcode) ?? "sem código"}{(isMaster ? " · master" : "")}";
 
     private static string NormalizeUnitCode(string value) => (Clean(value) ?? "").ToUpperInvariant();

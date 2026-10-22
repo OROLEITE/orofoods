@@ -338,6 +338,7 @@ builder.Services.AddScoped<IWmcBrandReader, WmcBrandReader>();
 builder.Services.AddScoped<IWmcSellerReader, UndiscoveredWmcSellerReader>();
 builder.Services.AddScoped<WmcSyncService>();
 builder.Services.AddScoped<WmcProductPreviewService>();
+builder.Services.AddScoped<WmcProductImportService>();
 builder.Services.AddScoped<WmcBimboStagingImportService>();
 builder.Services.AddSingleton<WmcSyncCoordinator>();
 builder.Services.AddHostedService<WmcSyncWorker>();

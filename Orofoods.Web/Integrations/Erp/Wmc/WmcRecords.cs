@@ -23,4 +23,14 @@ public sealed record WmcProductRecord(
     string? Dun14 = null,
     string? CommercialUnitCode = null,
     string? LogisticsUnitCode = null,
-    int? PackagesPerCase = null);
+    int? PackagesPerCase = null,
+    IReadOnlyList<WmcProductUnitRecord>? Units = null,
+    bool UnitsSnapshotComplete = false,
+    string? Marca = null);
+
+public sealed record WmcProductUnitRecord(
+    string UnitCode,
+    string? Description,
+    decimal? Factor,
+    string? Barcode,
+    bool IsMaster);

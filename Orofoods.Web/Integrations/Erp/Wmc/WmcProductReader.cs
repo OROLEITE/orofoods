@@ -8,6 +8,10 @@ public interface IWmcProductReader
 
     Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default) =>
         GetAllAsync(cancellationToken);
+
+    Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandWithUnitsAsync(short? brandCode, CancellationToken cancellationToken = default) =>
+        Task.FromException<IReadOnlyList<WmcProductRecord>>(
+            new NotSupportedException("O leitor WMC não oferece a consulta das unidades oficiais."));
 }
 
 /// <summary>Reads the confirmed product master and stock columns from the read-only WMC replica.</summary>
@@ -19,8 +23,8 @@ public sealed class WmcProductReader(IWmcFirebirdReader reader) : IWmcProductRea
     public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default) =>
         reader.QueryAsync(
             brandCode is null
-                ? "SELECT CODPRODUTO, PRODUTO, SITUACAO, UN, ESTOQUEDISPONIVEL, ESTOQUEATUAL, CODBARRASFAB, CODMARCA, UN_ALTERN, QTDE_EMB, QTDE_CONV, PRECOCUSTO, PRECOVENDA, ESTOQUERESERVADO, DATA_ALTERACAO FROM PRODUTOS"
-                : "SELECT CODPRODUTO, PRODUTO, SITUACAO, UN, ESTOQUEDISPONIVEL, ESTOQUEATUAL, CODBARRASFAB, CODMARCA, UN_ALTERN, QTDE_EMB, QTDE_CONV, PRECOCUSTO, PRECOVENDA, ESTOQUERESERVADO, DATA_ALTERACAO FROM PRODUTOS WHERE CODMARCA = @CODMARCA",
+                ? "SELECT p.CODPRODUTO, p.PRODUTO, p.SITUACAO, p.UN, p.ESTOQUEDISPONIVEL, p.ESTOQUEATUAL, p.CODBARRASFAB, p.CODMARCA, p.UN_ALTERN, p.QTDE_EMB, p.QTDE_CONV, p.PRECOCUSTO, p.PRECOVENDA, p.ESTOQUERESERVADO, p.DATA_ALTERACAO, m.DESCRICAO FROM PRODUTOS p LEFT JOIN MARCAS m ON m.CODMARCA = p.CODMARCA"
+                : "SELECT p.CODPRODUTO, p.PRODUTO, p.SITUACAO, p.UN, p.ESTOQUEDISPONIVEL, p.ESTOQUEATUAL, p.CODBARRASFAB, p.CODMARCA, p.UN_ALTERN, p.QTDE_EMB, p.QTDE_CONV, p.PRECOCUSTO, p.PRECOVENDA, p.ESTOQUERESERVADO, p.DATA_ALTERACAO, m.DESCRICAO FROM PRODUTOS p LEFT JOIN MARCAS m ON m.CODMARCA = p.CODMARCA WHERE p.CODMARCA = @CODMARCA",
             Map,
             brandCode is null ? null : new Dictionary<string, object?> { ["CODMARCA"] = brandCode.Value },
             cancellationToken: cancellationToken);
@@ -73,7 +77,8 @@ public sealed class WmcProductReader(IWmcFirebirdReader reader) : IWmcProductRea
         Decimal(row, 12),
         Decimal(row, 13),
         row.IsDBNull(14) ? null : Convert.ToDateTime(row.GetValue(14)),
-        Text(row, 15));
+        Text(row, 6),
+        Marca: Text(row, 15));
 
     private static ProductUnitQueryRow MapProductUnit(DbDataReader row) =>
         new(Map(row), row.IsDBNull(16) ? null : new WmcProductUnitRecord(
