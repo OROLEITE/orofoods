@@ -3,7 +3,7 @@ namespace Orofoods.Web.Tests.Views;
 public sealed class WmcProductPreviewViewTests
 {
     [Fact]
-    public void Wmc_preview_is_admin_antiforgery_protected_and_separate_from_sync()
+    public void Wmc_import_wizard_preserves_actions_and_uses_three_compact_stages()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
@@ -11,43 +11,42 @@ public sealed class WmcProductPreviewViewTests
         var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
 
         Assert.Contains("Authorize(Roles = \"Administrador\")", controller, StringComparison.Ordinal);
+        Assert.Contains("public async Task<IActionResult> WmcProducts", controller, StringComparison.Ordinal);
+        Assert.Contains("public async Task<IActionResult> WmcConfirmSelection", controller, StringComparison.Ordinal);
+        Assert.Contains("public async Task<IActionResult> WmcImportProducts", controller, StringComparison.Ordinal);
         Assert.Contains("public async Task<IActionResult> WmcPreview", controller, StringComparison.Ordinal);
+        Assert.Contains("private void SetWmcViewState()", controller, StringComparison.Ordinal);
+        Assert.Contains("SetWmcViewState();", controller, StringComparison.Ordinal);
         Assert.Contains("[ValidateAntiForgeryToken]", controller, StringComparison.Ordinal);
+        Assert.Contains("wmc-stepper", view, StringComparison.Ordinal);
+        Assert.Contains("Selecionar marcas", view, StringComparison.Ordinal);
+        Assert.Contains("Conferir produtos", view, StringComparison.Ordinal);
+        Assert.Contains("Simular e confirmar", view, StringComparison.Ordinal);
+        Assert.Contains("wmcBrandSearch", view, StringComparison.Ordinal);
+        Assert.Contains("wmcBrandSelectionCount", view, StringComparison.Ordinal);
+        Assert.Contains("Carregar produtos", view, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
-        Assert.Contains("WmcProductPreviewService", controller, StringComparison.Ordinal);
-        Assert.Contains("logger.LogError(ex, \"WMC brand loading failed. Operation={Operation}\", \"LoadBrands\")", controller, StringComparison.Ordinal);
-        Assert.Contains("if (!wmcSyncOptions.Value.Enabled)", controller, StringComparison.Ordinal);
-        Assert.Contains("return Forbid();", controller, StringComparison.Ordinal);
-        Assert.Contains("short[]? brandCodes", controller, StringComparison.Ordinal);
-        Assert.Contains("name=\"brandCodes\"", view, StringComparison.Ordinal);
-        Assert.Contains("Selecionar filtradas", view, StringComparison.Ordinal);
-        Assert.Contains("Limpar sele&ccedil;&atilde;o", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("asp-action=\"WmcSyncNow\"", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-preview-card", view, StringComparison.Ordinal);
-        Assert.Contains("Novos ativos", view, StringComparison.Ordinal);
-        Assert.Contains("Existentes", view, StringComparison.Ordinal);
-        Assert.Contains("Ignorados", view, StringComparison.Ordinal);
-        Assert.Contains("Conflitos", view, StringComparison.Ordinal);
-        Assert.Contains("Detalhes da simula&ccedil;&atilde;o", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-product-grid", view, StringComparison.Ordinal);
-        Assert.Contains("btn-primary", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("CÃƒ", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("ÃƒÂ§", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-product-filter", view, StringComparison.Ordinal);
-        Assert.Contains("data-product-status=\"@product.Status\"", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-product-status--@product.Status.ToLowerInvariant()", view, StringComparison.Ordinal);
-        Assert.Contains("@product.Status", view, StringComparison.Ordinal);
-        Assert.Contains("Todos", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-page-header", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-hero-card", view, StringComparison.Ordinal);
-        Assert.Contains("data-icon=\"refresh-cw\"", view, StringComparison.Ordinal);
-        Assert.Contains("Integra&ccedil;&atilde;o Firebird", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-status-badge", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-last-sync", view, StringComparison.Ordinal);
-        Assert.Contains("data-icon=\"package\"", view, StringComparison.Ordinal);
-        Assert.Contains(".admin-authenticated .admin-wmc-page{padding-top:28px}", css, StringComparison.Ordinal);
-        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-page-header{margin-bottom:8px}", css, StringComparison.Ordinal);
-        Assert.Contains(".admin-authenticated .admin-wmc-page .wmc-brand-grid{display:grid;grid-template-columns:repeat(2", css, StringComparison.Ordinal);
+        Assert.Contains("wmc-legacy-preview", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-import-table", view, StringComparison.Ordinal);
+        Assert.Contains("<th>EAN</th>", view, StringComparison.Ordinal);
+        Assert.Contains("<th>DUN</th>", view, StringComparison.Ordinal);
+        Assert.Contains("<th>Unidade / fator</th>", view, StringComparison.Ordinal);
+        Assert.Contains("item.Stock", view, StringComparison.Ordinal);
+        Assert.Contains("var statusKind =", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-product-status--@statusKind", view, StringComparison.Ordinal);
+        Assert.Contains(".wmc-product-status--new", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-product-status--existing", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-product-status--blocked", css, StringComparison.Ordinal);
+        Assert.Contains("wmc-row-details", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-import-summary", view, StringComparison.Ordinal);
+        Assert.Contains("Confirmar importação", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmc-preview-form", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmcSelectFiltered", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("name=\"brandCodes\"", view, StringComparison.Ordinal);
+        Assert.Contains(".wmc-product-table-scroll", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-row-details-content", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-stepper", css, StringComparison.Ordinal);
+        Assert.Contains("var(--admin-dark-surface)", css, StringComparison.Ordinal);
     }
 
     [Fact]

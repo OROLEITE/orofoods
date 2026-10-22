@@ -14,13 +14,14 @@ public sealed class WmcProductImportServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
         await db.SaveChangesAsync();
-        var reader = new FakeReader([new WmcProductRecord("503813", "Pao BIMBO", "A", "PC", null, null,
+        var reader = new FakeReader([new WmcProductRecord("503813", "Pao BIMBO", "A", "PC", 42.5m, null,
             Ean: "7899679701348",
             Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
 
         var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(1));
 
         Assert.Equal("PC", candidate.Unit);
+        Assert.Equal(42.5m, candidate.Stock);
         Assert.Collection(candidate.Units,
             unit => { Assert.Equal("CX", unit.UnitCode); Assert.Equal(18m, unit.Factor); Assert.Equal("17899679701345", unit.Barcode); Assert.True(unit.IsMaster); },
             unit => { Assert.Equal("PC", unit.UnitCode); Assert.Equal(1m, unit.Factor); Assert.Equal("7899679701348", unit.Barcode); Assert.False(unit.IsMaster); });
