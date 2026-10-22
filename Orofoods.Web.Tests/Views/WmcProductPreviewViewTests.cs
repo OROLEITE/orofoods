@@ -21,12 +21,24 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("wmc-stepper", view, StringComparison.Ordinal);
         Assert.Contains("Selecionar marcas", view, StringComparison.Ordinal);
         Assert.Contains("Conferir produtos", view, StringComparison.Ordinal);
-        Assert.Contains("Simular e confirmar", view, StringComparison.Ordinal);
+        Assert.Contains("Confirmar importação", view, StringComparison.Ordinal);
         Assert.Contains("wmcBrandSearch", view, StringComparison.Ordinal);
         Assert.Contains("wmcBrandSelectionCount", view, StringComparison.Ordinal);
         Assert.Contains("Carregar produtos", view, StringComparison.Ordinal);
-        Assert.Contains("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
-        Assert.Contains("wmc-legacy-preview", view, StringComparison.Ordinal);
+        Assert.Contains("Conferir alterações", view, StringComparison.Ordinal);
+        Assert.Contains("simulationValidated", view, StringComparison.Ordinal);
+        Assert.Contains("Preço proposto", view, StringComparison.Ordinal);
+        Assert.Contains("PriceProposal", view, StringComparison.Ordinal);
+        Assert.Contains("Selecionar todos", view, StringComparison.Ordinal);
+        Assert.Contains("Desmarcar todos", view, StringComparison.Ordinal);
+        Assert.Contains("wmcProductSelectionCount", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-product-checkbox", view, StringComparison.Ordinal);
+        Assert.Contains("wmcProductPreviousPage", view, StringComparison.Ordinal);
+        Assert.Contains("wmcProductNextPage", view, StringComparison.Ordinal);
+        Assert.Contains("wmcImportConfirmationForm", view, StringComparison.Ordinal);
+        Assert.Contains("submitted", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmc-legacy-preview", view, StringComparison.Ordinal);
         Assert.Contains("wmc-import-table", view, StringComparison.Ordinal);
         Assert.Contains("<th>EAN</th>", view, StringComparison.Ordinal);
         Assert.Contains("<th>DUN</th>", view, StringComparison.Ordinal);
@@ -50,6 +62,8 @@ public sealed class WmcProductPreviewViewTests
         Assert.DoesNotContain("wmcSelectFiltered", view, StringComparison.Ordinal);
         Assert.DoesNotContain("name=\"brandCodes\"", view, StringComparison.Ordinal);
         Assert.Contains(".wmc-product-table-scroll", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-product-selection-toolbar", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-product-pagination", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-row-details-content", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-stepper", css, StringComparison.Ordinal);
         Assert.Contains("var(--admin-dark-surface)", css, StringComparison.Ordinal);
@@ -115,7 +129,7 @@ public sealed class WmcProductPreviewViewTests
     }
 
     [Fact]
-    public void Bimbo_panel_has_staging_admin_simulation_selection_reason_and_individual_activation_contracts()
+    public void Legacy_Bimbo_endpoints_remain_compatible_but_the_panel_is_removed_from_the_main_flow()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
@@ -129,14 +143,11 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("WmcBimboActivate", controller, StringComparison.Ordinal);
         Assert.Contains("if (!hostEnvironment.IsStaging()) return Forbid();", controller, StringComparison.Ordinal);
         Assert.Contains("selectedWmcCodes", controller, StringComparison.Ordinal);
-        Assert.Contains("wmcBimboSimulateForm", view, StringComparison.Ordinal);
-        Assert.Contains("Simular importa&ccedil;&atilde;o", view, StringComparison.Ordinal);
-        Assert.Contains("wmcBimboImportForm", view, StringComparison.Ordinal);
-        Assert.Contains("Importar selecionados", view, StringComparison.Ordinal);
-        Assert.Contains("window.confirm", view, StringComparison.Ordinal);
-        Assert.Contains("Importando...", view, StringComparison.Ordinal);
-        Assert.Contains("@product.CommercialStatus", view, StringComparison.Ordinal);
-        Assert.Contains("product.Reasons", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmcBimboSimulateForm", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Simular importa&ccedil;&atilde;o", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmcBimboImportForm", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Importar selecionados", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmc-bimbo-card", view, StringComparison.Ordinal);
         Assert.Contains("var canActivateBimbo = hostEnvironment.IsStaging() && initialLoadReleaseOptions.Value.Enabled;", controller, StringComparison.Ordinal);
         Assert.Contains("WmcBimboProductRules.ValidateStagingActivationData(product, inventory)", releaseService, StringComparison.Ordinal);
         Assert.Contains("var issues = allowStagingActivation", importService, StringComparison.Ordinal);

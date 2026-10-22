@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Inventory;
@@ -14,23 +15,14 @@ public sealed class WmcProductImportServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
-        db.Products.Add(new Product
-        {
-            WmcCode = "503813", Sku = "WMC-503813", Name = "Pao BIMBO", ProductCategoryId = 1,
-            Unit = "PCT", CommercialUnitCode = "PCT", BasePrice = 1.00m
-        });
         await db.SaveChangesAsync();
         var reader = new FakeReader([new WmcProductRecord("503813", "Pao BIMBO", "A", "PC", 42.5m, null,
             Ean: "7899679701348",
-            PrecoVenda: 20.39m,
             Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
 
         var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(1));
 
         Assert.Equal("PC", candidate.Unit);
-        Assert.Equal(20.39m, candidate.PrecoVenda);
-        Assert.Equal(1.00m, candidate.LocalBasePrice);
-        Assert.Equal("PCT", candidate.LocalCommercialUnit);
         Assert.Equal(42.5m, candidate.Stock);
         Assert.Equal("7899679701348", candidate.Ean);
         Assert.NotNull(candidate.UnitProposal);
@@ -41,7 +33,6 @@ public sealed class WmcProductImportServiceTests
         Assert.Collection(candidate.Units,
             unit => { Assert.Equal("CX", unit.UnitCode); Assert.Equal(18m, unit.Factor); Assert.Equal("17899679701345", unit.Barcode); Assert.True(unit.IsMaster); },
             unit => { Assert.Equal("PC", unit.UnitCode); Assert.Equal(1m, unit.Factor); Assert.Equal("7899679701348", unit.Barcode); Assert.False(unit.IsMaster); });
-        Assert.Equal(1.00m, (await db.Products.SingleAsync(product => product.WmcCode == "503813")).BasePrice);
     }
 
     [Fact]
@@ -59,7 +50,6 @@ public sealed class WmcProductImportServiceTests
         db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 360, QuantityReserved = 4 });
         await db.SaveChangesAsync();
         var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null,
-            PrecoVenda: 20.39m,
             Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
 
         var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["503813"], true);
@@ -154,10 +144,9 @@ public sealed class WmcProductImportServiceTests
         var priceTable = await db.PriceTables.SingleAsync();
         db.PriceTableItems.Add(new PriceTableItem { PriceTableId = priceTable.Id, ProductId = product.Id, Price = 17m, PromotionalPrice = 15m });
         await db.SaveChangesAsync();
-        var reader = new FakeReader([new WmcProductRecord("P1", "Novo nome", "A", "CX", null, null, "EAN1", "9", "FD", 6, 7, null, 20.39m, Marca: "Marca WMC")]);
+        var reader = new FakeReader([new WmcProductRecord("P1", "Novo nome", "A", "CX", null, null, "EAN1", "9", "FD", 6, 7, null, 1m, Marca: "Marca WMC")]);
         var service = new WmcProductImportService(db, reader);
         var candidate = (await service.GetCandidatesAsync(9)).Single();
-        Assert.Equal(20.39m, candidate.PrecoVenda);
         Assert.DoesNotContain(candidate.Changes, change => change.Field.Contains("preço", StringComparison.OrdinalIgnoreCase));
 
         var result = await service.ImportAsync(9, ["P1"], true);
@@ -442,6 +431,95 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal(2, units.Count);
         Assert.Contains(units, unit => unit.UnitCode == "PC" && unit.Barcode == "EAN-PC");
         Assert.Contains(units, unit => unit.UnitCode == "CX" && unit.Barcode == "DUN-CX");
+    }
+
+    [Fact]
+    public async Task Validated_price_updates_base_and_explicit_table_without_overwriting_promotion_and_is_idempotent()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var table = new PriceTable { Name = "Lista 1 Orofoods", IsActive = true };
+        db.PriceTables.Add(table);
+        await db.SaveChangesAsync();
+        var product = new Product
+        {
+            WmcCode = "503813", Sku = "503813", Name = "Produto", ProductCategoryId = 1,
+            BasePrice = 1m, PromotionalPrice = 18.99m, IsPromotional = true
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = table.Id, ProductId = product.Id, Price = 1m, PromotionalPrice = 17.50m });
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null, PrecoVenda: 20.39m,
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
+        var options = Options.Create(new WmcPriceImportOptions
+        {
+            SourcePriceValidated = true,
+            SourcePriceUnitCode = "PC",
+            TargetPriceTableId = table.Id
+        });
+        var service = new WmcProductImportService(db, reader, options);
+
+        var candidate = Assert.Single(await service.GetCandidatesAsync(104));
+        Assert.True(candidate.PriceProposal!.SafeToApply);
+        Assert.Equal(20.39m, candidate.PriceProposal.ProposedPrice);
+        var result = await service.ImportAsync(104, ["503813"], true);
+        var repeat = await service.ImportAsync(104, ["503813"], true);
+
+        var persistedItem = await db.PriceTableItems.AsNoTracking().SingleAsync();
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal(1, result.Updated);
+        Assert.Equal(20.39m, product.BasePrice);
+        Assert.Equal(20.39m, persistedItem.Price);
+        Assert.Equal(17.50m, persistedItem.PromotionalPrice);
+        Assert.Equal(0, repeat.Updated);
+        Assert.Equal(1, repeat.Unchanged);
+    }
+
+    [Fact]
+    public async Task Price_update_is_blocked_without_proven_lista_1_and_units_still_persist()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "503813", Sku = "503813", Name = "Produto", ProductCategoryId = 1,
+            BasePrice = 1m, Ean = "local", Ean13 = "7890000000000", Dun14 = "17890000000000"
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null, PrecoVenda: 20.39m,
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["503813"], true);
+
+        var persisted = await db.Products.AsNoTracking().SingleAsync();
+        Assert.Equal("Succeeded", result.Status);
+        Assert.True(result.Blocked > 0);
+        Assert.Contains(result.Items, item => item.Detail != null && item.Detail.Contains("Lista 1", StringComparison.Ordinal));
+        Assert.Equal(1m, persisted.BasePrice);
+        Assert.Equal("7899679701348", persisted.Ean13);
+        Assert.Equal("17899679701345", persisted.Dun14);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Invalid_wmc_price_is_blocked_without_changing_local_price(decimal sourcePrice)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product { WmcCode = "P", Sku = "P", Name = "Produto", ProductCategoryId = 1, BasePrice = 7m };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord("P", "Produto", "A", "PC", null, null, PrecoVenda: sourcePrice,
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(1, ["P"], true);
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal(7m, product.BasePrice);
+        Assert.Contains(result.Items, item => item.Detail != null && item.Detail.Contains("zero ou negativo", StringComparison.Ordinal));
     }
 
     private sealed class FakeReader(

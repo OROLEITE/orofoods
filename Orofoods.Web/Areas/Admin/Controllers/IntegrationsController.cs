@@ -100,7 +100,6 @@ public class IntegrationsController(
 
     public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {
-        await LoadBimboManagementRowsAsync(cancellationToken);
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
         IReadOnlyList<WmcBrandRecord> brands = [];
@@ -153,16 +152,27 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcImportProducts(short brandCode, string[]? selectedProductCodes, string reimportExisting, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcImportProducts(short brandCode, string[]? selectedProductCodes, string reimportExisting, bool simulationValidated, CancellationToken cancellationToken)
     {
         if (string.Equals(reimportExisting, "cancel", StringComparison.OrdinalIgnoreCase))
             return RedirectToAction(nameof(Wmc));
+        if (!simulationValidated)
+            return BadRequest("A conferência das alterações é obrigatória antes da confirmação.");
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
         var brand = brands.SingleOrDefault(item => item.Code == brandCode);
         if (brand is null) return BadRequest("Marca WMC inválida.");
         if (reimportExisting is not ("true" or "false")) return BadRequest("Decisão inválida.");
         var codes = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
         var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var validSelection = candidates
+            .Where(candidate => codes.Contains(candidate.WmcCode, StringComparer.Ordinal))
+            .ToArray();
+        if (codes.Length == 0 || validSelection.Length != codes.Length || validSelection.Any(candidate => !candidate.Selectable))
+        {
+            ModelState.AddModelError("", "A conferência ficou desatualizada. Revise os produtos antes de confirmar.");
+            SetWmcViewState();
+            return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, codes));
+        }
         var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
         SetWmcViewState();
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
@@ -209,7 +219,6 @@ public class IntegrationsController(
             .ToList();
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
-        await LoadBimboManagementRowsAsync(cancellationToken);
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
