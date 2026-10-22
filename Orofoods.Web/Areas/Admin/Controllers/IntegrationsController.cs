@@ -22,12 +22,32 @@ public class IntegrationsController(
     IOptions<WmcSyncOptions> wmcSyncOptions,
     IWmcBrandReader wmcBrandReader,
     WmcProductPreviewService wmcProductPreviewService,
+    WmcProductImportService wmcProductImportService,
     ILogger<IntegrationsController> logger,
     IHostEnvironment hostEnvironment,
     WmcBimboStagingImportService wmcBimboStagingImportService,
     WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
     IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions) : Controller
 {
+    public IntegrationsController(
+        ApplicationDbContext db,
+        WmcManualExportService wmcManualExportService,
+        WmcSyncCoordinator wmcSyncCoordinator,
+        WmcSyncService wmcSyncService,
+        IOptions<WmcSyncOptions> wmcSyncOptions,
+        IWmcBrandReader wmcBrandReader,
+        WmcProductPreviewService wmcProductPreviewService,
+        ILogger<IntegrationsController> logger,
+        IHostEnvironment hostEnvironment,
+        WmcBimboStagingImportService wmcBimboStagingImportService,
+        WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
+        IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions)
+        : this(db, wmcManualExportService, wmcSyncCoordinator, wmcSyncService, wmcSyncOptions,
+            wmcBrandReader, wmcProductPreviewService, null!, logger, hostEnvironment,
+            wmcBimboStagingImportService, initialLoadReadinessReleaseService, initialLoadReleaseOptions)
+    {
+    }
+
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
         var query = db.Orders
@@ -111,7 +131,57 @@ public class IntegrationsController(
             logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
             TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
         }
-        return View(new WmcPreviewPageModel(brands, [], null, []));
+        return View(new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcProducts(short brandCode, CancellationToken cancellationToken)
+    {
+        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        var brand = brands.SingleOrDefault(item => item.Code == brandCode);
+        if (brand is null) return BadRequest("Marca WMC inválida.");
+        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates,
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcConfirmSelection(short brandCode, string[]? selectedProductCodes, CancellationToken cancellationToken)
+    {
+        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        var brand = brands.SingleOrDefault(item => item.Code == brandCode);
+        if (brand is null) return BadRequest("Marca WMC inválida.");
+        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var requested = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
+        var selected = candidates.Where(candidate => requested.Contains(candidate.WmcCode, StringComparer.Ordinal) && candidate.Selectable).ToArray();
+        if (selected.Length == 0 || selected.Length != requested.Length)
+        {
+            ModelState.AddModelError("", "Seleção vazia ou desatualizada. Revise os produtos selecionados.");
+            return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, requested));
+        }
+        var summary = new WmcProductImportSummary(selected.Length, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
+            selected.Count(item => item.Changes.Count > 0), selected.Count(item => item.Changes.Count == 0));
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Confirmation", brandCode, brand.Description, candidates, requested, summary));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcImportProducts(short brandCode, string[]? selectedProductCodes, string reimportExisting, CancellationToken cancellationToken)
+    {
+        if (string.Equals(reimportExisting, "cancel", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction(nameof(Wmc));
+        var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        var brand = brands.SingleOrDefault(item => item.Code == brandCode);
+        if (brand is null) return BadRequest("Marca WMC inválida.");
+        if (reimportExisting is not ("true" or "false")) return BadRequest("Decisão inválida.");
+        var codes = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
+        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
+            Candidates: candidates, SelectedProductCodes: codes, ImportResult: result,
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
 
     [HttpPost]
@@ -148,7 +218,8 @@ public class IntegrationsController(
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
         await LoadBimboManagementRowsAsync(cancellationToken);
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand));
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, batch.Summary, previewsByBrand,
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
 
     [HttpPost]

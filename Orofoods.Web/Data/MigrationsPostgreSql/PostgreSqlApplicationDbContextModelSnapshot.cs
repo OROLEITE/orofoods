@@ -414,6 +414,36 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("ProductImages");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Catalog.WmcProductUnit", b =>
+                {
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UnitCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<decimal?>("Factor")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<bool>("IsMaster")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("ProductId", "UnitCode");
+
+                    b.ToTable("WmcProductUnits");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Commercial.CommercialActivity", b =>
                 {
                     b.Property<int>("Id")
@@ -1707,6 +1737,58 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("WmcSyncRuns");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcProductImportAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<short>("BrandCode")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Created")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Errors")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResultsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Selected")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<int>("Unchanged")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Updated")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompletedAt");
+
+                    b.ToTable("WmcProductImportAudits");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Inventory.InventoryAdjustment", b =>
                 {
                     b.Property<int>("Id")
@@ -2655,6 +2737,17 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Catalog.WmcProductUnit", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Catalog.Product", "Product")
+                        .WithMany("WmcUnits")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Commercial.CommercialActivity", b =>
                 {
                     b.HasOne("Orofoods.Web.Models.Identity.ApplicationUser", "AssignedUser")
@@ -3242,6 +3335,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
             modelBuilder.Entity("Orofoods.Web.Models.Catalog.Product", b =>
                 {
                     b.Navigation("Images");
+
+                    b.Navigation("WmcUnits");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Catalog.ProductCategory", b =>

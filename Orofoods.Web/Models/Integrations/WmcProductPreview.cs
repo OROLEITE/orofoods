@@ -25,7 +25,15 @@ public sealed record WmcPreviewPageModel(
     IReadOnlyList<WmcBrandRecord> Brands,
     IReadOnlyList<short> SelectedBrandCodes,
     WmcProductPreviewResult? Preview,
-    IReadOnlyList<WmcBrandPreviewResult> BrandPreviews);
+    IReadOnlyList<WmcBrandPreviewResult> BrandPreviews,
+    string Step = "Brands",
+    short? SelectedBrandCode = null,
+    string? SelectedBrandDescription = null,
+    IReadOnlyList<WmcProductImportCandidate>? Candidates = null,
+    IReadOnlyList<string>? SelectedProductCodes = null,
+    WmcProductImportSummary? Confirmation = null,
+    WmcProductImportResult? ImportResult = null,
+    DateTime? LastProductSyncAt = null);
 
 public sealed record WmcBrandPreviewResult(
     short Code,
@@ -42,3 +50,46 @@ public sealed record WmcProductPreviewItem(
 public sealed record WmcProductPreviewBatchResult(
     WmcProductPreviewResult Summary,
     IReadOnlyList<WmcBrandPreviewResult> ByBrand);
+
+public sealed record WmcProductUnitPreview(
+    string UnitCode,
+    string? Description,
+    decimal? Factor,
+    string? Barcode,
+    bool IsMaster);
+
+public sealed record WmcProductImportCandidate(
+    string WmcCode,
+    string Name,
+    string? Ean,
+    string? Situation,
+    string? BrandCode,
+    string? BrandName,
+    string? Unit,
+    int? ProductId,
+    string Status,
+    bool Selectable,
+    IReadOnlyList<WmcProductFieldChange> Changes,
+    IReadOnlyList<WmcProductUnitPreview> Units);
+
+public sealed record WmcProductFieldChange(string Field, string CurrentValue, string WmcValue);
+
+public sealed record WmcProductImportSummary(
+    int Selected,
+    int NewProducts,
+    int ExistingProducts,
+    int ChangedProducts,
+    int UnchangedProducts);
+
+public sealed record WmcProductImportItemResult(string WmcCode, string Status, string? Detail);
+
+public sealed record WmcProductImportResult(
+    int Selected,
+    int Created,
+    int Updated,
+    int Unchanged,
+    int Errors,
+    string Status,
+    string? ErrorMessage,
+    IReadOnlyList<WmcProductImportItemResult> Items,
+    DateTime CompletedAt);

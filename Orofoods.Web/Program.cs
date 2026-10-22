@@ -107,7 +107,16 @@ else
     }
 }
 
-var connectionString = DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
+var isWmcTestHost = builder.Environment.IsEnvironment("Testing");
+var connectionString = isWmcTestHost
+    ? WmcTestDatabaseGuard.GetRequiredConnectionString(builder.Configuration)
+    : DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
+
+if (isWmcTestHost)
+{
+    // This read-only identity check must finish before EF can run migrations or seed data.
+    await WmcTestDatabaseGuard.AssertConnectedToDisposableDatabaseAsync(connectionString);
+}
 
 builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -329,6 +338,7 @@ builder.Services.AddScoped<IWmcBrandReader, WmcBrandReader>();
 builder.Services.AddScoped<IWmcSellerReader, UndiscoveredWmcSellerReader>();
 builder.Services.AddScoped<WmcSyncService>();
 builder.Services.AddScoped<WmcProductPreviewService>();
+builder.Services.AddScoped<WmcProductImportService>();
 builder.Services.AddScoped<WmcBimboStagingImportService>();
 builder.Services.AddSingleton<WmcSyncCoordinator>();
 builder.Services.AddHostedService<WmcSyncWorker>();

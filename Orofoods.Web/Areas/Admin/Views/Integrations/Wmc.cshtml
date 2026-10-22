@@ -72,6 +72,73 @@
             <h2 id="wmc-preview-title" class="wmc-preview-heading"><svg data-icon="package" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m21 8-9-5-9 5 9 5 9-5Zm-18 0v8l9 5 9-5V8m-9 5v8" /></svg> Pr&eacute;via de produtos por marca</h2>
             <p>Consulta somente leitura. Nenhum produto, estoque, categoria ou execu&ccedil;&atilde;o ser&aacute; gravado.</p>
 
+            <section class="wmc-import-wizard mt-3" aria-labelledby="wmc-import-title">
+                <h3 id="wmc-import-title">Importar produtos e unidades oficiais</h3>
+                <p class="text-muted">Etapa: @(Model.Step == "Brands" ? "1 · Marca" : Model.Step == "Products" ? "2 · Produtos" : Model.Step == "Confirmation" ? "3 · Confirmação" : "Resultado") · Espelho WMC somente leitura.</p>
+                @if (Model.LastProductSyncAt is DateTime lastProductSync)
+                {
+                    <small class="text-muted d-block mb-2">Última importação: @lastProductSync.ToLocalTime().ToString("g")</small>
+                }
+                @if (Model.Step == "Brands")
+                {
+                    <form method="post" asp-action="WmcProducts" class="wmc-import-brand-form">
+                        @Html.AntiForgeryToken()
+                        <label class="form-label" for="wmcImportBrand">Marca WMC</label>
+                        <select class="form-select" name="brandCode" id="wmcImportBrand" required>
+                            @foreach (var brand in Model.Brands.OrderBy(item => item.Description))
+                            {
+                                <option value="@brand.Code">@brand.Description (@brand.ProductCount)</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-primary mt-2">Carregar produtos</button>
+                    </form>
+                }
+                else if (Model.Step == "Products" && Model.Candidates is not null)
+                {
+                    <h4>@Model.SelectedBrandDescription</h4>
+                    <form method="post" asp-action="WmcConfirmSelection" id="wmcImportSelectionForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
+                        <div class="table-responsive"><table class="table table-sm align-middle wmc-import-table">
+                            <thead><tr><th>Selecionar</th><th>Produto</th><th>Unidade</th><th>Unidades oficiais</th><th>Status</th></tr></thead>
+                            <tbody>
+                            @foreach (var item in Model.Candidates)
+                            {
+                                <tr>
+                                    <td><input type="checkbox" name="selectedProductCodes" value="@item.WmcCode" @(item.Selectable ? null : "disabled") /></td>
+                                    <td><strong>@item.WmcCode</strong><br />@item.Name@if (!string.IsNullOrWhiteSpace(item.Ean)) { <small class="text-muted d-block">EAN @item.Ean</small> }</td>
+                                    <td>@(item.Unit ?? "-")</td>
+                                    <td>@foreach (var unit in item.Units) { <span class="d-block">@unit.UnitCode · fator @(unit.Factor?.ToString() ?? "-") · @(unit.Barcode ?? "-")@(unit.IsMaster ? " · master" : "")</span> }</td>
+                                    <td>@item.Status</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table></div>
+                        <button type="submit" class="btn btn-primary">Continuar</button>
+                    </form>
+                }
+                else if (Model.Step == "Confirmation" && Model.Confirmation is not null)
+                {
+                    <h4>Confirmar importação · @Model.SelectedBrandDescription</h4>
+                    <p>@Model.Confirmation.NewProducts novos, @Model.Confirmation.ExistingProducts existentes e @Model.Confirmation.ChangedProducts com alterações.</p>
+                    <form method="post" asp-action="WmcImportProducts">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
+                        @foreach (var code in Model.SelectedProductCodes ?? []) { <input type="hidden" name="selectedProductCodes" value="@code" /> }
+                        <button class="btn btn-primary" type="submit" name="reimportExisting" value="true">Importar e atualizar</button>
+                        <button class="btn btn-outline-secondary" type="submit" name="reimportExisting" value="false">Somente novos</button>
+                        <button class="btn btn-link" type="submit" name="reimportExisting" value="cancel">Cancelar</button>
+                    </form>
+                }
+                else if (Model.Step == "Result" && Model.ImportResult is not null)
+                {
+                    <h4>Resultado: @(Model.ImportResult.Status == "Succeeded" ? "Concluído" : "Não concluído")</h4>
+                    <p>@Model.ImportResult.Created criados · @Model.ImportResult.Updated atualizados · @Model.ImportResult.Unchanged inalterados · @Model.ImportResult.Errors erros</p>
+                    @if (Model.ImportResult.ErrorMessage is not null) { <div class="alert alert-warning" role="alert">@Model.ImportResult.ErrorMessage</div> }
+                    <a asp-action="Wmc" class="btn btn-primary">Nova importação</a>
+                }
+            </section>
+
             @if (canManageBimbo)
             {
             <section class="wmc-bimbo-card" aria-labelledby="wmc-bimbo-title">

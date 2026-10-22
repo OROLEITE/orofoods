@@ -48,6 +48,7 @@ public class Product
     [MaxLength(400)] public string AdditionalInformation { get; set; } = "";
     public int? SubstituteProductId { get; set; }
     public Product? SubstituteProduct { get; set; }
+    public List<WmcProductUnit> WmcUnits { get; set; } = [];
     public bool IsActive { get; set; } = true;
     public List<ProductImage> Images { get; set; } = [];
     [MaxLength(12)] public string Accent { get; set; } = "#d99624";
