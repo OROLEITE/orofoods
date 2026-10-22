@@ -5,9 +5,6 @@
     ViewData["Title"] = "Sincroniza\u00e7\u00e3o WMC";
     var isRunning = (bool)ViewBag.IsRunning;
     var lastRun = ViewBag.LastRun as WmcSyncRunResult;
-    var bimboProducts = ViewBag.BimboProducts as IReadOnlyList<WmcBimboAdminProductRow> ?? [];
-    var canManageBimbo = ViewBag.CanManageBimbo == true;
-    var canActivateBimbo = ViewBag.CanActivateBimbo == true;
 }
 
 <section class="section admin-wmc-page">
@@ -85,7 +82,7 @@
                 <ol class="wmc-stepper" aria-label="Etapas da importação">
                     <li class="@(Model.Step == "Brands" ? "is-active" : "is-complete")"><span>1</span><strong>Selecionar marcas</strong></li>
                     <li class="@(Model.Step == "Products" ? "is-active" : Model.Step is "Confirmation" or "Result" ? "is-complete" : null)"><span>2</span><strong>Conferir produtos</strong></li>
-                    <li class="@(Model.Step is "Confirmation" or "Result" ? "is-active" : null)"><span>3</span><strong>Simular e confirmar</strong></li>
+                    <li class="@(Model.Step is "Confirmation" or "Result" ? "is-active" : null)"><span>3</span><strong>Confirmar importação</strong></li>
                 </ol>
 
                 @if (Model.LastProductSyncAt is DateTime lastProductSync)
@@ -123,10 +120,6 @@
                             <button type="submit" class="btn btn-primary">Carregar produtos</button>
                         </div>
                     </form>
-                    <form method="post" asp-action="WmcPreview" class="wmc-secondary-preview-form">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-link">Ver pr&eacute;via geral por marcas</button>
-                    </form>
                 }
                 else if (Model.Step == "Products" && Model.Candidates is not null)
                 {
@@ -145,19 +138,39 @@
                             <span class="me-3">Dados WMC · Firebird, somente leitura</span>
                             <span>Cadastro Orofoods · local, somente leitura</span>
                         </div>
+                        <div class="wmc-product-selection-toolbar" id="wmcProductSelectionToolbar">
+                            <div class="wmc-product-search-field">
+                                <label for="wmcProductSearch">Pesquisar produtos</label>
+                                <input class="form-control" id="wmcProductSearch" type="search" placeholder="Código ou descrição" autocomplete="off" />
+                            </div>
+                            <div class="wmc-product-status-field">
+                                <label for="wmcProductStatusFilter">Filtrar situação</label>
+                                <select class="form-select" id="wmcProductStatusFilter">
+                                    <option value="all">Todos</option>
+                                    <option value="new">Novos</option>
+                                    <option value="existing">Existentes</option>
+                                    <option value="blocked">Bloqueados</option>
+                                </select>
+                            </div>
+                            <div class="wmc-product-selection-actions" role="group" aria-label="Seleção de produtos">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcSelectAll">Selecionar todos</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcDeselectAll">Desmarcar todos</button>
+                            </div>
+                            <span class="wmc-product-selection-count" id="wmcProductSelectionCount" aria-live="polite">0 de 0 produtos selecionados</span>
+                        </div>
                         <div class="wmc-product-table-scroll">
                             <table class="wmc-import-table">
                                 <caption class="visually-hidden">Produtos da marca selecionada</caption>
-                                <thead><tr><th>Sel.</th><th>Código</th><th>Descrição</th><th>EAN</th><th>DUN</th><th>Preço WMC</th><th>Preço local</th><th>Unidade / fator</th><th>Estoque</th><th>Situação</th></tr></thead>
-                                <tbody>
+                                <thead><tr><th>Sel.</th><th>Código</th><th>Descrição</th><th>EAN</th><th>DUN</th><th>Preço WMC</th><th>Preço local</th><th>Preço proposto</th><th>Unidade / fator</th><th>Estoque</th><th>Situação</th></tr></thead>
+                                <tbody id="wmcProductRows">
                                 @foreach (var item in Model.Candidates)
                                 {
                                     var masterUnit = item.Units.FirstOrDefault(unit => unit.IsMaster);
                                     var primaryUnit = item.Units.FirstOrDefault(unit => !unit.IsMaster) ?? item.Units.FirstOrDefault();
                                     var statusKind = item.Selectable ? (item.ProductId is null ? "new" : "existing") : "blocked";
                                     var statusLabel = statusKind switch { "new" => "Novo", "existing" => "Existente", _ => "Bloqueado" };
-                                    <tr class="wmc-import-row wmc-import-row--@statusKind">
-                                        <td><input type="checkbox" name="selectedProductCodes" value="@item.WmcCode" @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
+                                    <tr class="wmc-import-row wmc-import-row--@statusKind" data-wmc-product-row data-status-kind="@statusKind" data-product-search="@item.WmcCode @item.Name">
+                                        <td><input type="checkbox" name="selectedProductCodes" value="@item.WmcCode" data-wmc-product-checkbox @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
                                         <td class="wmc-code-cell"><strong>@item.WmcCode</strong></td>
                                         <td class="wmc-description-cell" title="@item.Name">@item.Name</td>
                                         <td class="wmc-code-cell">@(item.Ean ?? "—")</td>
@@ -178,6 +191,10 @@
                                             {
                                                 <strong>@localBasePrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) / @(item.LocalCommercialUnit ?? "unidade não definida")</strong>
                                                 <small class="text-muted d-block">Cadastro Orofoods; não é preço WMC.</small>
+                                                @if (item.PriceProposal?.CurrentTargetPrice is decimal currentTargetPrice)
+                                                {
+                                                    <small class="text-muted d-block">@item.PriceProposal.TargetPriceTableName: @currentTargetPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</small>
+                                                }
                                                 @if (localBasePrice == 1.00m && string.Equals(item.LocalCommercialUnit, "PCT", StringComparison.OrdinalIgnoreCase))
                                                 {
                                                     <small class="text-warning d-block">R$ 1,00/PCT é placeholder local de homologação.</small>
@@ -186,6 +203,25 @@
                                             else
                                             {
                                                 <span>—</span>
+                                            }
+                                        </td>
+                                        <td class="wmc-price-cell">
+                                            @if (item.PriceProposal?.ProposedPrice is decimal proposedPrice)
+                                            {
+                                                <strong>@proposedPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                                                @if (item.PriceProposal.SafeToApply)
+                                                {
+                                                    <small class="text-success d-block">Lista 1/unidade/tabela validadas</small>
+                                                }
+                                                else
+                                                {
+                                                    <small class="text-warning d-block">Bloqueado: @item.PriceProposal.BlockReason</small>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                                <small class="text-warning d-block">Bloqueado: @item.PriceProposal?.BlockReason</small>
                                             }
                                         </td>
                                         <td class="wmc-unit-cell">@(primaryUnit is null ? "—" : $"{primaryUnit.UnitCode} / {primaryUnit.Factor?.ToString() ?? "—"}")</td>
@@ -247,17 +283,24 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div class="wmc-product-pagination" id="wmcProductPagination" aria-label="Paginação de produtos">
+                            <span id="wmcProductPageStatus" aria-live="polite"></span>
+                            <div class="wmc-product-pagination-actions">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcProductPreviousPage">Anterior</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcProductNextPage">Próxima</button>
+                            </div>
+                        </div>
                         <div class="wmc-wizard-actions">
                             <a asp-action="Wmc" class="btn btn-outline-secondary">Voltar</a>
                             <span class="wmc-action-hint">Selecione apenas produtos liberados para continuar.</span>
-                            <button type="submit" class="btn btn-primary">Simular seleção</button>
+                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection">Conferir alterações</button>
                         </div>
                     </form>
                 }
                 else if (Model.Step == "Confirmation" && Model.Confirmation is not null)
                 {
                     var blockedCount = Model.Candidates?.Count(item => !item.Selectable) ?? 0;
-                    <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Etapa 3</span><h4>Simular e confirmar · @Model.SelectedBrandDescription</h4></div></header>
+                    <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Etapa 3</span><h4>Confirmar importação · @Model.SelectedBrandDescription</h4></div></header>
                     <p class="wmc-stage-copy">Revise o resumo antes de gravar os produtos selecionados no catálogo local.</p>
                     <div class="wmc-import-summary" aria-label="Resumo da seleção">
                         <article><span>Selecionados</span><strong>@Model.Confirmation.Selected</strong></article>
@@ -266,21 +309,31 @@
                         <article class="wmc-summary-blocked"><span>Bloqueados</span><strong>@blockedCount</strong></article>
                     </div>
                     <details class="wmc-confirmation-details">
-                        <summary>Ver alterações e unidades oficiais</summary>
+                        <summary>Ver alterações, preços e unidades oficiais</summary>
                         <ul>
                             @foreach (var item in (Model.Candidates ?? []).Where(item => (Model.SelectedProductCodes ?? []).Contains(item.WmcCode, StringComparer.Ordinal)))
                             {
-                                <li><strong>@item.WmcCode</strong> · @item.Status</li>
+                                <li>
+                                    <strong>@item.WmcCode</strong> · @item.Status
+                                    @if (item.Changes.Count > 0)
+                                    {
+                                        <ul class="wmc-change-list">@foreach (var change in item.Changes) { <li><strong>@change.Field:</strong> @change.CurrentValue &rarr; @change.WmcValue</li> }</ul>
+                                    }
+                                    @if (item.UnitProposal is { SafeToApply: false } unitProposal) { <small class="text-warning d-block">Unidades bloqueadas: @unitProposal.BlockReason</small> }
+                                    @if (item.PriceProposal is { SafeToApply: false } priceProposal) { <small class="text-warning d-block">Preço bloqueado: @priceProposal.BlockReason</small> }
+                                </li>
                             }
                         </ul>
                     </details>
-                    <form method="post" asp-action="WmcImportProducts" class="wmc-wizard-actions wmc-confirmation-actions">
+                    <form method="post" asp-action="WmcImportProducts" id="wmcImportConfirmationForm" class="wmc-wizard-actions wmc-confirmation-actions">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
                         @foreach (var code in Model.SelectedProductCodes ?? []) { <input type="hidden" name="selectedProductCodes" value="@code" /> }
+                        <input type="hidden" name="simulationValidated" value="true" />
                         <a asp-action="Wmc" class="btn btn-outline-secondary">Cancelar</a>
-                        <button class="btn btn-outline-primary" type="submit" name="reimportExisting" value="false">Importar somente novos</button>
-                        <button class="btn btn-primary" type="submit" name="reimportExisting" value="true">Confirmar importação</button>
+                        <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="false" checked /> Importar somente novos</label>
+                        <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="true" /> Atualizar existentes</label>
+                        <button class="btn btn-primary" type="submit" data-wmc-confirm-submit>Confirmar importação</button>
                     </form>
                 }
                 else if (Model.Step == "Result" && Model.ImportResult is not null)
@@ -290,6 +343,7 @@
                         <article class="wmc-summary-new"><span>Criados</span><strong>@Model.ImportResult.Created</strong></article>
                         <article class="wmc-summary-existing"><span>Atualizados</span><strong>@Model.ImportResult.Updated</strong></article>
                         <article><span>Inalterados</span><strong>@Model.ImportResult.Unchanged</strong></article>
+                        <article class="wmc-summary-blocked"><span>Bloqueados</span><strong>@Model.ImportResult.Blocked</strong></article>
                         <article class="wmc-summary-blocked"><span>Erros</span><strong>@Model.ImportResult.Errors</strong></article>
                     </div>
                     @if (Model.ImportResult.ErrorMessage is not null)
@@ -303,114 +357,6 @@
                     <div class="wmc-wizard-actions"><a asp-action="Wmc" class="btn btn-primary">Nova importação</a></div>
                 }
             </section>
-
-            @if (Model.Preview is not null)
-            {
-                <details class="wmc-legacy-preview">
-                    <summary>Resultado da pr&eacute;via geral por marcas</summary>
-                    @if (Model.Preview.ErrorMessage is not null)
-                    {
-                        <div class="alert alert-warning mt-2" role="alert">@Model.Preview.ErrorMessage</div>
-                    }
-                    <div class="wmc-import-summary">
-                        <article class="wmc-summary-new"><span>Novos ativos</span><strong>@Model.Preview.NewActiveProducts</strong></article>
-                        <article class="wmc-summary-existing"><span>Existentes</span><strong>@Model.Preview.ExistingActiveProducts</strong></article>
-                        <article><span>Ignorados</span><strong>@Model.Preview.InactiveIgnoredProducts</strong></article>
-                        <article class="wmc-summary-blocked"><span>Conflitos</span><strong>@(Model.Preview.DuplicateCodes + Model.Preview.InvalidCodes + Model.Preview.InvalidSituations + Model.Preview.StockProblems)</strong></article>
-                    </div>
-                    <div class="wmc-legacy-preview-details">
-                        <span>Produtos lidos: @Model.Preview.ProductsRead</span>
-                        <span>Eleg&iacute;veis: @Model.Preview.ActiveEligibleProducts</span>
-                        <span>Bloqueados projetados: @Model.Preview.ProjectedBlockedProducts</span>
-                    </div>
-                </details>
-            }
-
-            @if (canManageBimbo)
-            {
-            <section class="wmc-bimbo-card" aria-labelledby="wmc-bimbo-title">
-                <div class="wmc-bimbo-heading">
-                    <div>
-                        <h3 id="wmc-bimbo-title">Importa&ccedil;&atilde;o BIMBO &middot; marca 104</h3>
-                        <p>Simule a valida&ccedil;&atilde;o dos 10 produtos. A importa&ccedil;&atilde;o &eacute; restrita ao Staging e mant&eacute;m os produtos pendentes de cadastro comercial.</p>
-                    </div>
-                    @if (canManageBimbo)
-                    {
-                        <form id="wmcBimboSimulateForm" asp-action="WmcBimboSimulate" method="post">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-primary" id="wmcBimboSimulateButton">Simular importa&ccedil;&atilde;o</button>
-                        </form>
-                    }
-                </div>
-                <div id="wmcBimboFeedback" class="alert alert-info" role="status" aria-live="polite" hidden></div>
-
-                <h4 class="wmc-bimbo-subtitle">Status comercial dos produtos</h4>
-                <div class="table-responsive wmc-bimbo-status-scroll">
-                    <table class="wmc-product-table wmc-bimbo-status-table">
-                        <thead><tr><th>C&oacute;digo WMC</th><th>Produto</th><th>EAN-13</th><th>DUN-14</th><th>Pre&ccedil;o/PCT</th><th>Estoque</th><th>Status</th><th>A&ccedil;&atilde;o</th></tr></thead>
-                        <tbody>
-                            @foreach (var product in bimboProducts)
-                            {
-                                <tr data-bimbo-code="@product.WmcCode">
-                                    <td>@product.WmcCode</td>
-                                    <td class="wmc-bimbo-product-name" title="@(product.Name ?? "N&atilde;o importado")">@(product.Name ?? "N&atilde;o importado")</td>
-                                    <td>@(product.Ean13 ?? "—")</td>
-                                    <td>@(product.Dun14 ?? "—")</td>
-                                    <td>@(product.BasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</td>
-                                    <td>@(product.AvailableStock?.ToString("0.###") ?? "—")</td>
-                                    <td><span class="wmc-product-status wmc-product-status--@product.CommercialStatus.ToLowerInvariant()" data-commercial-status="@product.CommercialStatus">@product.CommercialStatus</span></td>
-                                    <td>
-                                        @if (canActivateBimbo && product.CanActivate && product.ProductId.HasValue)
-                                        {
-                                            <form class="wmc-bimbo-activate-form" asp-action="WmcBimboActivate" method="post">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="productId" value="@product.ProductId" />
-                                                <label class="visually-hidden" for="bimbo-reason-@product.WmcCode">Motivo da ativa&ccedil;&atilde;o @product.WmcCode</label>
-                                                <input id="bimbo-reason-@product.WmcCode" type="text" name="reason" maxlength="300" required placeholder="Motivo da libera&ccedil;&atilde;o" />
-                                                <button type="submit" class="btn btn-sm btn-primary">Ativar</button>
-                                            </form>
-                                        }
-                                        else if (product.Reasons.Count > 0)
-                                        {
-                                            <details class="wmc-bimbo-reason-details">
-                                                <summary aria-label="Ver motivos de bloqueio do produto @product.WmcCode"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> Motivos (@product.Reasons.Count)</summary>
-                                                <ul class="wmc-bimbo-reason-list">
-                                                    @foreach (var reason in product.Reasons)
-                                                    {
-                                                        <li>@reason</li>
-                                                    }
-                                                </ul>
-                                            </details>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">&mdash;</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-
-                @if (canManageBimbo)
-                {
-                    <form id="wmcBimboImportForm" asp-action="WmcBimboImport" method="post">
-                        @Html.AntiForgeryToken()
-                        <div id="wmcBimboSimulation" hidden>
-                            <h4 class="wmc-bimbo-subtitle">Resultado da simula&ccedil;&atilde;o</h4>
-                            <div class="table-responsive">
-                                <table class="wmc-product-table">
-                                    <thead><tr><th>Selecionar</th><th>C&oacute;digo WMC</th><th>Produto</th><th>EAN-13</th><th>Unidade</th><th>Estoque</th><th>Valida&ccedil;&atilde;o / motivo</th></tr></thead>
-                                    <tbody id="wmcBimboSimulationRows"></tbody>
-                                </table>
-                            </div>
-                            <button type="submit" class="btn btn-primary" id="wmcBimboImportButton" disabled>Importar selecionados</button>
-                        </div>
-                    </form>
-                }
-            </section>
-            }
 
         </section>
     </div>
@@ -433,127 +379,84 @@
         rows.forEach(row => row.querySelector('input')?.addEventListener('change', updateCount));
         updateCount();
     })();
-</script>
 
-@if (canManageBimbo)
-{
-<script>
     (() => {
-        const simulateForm = document.getElementById('wmcBimboSimulateForm');
-        const importForm = document.getElementById('wmcBimboImportForm');
-        const resultPanel = document.getElementById('wmcBimboSimulation');
-        const resultRows = document.getElementById('wmcBimboSimulationRows');
-        const importButton = document.getElementById('wmcBimboImportButton');
-        const feedback = document.getElementById('wmcBimboFeedback');
+        const form = document.getElementById('wmcImportSelectionForm');
+        if (!form) return;
 
-        const showFeedback = (message, type = 'info') => {
-            feedback.className = `alert alert-${type}`;
-            feedback.textContent = message;
-            feedback.hidden = false;
-        };
-        const postForm = async (form) => {
-            const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
-            return fetch(form.action, {
-                method: 'POST',
-                headers: { 'RequestVerificationToken': token, 'Accept': 'application/json' },
-                body: new FormData(form),
-                credentials: 'same-origin'
+        const rows = [...form.querySelectorAll('[data-wmc-product-row]')];
+        const checkboxes = [...form.querySelectorAll('[data-wmc-product-checkbox]')];
+        const search = document.getElementById('wmcProductSearch');
+        const statusFilter = document.getElementById('wmcProductStatusFilter');
+        const count = document.getElementById('wmcProductSelectionCount');
+        const pageStatus = document.getElementById('wmcProductPageStatus');
+        const previousPage = document.getElementById('wmcProductPreviousPage');
+        const nextPage = document.getElementById('wmcProductNextPage');
+        const selectAll = document.getElementById('wmcSelectAll');
+        const deselectAll = document.getElementById('wmcDeselectAll');
+        const pageSize = 25;
+        let page = 1;
+
+        const filteredRows = () => {
+            const term = (search?.value ?? '').trim().toLocaleLowerCase();
+            const selectedStatus = statusFilter?.value ?? 'all';
+            return rows.filter(row => {
+                const matchesText = term.length === 0 || (row.dataset.productSearch ?? '').toLocaleLowerCase().includes(term);
+                const matchesStatus = selectedStatus === 'all' || row.dataset.statusKind === selectedStatus;
+                return matchesText && matchesStatus;
             });
         };
-        const updateImportButton = () => {
-            importButton.disabled = !resultRows.querySelector('input[name="selectedWmcCodes"]:checked');
-        };
-        const addCell = (row, value) => {
-            const cell = document.createElement('td');
-            cell.textContent = value ?? '—';
-            row.appendChild(cell);
-            return cell;
-        };
-        const renderSimulation = (products) => {
-            resultRows.replaceChildren();
-            for (const product of products ?? []) {
-                const row = document.createElement('tr');
-                const selectCell = document.createElement('td');
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.name = 'selectedWmcCodes';
-                checkbox.value = product.wmcCode;
-                checkbox.disabled = !product.canSelect;
-                checkbox.setAttribute('aria-label', `Selecionar produto WMC ${product.wmcCode}`);
-                checkbox.addEventListener('change', updateImportButton);
-                selectCell.appendChild(checkbox);
-                row.appendChild(selectCell);
-                addCell(row, product.wmcCode);
-                addCell(row, product.description);
-                addCell(row, product.ean13);
-                addCell(row, product.salesUnitCode);
-                addCell(row, product.stock == null ? 'N/D' : Number(product.stock).toLocaleString('pt-BR'));
-                const issueText = (product.issues ?? []).map(issue => issue.message).concat(product.skipReasons ?? []).join(' ');
-                addCell(row, issueText || 'Validado para importação.');
-                if (product.issues?.length) row.classList.add('wmc-bimbo-row--invalid');
-                if (product.alreadyImported) row.classList.add('wmc-bimbo-row--existing');
-                resultRows.appendChild(row);
-            }
-            resultPanel.hidden = false;
-            updateImportButton();
+
+        const update = () => {
+            const filtered = filteredRows();
+            const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+            page = Math.min(page, pageCount);
+            const first = (page - 1) * pageSize;
+            const visible = new Set(filtered.slice(first, first + pageSize));
+            rows.forEach(row => { row.hidden = !visible.has(row); });
+
+            const selectedCount = checkboxes.filter(input => input.checked).length;
+            const eligibleCount = checkboxes.filter(input => !input.disabled).length;
+            if (count) count.textContent = `${selectedCount} de ${eligibleCount} produtos selecionados`;
+            if (pageStatus) pageStatus.textContent = `${filtered.length === 0 ? 0 : first + 1}–${Math.min(first + pageSize, filtered.length)} de ${filtered.length} produtos`;
+            if (previousPage) previousPage.disabled = page <= 1;
+            if (nextPage) nextPage.disabled = page >= pageCount;
+            if (selectAll) selectAll.disabled = eligibleCount === 0;
+            if (deselectAll) deselectAll.disabled = selectedCount === 0;
         };
 
-        simulateForm?.addEventListener('submit', async event => {
-            event.preventDefault();
-            const button = document.getElementById('wmcBimboSimulateButton');
-            button.disabled = true;
-            button.textContent = 'Validando...';
-            showFeedback('Validando os 10 produtos BIMBO sem gravar dados.');
-            try {
-                const response = await postForm(simulateForm);
-                const result = await response.json();
-                renderSimulation(result.products);
-                showFeedback(result.succeeded ? 'Simulação concluída. Nenhum dado foi gravado.' : 'Simulação concluída com registros que precisam de revisão.', result.succeeded ? 'success' : 'warning');
-            } catch {
-                showFeedback('Não foi possível concluir a simulação. Tente novamente.', 'danger');
-            } finally {
-                button.disabled = false;
-                button.textContent = 'Simular importação';
+        checkboxes.forEach(input => input.addEventListener('change', update));
+        selectAll?.addEventListener('click', () => {
+            checkboxes.filter(input => !input.disabled).forEach(input => { input.checked = true; });
+            update();
+        });
+        deselectAll?.addEventListener('click', () => {
+            checkboxes.forEach(input => { input.checked = false; });
+            update();
+        });
+        search?.addEventListener('input', () => { page = 1; update(); });
+        statusFilter?.addEventListener('change', () => { page = 1; update(); });
+        previousPage?.addEventListener('click', () => { page = Math.max(1, page - 1); update(); });
+        nextPage?.addEventListener('click', () => { page += 1; update(); });
+        update();
+    })();
+
+    (() => {
+        const form = document.getElementById('wmcImportConfirmationForm');
+        if (!form) return;
+        let submitted = false;
+        form.addEventListener('submit', event => {
+            if (submitted) {
+                event.preventDefault();
+                return;
+            }
+            submitted = true;
+            const button = form.querySelector('[data-wmc-confirm-submit]');
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Importando...';
+                button.setAttribute('aria-busy', 'true');
             }
         });
-
-        importForm?.addEventListener('submit', async event => {
-            event.preventDefault();
-            const selectedCount = resultRows.querySelectorAll('input[name="selectedWmcCodes"]:checked').length;
-            if (selectedCount === 0 || !window.confirm(`Confirmar a importação de ${selectedCount} produto(s) selecionado(s) para o Staging?`)) return;
-            importButton.disabled = true;
-            importButton.textContent = 'Importando...';
-            try {
-                const response = await postForm(importForm);
-                const result = await response.json();
-                const messages = (result.products ?? []).map(product => `${product.wmcCode}: ${product.message}`);
-                const summary = `Importados: ${result.importedProducts ?? 0}; ignorados: ${result.skippedProducts ?? 0}.`;
-                showFeedback([result.succeeded ? 'Importação concluída com sucesso.' : `Importação recusada: ${result.errorMessage ?? result.errorCode ?? 'revise os dados selecionados'}.`, summary, ...messages].join(' '), result.succeeded ? 'success' : 'danger');
-                if (result.succeeded) window.setTimeout(() => window.location.reload(), 1800);
-            } catch {
-                showFeedback('Não foi possível concluir a importação. Revise os registros e tente novamente.', 'danger');
-            } finally {
-                importButton.textContent = 'Importar selecionados';
-                updateImportButton();
-            }
-        });
-
-        document.querySelectorAll('.wmc-bimbo-activate-form').forEach(form => form.addEventListener('submit', async event => {
-            event.preventDefault();
-            const button = form.querySelector('button[type="submit"]');
-            if (!window.confirm('Ativar este produto no catálogo após validar os dados comerciais?')) return;
-            button.disabled = true;
-            try {
-                const response = await postForm(form);
-                const result = await response.json();
-                showFeedback(result.message, result.succeeded ? 'success' : 'warning');
-                if (result.succeeded) window.setTimeout(() => window.location.reload(), 1200);
-            } catch {
-                showFeedback('Não foi possível ativar o produto. Revise o cadastro comercial.', 'danger');
-            } finally {
-                button.disabled = false;
-            }
-        }));
     })();
 </script>
-}

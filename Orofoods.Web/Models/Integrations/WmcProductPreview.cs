@@ -72,6 +72,16 @@ public sealed record WmcProductUnitImportProposal(
     bool SafeToApply,
     string? BlockReason);
 
+public sealed record WmcProductPriceImportProposal(
+    decimal? CurrentBasePrice,
+    decimal? CurrentTargetPrice,
+    decimal? ProposedPrice,
+    string? SourceUnitCode,
+    int? TargetPriceTableId,
+    string? TargetPriceTableName,
+    bool SafeToApply,
+    string? BlockReason);
+
 public sealed record WmcProductImportCandidate(
     string WmcCode,
     string Name,
@@ -89,7 +99,8 @@ public sealed record WmcProductImportCandidate(
     decimal? PrecoVenda = null,
     decimal? LocalBasePrice = null,
     string? LocalCommercialUnit = null,
-    WmcProductUnitImportProposal? UnitProposal = null);
+    WmcProductUnitImportProposal? UnitProposal = null,
+    WmcProductPriceImportProposal? PriceProposal = null);
 
 public sealed record WmcProductFieldChange(string Field, string CurrentValue, string WmcValue);
 
@@ -111,4 +122,5 @@ public sealed record WmcProductImportResult(
     string Status,
     string? ErrorMessage,
     IReadOnlyList<WmcProductImportItemResult> Items,
-    DateTime CompletedAt);
+    DateTime CompletedAt,
+    int Blocked = 0);
