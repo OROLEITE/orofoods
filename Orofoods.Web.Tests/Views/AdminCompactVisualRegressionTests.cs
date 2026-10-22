@@ -3,18 +3,23 @@ namespace Orofoods.Web.Tests.Views;
 public sealed class AdminCompactVisualRegressionTests
 {
     [Fact]
-    public void Bimbo_products_use_single_line_columns_and_accessible_block_reasons()
+    public void Wmc_products_use_compact_columns_and_accessible_block_reasons()
     {
         var view = ReadWebFile("Areas", "Admin", "Views", "Integrations", "Wmc.cshtml");
         var styles = ReadWebFile("wwwroot", "css", "admin-integrations.css");
 
-        Assert.Contains("class=\"wmc-bimbo-product-name\"", view, StringComparison.Ordinal);
-        Assert.Contains("class=\"wmc-bimbo-reason-details\"", view, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Ver motivos de bloqueio do produto @product.WmcCode\"", view, StringComparison.Ordinal);
-        Assert.Contains("@foreach (var reason in product.Reasons)", view, StringComparison.Ordinal);
-        Assert.Contains("class=\"wmc-bimbo-reason-list\"", view, StringComparison.Ordinal);
-        Assert.Contains(".wmc-bimbo-status-scroll", styles, StringComparison.Ordinal);
-        Assert.Contains("min-width:1120px", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmc-bimbo-product-name", view, StringComparison.Ordinal);
+        Assert.Contains("class=\"wmc-import-table\"", view, StringComparison.Ordinal);
+        Assert.Contains("class=\"wmc-description-cell\"", view, StringComparison.Ordinal);
+        Assert.Contains("class=\"wmc-row-details\"", view, StringComparison.Ordinal);
+        Assert.Contains("<summary>Detalhes</summary>", view, StringComparison.Ordinal);
+        Assert.Contains("class=\"wmc-row-details-content\"", view, StringComparison.Ordinal);
+        Assert.Contains("@item.Status", view, StringComparison.Ordinal);
+        Assert.Contains("BlockReason", view, StringComparison.Ordinal);
+        Assert.Contains(".wmc-product-table-scroll", styles, StringComparison.Ordinal);
+        Assert.Contains("min-width:980px", styles, StringComparison.Ordinal);
+        Assert.Contains("table-layout:fixed", styles, StringComparison.Ordinal);
+        Assert.Contains(".wmc-description-cell", styles, StringComparison.Ordinal);
         Assert.Contains("white-space:nowrap", styles, StringComparison.Ordinal);
         Assert.Contains("overflow-x:auto", styles, StringComparison.Ordinal);
     }
