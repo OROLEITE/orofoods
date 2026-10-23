@@ -57,16 +57,98 @@ public sealed class SellerOrderDraftEntryContractTests
     {
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
 
-        Assert.Contains("Enviar pedido", view, StringComparison.Ordinal);
+        Assert.Contains("Revisar e enviar", view, StringComparison.Ordinal);
+        Assert.Contains("Confirmar envio", view, StringComparison.Ordinal);
         Assert.Contains("id=\"seller-order-submit-form\"", view, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"Submit\"", view, StringComparison.Ordinal);
         Assert.Contains("form=\"seller-order-submit-form\"", view, StringComparison.Ordinal);
-        Assert.Contains("form=\"seller-order-submit-form\" disabled aria-disabled=\"true\"", view, StringComparison.Ordinal);
+        Assert.Contains("id=\"seller-order-review-dialog\"", view, StringComparison.Ordinal);
+        Assert.Contains("id=\"confirm-seller-order-button\"", view, StringComparison.Ordinal);
+        var reviewButtonStart = view.IndexOf("id=\"submit-seller-order-button\"", StringComparison.Ordinal);
+        var reviewButtonEnd = view.IndexOf("</button>", reviewButtonStart, StringComparison.Ordinal);
+        var reviewButton = view[reviewButtonStart..reviewButtonEnd];
+        Assert.Contains("type=\"button\"", reviewButton, StringComparison.Ordinal);
+        Assert.DoesNotContain("form=\"seller-order-submit-form\"", reviewButton, StringComparison.Ordinal);
         Assert.Contains("@Html.AntiForgeryToken()", view, StringComparison.Ordinal);
         Assert.Contains("0%", view, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"@formAction\"", view, StringComparison.Ordinal);
         Assert.Contains("name=\"ExpectedVersion\"", view, StringComparison.Ordinal);
         Assert.Contains("name=\"QuoteToken\"", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Product_search_contract_exposes_commercial_identification_price_unit_and_informational_stock()
+    {
+        var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+        var fields = typeof(Orofoods.Web.Services.Sellers.SellerCatalogProductRow)
+            .GetProperties().Select(property => property.Name).ToArray();
+
+        Assert.Contains("Brand", fields);
+        Assert.Contains("WmcCode", fields);
+        Assert.Contains("CommercialUnitCode", fields);
+        Assert.Contains("PriceUnitLabel", fields);
+        Assert.Contains("AvailableQuantity", fields);
+        Assert.Contains("product.Brand", controller, StringComparison.Ordinal);
+        Assert.Contains("product.WmcCode", controller, StringComparison.Ordinal);
+        Assert.Contains("product.CommercialUnitCode", controller, StringComparison.Ordinal);
+        Assert.Contains("product.PriceUnitLabel", controller, StringComparison.Ordinal);
+        Assert.Contains("product.AvailableQuantity", controller, StringComparison.Ordinal);
+        Assert.Contains("Saldo disponível", script, StringComparison.Ordinal);
+        Assert.Contains("Estoque informativo", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Product_search_debounces_for_300ms_and_add_more_increments_one_commercial_unit()
+    {
+        var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+        var existingStart = script.IndexOf("if (existing)", StringComparison.Ordinal);
+        var existingEnd = script.IndexOf("return;", existingStart, StringComparison.Ordinal);
+        var repeatedProductBlock = script[existingStart..existingEnd];
+
+        Assert.Contains("window.setTimeout(() => searchProducts(1), 300)", script, StringComparison.Ordinal);
+        Assert.Contains("+ 1", repeatedProductBlock, StringComparison.Ordinal);
+        Assert.DoesNotContain("+ minimum", repeatedProductBlock, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Saved_order_requires_a_review_with_customer_address_payment_items_prices_and_total()
+    {
+        var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+        var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+
+        Assert.Contains("Revisar e enviar", view, StringComparison.Ordinal);
+        Assert.Contains("Revisão do pedido", view, StringComparison.Ordinal);
+        Assert.Contains("Cliente", view, StringComparison.Ordinal);
+        Assert.Contains("Endereço", view, StringComparison.Ordinal);
+        Assert.Contains("Pagamento", view, StringComparison.Ordinal);
+        Assert.Contains("@foreach (var item in Model.Items.Where(item => !item.RemovalPending))", view, StringComparison.Ordinal);
+        Assert.Contains("@item.UnitPrice", view, StringComparison.Ordinal);
+        Assert.Contains("@Model.Total", view, StringComparison.Ordinal);
+        Assert.Contains("form=\"seller-order-submit-form\"", view, StringComparison.Ordinal);
+        Assert.Contains("reviewDialog.showModal()", script, StringComparison.Ordinal);
+        Assert.Contains("isSubmitting", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mobile_action_bar_exposes_the_total_and_a_44px_product_search_shortcut()
+    {
+        var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+        var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var css = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "css", "seller-order-drafts.css"));
+
+        Assert.Contains("data-draft-total", view, StringComparison.Ordinal);
+        Assert.Contains("data-focus-product-search", view, StringComparison.Ordinal);
+        Assert.Contains("querySelectorAll('[data-draft-total]')", script, StringComparison.Ordinal);
+        Assert.Contains("focusProductSearch", script, StringComparison.Ordinal);
+        Assert.Contains(".seller-order-drafts__mobile-search", css, StringComparison.Ordinal);
+        Assert.Contains("min-height:44px", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("tabela vigente", view, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("tabela vigente", controller, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("revalida preÃƒÂ§o e estoque", view, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -101,6 +183,7 @@ public sealed class SellerOrderDraftEntryContractTests
     public void Entry_script_hides_sticky_actions_while_the_mobile_keyboard_is_open()
     {
         var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
 
         Assert.Contains("visualViewport", script, StringComparison.Ordinal);
         Assert.Contains("is-keyboard-open", script, StringComparison.Ordinal);
@@ -113,6 +196,7 @@ public sealed class SellerOrderDraftEntryContractTests
     public void Entry_script_enables_send_only_after_initialization_and_disables_it_for_dirty_drafts()
     {
         var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
 
         Assert.Contains("if (persisted && submitButton && hasQuote)", script, StringComparison.Ordinal);
         Assert.Contains("submitButton.disabled = false", script, StringComparison.Ordinal);
@@ -124,6 +208,7 @@ public sealed class SellerOrderDraftEntryContractTests
     public void Empty_product_search_results_clear_previous_pagination()
     {
         var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
         var renderProducts = script.IndexOf("function renderProducts(payload)", StringComparison.Ordinal);
         var emptyResults = script.IndexOf("if (products.length === 0)", renderProducts, StringComparison.Ordinal);
         var clearPagination = script.IndexOf("paginationHost.replaceChildren()", renderProducts, StringComparison.Ordinal);

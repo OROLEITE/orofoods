@@ -410,6 +410,38 @@ public sealed class SellerOrderDraftServiceTests
     }
 
     [Fact]
+    public async Task Create_rejects_a_product_without_a_positive_base_price()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        fixture.Product.BasePrice = 0m;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.CreateAsync(fixture.SellerPrincipal, fixture.ValidInput());
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.ProductNotSelectable, result.ErrorCode);
+        Assert.Empty(await fixture.Db.SellerOrderDrafts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Save_rejects_an_item_when_its_base_price_becomes_non_positive()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, fixture.ValidInput());
+        Assert.True(created.Succeeded, created.ErrorMessage);
+        fixture.Product.BasePrice = -1m;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.SaveAsync(fixture.SellerPrincipal, created.Draft!.Id, new SellerOrderDraftSaveInput(
+            created.Draft.Version, fixture.Address.Id, fixture.PaymentTerm.Id, null, null,
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2)]));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.ProductNotSelectable, result.ErrorCode);
+        Assert.Equal(created.Draft.Version, (await fixture.Db.SellerOrderDrafts.AsNoTracking().SingleAsync()).Version);
+    }
+
+    [Fact]
     public async Task Create_rejects_quantities_below_the_product_minimum_without_adjusting_them_silently()
     {
         await using var fixture = await DraftFixture.CreateAsync();
