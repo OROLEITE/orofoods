@@ -57,6 +57,21 @@ public sealed class AdminProductsIndexViewTests
     }
 
     [Fact]
+    public void Product_list_hides_brand_and_keeps_compact_actions_aligned_without_desktop_wrap()
+    {
+        var index = ReadView("Index.cshtml");
+        var styles = File.ReadAllText(Path.Combine(WebProjectPath(), "wwwroot", "css", "admin-products.css"));
+
+        Assert.DoesNotContain("<small>@product.Brand</small>", index, StringComparison.Ordinal);
+        Assert.Contains("class=\"admin-product-actions\"", index, StringComparison.Ordinal);
+        Assert.Contains("justify-content: flex-end", styles, StringComparison.Ordinal);
+        Assert.Contains("white-space: nowrap", styles, StringComparison.Ordinal);
+        Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
+        Assert.Contains("min-width: 1120px", styles, StringComparison.Ordinal);
+        Assert.Contains("height: 56px", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Product_edit_uses_portuguese_model_binding_messages()
     {
         var program = File.ReadAllText(Path.Combine(WebProjectPath(), "Program.cs"));

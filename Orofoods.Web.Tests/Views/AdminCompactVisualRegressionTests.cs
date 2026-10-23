@@ -3,6 +3,22 @@ namespace Orofoods.Web.Tests.Views;
 public sealed class AdminCompactVisualRegressionTests
 {
     [Fact]
+    public void Wmc_import_page_uses_one_compact_title_with_status_and_back_action_in_header()
+    {
+        var view = ReadWebFile("Areas", "Admin", "Views", "Integrations", "Wmc.cshtml");
+        var styles = ReadWebFile("wwwroot", "css", "admin-integrations.css");
+
+        Assert.Contains("<h1>Importa&ccedil;&atilde;o WMC</h1>", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("<h1>Sincroniza&ccedil;&atilde;o WMC</h1>", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("wmc-preview-heading", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-header-actions", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-header-actions", styles, StringComparison.Ordinal);
+        Assert.Contains("background:#0F172A", styles, StringComparison.Ordinal);
+        Assert.Contains("background:#111827", styles, StringComparison.Ordinal);
+        Assert.Contains("border-color:#334155", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Wmc_products_use_compact_columns_and_accessible_block_reasons()
     {
         var view = ReadWebFile("Areas", "Admin", "Views", "Integrations", "Wmc.cshtml");
