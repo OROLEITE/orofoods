@@ -32,7 +32,39 @@ public class AdminProductEditVisualContractTests
         var view = ReadProductView("Edit.cshtml");
 
         Assert.Contains("asp-validation-summary=\"All\"", view);
-        Assert.Contains("Descri&ccedil;&atilde;o comercial <em>Opcional</em>", view);
+        Assert.Contains("type=\"hidden\" asp-for=\"Description\"", view);
+        Assert.DoesNotContain("Descri&ccedil;&atilde;o comercial", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Product_edit_hides_gallery_without_removing_saved_images_or_product_bindings()
+    {
+        var view = ReadProductView("Edit.cshtml");
+
+        Assert.DoesNotContain("admin-image-manager", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fotos e imagem de capa", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("UploadImage", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("RemoveImage", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"Sku\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"BasePrice\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"Ean13\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"Dun14\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"IsActive\"", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Product_form_uses_compact_responsive_grid_and_dark_admin_surface()
+    {
+        var styles = File.ReadAllText(Path.Combine(WebProjectPath(), "wwwroot", "css", "admin-products.css"));
+
+        Assert.Contains("grid-template-columns: repeat(12, minmax(0, 1fr))", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(6, minmax(0, 1fr))", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr)", styles, StringComparison.Ordinal);
+        Assert.Contains("background: #0F172A", styles, StringComparison.Ordinal);
+        Assert.Contains("background: #111827", styles, StringComparison.Ordinal);
+        Assert.Contains("border-color: #334155", styles, StringComparison.Ordinal);
+        Assert.Contains("#0E7490", styles, StringComparison.Ordinal);
+        Assert.Contains("#0B5D75", styles, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -681,3 +681,164 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
         min-width: 1040px;
     }
 }
+
+/* Scoped compact layout for Admin product list and shared create/edit form. */
+.admin-authenticated .admin-products-page { padding-bottom: 24px; }
+.admin-authenticated .admin-products-page .admin-page-header { margin-bottom: 12px; }
+.admin-authenticated .admin-products-page .admin-page-header h1 { font-size: clamp(22px, 2vw, 26px); }
+.admin-authenticated .admin-products-page .admin-page-header p { font-size: 12px; }
+.admin-authenticated .admin-products-page .admin-list-tools {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+    margin-bottom: 10px !important;
+    padding: 10px 12px;
+    border-radius: 10px;
+}
+.admin-authenticated .admin-products-page .admin-list-tools input[name="q"],
+.admin-authenticated .admin-products-page .admin-list-tools .btn { min-height: 36px; }
+.admin-authenticated .admin-products-page .table-responsive { overflow-x: auto; border-radius: 10px; }
+.admin-authenticated .admin-products-page .admin-mobile-table thead th { padding: 9px 10px; }
+.admin-authenticated .admin-products-page .admin-mobile-table tbody td { padding: 8px 10px; }
+.admin-authenticated .admin-products-page .admin-mobile-table td[data-label="Produto"] { min-width: 170px; }
+.admin-authenticated .admin-products-page .admin-mobile-table td[data-label="Ações"] { text-align: right; }
+.admin-authenticated .admin-products-page .admin-product-actions {
+    justify-content: flex-end;
+    gap: 5px;
+    min-height: 32px;
+    white-space: nowrap;
+}
+.admin-authenticated .admin-products-page .admin-product-actions .btn {
+    min-width: 0;
+    min-height: 30px;
+    padding: 4px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.admin-authenticated .admin-products-page .admin-product-actions .admin-edit-action {
+    background: #0E7490;
+    border-color: #0E7490;
+    color: #FFFFFF;
+}
+.admin-authenticated .admin-products-page .admin-product-actions .admin-edit-action:hover,
+.admin-authenticated .admin-products-page .admin-product-actions .admin-edit-action:focus-visible {
+    background: #0B5D75;
+    border-color: #0B5D75;
+    color: #FFFFFF;
+}
+.admin-authenticated .admin-products-page .admin-primary-action,
+.admin-authenticated .admin-products-edit-page .admin-primary-action {
+    background: #0E7490;
+    border-color: #0E7490;
+    color: #FFFFFF;
+}
+.admin-authenticated .admin-products-page .admin-primary-action:hover,
+.admin-authenticated .admin-products-page .admin-primary-action:focus-visible,
+.admin-authenticated .admin-products-edit-page .admin-primary-action:hover,
+.admin-authenticated .admin-products-edit-page .admin-primary-action:focus-visible {
+    background: #0B5D75;
+    border-color: #0B5D75;
+    color: #FFFFFF;
+}
+@media (min-width: 768px) and (max-width: 1120px) {
+    .admin-authenticated .admin-products-page .admin-mobile-table { min-width: 1120px; }
+}
+@media (max-width: 767px) {
+    .admin-authenticated .admin-products-page .admin-list-tools { grid-template-columns: minmax(0, 1fr); gap: 7px; padding: 10px; }
+    .admin-authenticated .admin-products-page .admin-list-tools .btn { width: 100%; }
+    .admin-authenticated .admin-products-page .admin-product-actions { justify-content: stretch; width: 100%; }
+    .admin-authenticated .admin-products-page .admin-product-actions > * { flex: 1 1 0; }
+    .admin-authenticated .admin-products-page .admin-product-actions .btn { width: 100%; }
+}
+
+.admin-products-edit-page { padding: 10px 0 24px; }
+.admin-products-edit-page .customer-approval-breadcrumb { margin-bottom: 8px; font-size: 12px; }
+.admin-products-edit-page .admin-form-hero { margin-bottom: 10px; padding: 11px 16px; }
+.admin-products-edit-page .admin-form-hero h1 { font-size: clamp(21px, 2vw, 26px); }
+.admin-products-edit-page .admin-form-hero p { margin-top: 3px; font-size: 12px; }
+.admin-products-edit-page .admin-form-hero > i { width: 42px; height: 42px; border-radius: 11px; font-size: 16px; }
+.admin-products-edit-page .admin-product-form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 9px 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+}
+.admin-products-edit-page .admin-product-field { min-width: 0; grid-column: span 3; }
+.admin-products-edit-page .admin-product-field--span-2 { grid-column: span 2; }
+.admin-products-edit-page .admin-product-field--span-3 { grid-column: span 3; }
+.admin-products-edit-page .admin-product-field--span-4 { grid-column: span 4; }
+.admin-products-edit-page .admin-product-field--span-8 { grid-column: span 8; }
+.admin-products-edit-page .admin-product-field label { display: block; margin-bottom: 4px; font-size: 11px; }
+.admin-products-edit-page .admin-product-field .form-control,
+.admin-products-edit-page .admin-product-field .form-select { width: 100%; min-width: 0; min-height: 37px; padding-top: 6px; padding-bottom: 6px; }
+.admin-products-edit-page .admin-product-field .form-control-color { width: 100%; }
+.admin-products-edit-page .admin-product-validation,
+.admin-products-edit-page .admin-product-section-heading,
+.admin-products-edit-page .admin-product-flags,
+.admin-products-edit-page .admin-product-form-actions { grid-column: 1 / -1; }
+.admin-products-edit-page .admin-product-validation:empty { display: none; }
+.admin-products-edit-page .admin-product-section-heading { margin-top: 3px; padding-top: 8px; border-top: 1px solid #334155; }
+.admin-products-edit-page .admin-product-section-heading h2 { margin: 0; font-size: 14px; }
+.admin-products-edit-page .admin-product-section-heading p { margin: 3px 0 0; font-size: 11px; }
+.admin-products-edit-page .admin-product-flags { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 2px; }
+.admin-products-edit-page .admin-product-flags label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 11px; }
+.admin-products-edit-page .admin-product-flags input { margin: 0; }
+.admin-products-edit-page .admin-product-form-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 1px; padding-top: 10px; border-top: 1px solid #334155; }
+.admin-products-edit-page .admin-product-form-actions .btn { min-height: 36px; padding: 6px 11px; }
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .admin-products-edit-page .admin-product-form-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .admin-products-edit-page .admin-product-field--span-2,
+    .admin-products-edit-page .admin-product-field--span-3 { grid-column: span 3; }
+    .admin-products-edit-page .admin-product-field--span-4 { grid-column: span 3; }
+    .admin-products-edit-page .admin-product-field--span-8 { grid-column: span 6; }
+}
+@media (max-width: 767px) {
+    .admin-products-edit-page { padding: 8px 0 18px; }
+    .admin-products-edit-page > .admin-products-edit-container { padding-inline: 14px; }
+    .admin-products-edit-page .admin-form-hero { padding: 10px 12px; }
+    .admin-products-edit-page .admin-form-hero > i { width: 36px; height: 36px; }
+    .admin-products-edit-page .admin-product-form-grid { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 12px; }
+    .admin-products-edit-page .admin-product-field--span-2,
+    .admin-products-edit-page .admin-product-field--span-3,
+    .admin-products-edit-page .admin-product-field--span-4,
+    .admin-products-edit-page .admin-product-field--span-8 { grid-column: 1 / -1; }
+    .admin-products-edit-page .admin-product-flags { flex-direction: column; gap: 8px; }
+    .admin-products-edit-page .admin-product-form-actions { flex-direction: column-reverse; }
+    .admin-products-edit-page .admin-product-form-actions .btn { justify-content: center; width: 100%; }
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-list-tools,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .table-responsive,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-form-card {
+    border-color: #334155;
+    background: #111827;
+    box-shadow: none;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-list-tools label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-mobile-table tbody td,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-product-section-heading p {
+    color: #CBD5E1;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-mobile-table {
+    --bs-table-bg: #111827;
+    --bs-table-color: #E5E7EB;
+    --bs-table-border-color: #334155;
+    --bs-table-hover-bg: #1E293B;
+    --bs-table-hover-color: #F8FAFC;
+    background: #111827;
+    color: #E5E7EB;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-page .admin-mobile-table thead th {
+    border-color: #334155;
+    background: #0F172A;
+    color: #CBD5E1;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-product-field .form-control,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-products-edit-page .admin-product-field .form-select {
+    border-color: #334155;
+    background-color: #0F172A;
+    color: #E5E7EB;
+    color-scheme: dark;
+}@media (min-width: 768px) {
+    .admin-authenticated .admin-products-page .admin-products-table > tbody > tr { height: 56px; }
+    .admin-authenticated .admin-products-page .admin-product-thumb { width: 40px; height: 40px; }
+}
