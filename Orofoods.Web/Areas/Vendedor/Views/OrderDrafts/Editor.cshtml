@@ -105,6 +105,8 @@
             @if (isEditable)
             {
                 var formAction = Model.IsPersisted ? "Save" : "Create";
+                var selectedAddress = Model.Addresses.SingleOrDefault(address => address.Id == Model.DeliveryAddressId);
+                var selectedPayment = Model.PaymentTerms.SingleOrDefault(term => term.Id == Model.PaymentTermId);
                 @if (Model.IsPersisted)
                 {
                     <form id="seller-order-submit-form" method="post" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Submit" asp-route-id="@Model.DraftId">
@@ -133,7 +135,7 @@
                                         <span class="seller-order-drafts__step">01</span>
                                         <h2 id="product-search-heading">Adicionar produtos</h2>
                                     </div>
-                                    <span class="seller-order-drafts__muted">Nome, código ou EAN</span>
+                                    <span class="seller-order-drafts__muted">Nome, SKU, marca, código WMC ou EAN</span>
                                 </div>
                                 <label class="visually-hidden" for="product-search">Pesquisar produtos</label>
                                 <div class="seller-order-drafts__search-row seller-order-drafts__product-search-row">
@@ -251,14 +253,14 @@
                                 <h2>Seu pedido</h2>
                                 <div class="seller-order-drafts__summary-line"><span>Produtos</span><strong id="summary-item-count">@Model.Items.Count(item => !item.RemovalPending)</strong></div>
                                 <div class="seller-order-drafts__summary-line"><span>Desconto</span><strong>0%</strong></div>
-                                <div class="seller-order-drafts__summary-total"><span>Total atual</span><strong id="draft-total" aria-live="polite">@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
+                                <div class="seller-order-drafts__summary-total"><span>Total atual</span><strong id="draft-total" data-draft-total aria-live="polite">@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
                                 <div id="seller-minimum-order" data-minimum-order="@Model.MinimumOrder.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                                     <span>Pedido mínimo: @Model.MinimumOrder.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
                                     <small id="seller-minimum-order-gap" role="status" aria-live="polite">@(Model.RemainingForMinimum > 0 ? $"Faltam {Model.RemainingForMinimum:C} para atingir o mínimo." : "Pedido mínimo atingido.")</small>
                                 </div>
-                                <p class="seller-order-drafts__summary-note">Cotação calculada no servidor com a tabela vigente. Se os valores mudarem antes do envio, revise o novo resumo para confirmar.</p>
+                                <p class="seller-order-drafts__summary-note">Cotação calculada no servidor com o preço base vigente. Se o valor mudar antes do envio, revise o novo resumo para confirmar.</p>
                                 <div class="seller-order-drafts__summary-flags">
-                                    <span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Sem reserva de estoque</span>
+                                    <span><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Saldo informativo; não bloqueia a venda</span>
                                     <span><i class="fa-regular fa-file-lines" aria-hidden="true"></i> Não aparece no Monitor até o envio</span>
                                 </div>
                             </section>
@@ -266,18 +268,61 @@
                     </div>
 
                     <div class="seller-order-drafts__actions" data-sticky-actions>
+                        <div class="seller-order-drafts__mobile-bar-summary">
+                            <span>Total</span>
+                            <strong data-draft-total aria-live="polite">@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                            <button class="seller-order-drafts__mobile-search" type="button" data-focus-product-search>
+                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                                <span>Buscar produto</span>
+                            </button>
+                        </div>
                         <div class="seller-order-drafts__action-main">
                             <button id="save-draft-button" class="btn seller-order-drafts__save" type="submit">
                                 <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Salvar rascunho
                             </button>
-                            <button id="submit-seller-order-button" class="btn seller-order-drafts__send" type="submit" form="seller-order-submit-form" disabled aria-disabled="true" title="Aguarde a validação da cotação do servidor">
-                                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar pedido
+                            <button id="submit-seller-order-button" class="btn seller-order-drafts__send" type="button" disabled aria-disabled="true" title="Aguarde a validação da cotação do servidor">
+                                <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i> Revisar e enviar
                             </button>
                             <a class="btn seller-order-drafts__outline seller-order-drafts__cancel" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">Cancelar</a>
                         </div>
                     </div>
                 </form>
-                <p class="seller-order-drafts__stage-note">O envio definitivo revalida preço e estoque e cria o pedido na Orofoods. Salve alterações antes de enviar; o envio não inicia cobrança.</p>
+                @if (Model.IsPersisted)
+                {
+                    <dialog id="seller-order-review-dialog" class="seller-order-drafts__review" aria-labelledby="seller-order-review-title">
+                        <div class="seller-order-drafts__review-header">
+                            <div>
+                                <span class="seller-order-drafts__eyebrow">CONFIRMAÇÃO OBRIGATÓRIA</span>
+                                <h2 id="seller-order-review-title">Revisão do pedido</h2>
+                            </div>
+                            <button class="seller-order-drafts__review-close" type="button" data-close-order-review aria-label="Fechar revisão">×</button>
+                        </div>
+                        <dl class="seller-order-drafts__review-details">
+                            <div><dt>Cliente</dt><dd>@Model.CustomerName <small>@Model.CustomerCode</small></dd></div>
+                            <div><dt>Endereço</dt><dd>@(selectedAddress is null ? "Não informado" : $"{selectedAddress.Label} — {selectedAddress.FullAddress}")</dd></div>
+                            <div><dt>Pagamento</dt><dd>@(selectedPayment is null ? "Não informado" : $"{selectedPayment.Name} — {(selectedPayment.DaysUntilDue == 0 ? "à vista" : $"{selectedPayment.DaysUntilDue} dias")}")</dd></div>
+                        </dl>
+                        <div class="seller-order-drafts__review-items" aria-label="Itens para confirmação">
+                            @foreach (var item in Model.Items.Where(item => !item.RemovalPending))
+                            {
+                                <div class="seller-order-drafts__review-item">
+                                    <div><strong>@item.Name</strong><small>@item.Sku · @item.UnitDescription</small></div>
+                                    <span>@item.Quantity × @item.UnitPrice.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) / @item.PriceUnitLabel</span>
+                                    <strong>@item.Subtotal.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                                </div>
+                            }
+                        </div>
+                        <div class="seller-order-drafts__review-total"><span>Total</span><strong>@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
+                        <p class="seller-order-drafts__review-note">Ao confirmar, este rascunho será enviado com a versão e a cotação exibidas.</p>
+                        <div class="seller-order-drafts__review-actions">
+                            <button class="btn seller-order-drafts__outline" type="button" data-close-order-review>Voltar e revisar</button>
+                            <button id="confirm-seller-order-button" class="btn seller-order-drafts__send" type="submit" form="seller-order-submit-form">
+                                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Confirmar envio
+                            </button>
+                        </div>
+                    </dialog>
+                }
+                <p class="seller-order-drafts__stage-note">O envio definitivo revalida o preço base e os dados comerciais e cria o pedido na Orofoods. Salve alterações antes de revisar; o envio não inicia cobrança.</p>
             }
             else
             {

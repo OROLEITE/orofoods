@@ -8,7 +8,7 @@
     const searchStatus = document.getElementById('product-search-status');
     const paginationHost = document.getElementById('product-pagination');
     const itemsHost = document.getElementById('draft-items');
-    const totalHost = document.getElementById('draft-total');
+    const totalHosts = document.querySelectorAll('[data-draft-total]');
     const minimumOrderHost = document.getElementById('seller-minimum-order-gap');
     const minimumOrder = Number(document.getElementById('seller-minimum-order')?.dataset.minimumOrder) || 0;
     const itemCountHost = document.getElementById('draft-item-count');
@@ -18,6 +18,9 @@
     const saveButton = document.getElementById('save-draft-button');
     const submitForm = document.getElementById('seller-order-submit-form');
     const submitButton = document.getElementById('submit-seller-order-button');
+    const confirmSubmitButton = document.getElementById('confirm-seller-order-button');
+    const reviewDialog = document.getElementById('seller-order-review-dialog');
+    const focusProductSearch = document.querySelector('[data-focus-product-search]');
     const persisted = form.dataset.persisted === 'true';
     const quoteToken = submitForm?.querySelector('input[name="QuoteToken"]')?.value;
     const hasQuote = typeof quoteToken === 'string' && quoteToken.length > 0;
@@ -27,6 +30,7 @@
     let currentPage = 1;
     let totalPages = 0;
     let isDirty = false;
+    let isSubmitting = false;
 
     const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     const itemRows = () => Array.from(itemsHost.querySelectorAll('[data-draft-item]'));
@@ -59,7 +63,7 @@
             const subtotal = row.querySelector('[data-item-subtotal]');
             if (subtotal) subtotal.textContent = money.format(price * quantity);
         });
-        totalHost.textContent = money.format(total);
+        totalHosts.forEach(totalHost => { totalHost.textContent = money.format(total); });
         if (minimumOrderHost) {
             minimumOrderHost.textContent = total < minimumOrder
                 ? `Faltam ${money.format(minimumOrder - total)} para atingir o mínimo.`
@@ -92,7 +96,8 @@
             if (existing.classList.contains('is-removal-pending')) undoRemoval(product.id);
             const quantity = existing.querySelector('[data-item-quantity]');
             const minimum = Math.max(1, product.minimumCases || Number(existing.dataset.minimum) || 1);
-            quantity.value = String((Number.parseInt(quantity.value || '0', 10) || minimum) + minimum);
+            const currentQuantity = Number.parseInt(quantity.value || '0', 10) || minimum;
+            quantity.value = String(Math.max(minimum, currentQuantity) + 1);
             quantity.dispatchEvent(new Event('input', { bubbles: true }));
             markDirty();
             searchStatus.textContent = `${product.name} teve a quantidade atualizada.`;
@@ -116,7 +121,8 @@
         main.append(makeNode('span', 'seller-order-drafts__sku', product.sku));
         main.append(makeNode('h3', '', product.name));
         main.append(makeNode('span', 'seller-order-drafts__muted', product.unitDescription));
-        main.append(makeNode('span', 'seller-order-drafts__unit-price', `${money.format(product.unitPrice)} por unidade comercial`));
+        const priceUnit = product.priceUnitLabel || product.commercialUnitCode || 'unidade comercial';
+        main.append(makeNode('span', 'seller-order-drafts__unit-price', `${money.format(product.unitPrice)} por ${priceUnit}`));
         row.append(main);
 
         const controls = makeNode('div', 'seller-order-drafts__item-controls');
@@ -257,14 +263,21 @@
         products.forEach(product => {
             const card = makeNode('article', 'seller-order-drafts__product-card');
             const identity = makeNode('div', 'seller-order-drafts__product-identity');
-            identity.append(makeNode('span', 'seller-order-drafts__product-code', `${product.sku}${product.ean ? ` · EAN ${product.ean}` : ''}`));
+            const identifiers = [product.sku];
+            if (product.wmcCode) identifiers.push(`WMC ${product.wmcCode}`);
+            const ean = product.ean13 || product.ean;
+            if (ean) identifiers.push(`EAN ${ean}`);
+            identity.append(makeNode('span', 'seller-order-drafts__product-code', identifiers.join(' · ')));
             identity.append(makeNode('h3', '', product.name));
+            if (product.brand) identity.append(makeNode('span', 'seller-order-drafts__product-brand', product.brand));
             card.append(identity);
             const details = makeNode('div', 'seller-order-drafts__product-details');
-            details.append(makeNode('span', 'seller-order-drafts__product-unit', product.unitDescription));
-            details.append(makeNode('span', 'seller-order-drafts__product-minimum', `Mínimo: ${product.minimumCases} caixa(s)`));
+            const commercialUnit = product.commercialUnitCode || product.unitDescription;
+            details.append(makeNode('span', 'seller-order-drafts__product-unit', `Unidade comercial: ${commercialUnit}`));
+            details.append(makeNode('span', 'seller-order-drafts__product-minimum', `Mínimo inicial: ${product.minimumCases} ${commercialUnit}`));
+            details.append(makeNode('span', 'seller-order-drafts__product-stock', `Saldo disponível: ${product.availableQuantity} ${commercialUnit} · Estoque informativo`));
             card.append(details);
-            card.append(makeNode('strong', 'seller-order-drafts__product-price', money.format(product.unitPrice)));
+            card.append(makeNode('strong', 'seller-order-drafts__product-price', `${money.format(product.unitPrice)} / ${product.priceUnitLabel || commercialUnit}`));
             const button = makeNode('button', 'btn seller-order-drafts__primary', selectedIds.has(product.id) ? 'Adicionar mais' : 'Adicionar');
             button.type = 'button';
             button.dataset.addProduct = '';
@@ -334,7 +347,7 @@
 
     searchInput.addEventListener('input', () => {
         window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(() => searchProducts(1), 250);
+        searchTimer = window.setTimeout(() => searchProducts(1), 300);
     });
     searchButton.addEventListener('click', () => searchProducts(1));
     searchInput.addEventListener('keydown', event => {
@@ -379,11 +392,37 @@
         saveButton.textContent = 'Salvando rascunho…';
     });
 
-    submitForm?.addEventListener('submit', () => {
-        if (!submitButton) return;
-        submitButton.disabled = true;
-        submitButton.setAttribute('aria-busy', 'true');
-        submitButton.textContent = 'Enviando pedido...';
+    submitButton?.addEventListener('click', () => {
+        if (!reviewDialog || submitButton.disabled) return;
+        reviewDialog.showModal();
+    });
+    reviewDialog?.querySelectorAll('[data-close-order-review]').forEach(button => {
+        button.addEventListener('click', () => reviewDialog.close());
+    });
+    reviewDialog?.addEventListener('click', event => {
+        if (event.target === reviewDialog) reviewDialog.close();
+    });
+
+    focusProductSearch?.addEventListener('click', () => {
+        searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.setTimeout(() => searchInput.focus({ preventScroll: true }), 250);
+    });
+
+    submitForm?.addEventListener('submit', event => {
+        if (isSubmitting) {
+            event.preventDefault();
+            return;
+        }
+        isSubmitting = true;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.setAttribute('aria-busy', 'true');
+        }
+        if (confirmSubmitButton) {
+            confirmSubmitButton.disabled = true;
+            confirmSubmitButton.setAttribute('aria-busy', 'true');
+            confirmSubmitButton.textContent = 'Enviando pedido...';
+        }
     });
 
     window.addEventListener('beforeunload', event => {
@@ -407,6 +446,6 @@
     if (persisted && submitButton && hasQuote) {
         submitButton.disabled = false;
         submitButton.setAttribute('aria-disabled', 'false');
-        submitButton.title = 'Enviar este rascunho com a cotação atual exibida';
+        submitButton.title = 'Revisar este rascunho antes do envio definitivo';
     }
 })();

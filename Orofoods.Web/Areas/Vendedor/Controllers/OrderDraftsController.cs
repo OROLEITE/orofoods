@@ -127,7 +127,12 @@ public sealed class OrderDraftsController(
                 product.Ean13,
                 product.Dun14,
                 product.Name,
+                product.Brand,
+                product.WmcCode,
                 product.UnitDescription,
+                product.CommercialUnitCode,
+                product.PriceUnitLabel,
+                product.AvailableQuantity,
                 product.UnitPrice,
                 product.MinimumCases
             })
@@ -201,7 +206,7 @@ public sealed class OrderDraftsController(
 
         if (result.Succeeded)
         {
-            TempData["SellerDraftNotice"] = "Rascunho salvo. Preços e totais foram atualizados com a tabela vigente.";
+            TempData["SellerDraftNotice"] = "Rascunho salvo. Preços e totais foram atualizados com o preço base vigente.";
             return RedirectToAction(nameof(Edit), new { id });
         }
 

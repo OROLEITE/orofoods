@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
+using System.Data.Common;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Identity;
@@ -25,12 +28,17 @@ public class SellerCatalogServiceTests
         var available = Product("AVAILABLE", "Pao disponivel", true);
         available.BasePrice = 50m;
         available.PromotionalPrice = 35m;
+        available.Brand = "BIMBO";
+        available.WmcCode = "503813";
+        available.CommercialUnitCode = "PCT";
+        available.LogisticsUnitCode = "CX";
+        available.PackagesPerCase = 8;
         var unavailable = Product("EMPTY", "Pao sem estoque", true);
         var inactive = Product("INACTIVE", "Pao inativo", false);
         db.AddRange(representative, seller, table, customer, available, unavailable, inactive, new PriceTableItem { PriceTable = table, Product = available, Price = 42m });
         await db.SaveChangesAsync();
         db.ProductInventories.AddRange(
-            new ProductInventory { ProductId = available.Id, QuantityOnHand = 10 },
+            new ProductInventory { ProductId = available.Id, QuantityOnHand = 10, QuantityReserved = 3 },
             new ProductInventory { ProductId = unavailable.Id, QuantityOnHand = 0 },
             new ProductInventory { ProductId = inactive.Id, QuantityOnHand = 10 });
         await db.SaveChangesAsync();
@@ -41,7 +49,13 @@ public class SellerCatalogServiceTests
         var products = Assert.IsType<SellerCatalogViewModel>(result).Products;
         Assert.Equal(2, products.Count);
         Assert.DoesNotContain(products, x => x.Id == inactive.Id);
-        Assert.Equal(50m, products.Single(x => x.Id == available.Id).UnitPrice);
+        var availableRow = products.Single(x => x.Id == available.Id);
+        Assert.Equal(50m, availableRow.UnitPrice);
+        Assert.Equal("BIMBO", availableRow.Brand);
+        Assert.Equal("503813", availableRow.WmcCode);
+        Assert.Equal("PCT", availableRow.CommercialUnitCode);
+        Assert.Equal("PCT", availableRow.PriceUnitLabel);
+        Assert.Equal(7, availableRow.AvailableQuantity);
         Assert.Contains(products, x => x.Id == unavailable.Id);
     }
 
@@ -102,6 +116,7 @@ public class SellerCatalogServiceTests
         var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "55.555.555/0001-55", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
         var baudUcco = Product("SKU-BAUDUCCO-390", "BAUDUCCO PÃO GRÃOS CLÁSSICOS 390G", true);
         baudUcco.WmcCode = "WMC-BAU-390";
+        baudUcco.Brand = "BIMBO";
         baudUcco.Ean = "7891234567890";
         baudUcco.Ean13 = "0123456789012";
         baudUcco.Dun14 = "00012345678905";
@@ -123,11 +138,90 @@ public class SellerCatalogServiceTests
         await db.SaveChangesAsync();
 
         var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
-        foreach (var query in new[] { "bau", "BAU", "WMC-bau", "graos clas", "sku-bauducco", "912345678", "0123456789012", "00012345678905" })
+        foreach (var query in new[] { "b", "bim", "bau", "BAU", "WMC-bau", "graos clas", "sku-bauducco", "912345678", "0123456789012", "00012345678905" })
         {
             var catalog = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, query, page: 1);
             Assert.Equal(baudUcco.Id, Assert.Single(Assert.IsType<SellerCatalogViewModel>(catalog).Products).Id);
         }
+    }
+
+    [Fact]
+    public async Task Catalog_search_filters_in_sql_before_paging_with_a_shallow_sqlite_expression()
+    {
+        var sqlCapture = new SqlCommandCaptureInterceptor();
+        await using var db = await TestDbContextFactory.CreateAsync(sqlCapture);
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "66.666.666/0001-66", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        db.AddRange(representative, seller, customer);
+        db.Products.AddRange(Enumerable.Range(1, 26).Select(index =>
+        {
+            var product = Product($"SKU-{index:000}", $"Pão de Café {index:000}", true);
+            product.Brand = "BIMBO";
+            return product;
+        }));
+        await db.SaveChangesAsync();
+
+        var result = await new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db))
+            .GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, "CAFE", page: 2, pageSize: 20);
+
+        var catalog = Assert.IsType<SellerCatalogViewModel>(result);
+        Assert.Equal(26, catalog.TotalCount);
+        Assert.Equal(6, catalog.Products.Count);
+        var searchCommands = sqlCapture.Commands
+            .Where(command => command.Contains("translate", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        Assert.NotEmpty(searchCommands);
+        Assert.Contains(searchCommands, command => command.Contains("LIMIT", StringComparison.OrdinalIgnoreCase));
+        Assert.All(searchCommands, command =>
+        {
+            Assert.True(command.Contains("COUNT", StringComparison.OrdinalIgnoreCase)
+                || command.Contains("LIMIT", StringComparison.OrdinalIgnoreCase), command);
+            Assert.InRange(command.Split("replace(", StringSplitOptions.None).Length - 1, 0, 24);
+        });
+    }
+
+    [Fact]
+    public void Catalog_search_predicate_generates_postgresql_translate_sql_without_a_database_connection()
+    {
+        var options = new DbContextOptionsBuilder<Orofoods.Web.Data.ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=unused;Username=unused")
+            .Options;
+        using var db = new Orofoods.Web.Data.ApplicationDbContext(options);
+
+        var sql = db.Products
+            .Where(SellerCatalogService.CreateProductSearchPredicate("cafe"))
+            .ToQueryString();
+
+        Assert.Contains("translate(", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("LIKE", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"Brand\"", sql, StringComparison.Ordinal);
+        Assert.Contains("\"WmcCode\"", sql, StringComparison.Ordinal);
+        Assert.Contains("\"Ean\"", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Catalog_and_selectable_ids_exclude_products_without_a_positive_base_price()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "77.777.777/0001-77", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        var valid = Product("VALID", "Preço válido", true);
+        var zero = Product("ZERO", "Preço zero", true);
+        zero.BasePrice = 0m;
+        var negative = Product("NEGATIVE", "Preço negativo", true);
+        negative.BasePrice = -1m;
+        db.AddRange(representative, seller, customer, valid, zero, negative);
+        await db.SaveChangesAsync();
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        var catalog = await service.GetCatalogAsync(SellerPrincipal(seller.Id), customer.Id, null);
+        var selectableIds = await service.GetSelectableProductIdsAsync(
+            SellerPrincipal(seller.Id), customer.Id, [valid.Id, zero.Id, negative.Id]);
+
+        Assert.Equal(valid.Id, Assert.Single(Assert.IsType<SellerCatalogViewModel>(catalog).Products).Id);
+        Assert.Equal([valid.Id], Assert.IsAssignableFrom<IReadOnlySet<int>>(selectableIds));
     }
 
     [Fact]
@@ -169,4 +263,19 @@ public class SellerCatalogServiceTests
     private static ClaimsPrincipal SellerPrincipal(string userId) => new(new ClaimsIdentity(
         [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, "Vendedor")],
         "test"));
+
+    private sealed class SqlCommandCaptureInterceptor : DbCommandInterceptor
+    {
+        public ConcurrentBag<string> Commands { get; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Commands.Add(command.CommandText);
+            return ValueTask.FromResult(result);
+        }
+    }
 }

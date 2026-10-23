@@ -13,7 +13,10 @@ public sealed record SellerCatalogProductRow(
     string PriceUnitLabel = "caixa",
     string? Ean13 = null,
     string? Dun14 = null,
-    string? WmcCode = null);
+    string? WmcCode = null,
+    string Brand = "",
+    string CommercialUnitCode = "",
+    int AvailableQuantity = 0);
 
 public sealed class SellerCatalogViewModel
 {
