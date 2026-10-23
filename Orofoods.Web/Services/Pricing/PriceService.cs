@@ -24,7 +24,10 @@ public class PriceService(ApplicationDbContext db)
             : await db.PriceTableItems
                 .AsNoTracking()
                 .SingleOrDefaultAsync(
-                    x => x.PriceTableId == customer.PriceTableId.Value && x.ProductId == productId,
+                    x => x.PriceTableId == customer.PriceTableId.Value
+                        && x.ProductId == productId
+                        && x.PriceTable != null
+                        && x.PriceTable.IsActive,
                     cancellationToken);
 
         var effectivePrice = priceTableItem?.PromotionalPrice

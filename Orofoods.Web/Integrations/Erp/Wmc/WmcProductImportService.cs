@@ -199,7 +199,7 @@ public sealed class WmcProductImportService(
                 var priceProposal = BuildPriceProposal(current, row, targetPriceTable, currentTargetPrice);
                 var priceChanged = priceProposal.SafeToApply
                     && priceProposal.ProposedPrice is decimal proposedPriceValue
-                    && (current.BasePrice != proposedPriceValue || currentTargetPrice != proposedPriceValue);
+                    && current.BasePrice != proposedPriceValue;
                 var before = GetChanges(current, row, unitProposal, priceProposal).Any()
                     || priceChanged
                     || (unitProposal.SafeToApply && officialUnits.Count > 0 && !UnitSetsEqual(productUnits, officialUnits));
@@ -218,7 +218,7 @@ public sealed class WmcProductImportService(
                 }
                 if (priceProposal.SafeToApply && priceProposal.ProposedPrice is decimal proposedPrice)
                 {
-                    ApplyValidatedPrice(current, proposedPrice, targetPriceTable, targetItems);
+                    ApplyValidatedPrice(current, proposedPrice);
                     if (beforeBasePrice != proposedPrice || beforeTargetPrice != proposedPrice)
                         detail.Add($"Preço atualizado: BasePrice {beforeBasePrice:0.##} → {proposedPrice:0.##}");
                 }
@@ -278,17 +278,9 @@ public sealed class WmcProductImportService(
             reasons.Count == 0, reasons.Count == 0 ? null : string.Join(" ", reasons));
     }
 
-    private void ApplyValidatedPrice(Product product, decimal price, PriceTable? targetTable, List<PriceTableItem> targetItems)
+    private static void ApplyValidatedPrice(Product product, decimal price)
     {
         product.BasePrice = price;
-        if (targetTable is null || !targetTable.IsActive) return;
-        var item = targetItems.FirstOrDefault(existing => existing.ProductId == product.Id);
-        if (item is not null)
-        {
-            item.Price = price;
-            return;
-        }
-        db.PriceTableItems.Add(new PriceTableItem { Product = product, PriceTable = targetTable, Price = price });
     }
 
     private async Task<WmcProductImportResult> RecordFailureAsync(short brand, int selected, DateTime started, string error, CancellationToken ct)

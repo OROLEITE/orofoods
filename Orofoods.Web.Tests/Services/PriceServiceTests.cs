@@ -92,6 +92,98 @@ public class PriceServiceTests
     }
 
     [Fact]
+    public async Task Inactive_customer_price_table_is_ignored_in_favor_of_product_promotion()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Paes", Slug = "inactive-table-promo", IsActive = true };
+        var table = new PriceTable { Name = "Tabela inativa", IsActive = false };
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true, PriceTable = table
+        };
+        var product = new Product
+        {
+            Sku = "WMC-503813", WmcCode = "503813", Name = "Produto", ProductCategory = category,
+            Brand = "BIMBO", Unit = "PC", BasePrice = 20.39m, PromotionalPrice = 18.99m,
+            IsAvailable = true, IsActive = true
+        };
+        db.AddRange(category, table, customer, product);
+        await db.SaveChangesAsync();
+        db.PriceTableItems.Add(new PriceTableItem
+        {
+            PriceTableId = table.Id, ProductId = product.Id, Price = 24.50m, PromotionalPrice = 17.50m
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new PriceService(db).GetPriceAsync(customer.Id, product.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(18.99m, result!.EffectivePrice);
+    }
+
+    [Fact]
+    public async Task Inactive_customer_price_table_is_ignored_in_favor_of_base_price_when_product_has_no_promotion()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Paes", Slug = "inactive-table-base", IsActive = true };
+        var table = new PriceTable { Name = "Tabela inativa", IsActive = false };
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true, PriceTable = table
+        };
+        var product = new Product
+        {
+            Sku = "WMC-503813", WmcCode = "503813", Name = "Produto", ProductCategory = category,
+            Brand = "BIMBO", Unit = "PC", BasePrice = 20.39m, IsAvailable = true, IsActive = true
+        };
+        db.AddRange(category, table, customer, product);
+        await db.SaveChangesAsync();
+        db.PriceTableItems.Add(new PriceTableItem
+        {
+            PriceTableId = table.Id, ProductId = product.Id, Price = 24.50m, PromotionalPrice = 17.50m
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new PriceService(db).GetPriceAsync(customer.Id, product.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(20.39m, result!.EffectivePrice);
+    }
+
+    [Fact]
+    public async Task Active_table_promotion_precedes_table_price_product_promotion_and_base_price()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Paes", Slug = "active-table-promo", IsActive = true };
+        var table = new PriceTable { Name = "Tabela ativa", IsActive = true };
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true, PriceTable = table
+        };
+        var product = new Product
+        {
+            Sku = "WMC-503813", WmcCode = "503813", Name = "Produto", ProductCategory = category,
+            Brand = "BIMBO", Unit = "PC", BasePrice = 20.39m, PromotionalPrice = 18.99m,
+            IsAvailable = true, IsActive = true
+        };
+        db.AddRange(category, table, customer, product);
+        await db.SaveChangesAsync();
+        db.PriceTableItems.Add(new PriceTableItem
+        {
+            PriceTableId = table.Id, ProductId = product.Id, Price = 24.50m, PromotionalPrice = 17.50m
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new PriceService(db).GetPriceAsync(customer.Id, product.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(17.50m, result!.EffectivePrice);
+    }
+
+    [Fact]
     public async Task Positive_bimbo_base_price_of_one_real_is_commercially_valid()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
