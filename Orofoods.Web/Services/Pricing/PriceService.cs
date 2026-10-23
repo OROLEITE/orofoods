@@ -19,21 +19,7 @@ public class PriceService(ApplicationDbContext db)
             return null;
         }
 
-        var priceTableItem = customer.PriceTableId is null
-            ? null
-            : await db.PriceTableItems
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    x => x.PriceTableId == customer.PriceTableId.Value
-                        && x.ProductId == productId
-                        && x.PriceTable != null
-                        && x.PriceTable.IsActive,
-                    cancellationToken);
-
-        var effectivePrice = priceTableItem?.PromotionalPrice
-            ?? priceTableItem?.Price
-            ?? product.PromotionalPrice
-            ?? product.BasePrice;
+        var effectivePrice = product.BasePrice;
 
         return new ResolvedPrice(product.BasePrice, product.PromotionalPrice, effectivePrice, effectivePrice > 0m);
     }

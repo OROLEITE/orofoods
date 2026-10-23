@@ -269,7 +269,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             MinimumOrder = OrderMinimumPolicy.Resolve(
                 await db.OrderMinimumSettings.AsNoTracking().Select(x => (decimal?)x.MinimumAmount).SingleOrDefaultAsync(),
                 customer.MinimumOrder),
-            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.PromotionalPrice ?? x.BasePrice), x.MinimumSalesQuantity, true, x.PriceUnitLabel)).ToList(),
+            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.BasePrice), x.MinimumSalesQuantity, true, x.PriceUnitLabel)).ToList(),
             Query = q
         });
     }

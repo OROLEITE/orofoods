@@ -11,7 +11,7 @@ namespace Orofoods.Web.Tests.Services;
 public class FrequentProductServiceTests
 {
     [Fact]
-    public async Task Returns_active_products_ranked_by_ordered_quantity_with_current_prices()
+    public async Task Returns_active_products_ranked_by_ordered_quantity_with_base_prices()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Paes", Slug = "paes", SortOrder = 1, IsActive = true };
@@ -82,6 +82,6 @@ public class FrequentProductServiceTests
 
         Assert.Collection(result,
             item => { Assert.Equal(brioche.Id, item.Product.Id); Assert.Equal(8, item.OrderedQuantity); Assert.Equal(90m, item.CurrentPrice); },
-            item => { Assert.Equal(frozen.Id, item.Product.Id); Assert.Equal(5, item.OrderedQuantity); Assert.Equal(70m, item.CurrentPrice); });
+            item => { Assert.Equal(frozen.Id, item.Product.Id); Assert.Equal(5, item.OrderedQuantity); Assert.Equal(75m, item.CurrentPrice); });
     }
 }

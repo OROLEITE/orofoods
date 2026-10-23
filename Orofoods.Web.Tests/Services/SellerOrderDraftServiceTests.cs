@@ -68,7 +68,7 @@ public sealed class SellerOrderDraftServiceTests
         Assert.Equal("Entregar pela manhã", reopened.Notes);
         var item = Assert.Single(reopened.Items);
         Assert.Equal(2, item.Quantity);
-        Assert.Equal(37m, item.ResolvedUnitPrice);
+        Assert.Equal(50m, item.ResolvedUnitPrice);
         Assert.Empty(await fixture.Db.Orders.ToListAsync());
         Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
         Assert.Equal(0, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id).Select(x => x.QuantityReserved).SingleAsync());

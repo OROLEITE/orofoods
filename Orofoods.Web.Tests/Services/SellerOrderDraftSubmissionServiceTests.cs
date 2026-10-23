@@ -65,9 +65,9 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         Assert.Equal(fixture.Representative.Id, order.SalesRepresentativeId);
         Assert.Equal(draft.Id, order.SellerOrderDraftId);
         Assert.Equal(2, order.Items.Count);
-        Assert.Equal(37m, order.Items.Single(x => x.ProductId == fixture.Product.Id).UnitPrice);
-        Assert.Equal(23m, order.Items.Single(x => x.ProductId == secondProduct.Id).UnitPrice);
-        Assert.Equal(143m, order.Total);
+        Assert.Equal(50m, order.Items.Single(x => x.ProductId == fixture.Product.Id).UnitPrice);
+        Assert.Equal(50m, order.Items.Single(x => x.ProductId == secondProduct.Id).UnitPrice);
+        Assert.Equal(250m, order.Total);
         Assert.Equal(OrderStatus.Received, Assert.Single(order.StatusHistory).Status);
         Assert.Equal(2, await fixture.Db.InventoryReservations.CountAsync(x => x.OrderId == order.Id && x.Status == InventoryReservationStatus.Active));
 
@@ -90,7 +90,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         await using var fixture = await SubmissionFixture.CreateAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 0m));
         var previousQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
-        fixture.PriceTableItem.PromotionalPrice = 31m;
+        fixture.Product.BasePrice = 31m;
         await fixture.Db.SaveChangesAsync();
 
         var result = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, previousQuote);
@@ -112,7 +112,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
         await using var fixture = await SubmissionFixture.CreateAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 0m));
         var displayedQuote = await fixture.CreateQuoteTokenAsync(fixture.SellerPrincipal, draft);
-        fixture.PriceTableItem.PromotionalPrice = 31m;
+        fixture.Product.BasePrice = 31m;
         await fixture.Db.SaveChangesAsync();
 
         var firstAttempt = await fixture.Service.SubmitAsync(fixture.SellerPrincipal, draft.Id, draft.Version, displayedQuote);

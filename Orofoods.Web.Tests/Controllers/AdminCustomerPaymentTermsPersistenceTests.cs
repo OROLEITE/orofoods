@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Moq;
 using Orofoods.Web.Areas.Admin.Controllers;
+using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -21,6 +22,41 @@ namespace Orofoods.Web.Tests.Controllers;
 
 public class AdminCustomerPaymentTermsPersistenceTests
 {
+    [Fact]
+    public async Task Admin_new_order_displays_product_base_price_despite_customer_table_and_product_promotions()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var table = new PriceTable { Name = "Tabela do cliente", IsActive = true };
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true, PriceTable = table
+        };
+        var address = new CustomerAddress
+        {
+            Customer = customer, Label = "Principal", Street = "Rua A", Number = "1", District = "Centro",
+            City = "Campinas", State = "SP", ZipCode = "13000-000", IsActive = true, IsPrimary = true
+        };
+        var category = new ProductCategory { Name = "Pães", Slug = "paes", IsActive = true };
+        var product = new Product
+        {
+            Sku = "WMC-503813", WmcCode = "503813", Name = "Pão", Brand = "BIMBO", Unit = "PC",
+            ProductCategory = category, BasePrice = 20.39m, PromotionalPrice = 18.99m, IsActive = true, IsAvailable = true
+        };
+        db.AddRange(customer, address, category, product, new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, IsActive = true });
+        await db.SaveChangesAsync();
+        db.PriceTableItems.Add(new PriceTableItem
+        {
+            PriceTableId = table.Id, ProductId = product.Id, Price = 24.50m, PromotionalPrice = 17.50m
+        });
+        await db.SaveChangesAsync();
+
+        var result = Assert.IsType<ViewResult>(await CreateController(db).NewOrder(customer.Id, null));
+        var model = Assert.IsType<AssistedOrderViewModel>(result.Model);
+
+        Assert.Equal(20.39m, Assert.Single(model.Products).UnitPrice);
+    }
+
     [Fact]
     public async Task Admin_displays_wmc_condition_without_creating_or_editing_local_payment_authorizations()
     {

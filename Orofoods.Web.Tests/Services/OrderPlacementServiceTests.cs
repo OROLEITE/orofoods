@@ -43,6 +43,44 @@ public class OrderPlacementServiceTests
     }
 
     [Fact]
+    public async Task PlaceLinesAsync_uses_base_price_despite_customer_table_and_product_promotions_and_keeps_order_price_snapshot()
+    {
+        await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
+        fixture.Product.WmcCode = "503813";
+        fixture.Product.BasePrice = 20.39m;
+        fixture.Product.PromotionalPrice = 18.99m;
+        var table = new PriceTable { Name = "Tabela do cliente", IsActive = true };
+        fixture.Customer.PriceTable = table;
+        fixture.Db.PriceTables.Add(table);
+        fixture.Db.PriceTableItems.Add(new PriceTableItem
+        {
+            PriceTable = table,
+            Product = fixture.Product,
+            Price = 24.50m,
+            PromotionalPrice = 17.50m
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.PlaceLinesAsync(
+            fixture.Customer.Id,
+            fixture.SellerUser.Id,
+            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            [(fixture.Product.Id, 2)],
+            clearCart: false);
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var item = Assert.Single(result.Order!.Items);
+        Assert.Equal(20.39m, item.UnitPrice);
+        Assert.Equal(40.78m, result.Order.Total);
+
+        fixture.Product.BasePrice = 25m;
+        await fixture.Db.SaveChangesAsync();
+        var persistedItem = await fixture.Db.OrderItems.AsNoTracking().SingleAsync();
+        Assert.Equal(20.39m, persistedItem.UnitPrice);
+        Assert.Equal(40.78m, persistedItem.Subtotal);
+    }
+
+    [Fact]
     public async Task PlaceLinesAsync_accepts_positive_bimbo_price_of_one_real()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);

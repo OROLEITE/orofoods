@@ -9,7 +9,7 @@ namespace Orofoods.Web.Tests.Services;
 public class PriceServiceTests
 {
     [Fact]
-    public async Task Customer_price_table_item_overrides_product_base_price()
+    public async Task Base_price_is_used_when_customer_has_a_price_table_with_prices_and_promotions()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Paes", Slug = "paes", SortOrder = 1, IsActive = true };
@@ -32,6 +32,7 @@ public class PriceServiceTests
             Unit = "caixa",
             UnitsPerCase = 30,
             BasePrice = 92.90m,
+            PromotionalPrice = 79.90m,
             IsAvailable = true,
             IsActive = true
         };
@@ -43,7 +44,8 @@ public class PriceServiceTests
         {
             PriceTableId = priceTable.Id,
             ProductId = product.Id,
-            Price = 84.90m
+            Price = 84.90m,
+            PromotionalPrice = 74.90m
         });
         await db.SaveChangesAsync();
 
@@ -51,11 +53,11 @@ public class PriceServiceTests
         var result = await sut.GetPriceAsync(customer.Id, product.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(84.90m, result!.EffectivePrice);
+        Assert.Equal(92.90m, result!.EffectivePrice);
     }
 
     [Fact]
-    public async Task Product_promotional_price_is_used_when_customer_has_no_price_table_item()
+    public async Task Product_promotional_price_is_ignored_when_customer_has_no_price_table_item()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Molhos", Slug = "molhos", SortOrder = 1, IsActive = true };
@@ -88,11 +90,11 @@ public class PriceServiceTests
         var result = await sut.GetPriceAsync(customer.Id, product.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(99.90m, result!.EffectivePrice);
+        Assert.Equal(110m, result!.EffectivePrice);
     }
 
     [Fact]
-    public async Task Inactive_customer_price_table_is_ignored_in_favor_of_product_promotion()
+    public async Task Inactive_customer_price_table_and_product_promotion_are_ignored()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Paes", Slug = "inactive-table-promo", IsActive = true };
@@ -119,7 +121,7 @@ public class PriceServiceTests
         var result = await new PriceService(db).GetPriceAsync(customer.Id, product.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(18.99m, result!.EffectivePrice);
+        Assert.Equal(20.39m, result!.EffectivePrice);
     }
 
     [Fact]
@@ -153,7 +155,7 @@ public class PriceServiceTests
     }
 
     [Fact]
-    public async Task Active_table_promotion_precedes_table_price_product_promotion_and_base_price()
+    public async Task Active_table_prices_and_promotions_are_ignored_in_favor_of_base_price()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Paes", Slug = "active-table-promo", IsActive = true };
@@ -180,7 +182,7 @@ public class PriceServiceTests
         var result = await new PriceService(db).GetPriceAsync(customer.Id, product.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(17.50m, result!.EffectivePrice);
+        Assert.Equal(20.39m, result!.EffectivePrice);
     }
 
     [Fact]

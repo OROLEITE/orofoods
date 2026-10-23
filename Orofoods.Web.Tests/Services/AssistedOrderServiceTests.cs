@@ -46,7 +46,8 @@ public class AssistedOrderServiceTests
         var table = new PriceTable { Name = "Cliente", IsActive = true };
         var term = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, IsActive = true };
         var product = CreateProduct("VIS-002", "Visconti Brioche", 100m);
-        db.AddRange(customer, table, term, product, new PriceTableItem { PriceTable = table, Product = product, Price = 42m }, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
+        product.PromotionalPrice = 35m;
+        db.AddRange(customer, table, term, product, new PriceTableItem { PriceTable = table, Product = product, Price = 42m, PromotionalPrice = 31m }, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
         customer.PriceTable = table;
         await db.SaveChangesAsync();
 
@@ -54,8 +55,8 @@ public class AssistedOrderServiceTests
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         var item = await db.OrderItems.SingleAsync();
-        Assert.Equal(42m, item.UnitPrice);
-        Assert.Equal(84m, item.Subtotal);
+        Assert.Equal(100m, item.UnitPrice);
+        Assert.Equal(200m, item.Subtotal);
     }
 
     [Fact]

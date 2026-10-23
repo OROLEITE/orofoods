@@ -28,7 +28,7 @@ public class CartService(ApplicationDbContext db, PriceService priceService)
                 var quantity = Math.Max(quantities[product.Id], minimumQuantity);
                 var isAvailable = product.IsActive;
                 return new CartLineViewModel(product.Id, product.Sku, product.Name, product.UnitDescription,
-                    quantity, minimumQuantity, prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice), isAvailable)
+                    quantity, minimumQuantity, prices.GetValueOrDefault(product.Id, product.BasePrice), isAvailable)
                 {
                     PriceUnitLabel = product.PriceUnitLabel
                 };
