@@ -2,6 +2,9 @@
 @{
     ViewData["Title"] = "Produtos";
     var stockByProductId = ViewData["StockByProductId"] as IReadOnlyDictionary<int, int> ?? new Dictionary<int, int>();
+    var currentPage = (int)(ViewBag.Page ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 0);
+    var totalItems = (int)(ViewBag.TotalItems ?? Model.Count);
 }
 
 <section class="admin-registration-page admin-products-page">
@@ -27,12 +30,24 @@
             </a>
         </div>
 
-        <form class="catalog-tools admin-list-tools" asp-action="Index" method="get">
-            <input name="q" value="@ViewBag.Query" placeholder="Nome, SKU ou marca" />
+        <form id="admin-product-search" class="catalog-tools admin-list-tools" asp-action="Index" method="get" data-admin-product-search>
+            <input type="search" name="q" value="@ViewBag.Query" placeholder="Nome, SKU, código WMC ou marca" autocomplete="off" />
             <label><input type="checkbox" name="includeInactive" value="true" checked="@(ViewBag.IncludeInactive == true)" /> Mostrar inativos</label>
             <button class="btn admin-secondary-action btn-search" type="submit">Filtrar</button>
         </form>
 
+        @if (Model.Count == 0)
+        {
+            <div class="admin-products-empty-state" role="status">
+                <strong>Nenhum produto encontrado.</strong>
+                @if (!string.IsNullOrWhiteSpace(ViewBag.Query as string))
+                {
+                    <span>Revise a busca por “@ViewBag.Query”.</span>
+                }
+            </div>
+        }
+        else
+        {
         <div class="admin-table-card">
             <div class="table-responsive">
                 <table class="table table-sm admin-table admin-products-table admin-mobile-table align-middle">
@@ -62,7 +77,7 @@
                                     }
                                 </td>
                                 <td class="admin-table-secondary" data-label="SKU">@product.Sku</td>
-                                <td class="admin-table-name" data-label="Produto"><strong>@product.Name</strong></td>
+                                <td class="admin-table-name admin-product-name" data-label="Produto"><strong>@product.Name</strong></td>
                                 <td data-label="Categoria">@product.ProductCategory?.Name</td>
                                 <td data-label="Preço base">@product.BasePrice.ToString("C")</td>
                                 <td class="admin-product-stock" data-label="Estoque"><span class="admin-product-stock-quantity">@stockQuantity</span> <span class="admin-product-stock-unit">@product.PriceUnitLabel</span></td>
@@ -96,5 +111,24 @@
                 </table>
             </div>
         </div>
+        }
+        <div class="admin-products-pagination-summary">@totalItems produto(s)</div>
+        @if (totalPages > 1)
+        {
+            <nav class="admin-products-pagination" aria-label="Paginação de produtos">
+                <a class="btn admin-secondary-action" asp-action="Index" asp-route-q="@ViewBag.Query" asp-route-includeInactive="@ViewBag.IncludeInactive" asp-route-page="@(currentPage - 1)" aria-label="Página anterior" aria-disabled="@(currentPage == 1)">Anterior</a>
+                <div class="admin-products-page-numbers">
+                    @for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++)
+                    {
+                        <a class="btn @(pageNumber == currentPage ? "admin-primary-action" : "admin-secondary-action")" asp-action="Index" asp-route-q="@ViewBag.Query" asp-route-includeInactive="@ViewBag.IncludeInactive" asp-route-page="@pageNumber" aria-current="@(pageNumber == currentPage ? "page" : null)">@pageNumber</a>
+                    }
+                </div>
+                <a class="btn admin-secondary-action" asp-action="Index" asp-route-q="@ViewBag.Query" asp-route-includeInactive="@ViewBag.IncludeInactive" asp-route-page="@(currentPage + 1)" aria-label="Próxima página" aria-disabled="@(currentPage == totalPages)">Próxima</a>
+            </nav>
+        }
     </div>
 </section>
+
+@section Scripts {
+    <script src="~/js/admin-products.js" asp-append-version="true"></script>
+}

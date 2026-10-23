@@ -185,6 +185,79 @@ public sealed class AdminProductsControllerTests
         Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<Product>>(activeOnlyResult.Model));
     }
 
+    [Theory]
+    [InlineData("a")]
+    [InlineData("cafe")]
+    [InlineData("CAFÉ")]
+    [InlineData("sku-77")]
+    [InlineData("503813")]
+    [InlineData("bIm")]
+    public async Task Index_searches_single_character_and_all_product_fields_without_case_or_accent_sensitivity(string search)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Teste", Slug = "teste", IsActive = true };
+        db.Products.Add(new Product
+        {
+            Sku = "SKU-77",
+            WmcCode = "503813",
+            Name = "Pão de Café",
+            Brand = "BIMBO",
+            ProductCategory = category,
+            Unit = "PCT"
+        });
+        await db.SaveChangesAsync();
+
+        var result = Assert.IsType<ViewResult>(await CreateController(db).Index(search));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Single(products);
+        Assert.Equal("SKU-77", products[0].Sku);
+        Assert.Equal(1, result.ViewData["TotalItems"]);
+        Assert.Equal(1, result.ViewData["Page"]);
+    }
+
+    [Fact]
+    public async Task Index_filters_full_catalog_before_paging_and_exposes_pagination_totals()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Teste", Slug = "teste", IsActive = true };
+        for (var index = 1; index <= 26; index++)
+        {
+            db.Products.Add(new Product
+            {
+                Sku = $"SKU-{index:000}",
+                Name = $"Produto {index:000}",
+                Brand = "needle",
+                ProductCategory = category,
+                Unit = "PCT"
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var result = Assert.IsType<ViewResult>(await CreateController(db).Index("NEEDLE", page: 2));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Single(products);
+        Assert.Equal("SKU-026", products[0].Sku);
+        Assert.Equal(26, result.ViewData["TotalItems"]);
+        Assert.Equal(2, result.ViewData["Page"]);
+        Assert.Equal(2, result.ViewData["TotalPages"]);
+    }
+
+    [Fact]
+    public async Task Index_returns_an_empty_first_page_when_search_has_no_matches()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+
+        var result = Assert.IsType<ViewResult>(await CreateController(db).Index("inexistente", page: 4));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Empty(products);
+        Assert.Equal(0, result.ViewData["TotalItems"]);
+        Assert.Equal(0, result.ViewData["TotalPages"]);
+        Assert.Equal(1, result.ViewData["Page"]);
+    }
+
     [Fact]
     public async Task Deactivate_sets_success_feedback_after_service_completes()
     {
