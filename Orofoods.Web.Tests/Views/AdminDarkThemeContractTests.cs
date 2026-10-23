@@ -708,7 +708,7 @@ public class AdminDarkThemeContractTests
         Assert.Contains("status-badge--active", productsIndex);
         Assert.Contains("admin-form-page", productsEdit);
         Assert.Contains("admin-products-edit-page", productsEdit);
-        Assert.Contains("admin-image-manager", productsEdit);
+        Assert.DoesNotContain("admin-image-manager", productsEdit);
         Assert.Contains("admin-inventory-page", inventoryIndex);
         Assert.Contains("admin-inventory-adjustment", inventoryIndex);
         Assert.Contains("admin-products.css", adminLayout);

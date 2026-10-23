@@ -208,9 +208,11 @@ public sealed class ProductMediaControllerTests
             "Orofoods.Web/Views/Home/Product.cshtml",
             "Orofoods.Web/Views/Portal/Catalog.cshtml",
             "Orofoods.Web/Views/Portal/Product.cshtml",
-            "Orofoods.Web/Areas/Admin/Views/Products/Index.cshtml",
-            "Orofoods.Web/Areas/Admin/Views/Products/Edit.cshtml"
+            "Orofoods.Web/Areas/Admin/Views/Products/Index.cshtml"
         };
+
+        var productsEdit = File.ReadAllText(Path.Combine(root, "Orofoods.Web/Areas/Admin/Views/Products/Edit.cshtml"));
+        Assert.DoesNotContain("ProductMedia", productsEdit, StringComparison.Ordinal);
 
         foreach (var relativePath in consumers)
         {
