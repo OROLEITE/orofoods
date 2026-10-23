@@ -21,6 +21,7 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
     private static readonly MethodInfo StringReplaceMethod = typeof(string).GetMethod(nameof(string.Replace), [typeof(string), typeof(string)])!;
     private static readonly MethodInfo StringContainsMethod = typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!;
     private static readonly MethodInfo StringToLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)!;
+    private static readonly MethodInfo TranslateSearchTextMethod = typeof(ApplicationDbContext).GetMethod(nameof(ApplicationDbContext.TranslateSearchText))!;
     private static readonly (string Characters, string Replacement)[] SearchCharacterReplacements =
     [
         ("àáâãäåÀÁÂÃÄÅ", "a"),
@@ -30,11 +31,14 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
         ("ùúûüÙÚÛÜ", "u"),
         ("çÇ", "c"),
         ("ñÑ", "n"),
-        ("ýÿÝŸ", "y"),
-        ("æÆ", "ae"),
-        ("œŒ", "oe"),
-        ("ßẞ", "ss")
+        ("ýÿÝŸ", "y")
     ];
+    private static readonly (string Character, string Replacement)[] SearchExpansionReplacements =
+    [
+        ("æ", "ae"), ("Æ", "ae"), ("œ", "oe"), ("Œ", "oe"), ("ß", "ss"), ("ẞ", "ss")
+    ];
+    private static readonly string SearchFromCharacters = string.Concat(SearchCharacterReplacements.Select(group => group.Characters));
+    private static readonly string SearchToCharacters = string.Concat(SearchCharacterReplacements.SelectMany(group => group.Characters.Select(_ => group.Replacement[0])));
 
     public async Task<IActionResult> Index(string? q, bool includeInactive = false, int? page = null)
     {
@@ -261,19 +265,21 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
     private static Expression NormalizeDatabaseSearchText(Expression field)
     {
         Expression normalized = field;
-        foreach (var (characters, replacement) in SearchCharacterReplacements)
+        foreach (var (character, replacement) in SearchExpansionReplacements)
         {
-            foreach (var character in characters)
-            {
-                normalized = Expression.Call(
-                    normalized,
-                    StringReplaceMethod,
-                    Expression.Constant(character.ToString()),
-                    Expression.Constant(replacement));
-            }
+            normalized = Expression.Call(
+                normalized,
+                StringReplaceMethod,
+                Expression.Constant(character),
+                Expression.Constant(replacement));
         }
 
-        return Expression.Call(normalized, StringToLowerMethod);
+        var translated = Expression.Call(
+            TranslateSearchTextMethod,
+            normalized,
+            Expression.Constant(SearchFromCharacters),
+            Expression.Constant(SearchToCharacters));
+        return Expression.Call(translated, StringToLowerMethod);
     }
 
     private static string NormalizeSearchTerm(string? value)

@@ -14,6 +14,9 @@ namespace Orofoods.Web.Data;
 
 public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<ApplicationUser>(options)
 {
+    public static string? TranslateSearchText(string? value, string fromCharacters, string toCharacters) =>
+        throw new NotSupportedException("This function is only supported inside a database query.");
+
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
@@ -63,6 +66,9 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.HasDbFunction(typeof(ApplicationDbContext).GetMethod(nameof(TranslateSearchText))!)
+            .HasName("translate");
 
         builder.Entity<AdminPortalAccessAudit>(entity =>
         {
