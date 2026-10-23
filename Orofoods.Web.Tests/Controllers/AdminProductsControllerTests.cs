@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using System.Collections.Concurrent;
+using System.Data.Common;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using Moq;
@@ -183,6 +186,121 @@ public sealed class AdminProductsControllerTests
         var activeOnlyController = CreateController(db);
         var activeOnlyResult = Assert.IsType<ViewResult>(await activeOnlyController.Index("BIMBO"));
         Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<Product>>(activeOnlyResult.Model));
+    }
+
+    [Theory]
+    [InlineData("a")]
+    [InlineData("cafe")]
+    [InlineData("CAFÉ")]
+    [InlineData("sku-77")]
+    [InlineData("503813")]
+    [InlineData("bIm")]
+    public async Task Index_searches_single_character_and_all_product_fields_without_case_or_accent_sensitivity(string search)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Teste", Slug = "teste", IsActive = true };
+        db.Products.Add(new Product
+        {
+            Sku = "SKU-77",
+            WmcCode = "503813",
+            Name = "Pão de Café",
+            Brand = "BIMBO",
+            ProductCategory = category,
+            Unit = "PCT"
+        });
+        await db.SaveChangesAsync();
+
+        var result = Assert.IsType<ViewResult>(await CreateController(db).Index(search));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Single(products);
+        Assert.Equal("SKU-77", products[0].Sku);
+        Assert.Equal(1, result.ViewData["TotalItems"]);
+        Assert.Equal(1, result.ViewData["Page"]);
+    }
+
+    [Fact]
+    public async Task Index_uses_a_shallow_sqlite_search_expression_for_accent_and_case_insensitive_queries()
+    {
+        var sqlCapture = new SqlCommandCaptureInterceptor();
+        await using var db = await TestDbContextFactory.CreateAsync(sqlCapture);
+        var category = new ProductCategory { Name = "Teste", Slug = "teste", IsActive = true };
+        db.Products.Add(new Product
+        {
+            Sku = "SKU-ACCENT",
+            WmcCode = "503813",
+            Name = "Pão de Café",
+            Brand = "BIMBO",
+            ProductCategory = category,
+            Unit = "PCT"
+        });
+        await db.SaveChangesAsync();
+
+        var result = await CreateController(db).Index("CAFE");
+
+        Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<Product>>(Assert.IsType<ViewResult>(result).Model));
+        Assert.True(sqlCapture.Commands.Any(command => command.Contains("translate", StringComparison.OrdinalIgnoreCase)), string.Join("\n---\n", sqlCapture.Commands));
+        Assert.All(sqlCapture.Commands.Where(command => command.Contains("translate", StringComparison.OrdinalIgnoreCase)), command =>
+            Assert.InRange(command.Split("replace(", StringSplitOptions.None).Length - 1, 0, 24));
+    }
+
+    [Fact]
+    public void Product_search_translation_generates_postgresql_translate_sql_without_a_database_connection()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=unused;Username=unused")
+            .Options;
+        using var db = new ApplicationDbContext(options);
+
+        var sql = db.Products
+            .Where(product => product.Name != null &&
+                ApplicationDbContext.TranslateSearchText(product.Name, "áÁ", "aa")!.ToLower().Contains("cafe"))
+            .ToQueryString();
+
+        Assert.Contains("translate(", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("LIKE", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Index_filters_full_catalog_before_paging_and_exposes_pagination_totals()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Teste", Slug = "teste", IsActive = true };
+        for (var index = 1; index <= 26; index++)
+        {
+            db.Products.Add(new Product
+            {
+                Sku = $"SKU-{index:000}",
+                Name = $"Produto {index:000}",
+                Brand = "needle",
+                ProductCategory = category,
+                Unit = "PCT"
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var result = Assert.IsType<ViewResult>(await CreateController(db).Index("NEEDLE", page: 2));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Single(products);
+        Assert.Equal("SKU-026", products[0].Sku);
+        Assert.Equal(26, result.ViewData["TotalItems"]);
+        Assert.Equal(2, result.ViewData["Page"]);
+        Assert.Equal(2, result.ViewData["TotalPages"]);
+    }
+
+    [Fact]
+    public async Task Index_returns_an_empty_first_page_when_search_has_no_matches()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+
+        var result = Assert.IsType<ViewResult>(await CreateController(db).Index("inexistente", page: 4));
+        var products = Assert.IsAssignableFrom<IReadOnlyList<Product>>(result.Model);
+
+        Assert.Empty(products);
+        Assert.Equal(0, result.ViewData["TotalItems"]);
+        Assert.Equal(0, result.ViewData["TotalPages"]);
+        Assert.Equal(1, result.ViewData["Page"]);
     }
 
     [Fact]
@@ -384,4 +502,19 @@ public sealed class AdminProductsControllerTests
 
     private static void SetTempData(Controller controller) =>
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), Mock.Of<ITempDataProvider>());
+
+    private sealed class SqlCommandCaptureInterceptor : DbCommandInterceptor
+    {
+        public ConcurrentBag<string> Commands { get; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Commands.Add(command.CommandText);
+            return ValueTask.FromResult(result);
+        }
+    }
 }

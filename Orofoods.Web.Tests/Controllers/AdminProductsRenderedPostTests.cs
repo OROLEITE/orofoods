@@ -31,6 +31,26 @@ namespace Orofoods.Web.Tests.Controllers;
 public sealed class AdminProductsRenderedPostTests
 {
     [Fact]
+    public async Task New_product_get_renders_the_shared_product_form()
+    {
+        await using var harness = await ProductEditHarness.CreateAsync();
+        await harness.SeedProductAsync();
+
+        using var response = await harness.Client.GetAsync("/Admin/Products/Edit");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Novo produto", html, StringComparison.Ordinal);
+        Assert.Contains("name=\"Sku\"", html, StringComparison.Ordinal);
+        Assert.Contains("name=\"BasePrice\"", html, StringComparison.Ordinal);
+        Assert.Contains("name=\"Ean13\"", html, StringComparison.Ordinal);
+        Assert.Contains("name=\"Dun14\"", html, StringComparison.Ordinal);
+        Assert.Contains("name=\"CommercialUnitCode\"", html, StringComparison.Ordinal);
+        Assert.Contains("name=\"LogisticsUnitCode\"", html, StringComparison.Ordinal);
+        Assert.Contains("name=\"PackagesPerCase\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Edit_post_binds_false_includeInactive_and_persists_inactive_product()
     {
         await using var harness = await ProductEditHarness.CreateAsync();
@@ -42,6 +62,8 @@ public sealed class AdminProductsRenderedPostTests
 
         var editForm = Regex.Match(html, "<form method=\"post\" class=\"admin-form-card[\\s\\S]*?</form>", RegexOptions.IgnoreCase).Value;
         Assert.NotEmpty(editForm);
+        foreach (var hiddenField in new[] { "Description", "PromotionalPrice", "IsPromotional", "IsFeatured", "Accent" })
+            Assert.DoesNotContain($"name=\"{hiddenField}\"", editForm, StringComparison.Ordinal);
         var inputValues = Regex.Matches(editForm, "<input[^>]*>", RegexOptions.IgnoreCase)
             .Select(match => match.Value)
             .Where(tag => Regex.IsMatch(tag, "\\bname=\"[^\"]+\"", RegexOptions.IgnoreCase))
@@ -67,9 +89,7 @@ public sealed class AdminProductsRenderedPostTests
             new("Brand", "BIMBO"),
             new("Name", "BIMBO produto de teste"),
             new("ProductCategoryId", categoryId.ToString()),
-            new("Description", ""),
             new("BasePrice", "1"),
-            new("PromotionalPrice", ""),
             new("UnitsPerCase", "0"),
             new("MinimumCases", "1"),
             new("Ean13", ""),
@@ -78,11 +98,8 @@ public sealed class AdminProductsRenderedPostTests
             new("LogisticsUnitCode", ""),
             new("PackagesPerCase", ""),
             new("SubstituteProductId", ""),
-            new("Accent", "#d99624"),
             new("IsActive", "false"),
             new("IsAvailable", "false"),
-            new("IsFeatured", "false"),
-            new("IsPromotional", "false"),
             new("__Invariant", "UnitsPerCase"),
             new("__Invariant", "MinimumCases"),
             new("__Invariant", "PackagesPerCase")
@@ -108,6 +125,14 @@ public sealed class AdminProductsRenderedPostTests
         var saved = await harness.ReloadProductAsync(productId);
         Assert.False(saved.IsActive);
         Assert.Equal(1m, saved.BasePrice);
+        Assert.Equal("Descrição comercial preservada", saved.Description);
+        Assert.Equal(0.625m, saved.Weight);
+        Assert.Equal("PCT", saved.Unit);
+        Assert.Equal(6, saved.UnitsPerPackage);
+        Assert.Equal(0.75m, saved.PromotionalPrice);
+        Assert.True(saved.IsFeatured);
+        Assert.True(saved.IsPromotional);
+        Assert.Equal("#123456", saved.Accent);
     }
 
     private static string Attribute(string tag, string attribute)
@@ -195,7 +220,13 @@ public sealed class AdminProductsRenderedPostTests
                 ProductCategory = category,
                 Unit = "PCT",
                 BasePrice = 1.00m,
-                Description = string.Empty,
+                Description = "Descrição comercial preservada",
+                Weight = 0.625m,
+                UnitsPerPackage = 6,
+                PromotionalPrice = 0.75m,
+                IsFeatured = true,
+                IsPromotional = true,
+                Accent = "#123456",
                 IsActive = false,
                 IsAvailable = false
             };

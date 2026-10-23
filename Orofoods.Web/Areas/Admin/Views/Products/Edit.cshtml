@@ -15,26 +15,24 @@
                 <h1>@ViewData["Title"]</h1>
                 <p>Cadastre a apresenta&ccedil;&atilde;o e disponibilidade do produto.</p>
             </div>
-            <i class="fa-solid fa-box-open" aria-hidden="true"></i>
         </header>
 
         <form method="post" class="admin-form-card admin-product-form-grid">
             <input asp-for="Id" type="hidden" />
-            <input type="hidden" asp-for="Description" />
             <input type="hidden" name="q" value="@ViewBag.Query" />
             <input type="hidden" name="includeInactive" value="@((bool)ViewBag.IncludeInactive ? "true" : "false")" />
             <input type="hidden" name="page" value="@ViewBag.Page" />
             <div asp-validation-summary="All" class="text-danger admin-product-validation"></div>
 
-            <div class="admin-product-field admin-product-field--span-3">
+            <div class="admin-product-field admin-product-field--span-4">
                 <label asp-for="Sku">SKU</label>
                 <input asp-for="Sku" class="form-control" />
             </div>
-            <div class="admin-product-field admin-product-field--span-3">
+            <div class="admin-product-field admin-product-field--span-4">
                 <label asp-for="WmcCode">C&oacute;digo WMC <em>Opcional</em></label>
                 <input asp-for="WmcCode" class="form-control" inputmode="numeric" placeholder="C&oacute;digo no WMC" />
             </div>
-            <div class="admin-product-field admin-product-field--span-3">
+            <div class="admin-product-field admin-product-field--span-4">
                 <label asp-for="Brand">Marca</label>
                 <input asp-for="Brand" class="form-control" />
             </div>
@@ -46,27 +44,19 @@
                 <label asp-for="ProductCategoryId">Categoria</label>
                 <select asp-for="ProductCategoryId" asp-items="ViewBag.Categories" class="form-select"></select>
             </div>
-            <div class="admin-product-field admin-product-field--span-3">
+            <div class="admin-product-field admin-product-field--span-4">
                 <label asp-for="BasePrice">Pre&ccedil;o base</label>
                 <input asp-for="BasePrice" class="form-control" inputmode="decimal" />
             </div>
-            <div class="admin-product-field admin-product-field--span-3">
-                <label asp-for="PromotionalPrice">Pre&ccedil;o promocional</label>
-                <input asp-for="PromotionalPrice" class="form-control" inputmode="decimal" />
-            </div>
-            <div class="admin-product-field admin-product-field--span-3">
+            <div class="admin-product-field admin-product-field--span-4">
                 <label asp-for="UnitsPerCase">Unidades por caixa (cadastro legado)</label>
                 <input asp-for="UnitsPerCase" class="form-control" inputmode="numeric" />
             </div>
-            <div class="admin-product-field admin-product-field--span-3">
+            <div class="admin-product-field admin-product-field--span-4">
                 <label asp-for="MinimumCases">M&iacute;nimo legado de caixas</label>
                 <input asp-for="MinimumCases" class="form-control" inputmode="numeric" />
             </div>
 
-            <div class="admin-product-section-heading">
-                <h2>Unidade comercial e identifica&ccedil;&atilde;o de pacotes</h2>
-                <p>Campos vazios preservam o cadastro legado. Preencha PCT/CX e o fator apenas com dados confirmados.</p>
-            </div>
             <div class="admin-product-field admin-product-field--span-3">
                 <label asp-for="Ean13">EAN-13 do pacote</label>
                 <input asp-for="Ean13" class="form-control" inputmode="numeric" maxlength="13" />
@@ -93,22 +83,16 @@
                 <label asp-for="PackagesPerCase">Pacotes por caixa</label>
                 <input asp-for="PackagesPerCase" class="form-control" inputmode="numeric" min="1" />
             </div>
-            <div class="admin-product-field admin-product-field--span-8">
+            <div class="admin-product-field admin-product-field--span-12">
                 <label asp-for="SubstituteProductId">Produto substituto <em>Opcional</em></label>
                 <select asp-for="SubstituteProductId" asp-items="ViewBag.Substitutes" class="form-select">
                     <option value="">Nenhum</option>
                 </select>
             </div>
-            <div class="admin-product-field admin-product-field--span-4">
-                <label asp-for="Accent">Cor de destaque</label>
-                <input asp-for="Accent" type="color" class="form-control form-control-color" />
-            </div>
 
             <div class="admin-check admin-product-flags">
                 <label><input asp-for="IsActive" /> Produto ativo</label>
                 <label><input asp-for="IsAvailable" /> Dispon&iacute;vel para venda</label>
-                <label><input asp-for="IsFeatured" /> Produto em destaque</label>
-                <label><input asp-for="IsPromotional" /> Em promo&ccedil;&atilde;o</label>
             </div>
             <footer class="admin-form-actions admin-product-form-actions">
                 <a asp-action="Index" asp-route-q="@ViewBag.Query" asp-route-includeInactive="@ViewBag.IncludeInactive" asp-route-page="@ViewBag.Page" class="btn admin-secondary-action">

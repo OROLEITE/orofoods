@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Services.Catalog;
@@ -13,18 +17,61 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Authorize(Roles = "Administrador")]
 public class ProductsController(ApplicationDbContext db, AdminCatalogService catalogService, IProductImageStorage productImageStorage) : Controller
 {
+    private const int ProductsPageSize = 25;
+    private static readonly MethodInfo StringReplaceMethod = typeof(string).GetMethod(nameof(string.Replace), [typeof(string), typeof(string)])!;
+    private static readonly MethodInfo StringContainsMethod = typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!;
+    private static readonly MethodInfo StringToLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)!;
+    private static readonly MethodInfo TranslateSearchTextMethod = typeof(ApplicationDbContext).GetMethod(nameof(ApplicationDbContext.TranslateSearchText))!;
+    private static readonly (string Characters, string Replacement)[] SearchCharacterReplacements =
+    [
+        ("àáâãäåÀÁÂÃÄÅ", "a"),
+        ("èéêëÈÉÊË", "e"),
+        ("ìíîïÌÍÎÏ", "i"),
+        ("òóôõöøÒÓÔÕÖØ", "o"),
+        ("ùúûüÙÚÛÜ", "u"),
+        ("çÇ", "c"),
+        ("ñÑ", "n"),
+        ("ýÿÝŸ", "y")
+    ];
+    private static readonly (string Character, string Replacement)[] SearchExpansionReplacements =
+    [
+        ("æ", "ae"), ("Æ", "ae"), ("œ", "oe"), ("Œ", "oe"), ("ß", "ss"), ("ẞ", "ss")
+    ];
+    private static readonly string SearchFromCharacters = string.Concat(SearchCharacterReplacements.Select(group => group.Characters));
+    private static readonly string SearchToCharacters = string.Concat(SearchCharacterReplacements.SelectMany(group => group.Characters.Select(_ => group.Replacement[0])));
+
     public async Task<IActionResult> Index(string? q, bool includeInactive = false, int? page = null)
     {
-        var query = db.Products.AsNoTracking().Include(x => x.ProductCategory).Include(x => x.Images).AsQueryable();
+        var query = db.Products.AsNoTracking().AsQueryable();
         if (!includeInactive) query = query.Where(x => x.IsActive);
-        if (!string.IsNullOrWhiteSpace(q)) query = query.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || x.Brand.Contains(q));
-        var products = await query.OrderBy(x => x.Name).ToListAsync();
+        var normalizedSearch = NormalizeSearchTerm(q);
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            if (normalizedSearch.Length == 0)
+                query = query.Where(_ => false);
+            else
+                query = query.Where(CreateProductSearchPredicate(normalizedSearch));
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)ProductsPageSize);
+        var currentPage = totalPages == 0 ? 1 : Math.Clamp(page.GetValueOrDefault(1), 1, totalPages);
+        var products = await query
+            .Include(x => x.ProductCategory)
+            .Include(x => x.Images)
+            .OrderBy(x => x.Name)
+            .ThenBy(x => x.Id)
+            .Skip((currentPage - 1) * ProductsPageSize)
+            .Take(ProductsPageSize)
+            .ToListAsync();
         var productIds = products.Select(product => product.Id).ToArray();
         ViewBag.StockByProductId = await db.ProductInventories
             .AsNoTracking()
             .Where(inventory => productIds.Contains(inventory.ProductId))
             .ToDictionaryAsync(inventory => inventory.ProductId, inventory => inventory.QuantityOnHand);
-        SetListContext(q, includeInactive, page);
+        ViewBag.TotalItems = totalItems;
+        ViewBag.TotalPages = totalPages;
+        SetListContext(q, includeInactive, currentPage);
         return View(products);
     }
 
@@ -42,6 +89,17 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
     public async Task<IActionResult> Edit(Product input, string? q = null, bool includeInactive = false, int? page = null)
     {
         SetListContext(q, includeInactive, page);
+        Product? existingProduct = null;
+        if (input.Id != 0)
+        {
+            existingProduct = await db.Products.AsNoTracking().SingleOrDefaultAsync(product => product.Id == input.Id);
+            if (existingProduct is null) return NotFound();
+            RestoreNonEditableProductFields(input, existingProduct);
+        }
+
+        foreach (var field in NonEditableProductFieldNames)
+            ModelState.Remove(field);
+
         if (string.IsNullOrWhiteSpace(input.Sku))
             ModelState.AddModelError(nameof(input.Sku), "Informe o SKU do produto.");
         if (string.IsNullOrWhiteSpace(input.Name))
@@ -50,12 +108,7 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
             ModelState.AddModelError(nameof(input.ProductCategoryId), "Selecione uma categoria para o produto.");
         if (!ModelState.IsValid) { await PopulateSelectionsAsync(input); return View(input); }
 
-        var wasActive = input.Id == 0
-            ? null
-            : await db.Products.AsNoTracking()
-                .Where(product => product.Id == input.Id)
-                .Select(product => (bool?)product.IsActive)
-                .SingleOrDefaultAsync();
+        var wasActive = existingProduct?.IsActive;
         Product savedProduct;
         try { savedProduct = await catalogService.SaveProductAsync(input); }
         catch (InvalidOperationException error) { ModelState.AddModelError(string.Empty, error.Message); await PopulateSelectionsAsync(input); return View(input); }
@@ -166,5 +219,81 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
         ViewBag.Query = q;
         ViewBag.IncludeInactive = includeInactive;
         ViewBag.Page = page;
+    }
+
+    private static readonly string[] NonEditableProductFieldNames =
+    [
+        nameof(Product.Description),
+        nameof(Product.Weight),
+        nameof(Product.Unit),
+        nameof(Product.UnitsPerPackage),
+        nameof(Product.PromotionalPrice),
+        nameof(Product.IsFeatured),
+        nameof(Product.IsPromotional),
+        nameof(Product.Accent)
+    ];
+
+    private static void RestoreNonEditableProductFields(Product input, Product existingProduct)
+    {
+        input.Description = existingProduct.Description;
+        input.Weight = existingProduct.Weight;
+        input.Unit = existingProduct.Unit;
+        input.UnitsPerPackage = existingProduct.UnitsPerPackage;
+        input.PromotionalPrice = existingProduct.PromotionalPrice;
+        input.IsFeatured = existingProduct.IsFeatured;
+        input.IsPromotional = existingProduct.IsPromotional;
+        input.Accent = existingProduct.Accent;
+    }
+
+    private static Expression<Func<Product, bool>> CreateProductSearchPredicate(string searchTerm)
+    {
+        var product = Expression.Parameter(typeof(Product), "product");
+        Expression? predicate = null;
+        foreach (var propertyName in new[] { nameof(Product.Name), nameof(Product.Sku), nameof(Product.WmcCode), nameof(Product.Brand) })
+        {
+            var field = Expression.Property(product, propertyName);
+            var fieldIsNotNull = Expression.NotEqual(field, Expression.Constant(null, typeof(string)));
+            var normalizedField = NormalizeDatabaseSearchText(field);
+            var containsSearchTerm = Expression.Call(normalizedField, StringContainsMethod, Expression.Constant(searchTerm));
+            var fieldMatches = Expression.AndAlso(fieldIsNotNull, containsSearchTerm);
+            predicate = predicate is null ? fieldMatches : Expression.OrElse(predicate, fieldMatches);
+        }
+
+        return Expression.Lambda<Func<Product, bool>>(predicate!, product);
+    }
+
+    private static Expression NormalizeDatabaseSearchText(Expression field)
+    {
+        Expression normalized = field;
+        foreach (var (character, replacement) in SearchExpansionReplacements)
+        {
+            normalized = Expression.Call(
+                normalized,
+                StringReplaceMethod,
+                Expression.Constant(character),
+                Expression.Constant(replacement));
+        }
+
+        var translated = Expression.Call(
+            TranslateSearchTextMethod,
+            normalized,
+            Expression.Constant(SearchFromCharacters),
+            Expression.Constant(SearchToCharacters));
+        return Expression.Call(translated, StringToLowerMethod);
+    }
+
+    private static string NormalizeSearchTerm(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+        var decomposed = value.Trim().Normalize(NormalizationForm.FormD);
+        var withoutDiacritics = new string(decomposed
+            .Where(character => CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        return withoutDiacritics.Normalize(NormalizationForm.FormC)
+            .ToLowerInvariant()
+            .Replace("æ", "ae", StringComparison.Ordinal)
+            .Replace("œ", "oe", StringComparison.Ordinal)
+            .Replace("ß", "ss", StringComparison.Ordinal);
     }
 }

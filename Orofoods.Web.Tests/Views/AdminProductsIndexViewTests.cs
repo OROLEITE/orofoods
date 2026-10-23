@@ -72,6 +72,41 @@ public sealed class AdminProductsIndexViewTests
     }
 
     [Fact]
+    public void Product_search_supports_autocomplete_off_debounce_and_server_pagination()
+    {
+        var index = ReadView("Index.cshtml");
+        var scriptPath = Path.Combine(WebProjectPath(), "wwwroot", "js", "admin-products.js");
+        var scripts = File.ReadAllText(scriptPath);
+
+        Assert.Contains("autocomplete=\"off\"", index, StringComparison.Ordinal);
+        Assert.Contains("Filtrar", index, StringComparison.Ordinal);
+        Assert.DoesNotContain("name=\"page\"", index[..index.IndexOf("<table", StringComparison.Ordinal)], StringComparison.Ordinal);
+        Assert.Contains("Nenhum produto encontrado", index, StringComparison.Ordinal);
+        Assert.Contains("asp-route-page=\"@pageNumber\"", index, StringComparison.Ordinal);
+        Assert.Contains("setTimeout", scripts, StringComparison.Ordinal);
+        Assert.Contains(", 300)", scripts, StringComparison.Ordinal);
+        Assert.Contains("requestSubmit()", scripts, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Product_table_keeps_all_requested_columns_and_single_line_product_layout()
+    {
+        var index = ReadView("Index.cshtml");
+        var styles = File.ReadAllText(Path.Combine(WebProjectPath(), "wwwroot", "css", "admin-products.css"));
+
+        Assert.Contains("data-label=\"SKU\"", index, StringComparison.Ordinal);
+        Assert.Contains("data-label=\"Categoria\"", index, StringComparison.Ordinal);
+        Assert.Contains("@product.BasePrice.ToString(\"C\")", index, StringComparison.Ordinal);
+        Assert.Contains("data-label=\"Estoque\"", index, StringComparison.Ordinal);
+        Assert.Contains("data-label=\"Disponibilidade\"", index, StringComparison.Ordinal);
+        Assert.Contains("data-label=\"Status\"", index, StringComparison.Ordinal);
+        Assert.Contains("admin-products-table thead th:last-child", styles, StringComparison.Ordinal);
+        Assert.Contains("text-align: right", styles, StringComparison.Ordinal);
+        Assert.Contains("white-space: nowrap", styles, StringComparison.Ordinal);
+        Assert.Contains("overflow-x: auto", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Product_edit_uses_portuguese_model_binding_messages()
     {
         var program = File.ReadAllText(Path.Combine(WebProjectPath(), "Program.cs"));

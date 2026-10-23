@@ -32,8 +32,30 @@ public class AdminProductEditVisualContractTests
         var view = ReadProductView("Edit.cshtml");
 
         Assert.Contains("asp-validation-summary=\"All\"", view);
-        Assert.Contains("type=\"hidden\" asp-for=\"Description\"", view);
         Assert.DoesNotContain("Descri&ccedil;&atilde;o comercial", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Shared_create_and_edit_form_hides_unrequested_catalog_controls_and_preserves_unit_identifiers()
+    {
+        var view = ReadProductView("Edit.cshtml");
+
+        Assert.DoesNotContain("PromotionalPrice", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsPromotional", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsFeatured", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("asp-for=\"Accent\"", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Cor de destaque", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Unidade comercial e identificaÃ§Ã£o de pacotes", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Campos vazios preservam o cadastro legado", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"Ean13\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"Dun14\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"CommercialUnitCode\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"LogisticsUnitCode\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"PackagesPerCase\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"BasePrice\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"IsActive\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-for=\"IsAvailable\"", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("fa-box-open", view, StringComparison.Ordinal);
     }
 
     [Fact]
