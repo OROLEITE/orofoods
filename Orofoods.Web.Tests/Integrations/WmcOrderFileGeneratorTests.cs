@@ -51,7 +51,7 @@ public class WmcOrderFileGeneratorTests
             [
                 new OrderItem
                 {
-                    Product = new Product { WmcCode = "243680", Unit = "UN" },
+                    Product = new Product { WmcCode = "243680", Unit = "UN", BasePrice = 20.39m, PromotionalPrice = 18.99m },
                     ProductNameSnapshot = "Produto 243680 Homologacao",
                     Quantity = 1,
                     UnitPrice = 19.90m,

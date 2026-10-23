@@ -23,6 +23,8 @@ public class SellerCatalogServiceTests
         var table = new PriceTable { Name = "Tabela A", IsActive = true };
         var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "11.111.111/0001-11", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative, PriceTable = table };
         var available = Product("AVAILABLE", "Pao disponivel", true);
+        available.BasePrice = 50m;
+        available.PromotionalPrice = 35m;
         var unavailable = Product("EMPTY", "Pao sem estoque", true);
         var inactive = Product("INACTIVE", "Pao inativo", false);
         db.AddRange(representative, seller, table, customer, available, unavailable, inactive, new PriceTableItem { PriceTable = table, Product = available, Price = 42m });
@@ -39,7 +41,7 @@ public class SellerCatalogServiceTests
         var products = Assert.IsType<SellerCatalogViewModel>(result).Products;
         Assert.Equal(2, products.Count);
         Assert.DoesNotContain(products, x => x.Id == inactive.Id);
-        Assert.Equal(42m, products.Single(x => x.Id == available.Id).UnitPrice);
+        Assert.Equal(50m, products.Single(x => x.Id == available.Id).UnitPrice);
         Assert.Contains(products, x => x.Id == unavailable.Id);
     }
 

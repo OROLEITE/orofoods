@@ -564,7 +564,7 @@ public class PortalController(
                 product.UnitDescription,
                 product.MinimumSalesQuantity,
                 product.IsActive && salesUnitMatches ? item.Quantity : 0,
-                prices.GetValueOrDefault(product.Id, product.PromotionalPrice ?? product.BasePrice),
+                prices.GetValueOrDefault(product.Id, product.BasePrice),
                 product.IsActive && salesUnitMatches,
                 product.SubstituteProduct?.Name,
                 product.PriceUnitLabel);

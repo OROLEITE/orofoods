@@ -225,6 +225,7 @@ public class PortalControllerCatalogTests
         var category = new ProductCategory { Name = "Congelados", Slug = "congelados", IsActive = true };
         var product = CreateProduct("BIM-003", "Pao Australiano", category);
         product.BasePrice = 110m;
+        product.PromotionalPrice = 89.90m;
         product.MinimumCases = 3;
         var otherProduct = CreateProduct("BIM-004", "Pao Brioche", category);
         var user = new ApplicationUser
@@ -247,6 +248,9 @@ public class PortalControllerCatalogTests
 
         var session = new TestSession();
         var controller = CreateController(db, session);
+        var catalogResult = Assert.IsType<ViewResult>(await controller.Catalog(null, null, null, null));
+        var catalogPrices = Assert.IsType<Dictionary<int, decimal>>(catalogResult.ViewData["Prices"]);
+        Assert.Equal(110m, catalogPrices[product.Id]);
         controller.HttpContext.Request.Headers["X-Requested-With"] = "XMLHttpRequest";
 
         var addResult = Assert.IsType<JsonResult>(await controller.AddToCart(product.Id, 1));
@@ -273,12 +277,12 @@ public class PortalControllerCatalogTests
         Assert.Equal(2, cart.Items.Count);
         var line = Assert.Single(cart.Items, item => item.ProductId == product.Id);
         Assert.Equal(6, line.Quantity);
-        Assert.Equal(94.50m, line.UnitPrice);
-        Assert.Equal(567m, line.Subtotal);
+        Assert.Equal(110m, line.UnitPrice);
+        Assert.Equal(660m, line.Subtotal);
         var otherLine = Assert.Single(cart.Items, item => item.ProductId == otherProduct.Id);
         Assert.Equal(2, otherLine.Quantity);
-        Assert.Equal(8m, otherLine.UnitPrice);
-        Assert.Equal(16m, otherLine.Subtotal);
+        Assert.Equal(10m, otherLine.UnitPrice);
+        Assert.Equal(20m, otherLine.Subtotal);
 
         var checkoutResult = Assert.IsType<ViewResult>(await controller.Checkout());
         var checkout = Assert.IsType<CheckoutViewModel>(checkoutResult.Model);

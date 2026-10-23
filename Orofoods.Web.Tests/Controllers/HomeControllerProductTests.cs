@@ -218,7 +218,7 @@ public class HomeControllerProductTests
         var view = Assert.IsType<ViewResult>(result);
         Assert.True((bool)view.ViewData["CustomerPurchaseAuthorized"]!);
         var prices = Assert.IsType<Dictionary<int, decimal>>(view.ViewData["Prices"]);
-        Assert.Equal(18.50m, prices[product.Id]);
+        Assert.Equal(1m, prices[product.Id]);
         Assert.True(Assert.IsType<PublicProductCatalogViewModel>(view.Model).Products.Single().IsCommerciallyAvailable);
     }
 
@@ -271,7 +271,7 @@ public class HomeControllerProductTests
         };
         var clientView = Assert.IsType<ViewResult>(await client.Index());
         Assert.True((bool)clientView.ViewData["CustomerPurchaseAuthorized"]!);
-        Assert.Equal(18.50m, Assert.IsType<Dictionary<int, decimal>>(clientView.ViewData["Prices"])[product.Id]);
+        Assert.Equal(1m, Assert.IsType<Dictionary<int, decimal>>(clientView.ViewData["Prices"])[product.Id]);
         Assert.True(Assert.IsType<PublicHomeViewModel>(clientView.Model).Products.Single().IsCommerciallyAvailable);
     }
 
