@@ -434,7 +434,7 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
-    public async Task Validated_price_updates_base_and_explicit_table_without_overwriting_promotion_and_is_idempotent()
+    public async Task Validated_price_updates_only_base_and_preserves_negotiated_table_prices_and_promotions()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
@@ -448,7 +448,7 @@ public sealed class WmcProductImportServiceTests
         };
         db.Products.Add(product);
         await db.SaveChangesAsync();
-        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = table.Id, ProductId = product.Id, Price = 1m, PromotionalPrice = 17.50m });
+        db.PriceTableItems.Add(new PriceTableItem { PriceTableId = table.Id, ProductId = product.Id, Price = 24.50m, PromotionalPrice = 17.50m });
         await db.SaveChangesAsync();
         var reader = new FakeReader([new WmcProductRecord("503813", "Produto", "A", "PC", null, null, PrecoVenda: 20.39m,
             Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 18m, "17899679701345", true)])]);
@@ -470,7 +470,8 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal("Succeeded", result.Status);
         Assert.Equal(1, result.Updated);
         Assert.Equal(20.39m, product.BasePrice);
-        Assert.Equal(20.39m, persistedItem.Price);
+        Assert.Equal(18.99m, product.PromotionalPrice);
+        Assert.Equal(24.50m, persistedItem.Price);
         Assert.Equal(17.50m, persistedItem.PromotionalPrice);
         Assert.Equal(0, repeat.Updated);
         Assert.Equal(1, repeat.Unchanged);
