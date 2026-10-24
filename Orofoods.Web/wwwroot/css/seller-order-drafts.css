@@ -136,7 +136,7 @@
 .seller-order-drafts__review-item { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:.75rem; padding:.55rem .65rem; border-bottom:1px solid var(--draft-border); font-size:.78rem; }
 .seller-order-drafts__review-item>span,.seller-order-drafts__review-item>strong { white-space:nowrap; }
 .seller-order-drafts__review-total { display:flex; justify-content:space-between; align-items:center; margin:1rem; padding:.75rem 0 0; border-top:1px solid var(--draft-border); }
-.seller-order-drafts__review-total strong { color:#38BDF8; font-size:1.35rem; }
+.seller-order-drafts__review-total strong { color:var(--draft-blue); font-size:1.35rem; }
 .seller-order-drafts__review-note { margin:0 1rem; color:var(--draft-muted); font-size:.76rem; }
 .seller-order-drafts__review-actions { display:flex; justify-content:flex-end; gap:.55rem; padding:1rem; }
 .seller-order-drafts__review-actions .btn { min-height:44px; }
