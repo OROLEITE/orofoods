@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="~/css/customer-search.css" asp-append-version="true" />
 }
 
-<section class="section seller-order-drafts">
+<section class="section seller-order-drafts @(Model.CustomerId > 0 && isEditable ? "seller-order-drafts--editor" : "")">
     <div class="container">
         <nav class="seller-order-drafts__breadcrumbs" aria-label="Navegação">
             <a asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index">Área do vendedor</a>
@@ -258,7 +258,7 @@
                                     <span>Pedido mínimo: @Model.MinimumOrder.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
                                     <small id="seller-minimum-order-gap" role="status" aria-live="polite">@(Model.RemainingForMinimum > 0 ? $"Faltam {Model.RemainingForMinimum:C} para atingir o mínimo." : "Pedido mínimo atingido.")</small>
                                 </div>
-                                <p class="seller-order-drafts__summary-note">Cotação calculada no servidor com o preço base vigente. Se o valor mudar antes do envio, revise o novo resumo para confirmar.</p>
+                                <p class="seller-order-drafts__summary-note">O preço base será revalidado no envio.</p>
                                 <div class="seller-order-drafts__summary-flags">
                                     <span><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Saldo informativo; não bloqueia a venda</span>
                                     <span><i class="fa-regular fa-file-lines" aria-hidden="true"></i> Não aparece no Monitor até o envio</span>
@@ -322,7 +322,7 @@
                         </div>
                     </dialog>
                 }
-                <p class="seller-order-drafts__stage-note">O envio definitivo revalida o preço base e os dados comerciais e cria o pedido na Orofoods. Salve alterações antes de revisar; o envio não inicia cobrança.</p>
+                <p class="seller-order-drafts__stage-note">Salve, revise e confirme. Os valores são revalidados pelo servidor; esta etapa não inicia cobrança.</p>
             }
             else
             {

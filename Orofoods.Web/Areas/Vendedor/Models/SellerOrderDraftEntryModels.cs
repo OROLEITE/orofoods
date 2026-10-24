@@ -46,6 +46,12 @@ public sealed class SellerOrderDraftSubmitForm
     public string QuoteToken { get; set; } = "";
 }
 
+public sealed record SellerOrderDraftSubmittedViewModel(
+    int CustomerId,
+    int OrderId,
+    string OrderNumber,
+    decimal Total);
+
 public sealed class SellerOrderDraftFormItem
 {
     [Range(1, int.MaxValue)]
