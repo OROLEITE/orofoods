@@ -42,7 +42,7 @@ public class AdminPrimaryActionTests
 
         Assert.Contains("btn-search", customerCatalog);
         Assert.Contains("btn-search", sellerCatalog);
-        Assert.Contains("btn-search", sellerOrders);
+        Assert.Contains("class=\"seller-button seller-button--secondary\" type=\"submit\">Buscar", sellerOrders);
         Assert.Contains("btn-search", sellerCustomers);
         Assert.Contains("btn-search", customerOrders);
         Assert.Contains("btn-search", customerOrderSearch);

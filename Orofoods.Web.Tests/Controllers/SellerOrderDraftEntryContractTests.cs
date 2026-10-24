@@ -26,7 +26,7 @@ public sealed class SellerOrderDraftEntryContractTests
         Assert.Contains("asp-controller=\"OrderDrafts\" asp-action=\"New\"", productView, StringComparison.Ordinal);
         Assert.Contains("asp-route-customerId=\"@selectedCustomerId\"", productView, StringComparison.Ordinal);
         Assert.Contains("asp-route-productId=\"@Model.Id\"", productView, StringComparison.Ordinal);
-        Assert.Contains("SellerCatalogService", catalogController, StringComparison.Ordinal);
+        Assert.Contains("RedirectToAction(\"New\", \"OrderDrafts\"", catalogController, StringComparison.Ordinal);
         Assert.Contains("int? productId", orderDraftController, StringComparison.Ordinal);
         Assert.Contains("GetSelectableProductsByIdsAsync", orderDraftController, StringComparison.Ordinal);
         Assert.Contains("Quantity = selectedProduct.MinimumCases", orderDraftController, StringComparison.Ordinal);
@@ -160,7 +160,12 @@ public sealed class SellerOrderDraftEntryContractTests
         Assert.Contains("#F4F7FC", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#FFFFFF", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#E2E8F0", css, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("#2563EB", css, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#0B132B", css, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#111827", css, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#374151", css, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#E5E7EB", css, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#94A3B8", css, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("#38BDF8", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#0E7490", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("#DC2626", css, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("@media", css, StringComparison.OrdinalIgnoreCase);

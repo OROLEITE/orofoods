@@ -28,6 +28,14 @@ public class SellerPortalShellTests
     }
 
     [Fact]
+    public void Seller_sidebar_close_button_targets_the_offcanvas()
+    {
+        var layout = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "_SellerLayout.cshtml"));
+
+        Assert.Contains("data-bs-dismiss=\"offcanvas\" data-bs-target=\"#sellerSidebar\"", layout);
+    }
+
+    [Fact]
     public void Seller_shell_styles_support_mobile_tablet_desktop_and_dark_theme_focus()
     {
         var styles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css"));
@@ -79,5 +87,32 @@ public class SellerPortalShellTests
         Assert.Contains(".seller-app-nav a {", styles);
         Assert.Contains("min-height: 40px", styles);
         Assert.Contains(".seller-app-page .seller-app-nav a { min-height: 44px; }", styles);
+    }
+
+    [Fact]
+    public void Seller_desktop_content_width_reserves_the_sidebar()
+    {
+        var styles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-area.css"));
+        var desktopContentRule = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"(?s)@media \(min-width: 768px\).*?\.seller-app-content\s*\{(?<declarations>[^}]+)\}");
+        var scopedContentRule = System.Text.RegularExpressions.Regex.Match(
+            styles,
+            @"body\.seller-app-page \.seller-app-content\s*\{(?<declarations>[^}]+)\}");
+
+        Assert.True(desktopContentRule.Success);
+        Assert.Contains("width: calc(100% - var(--seller-sidebar-width));", desktopContentRule.Groups["declarations"].Value);
+        Assert.True(scopedContentRule.Success);
+        Assert.DoesNotMatch(@"(?m)^\s*width\s*:", scopedContentRule.Groups["declarations"].Value);
+    }
+
+    [Fact]
+    public void Seller_editor_reserves_space_for_fixed_mobile_actions()
+    {
+        var view = File.ReadAllText(Path.Combine(ProjectRoot, "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(ProjectRoot, "wwwroot", "css", "seller-order-drafts.css"));
+
+        Assert.Contains("seller-order-drafts--editor", view);
+        Assert.Contains("body.seller-app-page .seller-order-drafts--editor { padding-bottom:calc(170px + env(safe-area-inset-bottom)); }", styles);
     }
 }

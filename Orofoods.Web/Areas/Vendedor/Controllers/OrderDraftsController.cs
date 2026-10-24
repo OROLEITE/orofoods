@@ -144,8 +144,32 @@ public sealed class OrderDraftsController(
     {
         var draft = await draftService.GetAsync(User, id, cancellationToken);
         if (draft is null) return NotFound();
+        if (draft.Status == SellerOrderDraftStatus.Submitted)
+        {
+            return RedirectToAction(nameof(Submitted), new { id });
+        }
         var editor = await BuildEditorAsync(draft.CustomerId, draft, null, null, null, null, [], Guid.NewGuid(), cancellationToken);
         return editor is null ? NotFound() : View("Editor", editor);
+    }
+
+    [HttpGet("/Vendedor/Rascunhos/{id:int}/Confirmacao")]
+    public async Task<IActionResult> Submitted(int id, CancellationToken cancellationToken)
+    {
+        var draft = await draftService.GetAsync(User, id, cancellationToken);
+        if (draft is null) return NotFound();
+        if (draft.Status != SellerOrderDraftStatus.Submitted || draft.SubmittedOrderId is not int orderId)
+        {
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        var order = await db.Orders.AsNoTracking()
+            .Where(item => item.Id == orderId && item.CustomerId == draft.CustomerId)
+            .Select(item => new { item.Id, item.Number, item.Total })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (order is null) return NotFound();
+
+        return View("Submitted", new SellerOrderDraftSubmittedViewModel(
+            draft.CustomerId, order.Id, order.Number, order.Total));
     }
 
     [HttpPost("/Vendedor/Rascunhos")]
@@ -243,8 +267,7 @@ public sealed class OrderDraftsController(
         var result = await submissionService.SubmitAsync(User, id, form.ExpectedVersion, form.QuoteToken, cancellationToken);
         if (result.Succeeded && result.OrderNumber is not null)
         {
-            TempData["SellerDraftNotice"] = $"Pedido {result.OrderNumber} enviado e registrado na Orofoods.";
-            return RedirectToAction(nameof(Edit), new { id });
+            return RedirectToAction(nameof(Submitted), new { id });
         }
 
         if (result.ErrorCode == SellerOrderDraftErrorCodes.DraftNotFound)

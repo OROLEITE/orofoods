@@ -4,13 +4,70 @@
     ViewData["Title"] = "Pedidos · " + Model.CustomerName;
     ViewData["BodyClass"] = "seller-area-page";
 }
-<section class="section">
+<section class="section seller-orders-page">
     <div class="container">
-        <nav class="mb-3" aria-label="Navegação do vendedor"><a asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId">Workspace</a><span class="text-muted"> / Pedidos</span></nav>
-        <header class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3"><div><span class="eyebrow"><span></span> Histórico comercial</span><h1>Pedidos</h1><p class="text-muted mb-0">@Model.CustomerName · @Model.CustomerCode</p></div><a class="btn btn-gold" asp-area="Vendedor" asp-controller="Catalog" asp-action="Index" asp-route-customerId="@Model.CustomerId">Nova venda</a></header>
-        <form method="get" class="seller-orders-filter mb-3"><input class="form-control" name="q" value="@Model.Query" placeholder="Buscar pedido ou pagamento" /><select class="form-select" name="status"><option value="">Todos os status</option>@foreach (var option in Enum.GetValues<Orofoods.Web.Models.Orders.OrderStatus>()) { <option value="@option" selected="@(string.Equals(Model.Status, option.ToString(), StringComparison.OrdinalIgnoreCase))">@option.ToDisplayName()</option> }</select><select class="form-select" name="pageSize"><option value="10" selected="@(Model.PageSize == 10)">10 por página</option><option value="20" selected="@(Model.PageSize == 20)">20 por página</option></select><button class="btn btn-outline-dark btn-search" type="submit">Buscar</button></form>
-        <div class="table-responsive seller-orders-table"><table class="table align-middle"><thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Pagamento</th><th>Status</th><th></th></tr></thead><tbody>@foreach (var order in Model.Orders) { <tr><td><strong>#@order.Number</strong></td><td>@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td><td>@order.Total.ToString("C")</td><td>@order.PaymentMethod</td><td><span class="badge text-bg-light">@order.Status.ToDisplayName()</span></td><td><a class="btn btn-outline-dark btn-sm" asp-area="Vendedor" asp-controller="Orders" asp-action="Details" asp-route-customerId="@Model.CustomerId" asp-route-orderId="@order.Id">Ver pedido</a></td></tr> }</tbody></table></div>
-        @if (Model.Orders.Count == 0) { <p class="text-muted">Nenhum pedido encontrado para este cliente.</p> }
-        else { var first = (Model.Page - 1) * Model.PageSize + 1; var last = first + Model.Orders.Count - 1; <div class="seller-orders-pagination"><span>Mostrando @first–@last de @Model.TotalItems pedidos</span><div class="d-flex align-items-center gap-2">@if (Model.Page <= 1) { <span class="btn btn-outline-dark btn-sm disabled">‹ Anterior</span> } else { <a class="btn btn-outline-dark btn-sm" asp-area="Vendedor" asp-controller="Orders" asp-action="Index" asp-route-customerId="@Model.CustomerId" asp-route-q="@Model.Query" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)" asp-route-pageSize="@Model.PageSize">‹ Anterior</a> }<span>Página @Model.Page de @Model.TotalPages</span>@if (Model.Page >= Model.TotalPages) { <span class="btn btn-outline-dark btn-sm disabled">Próxima ›</span> } else { <a class="btn btn-outline-dark btn-sm" asp-area="Vendedor" asp-controller="Orders" asp-action="Index" asp-route-customerId="@Model.CustomerId" asp-route-q="@Model.Query" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)" asp-route-pageSize="@Model.PageSize">Próxima ›</a> }</div></div> }
+        <nav class="seller-page-breadcrumb" aria-label="Navegação do vendedor"><a asp-area="Vendedor" asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId">Workspace</a><span> / Pedidos</span></nav>
+        <header class="seller-orders-header">
+            <div><span class="eyebrow"><span></span> Histórico comercial</span><h1>Pedidos</h1><p>@Model.CustomerName · @Model.CustomerCode</p></div>
+            <a class="seller-button seller-button--primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@Model.CustomerId">Digitar pedido</a>
+        </header>
+        <form method="get" class="seller-orders-filter">
+            <input class="form-control" name="q" value="@Model.Query" placeholder="Buscar pedido ou pagamento" aria-label="Buscar pedido ou pagamento" />
+            <select class="form-select" name="status" aria-label="Filtrar por status"><option value="">Todos os status</option>@foreach (var option in Enum.GetValues<Orofoods.Web.Models.Orders.OrderStatus>()) { <option value="@option" selected="@(string.Equals(Model.Status, option.ToString(), StringComparison.OrdinalIgnoreCase))">@option.ToDisplayName()</option> }</select>
+            <select class="form-select" name="pageSize" aria-label="Pedidos por página"><option value="10" selected="@(Model.PageSize == 10)">10 por página</option><option value="20" selected="@(Model.PageSize == 20)">20 por página</option></select>
+            <input type="hidden" name="customerId" value="@Model.CustomerId" />
+            <button class="seller-button seller-button--secondary" type="submit">Buscar</button>
+        </form>
+        <div class="table-responsive seller-orders-table">
+            <table class="table align-middle">
+                <thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Pagamento</th><th>Status</th><th><span class="visually-hidden">Ação</span></th></tr></thead>
+                <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td data-label="Pedido"><strong>#@order.Number</strong></td>
+                        <td data-label="Data">@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td data-label="Valor">@order.Total.ToString("C")</td>
+                        <td data-label="Pagamento">@order.PaymentMethod</td>
+                        <td data-label="Status"><span class="seller-order-status">@order.Status.ToDisplayName()</span></td>
+                        <td><a class="seller-button seller-button--secondary seller-order-view-button" asp-area="Vendedor" asp-controller="Orders" asp-action="Details" asp-route-customerId="@Model.CustomerId" asp-route-orderId="@order.Id">Ver pedido</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="seller-orders-mobile" aria-label="Lista de pedidos">
+            @foreach (var order in Model.Orders)
+            {
+                <article class="seller-order-mobile-card">
+                    <header><strong>#@order.Number</strong><span class="seller-order-status">@order.Status.ToDisplayName()</span></header>
+                    <dl>
+                        <div><dt>Data</dt><dd>@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</dd></div>
+                        <div><dt>Valor</dt><dd>@order.Total.ToString("C")</dd></div>
+                        <div><dt>Pagamento</dt><dd>@order.PaymentMethod</dd></div>
+                    </dl>
+                    <a class="seller-button seller-button--secondary" asp-area="Vendedor" asp-controller="Orders" asp-action="Details" asp-route-customerId="@Model.CustomerId" asp-route-orderId="@order.Id">Ver pedido</a>
+                </article>
+            }
+        </div>
+        @if (Model.Orders.Count == 0)
+        {
+            <p class="seller-orders-empty" role="status">Nenhum pedido encontrado para este cliente.</p>
+        }
+        else
+        {
+            var first = (Model.Page - 1) * Model.PageSize + 1;
+            var last = first + Model.Orders.Count - 1;
+            <div class="seller-orders-pagination">
+                <span>Mostrando @first–@last de @Model.TotalItems pedidos</span>
+                <div>
+                    @if (Model.Page <= 1) { <span class="seller-button seller-button--secondary is-disabled" aria-disabled="true">‹ Anterior</span> }
+                    else { <a class="seller-button seller-button--secondary" asp-area="Vendedor" asp-controller="Orders" asp-action="Index" asp-route-customerId="@Model.CustomerId" asp-route-q="@Model.Query" asp-route-status="@Model.Status" asp-route-page="@(Model.Page - 1)" asp-route-pageSize="@Model.PageSize">‹ Anterior</a> }
+                    <span>Página @Model.Page de @Model.TotalPages</span>
+                    @if (Model.Page >= Model.TotalPages) { <span class="seller-button seller-button--secondary is-disabled" aria-disabled="true">Próxima ›</span> }
+                    else { <a class="seller-button seller-button--secondary" asp-area="Vendedor" asp-controller="Orders" asp-action="Index" asp-route-customerId="@Model.CustomerId" asp-route-q="@Model.Query" asp-route-status="@Model.Status" asp-route-page="@(Model.Page + 1)" asp-route-pageSize="@Model.PageSize">Próxima ›</a> }
+                </div>
+            </div>
+        }
     </div>
 </section>

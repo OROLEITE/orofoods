@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="~/css/customer-search.css" asp-append-version="true" />
 }
 
-<section class="section seller-order-drafts">
+<section class="section seller-order-drafts @(Model.CustomerId > 0 && isEditable ? "seller-order-drafts--editor" : "")">
     <div class="container">
         <nav class="seller-order-drafts__breadcrumbs" aria-label="Navegação">
             <a asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index">Área do vendedor</a>

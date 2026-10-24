@@ -16,8 +16,12 @@ public class SellerViewTests
         Assert.DoesNotContain("Ver carteira", dashboard);
         Assert.Contains("Minha carteira", sellerLayout);
         Assert.Contains("asp-controller=\"Customers\" asp-action=\"Index\"", sellerLayout);
-        Assert.Contains("Ver catálogo", workspace);
+        Assert.Contains("Digitar pedido", workspace);
+        Assert.Contains("Meus rascunhos", workspace);
         Assert.Contains("Pedidos", workspace);
+        Assert.DoesNotContain("Ver catÃ¡logo", workspace);
+        Assert.DoesNotContain("Carrinho", workspace);
+        Assert.DoesNotContain("asp-controller=\"Checkout\"", workspace);
         Assert.DoesNotContain("asp-controller=\"Admin\"", dashboard + workspace, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("checkout", workspace, StringComparison.OrdinalIgnoreCase);
     }

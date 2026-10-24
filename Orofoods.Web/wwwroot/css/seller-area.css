@@ -1105,3 +1105,529 @@ html[data-theme="dark"] body.seller-app-page .seller-app-main .section .btn-outl
         color: #FFFFFF;
     }
 }
+
+/* Seller workspace dark palette and responsive order surfaces. */
+body.seller-app-page .seller-app-shell {
+    --seller-canvas: #0B132B;
+    --seller-surface: #111827;
+    --seller-text: #E5E7EB;
+    --seller-muted: #94A3B8;
+    --seller-border: #374151;
+    --seller-sidebar: #0B132B;
+    --seller-sidebar-text: #E5E7EB;
+    --seller-sidebar-muted: #94A3B8;
+    --seller-action: #0E7490;
+    --seller-action-hover: #0B5D75;
+    --seller-icon: #38BDF8;
+    --seller-focus: #38BDF8;
+}
+
+html[data-theme="dark"] body.seller-app-page .seller-app-shell {
+    --seller-canvas: #0B132B;
+    --seller-surface: #111827;
+    --seller-text: #E5E7EB;
+    --seller-muted: #94A3B8;
+    --seller-border: #374151;
+    --seller-sidebar: #0B132B;
+    --seller-sidebar-text: #E5E7EB;
+    --seller-sidebar-muted: #94A3B8;
+    --seller-action: #0E7490;
+    --seller-action-hover: #0B5D75;
+    --seller-icon: #38BDF8;
+    --seller-focus: #38BDF8;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) body.seller-app-page .seller-app-shell {
+        --seller-canvas: #0B132B;
+        --seller-surface: #111827;
+        --seller-text: #E5E7EB;
+        --seller-muted: #94A3B8;
+        --seller-border: #374151;
+        --seller-sidebar: #0B132B;
+        --seller-sidebar-text: #E5E7EB;
+        --seller-sidebar-muted: #94A3B8;
+        --seller-action: #0E7490;
+        --seller-action-hover: #0B5D75;
+        --seller-icon: #38BDF8;
+        --seller-focus: #38BDF8;
+    }
+}
+
+body.seller-app-page .seller-app-shell {
+    background: var(--seller-canvas);
+    color: var(--seller-text);
+}
+
+body.seller-app-page .site-header-modern .main-nav {
+    display: none;
+}
+
+body.seller-app-page .seller-app-mobile-toolbar,
+body.seller-app-page .seller-app-sidebar.offcanvas-md,
+body.seller-app-page .seller-app-sidebar-body.offcanvas-body {
+    background: var(--seller-surface) !important;
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-app-sidebar.offcanvas-md {
+    --bs-offcanvas-bg: var(--seller-surface);
+    --bs-offcanvas-color: var(--seller-text);
+}
+
+body.seller-app-page .seller-app-nav a,
+body.seller-app-page .seller-app-sidebar-caption,
+body.seller-app-page .seller-app-brand small {
+    color: var(--seller-sidebar-muted);
+}
+
+body.seller-app-page .seller-app-nav a i,
+body.seller-app-page .seller-dashboard__metric-icon,
+body.seller-app-page .seller-dashboard__customer-icon {
+    color: #38BDF8;
+}
+
+body.seller-app-page .seller-app-nav a:hover,
+body.seller-app-page .seller-app-nav a.active {
+    color: #FFFFFF;
+}
+
+body.seller-app-page .seller-app-main,
+body.seller-app-page .seller-dashboard,
+body.seller-app-page .seller-dashboard__intro {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+body.seller-app-page .seller-app-content {
+    min-width: 0;
+    max-width: 100%;
+}
+
+body.seller-app-page .seller-dashboard__metric,
+body.seller-app-page .seller-dashboard__customer-card,
+body.seller-app-page .customer-search__card,
+body.seller-app-page .seller-customer-card,
+body.seller-app-page .seller-order-mobile-card {
+    border-color: var(--seller-border);
+    background: var(--seller-surface);
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-customer-card small,
+body.seller-app-page .seller-customer-card li,
+body.seller-app-page .seller-customer-card__status {
+    color: var(--seller-muted);
+}
+
+body.seller-app-page .seller-customer-card h2,
+body.seller-app-page .seller-customer-header h1,
+body.seller-app-page .customer-search__card strong,
+body.seller-app-page .customer-search__card h2,
+body.seller-app-page .seller-order-mobile-card strong {
+    color: var(--seller-text);
+    overflow-wrap: anywhere;
+}
+
+body.seller-app-page .customer-search__card p,
+body.seller-app-page .customer-search__card small {
+    color: var(--seller-muted);
+}
+
+body.seller-app-page .seller-customer-status,
+body.seller-app-page .seller-order-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: .2rem .55rem;
+    border: 1px solid #0E7490;
+    border-radius: 999px;
+    background: rgb(14 116 144 / 18%);
+    color: #BAE6FD;
+    font-size: .75rem;
+    font-weight: 750;
+}
+
+body.seller-app-page .seller-customer-actions .seller-button,
+body.seller-app-page .seller-orders-header .seller-button,
+body.seller-app-page .seller-order-view-button {
+    min-height: 44px;
+}
+
+body.seller-app-page .seller-button--secondary,
+body.seller-app-page .seller-app-menu-trigger {
+    border-color: var(--seller-border);
+    background: var(--seller-surface);
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-button--secondary:hover,
+body.seller-app-page .seller-button--secondary:focus-visible,
+body.seller-app-page .seller-app-menu-trigger:hover {
+    border-color: #38BDF8;
+    background: #1F2937;
+    color: #FFFFFF;
+}
+
+body.seller-app-page .seller-orders-page {
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-order-payment-strip,
+body.seller-app-page .seller-order-items {
+    border-color: var(--seller-border);
+    background: var(--seller-surface);
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-order-payment-strip small,
+body.seller-app-page .seller-order-items > small,
+body.seller-app-page .seller-order-items .seller-checkout-item small {
+    color: var(--seller-muted);
+}
+
+body.seller-app-page .seller-order-payment-strip strong,
+body.seller-app-page .seller-order-items .seller-checkout-item strong {
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-order-items .seller-checkout-item {
+    border-color: var(--seller-border);
+}
+
+body.seller-app-page .seller-order-items .seller-checkout-total strong {
+    color: #38BDF8;
+}
+
+body.seller-app-page .seller-order-detail-header .badge {
+    border: 1px solid var(--seller-border);
+    background: #1F2937 !important;
+    color: var(--seller-text) !important;
+}
+
+body.seller-app-page .seller-orders-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+body.seller-app-page .seller-orders-header > div {
+    min-width: 0;
+}
+
+body.seller-app-page .seller-orders-header h1 {
+    margin: 0;
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-orders-header p,
+body.seller-app-page .seller-page-breadcrumb,
+body.seller-app-page .seller-page-breadcrumb span,
+body.seller-app-page .seller-orders-pagination,
+body.seller-app-page .seller-orders-empty {
+    color: var(--seller-muted);
+}
+
+body.seller-app-page .seller-page-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-bottom: .8rem;
+    font-size: .84rem;
+}
+
+body.seller-app-page .seller-page-breadcrumb a {
+    color: #38BDF8;
+}
+
+body.seller-app-page .seller-orders-filter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 180px 150px auto;
+    gap: .5rem;
+    margin-bottom: .85rem;
+}
+
+body.seller-app-page .seller-orders-filter .form-control,
+body.seller-app-page .seller-orders-filter .form-select {
+    min-width: 0;
+    min-height: 44px;
+    border-color: var(--seller-border);
+    background-color: var(--seller-surface);
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-orders-filter .form-control::placeholder {
+    color: var(--seller-muted);
+    opacity: 1;
+}
+
+body.seller-app-page .seller-orders-table {
+    border: 1px solid var(--seller-border);
+    border-radius: .8rem;
+    background: var(--seller-surface);
+}
+
+body.seller-app-page .seller-orders-table .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--seller-text);
+    --bs-table-border-color: var(--seller-border);
+    --bs-table-striped-bg: #172033;
+    --bs-table-hover-bg: #1F2937;
+    margin: 0;
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-orders-table thead th {
+    background: #172033;
+    color: #E5E7EB;
+    font-size: .75rem;
+}
+
+body.seller-app-page .seller-orders-table tbody td {
+    background: transparent;
+    color: var(--seller-text);
+    vertical-align: middle;
+}
+
+body.seller-app-page .seller-orders-table .seller-button--secondary {
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+body.seller-app-page .seller-orders-mobile {
+    display: none;
+}
+
+body.seller-app-page .seller-order-mobile-card {
+    min-width: 0;
+    padding: .85rem;
+    border: 1px solid var(--seller-border);
+    border-radius: .8rem;
+}
+
+body.seller-app-page .seller-order-mobile-card header,
+body.seller-app-page .seller-order-mobile-card dl > div {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: .65rem;
+}
+
+body.seller-app-page .seller-order-mobile-card dl {
+    display: grid;
+    gap: .45rem;
+    margin: .75rem 0;
+}
+
+body.seller-app-page .seller-order-mobile-card dt {
+    color: var(--seller-muted);
+    font-size: .78rem;
+}
+
+body.seller-app-page .seller-order-mobile-card dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--seller-text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+body.seller-app-page .seller-orders-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-top: .85rem;
+    font-size: .82rem;
+}
+
+body.seller-app-page .seller-orders-pagination > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+}
+
+body.seller-app-page .seller-button.is-disabled {
+    opacity: .65;
+    cursor: not-allowed;
+}
+
+body.seller-app-page .seller-order-confirmation {
+    display: grid;
+    min-height: 60vh;
+    place-items: center;
+    padding: clamp(1rem, 4vw, 2rem);
+    background: var(--seller-canvas);
+}
+
+body.seller-app-page .seller-order-confirmation__card {
+    width: min(100%, 560px);
+    padding: clamp(1rem, 4vw, 2rem);
+    border: 1px solid var(--seller-border);
+    border-radius: 1rem;
+    background: var(--seller-surface);
+    color: var(--seller-text);
+    text-align: center;
+}
+
+body.seller-app-page .seller-order-confirmation__icon {
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+    margin: 0 auto .8rem;
+    border: 1px solid #0E7490;
+    border-radius: 50%;
+    background: rgb(14 116 144 / 20%);
+    color: #38BDF8;
+}
+
+body.seller-app-page .seller-order-confirmation h1,
+body.seller-app-page .seller-order-confirmation__summary dd {
+    color: var(--seller-text);
+}
+
+body.seller-app-page .seller-order-confirmation__message,
+body.seller-app-page .seller-order-confirmation__summary dt {
+    color: var(--seller-muted);
+}
+
+body.seller-app-page .seller-order-confirmation__summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .7rem;
+    margin: 1rem 0;
+}
+
+body.seller-app-page .seller-order-confirmation__summary > div {
+    min-width: 0;
+    padding: .7rem;
+    border: 1px solid var(--seller-border);
+    border-radius: .7rem;
+}
+
+body.seller-app-page .seller-order-confirmation__summary dt {
+    font-size: .75rem;
+}
+
+body.seller-app-page .seller-order-confirmation__summary dd {
+    margin: .15rem 0 0;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+body.seller-app-page .seller-order-confirmation__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .5rem;
+}
+
+body.seller-app-page .seller-order-confirmation__actions .seller-button {
+    min-height: 44px;
+}
+
+@media (max-width: 767.98px) {
+    body.seller-app-page .seller-app-shell {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    body.seller-app-page .seller-app-sidebar.offcanvas-md {
+        position: fixed;
+        z-index: 1055;
+        width: min(17.5rem, 86vw);
+        max-width: 86vw;
+        margin: 0;
+        flex: none;
+    }
+
+    body.seller-app-page .seller-app-content,
+    body.seller-app-page .seller-app-main {
+        width: 100%;
+        min-width: 0;
+        margin-inline: 0;
+    }
+
+    body.seller-app-page .seller-app-main {
+        padding-inline: clamp(.75rem, 4vw, 1rem);
+    }
+
+    body.seller-app-page .seller-dashboard__metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.seller-app-page .seller-dashboard__metric {
+        min-height: 82px;
+        gap: .5rem;
+        padding: .7rem;
+    }
+
+    body.seller-app-page .seller-dashboard__metric-icon,
+    body.seller-app-page .seller-dashboard__customer-icon {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+    }
+
+    body.seller-app-page .seller-dashboard__metric > div > span {
+        overflow-wrap: anywhere;
+    }
+
+    body.seller-app-page .seller-orders-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    body.seller-app-page .seller-orders-header .seller-button {
+        width: 100%;
+    }
+
+    body.seller-app-page .seller-orders-filter {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.seller-app-page .seller-orders-table {
+        display: none;
+    }
+
+    body.seller-app-page .seller-orders-mobile {
+        display: grid;
+        gap: .6rem;
+        min-width: 0;
+    }
+
+    body.seller-app-page .seller-orders-mobile .seller-button {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    body.seller-app-page .seller-orders-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    body.seller-app-page .seller-orders-pagination > div {
+        justify-content: space-between;
+    }
+
+    body.seller-app-page .seller-customer-actions {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.seller-app-page .seller-customer-actions .seller-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 359.98px) {
+    body.seller-app-page .seller-dashboard__metrics {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
