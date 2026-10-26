@@ -27,11 +27,14 @@ public class IntegrationsController(
     IHostEnvironment hostEnvironment,
     WmcBimboStagingImportService wmcBimboStagingImportService,
     WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
-    IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions) : Controller
+    IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions,
+    WmcExportAuditService? wmcExportAuditService = null,
+    WmcJsonOrderErpIntegration? wmcJsonOrderErpIntegration = null) : Controller
 {
 
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
     {
+        _ = wmcExportAuditService;
         var query = db.Orders
             .AsNoTracking()
             .Include(order => order.Customer)
@@ -77,6 +80,28 @@ public class IntegrationsController(
     public Task<IActionResult> Reprocess(int id, CancellationToken cancellationToken = default)
     {
         return ExportWmc(id, cancellationToken);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReconcileWmcOrderNumber(int id, CancellationToken cancellationToken)
+    {
+        if (wmcJsonOrderErpIntegration is null)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await wmcJsonOrderErpIntegration.ReconcileNroPedidoAsync(id, cancellationToken);
+        if (result.Recovered)
+        {
+            TempData["WmcReconciliationMessage"] = $"Número WMC recuperado: {result.ErpOrderNumber}.";
+        }
+        else
+        {
+            TempData["WmcReconciliationError"] = result.Error ?? "O WMC ainda não retornou um número de pedido positivo.";
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]

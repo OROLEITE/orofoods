@@ -5,5 +5,6 @@ public enum IntegrationStatus
     Pending,
     Processing,
     Succeeded,
-    Failed
+    Failed,
+    Unknown
 }

@@ -168,6 +168,21 @@
                             </td>
                             <td class="text-end">
                                 <div class="erp-row-actions">
+                                    @if (lastWmcExport?.Source == WmcExportSource.Automatic)
+                                    {
+                                        <span class="erp-status-badge erp-status-badge--succeeded">Transmissão JSON</span>
+                                    }
+                                    else if (lastWmcExport is not null)
+                                    {
+                                        <span class="erp-status-badge erp-status-badge--succeeded">Arquivo TXT manual</span>
+                                    }
+                                    @if (order.WmcTransmissionId is > 0 && string.IsNullOrWhiteSpace(order.ErpOrderNumber))
+                                    {
+                                        <form asp-action="ReconcileWmcOrderNumber" method="post">
+                                            <input type="hidden" name="id" value="@order.Id" />
+                                            <button class="btn btn-sm btn-erp-reprocess" type="submit">Consultar n&uacute;mero WMC</button>
+                                        </form>
+                                    }
                                     @if (order.Status == OrderStatus.Approved && eligibleOrderIds.Contains(order.Id))
                                     {
                                         <form asp-action="ExportWmc" method="post">

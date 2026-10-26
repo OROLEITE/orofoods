@@ -11,15 +11,31 @@ namespace Orofoods.Web.Services.Orders;
 public sealed class OrderIntegrationService(
     ApplicationDbContext db,
     IErpOrderIntegration erp,
+    IHostEnvironment? environment = null,
     ILogger<OrderIntegrationService>? logger = null)
 {
-    public async Task SendAsync(
+    public Task SendAsync(
         int orderId,
         CancellationToken cancellationToken = default,
         IntegrationStatus? expectedIntegrationStatus = null)
     {
         if (expectedIntegrationStatus is not null && expectedIntegrationStatus is not (IntegrationStatus.Pending or IntegrationStatus.Failed))
         {
+            return Task.CompletedTask;
+        }
+
+        return SendCoreAsync(orderId, erp, cancellationToken, expectedIntegrationStatus);
+    }
+
+    public Task SendAsync(int orderId, IErpOrderIntegration selectedIntegration, CancellationToken cancellationToken = default) =>
+        SendCoreAsync(orderId, selectedIntegration, cancellationToken, null);
+
+    private async Task SendCoreAsync(int orderId, IErpOrderIntegration selectedIntegration, CancellationToken cancellationToken,
+        IntegrationStatus? expectedIntegrationStatus)
+    {
+        if (environment is not null && !environment.IsDevelopment() && !environment.IsStaging() && !environment.IsEnvironment("Test"))
+        {
+            logger?.LogWarning("Envio ERP do pedido {OrderId} bloqueado no ambiente {Environment}.", orderId, environment.EnvironmentName);
             return;
         }
 
@@ -28,7 +44,7 @@ public sealed class OrderIntegrationService(
         var claim = db.Orders
             .Where(order => order.Id == orderId && order.Status == OrderStatus.Approved);
         claim = expectedIntegrationStatus is null
-            ? claim.Where(order => order.IntegrationStatus != IntegrationStatus.Processing)
+            ? claim.Where(order => order.IntegrationStatus == IntegrationStatus.Pending || order.IntegrationStatus == IntegrationStatus.Failed)
             : claim.Where(order => order.IntegrationStatus == expectedIntegrationStatus.Value);
         claim = claim.Where(order => !db.WmcOrderExportStates.Any(state =>
             state.OrderId == order.Id && state.Status == WmcOrderExportStatus.Imported));
@@ -59,7 +75,7 @@ public sealed class OrderIntegrationService(
         var attemptId = Guid.NewGuid();
         try
         {
-            result = await erp.SendOrderAsync(order, cancellationToken, attemptId);
+            result = await selectedIntegration.SendOrderAsync(order, cancellationToken, attemptId);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -71,7 +87,9 @@ public sealed class OrderIntegrationService(
             return;
         }
 
-        order.IntegrationStatus = result.Succeeded ? IntegrationStatus.Succeeded : IntegrationStatus.Failed;
+        order.IntegrationStatus = result.Succeeded
+            ? IntegrationStatus.Succeeded
+            : result.OutcomeUnknown ? IntegrationStatus.Unknown : IntegrationStatus.Failed;
         order.ExternalOrderId = result.ExternalOrderId;
         order.ErpOrderNumber = result.ErpOrderNumber;
         order.IntegrationError = result.Error;

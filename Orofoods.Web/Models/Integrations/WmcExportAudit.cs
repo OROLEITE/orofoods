@@ -17,11 +17,15 @@ public enum WmcExportOutcome
     Failed,
     Rejected,
     Regenerated,
-    Imported
+    Imported,
+    Started,
+    Succeeded
 }
 
 public class WmcExportAudit
 {
+    public const string AutomatedAttemptMarker = "AUTOMACAO_WMC";
+
     public int Id { get; set; }
     public int OrderId { get; set; }
     public Order? Order { get; set; }
@@ -35,4 +39,12 @@ public class WmcExportAudit
     [MaxLength(160)] public string? FileName { get; set; }
     public bool Succeeded { get; set; }
     [MaxLength(2000)] public string? Error { get; set; }
+    public int? HttpStatusCode { get; set; }
+    [MaxLength(2000)] public string? ResponseBody { get; set; }
+    public int? WmcTransmissionId { get; set; }
+    public int? WmcSalesRepresentativeCode { get; set; }
+    [MaxLength(2000)] public string? WmcDestination { get; set; }
+    public int? NroPedidoHttpStatusCode { get; set; }
+    [MaxLength(2000)] public string? NroPedidoResponseBody { get; set; }
+    [MaxLength(2000)] public string? NroPedidoError { get; set; }
 }
