@@ -11,24 +11,12 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<Guid>(name: "AttemptId", table: "WmcExportAudits", type: "uuid", nullable: true);
-            migrationBuilder.AddColumn<int>(name: "Source", table: "WmcExportAudits", type: "integer", nullable: false, defaultValue: 0);
-            migrationBuilder.AddColumn<int>(name: "Outcome", table: "WmcExportAudits", type: "integer", nullable: false, defaultValue: 2);
             migrationBuilder.AddColumn<int>(name: "HttpStatusCode", table: "WmcExportAudits", type: "integer", nullable: true);
             migrationBuilder.AddColumn<string>(name: "ResponseBody", table: "WmcExportAudits", type: "character varying(2000)", maxLength: 2000, nullable: true);
-            migrationBuilder.Sql("UPDATE \"WmcExportAudits\" SET \"Outcome\" = CASE WHEN \"Succeeded\" THEN 1 ELSE 2 END;");
-            migrationBuilder.CreateIndex(
-                name: "IX_WmcExportAudits_OrderId_AttemptId",
-                table: "WmcExportAudits",
-                columns: new[] { "OrderId", "AttemptId" });
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(name: "IX_WmcExportAudits_OrderId_AttemptId", table: "WmcExportAudits");
-            migrationBuilder.DropColumn(name: "AttemptId", table: "WmcExportAudits");
-            migrationBuilder.DropColumn(name: "Source", table: "WmcExportAudits");
-            migrationBuilder.DropColumn(name: "Outcome", table: "WmcExportAudits");
             migrationBuilder.DropColumn(name: "HttpStatusCode", table: "WmcExportAudits");
             migrationBuilder.DropColumn(name: "ResponseBody", table: "WmcExportAudits");
         }
