@@ -102,9 +102,17 @@ public sealed class WmcMobileOrderPayloadBuilder
             ["preco"] = item.UnitPrice,
             ["valtotal"] = item.Subtotal,
             ["preco_s_desc"] = item.UnitPrice,
-            ["un"] = item.Product.Unit,
-            ["undig"] = item.Product.Unit
+            ["un"] = GetJsonUnit(item.Product.Unit),
+            ["undig"] = GetJsonUnit(item.Product.Unit)
         };
+    }
+
+    private static string GetJsonUnit(string unit)
+    {
+        return string.Equals(unit.Trim(), "PC", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(unit.Trim(), "PCT", StringComparison.OrdinalIgnoreCase)
+            ? "UN"
+            : unit;
     }
 }
 
