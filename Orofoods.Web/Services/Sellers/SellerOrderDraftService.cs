@@ -457,6 +457,21 @@ public sealed class SellerOrderDraftService(
                     "Um ou mais produtos não estão disponíveis no catálogo atual deste vendedor."));
             }
 
+            var wmcCodes = await db.Products.AsNoTracking()
+                .Where(product => items.Select(item => item.ProductId).Contains(product.Id))
+                .Select(product => product.WmcCode)
+                .Where(code => code != null && code.Trim() != "")
+                .ToListAsync(cancellationToken);
+            var duplicateWmcCode = wmcCodes
+                .Select(code => code!.Trim())
+                .GroupBy(code => code, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(group => group.Count() > 1)?.Key;
+            if (duplicateWmcCode is not null)
+            {
+                return (false, Failure(SellerOrderDraftErrorCodes.InvalidInput,
+                    $"Este item já existe no pedido! O código WMC {duplicateWmcCode} está repetido."));
+            }
+
             var productMinimums = await db.Products.AsNoTracking()
                 .Where(x => items.Select(item => item.ProductId).Contains(x.Id))
                 .Select(x => new { x.Id, x.MinimumCases, x.CommercialUnitCode })
@@ -501,7 +516,8 @@ public sealed class SellerOrderDraftService(
                 item.Quantity,
                 item.RequestedDiscountAmount,
                 prices.GetValueOrDefault(item.ProductId, item.Product?.BasePrice ?? 0m),
-                item.Product?.MinimumSalesQuantity ?? 1)).ToArray());
+                item.Product?.MinimumSalesQuantity ?? 1,
+                item.Product?.WmcCode)).ToArray());
     }
 
     private void DetachDraft(SellerOrderDraft draft)
@@ -580,7 +596,8 @@ public sealed record SellerOrderDraftItemView(
     int Quantity,
     decimal RequestedDiscountAmount,
     decimal ResolvedUnitPrice,
-    int MinimumCases = 1);
+    int MinimumCases = 1,
+    string? WmcCode = null);
 
 public static class SellerOrderDraftErrorCodes
 {

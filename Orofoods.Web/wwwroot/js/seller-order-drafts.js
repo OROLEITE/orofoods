@@ -14,6 +14,9 @@
     const itemCountHost = document.getElementById('draft-item-count');
     const summaryCountHost = document.getElementById('summary-item-count');
     const removalStatus = document.getElementById('draft-removal-status');
+    const entryStatus = document.getElementById('draft-entry-status');
+    const entryLine = document.getElementById('draft-entry-line');
+    const nextCodeInput = document.getElementById('next-wmc-code');
     const emptyItems = document.getElementById('draft-items-empty');
     const saveButton = document.getElementById('save-draft-button');
     const submitForm = document.getElementById('seller-order-submit-form');
@@ -35,6 +38,7 @@
     const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     const itemRows = () => Array.from(itemsHost.querySelectorAll('[data-draft-item]'));
     const activeRows = () => itemRows().filter(row => !row.classList.contains('is-removal-pending'));
+    const normalizeWmcCode = value => String(value ?? '').trim().toUpperCase();
 
     function productIdsMarkedForRemoval() {
         return new Set(Array.from(form.querySelectorAll('[data-removed-product-id]'))
@@ -72,6 +76,7 @@
         itemCountHost.textContent = String(rows.length);
         summaryCountHost.textContent = String(rows.length);
         emptyItems.hidden = rows.length > 0;
+        if (entryLine) entryLine.hidden = rows.length === 0;
     }
 
     function markDirty() {
@@ -91,23 +96,25 @@
     }
 
     function addProduct(product) {
-        const existing = itemRows().find(row => Number(row.dataset.productId) === product.id);
+        const wmcCode = normalizeWmcCode(product.wmcCode);
+        const existing = wmcCode
+            ? itemRows().find(row => normalizeWmcCode(row.dataset.wmcCode) === wmcCode)
+            : null;
         if (existing) {
             if (existing.classList.contains('is-removal-pending')) undoRemoval(product.id);
             const quantity = existing.querySelector('[data-item-quantity]');
-            const minimum = Math.max(1, product.minimumCases || Number(existing.dataset.minimum) || 1);
-            const currentQuantity = Number.parseInt(quantity.value || '0', 10) || minimum;
-            quantity.value = String(Math.max(minimum, currentQuantity) + 1);
-            quantity.dispatchEvent(new Event('input', { bubbles: true }));
-            markDirty();
-            searchStatus.textContent = `${product.name} teve a quantidade atualizada.`;
-            updateSummary();
+            existing.classList.add('is-duplicate');
+            quantity?.focus();
+            searchStatus.textContent = 'Este item já existe no pedido!';
+            if (entryStatus) entryStatus.textContent = 'Ajuste a quantidade da linha existente ou digite outro código WMC.';
             return;
         }
 
         const row = makeNode('article', 'seller-order-drafts__item');
         row.dataset.draftItem = '';
         row.dataset.productId = String(product.id);
+        row.dataset.wmcCode = product.wmcCode ?? '';
+        row.setAttribute('data-wmc-code', product.wmcCode ?? '');
         row.dataset.unitPrice = String(product.unitPrice);
         row.dataset.minimum = String(product.minimumCases);
 
@@ -118,8 +125,8 @@
         row.append(hiddenId);
 
         const main = makeNode('div', 'seller-order-drafts__item-main');
-        main.append(makeNode('span', 'seller-order-drafts__sku', product.sku));
-        main.append(makeNode('h3', '', product.name));
+        main.append(makeNode('span', 'seller-order-drafts__wmc-code', wmcCode ? `WMC ${wmcCode}` : product.sku));
+        main.append(makeNode('h3', 'seller-order-drafts__product-name', product.name));
         main.append(makeNode('span', 'seller-order-drafts__muted', product.unitDescription));
         const priceUnit = product.priceUnitLabel || product.commercialUnitCode || 'unidade comercial';
         main.append(makeNode('span', 'seller-order-drafts__unit-price', `${money.format(product.unitPrice)} por ${priceUnit}`));
@@ -167,7 +174,9 @@
         renumberItemInputs();
         markDirty();
         searchStatus.textContent = `${product.name} foi adicionado ao pedido.`;
+        if (entryStatus) entryStatus.textContent = 'Digite o próximo código WMC para adicionar uma nova linha.';
         updateSummary();
+        window.setTimeout(() => quantity.focus(), 0);
     }
 
     function removeProduct(productId) {
@@ -307,8 +316,8 @@
         searchStatus.textContent = `${payload.totalCount} produto(s) encontrado(s). Exibindo até ${maximumPageSize} por página.`;
     }
 
-    async function searchProducts(page = 1) {
-        const query = searchInput.value.trim();
+    async function searchProducts(page = 1, autoAddExactWmc = false, sourceInput = searchInput) {
+        const query = sourceInput.value.trim();
         if (!query) {
             resultsHost.replaceChildren();
             paginationHost.replaceChildren();
@@ -333,7 +342,20 @@
                 signal: activeRequest.signal
             });
             if (!response.ok) throw new Error('Não foi possível pesquisar o catálogo.');
-            renderProducts(await response.json());
+            const payload = await response.json();
+            renderProducts(payload);
+            if (autoAddExactWmc) {
+                const exact = (payload.products ?? []).filter(product => normalizeWmcCode(product.wmcCode) === normalizeWmcCode(query));
+                if (exact.length === 1) {
+                    addProduct(exact[0]);
+                    resultsHost.replaceChildren();
+                    paginationHost.replaceChildren();
+                    paginationHost.hidden = true;
+                } else if (exact.length === 0) {
+                    searchStatus.textContent = 'Nenhum produto disponível encontrado para este código WMC.';
+                    if (entryStatus) entryStatus.textContent = 'Confira o código WMC e tente novamente.';
+                }
+            }
         } catch (error) {
             if (error.name === 'AbortError') return;
             resultsHost.replaceChildren();
@@ -353,15 +375,45 @@
     searchInput.addEventListener('keydown', event => {
         if (event.key === 'Enter') {
             event.preventDefault();
-            searchProducts(1);
+            searchProducts(1, true);
         }
+    });
+    nextCodeInput?.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        searchProducts(1, true, nextCodeInput);
     });
 
     itemsHost.addEventListener('input', event => {
         if (event.target.matches('[data-item-quantity]')) {
+            event.target.closest('[data-draft-item]')?.classList.remove('is-duplicate');
             markDirty();
             updateSummary();
         }
+    });
+    itemsHost.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' || !event.target.matches('[data-item-quantity]')) return;
+        event.preventDefault();
+        const quantity = event.target;
+        const row = quantity.closest('[data-draft-item]');
+        const minimum = Number(row?.dataset.minimum) || 1;
+        const value = Number.parseInt(quantity.value || '0', 10) || 0;
+        if (value < minimum) {
+            quantity.value = String(minimum);
+            searchStatus.textContent = `A quantidade mínima desta linha é ${minimum}.`;
+            quantity.focus();
+            updateSummary();
+            return;
+        }
+        quantity.value = String(value);
+        updateSummary();
+        nextCodeInput.value = '';
+        resultsHost.replaceChildren();
+        paginationHost.replaceChildren();
+        paginationHost.hidden = true;
+        searchStatus.textContent = 'Linha calculada. Digite o próximo código WMC.';
+        if (entryStatus) entryStatus.textContent = 'Digite o próximo código WMC para adicionar uma nova linha.';
+        nextCodeInput.focus();
     });
     itemsHost.addEventListener('change', event => {
         if (event.target.matches('[data-item-quantity]')) {

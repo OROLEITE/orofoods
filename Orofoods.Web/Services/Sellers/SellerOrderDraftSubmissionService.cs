@@ -119,6 +119,21 @@ public sealed class SellerOrderDraftSubmissionService(
                     "O rascunho contém produtos repetidos ou quantidades inválidas. Corrija-o antes do envio.");
             }
 
+            var wmcCodes = await db.Products.AsNoTracking()
+                .Where(product => draft.Items.Select(item => item.ProductId).Contains(product.Id))
+                .Select(product => product.WmcCode)
+                .Where(code => code != null && code.Trim() != "")
+                .ToListAsync(cancellationToken);
+            var duplicateWmcCode = wmcCodes
+                .Select(code => code!.Trim())
+                .GroupBy(code => code, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(group => group.Count() > 1)?.Key;
+            if (duplicateWmcCode is not null)
+            {
+                return await AbortAsync(SellerOrderDraftErrorCodes.InvalidOrder,
+                    $"Este item já existe no pedido! O código WMC {duplicateWmcCode} está repetido.");
+            }
+
             if (!IsQuoteBoundToDraft(quoteToken, ownerUserId, draft, expectedVersion, out var protectedQuote)
                 || protectedQuote is null)
             {

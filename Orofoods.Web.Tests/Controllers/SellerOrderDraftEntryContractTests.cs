@@ -57,8 +57,8 @@ public sealed class SellerOrderDraftEntryContractTests
     {
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
 
-        Assert.Contains("Revisar e enviar", view, StringComparison.Ordinal);
-        Assert.Contains("Confirmar envio", view, StringComparison.Ordinal);
+        Assert.Contains("Gravar pedido", view, StringComparison.Ordinal);
+        Assert.Contains("Confirmar gravação", view, StringComparison.Ordinal);
         Assert.Contains("id=\"seller-order-submit-form\"", view, StringComparison.Ordinal);
         Assert.Contains("asp-action=\"Submit\"", view, StringComparison.Ordinal);
         Assert.Contains("form=\"seller-order-submit-form\"", view, StringComparison.Ordinal);
@@ -99,7 +99,7 @@ public sealed class SellerOrderDraftEntryContractTests
     }
 
     [Fact]
-    public void Product_search_debounces_for_300ms_and_add_more_increments_one_commercial_unit()
+    public void Product_search_debounces_for_300ms_and_duplicate_wmc_codes_do_not_create_a_second_line()
     {
         var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
         var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
@@ -108,8 +108,9 @@ public sealed class SellerOrderDraftEntryContractTests
         var repeatedProductBlock = script[existingStart..existingEnd];
 
         Assert.Contains("window.setTimeout(() => searchProducts(1), 300)", script, StringComparison.Ordinal);
-        Assert.Contains("+ 1", repeatedProductBlock, StringComparison.Ordinal);
-        Assert.DoesNotContain("+ minimum", repeatedProductBlock, StringComparison.Ordinal);
+        Assert.Contains("Este item já existe no pedido!", repeatedProductBlock, StringComparison.Ordinal);
+        Assert.Contains("is-duplicate", repeatedProductBlock, StringComparison.Ordinal);
+        Assert.DoesNotContain("quantity.value = String(Math.max(minimum, currentQuantity) + 1)", repeatedProductBlock, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -119,7 +120,7 @@ public sealed class SellerOrderDraftEntryContractTests
         var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
         var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
 
-        Assert.Contains("Revisar e enviar", view, StringComparison.Ordinal);
+        Assert.Contains("Gravar pedido", view, StringComparison.Ordinal);
         Assert.Contains("Revisão do pedido", view, StringComparison.Ordinal);
         Assert.Contains("Cliente", view, StringComparison.Ordinal);
         Assert.Contains("Endereço", view, StringComparison.Ordinal);
@@ -231,6 +232,28 @@ public sealed class SellerOrderDraftEntryContractTests
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
 
         Assert.Contains("asp-validation-summary=\"All\"", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Entry_view_and_script_support_wmc_code_entry_enter_visual_next_line_and_exact_duplicate_message()
+    {
+        var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
+        var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+
+        Assert.Contains("código WMC", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-code", view, StringComparison.Ordinal);
+        Assert.Contains("id=\"draft-entry-line\"", view, StringComparison.Ordinal);
+        Assert.Contains("id=\"next-wmc-code\"", view, StringComparison.Ordinal);
+        Assert.Contains("product.wmcCode", script, StringComparison.Ordinal);
+        Assert.Contains("event.key === 'Enter'", script, StringComparison.Ordinal);
+        Assert.Contains("Este item já existe no pedido!", script, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-code", script, StringComparison.Ordinal);
+        Assert.Contains("entryLine.hidden = rows.length === 0", script, StringComparison.Ordinal);
+        Assert.Contains("nextCodeInput.focus()", script, StringComparison.Ordinal);
+        Assert.Contains("PaymentTerms = paymentTerms", controller, StringComparison.Ordinal);
+        Assert.Contains("usePostedInput: true", controller, StringComparison.Ordinal);
+        Assert.Contains("ModelState.AddModelError", controller, StringComparison.Ordinal);
     }
 
     [Fact]

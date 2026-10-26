@@ -458,6 +458,31 @@ public sealed class SellerOrderDraftServiceTests
     }
 
     [Fact]
+    public async Task Create_rejects_two_different_products_with_the_same_wmc_code()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        fixture.Product.WmcCode = "504342";
+        fixture.Product.IsWmcActive = true;
+        fixture.Product.WmcStockAvailable = true;
+        fixture.Product.WmcInitialLoadReady = true;
+        var duplicate = await fixture.AddAvailableProductAsync("DUP-WMC");
+        duplicate.WmcCode = "504342";
+        duplicate.IsWmcActive = true;
+        duplicate.WmcStockAvailable = true;
+        duplicate.WmcInitialLoadReady = true;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.CreateAsync(fixture.SellerPrincipal, new SellerOrderDraftInput(
+            fixture.Customer.Id, fixture.Address.Id, fixture.PaymentTerm.Id, null, null,
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 1), new SellerOrderDraftItemInput(duplicate.Id, 1)]));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SellerOrderDraftErrorCodes.InvalidInput, result.ErrorCode);
+        Assert.Contains("código WMC", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(await fixture.Db.SellerOrderDrafts.ToListAsync());
+    }
+
+    [Fact]
     public async Task Create_rejects_an_address_from_another_customer_and_a_disallowed_payment_term()
     {
         await using var fixture = await DraftFixture.CreateAsync();

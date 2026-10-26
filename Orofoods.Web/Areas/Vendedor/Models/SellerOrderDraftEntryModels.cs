@@ -109,7 +109,8 @@ public sealed record SellerOrderDraftEditorItem(
     int MinimumCases,
     decimal UnitPrice,
     bool RemovalPending = false,
-    string PriceUnitLabel = "caixa")
+    string PriceUnitLabel = "caixa",
+    string? WmcCode = null)
 {
     public decimal Subtotal => UnitPrice * Quantity;
 }
