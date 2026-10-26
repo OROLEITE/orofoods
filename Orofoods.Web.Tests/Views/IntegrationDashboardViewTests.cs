@@ -34,4 +34,15 @@ public class IntegrationDashboardViewTests
         Assert.Contains("textContent = trigger.dataset.error", view);
         Assert.DoesNotContain("erp-error-detail-row", view);
     }
+
+    [Fact]
+    public void Integration_dashboard_distinguishes_json_transmission_from_manual_txt_export()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Integrations", "Index.cshtml"));
+
+        Assert.Contains("WmcExportSource.Automatic", view);
+        Assert.Contains("Transmissão JSON", view);
+        Assert.Contains("Arquivo TXT manual", view);
+    }
 }

@@ -255,8 +255,15 @@ builder.Services.AddScoped<IPointPaymentOrderConcurrencyLock, PointPaymentOrderC
 builder.Services.AddScoped<IPointPaymentOrchestrationService, PointPaymentOrchestrationService>();
 builder.Services.AddSingleton<WmcOrderFileGenerator>();
 builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
-builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();
+builder.Services.AddScoped<WmcFileDropErpOrderIntegration>();
+builder.Services.Configure<WmcJsonOrderOptions>(builder.Configuration.GetSection(WmcJsonOrderOptions.SectionName));
+builder.Services.AddSingleton<WmcMobileOrderPayloadBuilder>();
+builder.Services.AddScoped<IWmcTransmissionIdAllocator, WmcTransmissionIdAllocator>();
+builder.Services.AddHttpClient<WmcJsonOrderErpIntegration>();
+builder.Services.AddScoped<WmcAutomaticOrderIntegration>();
+builder.Services.AddScoped<IErpOrderIntegration>(services => services.GetRequiredService<WmcAutomaticOrderIntegration>());
 builder.Services.AddHostedService<ErpRetryBackgroundService>();
+builder.Services.AddHostedService<WmcJsonOrderHomologationBackgroundService>();
 builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
 builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
 builder.Services.AddScoped<IWmcConnectionFactory, WmcFirebirdConnectionFactory>();

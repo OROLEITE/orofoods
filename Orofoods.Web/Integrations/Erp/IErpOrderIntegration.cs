@@ -7,4 +7,9 @@ public interface IErpOrderIntegration
     Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default);
 }
 
-public sealed record ErpOrderResult(bool Succeeded, string? ExternalOrderId = null, string? ErpOrderNumber = null, string? Error = null);
+public sealed record ErpOrderResult(
+    bool Succeeded,
+    string? ExternalOrderId = null,
+    string? ErpOrderNumber = null,
+    string? Error = null,
+    bool OutcomeUnknown = false);

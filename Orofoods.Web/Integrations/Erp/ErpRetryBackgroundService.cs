@@ -41,6 +41,7 @@ public sealed class ErpRetryBackgroundService(
                 using var scope = scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var service = scope.ServiceProvider.GetRequiredService<OrderIntegrationService>();
+                var fileDropIntegration = scope.ServiceProvider.GetRequiredService<WmcFileDropErpOrderIntegration>();
                 var ids = await db.Orders
                     .Where(order => order.IntegrationStatus == IntegrationStatus.Pending ||
                         (resolvedOptions.AutoRetryEnabled && order.IntegrationStatus == IntegrationStatus.Failed))
@@ -50,7 +51,7 @@ public sealed class ErpRetryBackgroundService(
                     .ToListAsync(stoppingToken);
                 foreach (var id in ids)
                 {
-                    try { await service.SendAsync(id, stoppingToken); }
+                    try { await service.SendAsync(id, fileDropIntegration, stoppingToken); }
                     catch (Exception exception) { logger.LogError(exception, "Falha ao processar pedido {OrderId}", id); }
                 }
             }

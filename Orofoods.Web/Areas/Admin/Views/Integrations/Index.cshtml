@@ -17,6 +17,14 @@
         {
             <div class="alert alert-warning mt-4" role="alert">N&atilde;o foi poss&iacute;vel exportar o pedido. Consulte os detalhes da integra&ccedil;&atilde;o.</div>
         }
+        @if (TempData["WmcReconciliationMessage"] is string reconciliationMessage)
+        {
+            <div class="alert alert-success mt-4" role="status">@reconciliationMessage</div>
+        }
+        @if (TempData["WmcReconciliationError"] is string reconciliationError)
+        {
+            <div class="alert alert-warning mt-4" role="alert">@reconciliationError</div>
+        }
 
         <form class="erp-filter-card">
             <div class="erp-filter-grid">
@@ -49,7 +57,19 @@
                 <tbody>
                     @foreach (var order in Model)
                     {
-                        var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).FirstOrDefault();
+                        var lastWmcExport = order.WmcExportAudits
+                            .OrderByDescending(item => item.Source == WmcExportSource.Automatic && item.AttemptId != null)
+                            .ThenByDescending(item => item.ExportedAt)
+                            .FirstOrDefault();
+                        var hasPositiveWmcOrderNumber = int.TryParse(order.ErpOrderNumber, out var currentWmcOrderNumber) && currentWmcOrderNumber > 0;
+                        var canReconcileWmcOrderNumber = !hasPositiveWmcOrderNumber &&
+                            order.WmcTransmissionId is > 0 &&
+                            string.Equals(order.ExternalOrderId, order.WmcTransmissionId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal) &&
+                            order.WmcExportAudits.Any(audit => audit.Outcome == WmcExportOutcome.Succeeded &&
+                                audit.HttpStatusCode == 200 &&
+                                audit.WmcTransmissionId == order.WmcTransmissionId &&
+                                audit.WmcSalesRepresentativeCode is > 0 &&
+                                !string.IsNullOrWhiteSpace(audit.WmcDestination));
                         var integrationStatusClass = order.IntegrationStatus.ToString().ToLowerInvariant();
                         var hasIntegrationError = !string.IsNullOrWhiteSpace(order.IntegrationError);
                         <tr>
@@ -71,7 +91,21 @@
                                 }
                                 else
                                 {
-                                    <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@(lastWmcExport.Succeeded ? "Gerado" : "Falhou")</span>
+                                    @if (lastWmcExport.Source == WmcExportSource.Automatic)
+                                    {
+                                        var automaticStatus = lastWmcExport.Outcome switch
+                                        {
+                                            WmcExportOutcome.Started => "Em andamento",
+                                            WmcExportOutcome.Succeeded => "Confirmada",
+                                            WmcExportOutcome.Unknown => "Resultado incerto",
+                                            _ => "Falhou"
+                                        };
+                                        <span class="erp-status-badge @(lastWmcExport.Outcome == WmcExportOutcome.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">Transmissão JSON: @automaticStatus</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="erp-status-badge @(lastWmcExport.Succeeded ? "erp-status-badge--succeeded" : "erp-status-badge--failed")">@(lastWmcExport.Succeeded ? "Arquivo TXT manual gerado" : "Falha no arquivo TXT manual")</span>
+                                    }
                                     <small class="d-block">@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
                                     @if (!string.IsNullOrWhiteSpace(lastWmcExport.FileName))
                                     {
@@ -85,6 +119,13 @@
                             </td>
                             <td class="text-end">
                                 <div class="erp-row-actions">
+                                    @if (canReconcileWmcOrderNumber)
+                                    {
+                                        <form asp-action="ReconcileWmcOrderNumber" method="post">
+                                            <input type="hidden" name="id" value="@order.Id" />
+                                            <button class="btn btn-sm btn-erp-reprocess" type="submit">Consultar n&uacute;mero WMC</button>
+                                        </form>
+                                    }
                                     <form asp-action="ExportWmc" method="post">
                                         <input type="hidden" name="id" value="@order.Id" />
                                         <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>

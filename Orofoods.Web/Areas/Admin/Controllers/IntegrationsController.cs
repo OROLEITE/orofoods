@@ -16,6 +16,7 @@ public class IntegrationsController(
     OrderIntegrationService integrationService,
     WmcOrderFileGenerator wmcOrderFileGenerator,
     WmcExportAuditService wmcExportAuditService,
+    WmcJsonOrderErpIntegration wmcJsonOrderErpIntegration,
     WmcSyncCoordinator wmcSyncCoordinator,
     WmcSyncService wmcSyncService) : Controller
 {
@@ -60,6 +61,23 @@ public class IntegrationsController(
     public async Task<IActionResult> Reprocess(int id)
     {
         await integrationService.SendAsync(id);
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReconcileWmcOrderNumber(int id, CancellationToken cancellationToken)
+    {
+        var result = await wmcJsonOrderErpIntegration.ReconcileNroPedidoAsync(id, cancellationToken);
+        if (result.Recovered)
+        {
+            TempData["WmcReconciliationMessage"] = $"Número WMC recuperado: {result.ErpOrderNumber}.";
+        }
+        else
+        {
+            TempData["WmcReconciliationError"] = result.Error ?? "O WMC ainda não retornou um número de pedido positivo.";
+        }
+
         return RedirectToAction(nameof(Index));
     }
 

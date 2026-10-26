@@ -1170,6 +1170,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
             modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcExportAudit", b =>
                 {
+                    b.Property<Guid?>("AttemptId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
@@ -1195,7 +1198,41 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<int?>("HttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NroPedidoError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int?>("NroPedidoHttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NroPedidoResponseBody")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("integer");
+
                     b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResponseBody")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int?>("WmcTransmissionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WmcSalesRepresentativeCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WmcDestination")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Source")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Succeeded")
@@ -1204,6 +1241,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasKey("Id");
 
                     b.HasIndex("OrderId", "ExportedAt");
+
+                    b.HasIndex("OrderId", "AttemptId");
 
                     b.ToTable("WmcExportAudits");
                 });
@@ -1343,6 +1382,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int?>("WmcTransmissionId")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("Freight")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
@@ -1400,6 +1442,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("CustomerId", "CheckoutAttemptKey")
                         .IsUnique()
                         .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey");
+
+                    b.HasIndex("WmcTransmissionId")
+                        .IsUnique();
 
                     b.ToTable("Orders");
                 });

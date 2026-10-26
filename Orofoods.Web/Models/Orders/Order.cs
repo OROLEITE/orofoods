@@ -33,6 +33,7 @@ public class Order
     public DateTime? ConfirmedAt { get; set; }
     [MaxLength(100)] public string? ExternalOrderId { get; set; }
     [MaxLength(100)] public string? ErpOrderNumber { get; set; }
+    public int? WmcTransmissionId { get; set; }
     public IntegrationStatus IntegrationStatus { get; set; } = IntegrationStatus.Pending;
     public DateTime? LastIntegrationAttempt { get; set; }
     [MaxLength(2000)] public string? IntegrationError { get; set; }

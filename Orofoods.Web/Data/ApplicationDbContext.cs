@@ -209,6 +209,10 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasDatabaseName("IX_Orders_CustomerId_CheckoutAttemptKey")
             .IsUnique();
 
+        builder.Entity<Order>()
+            .HasIndex(x => x.WmcTransmissionId)
+            .IsUnique();
+
         builder.Entity<OrderStatusHistory>()
             .HasOne(x => x.ChangedByUser)
             .WithMany()
@@ -277,6 +281,8 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
 
         builder.Entity<WmcExportAudit>()
             .HasIndex(x => new { x.OrderId, x.ExportedAt });
+        builder.Entity<WmcExportAudit>()
+            .HasIndex(x => new { x.OrderId, x.AttemptId });
 
 
         builder.Entity<Customer>().Property(x => x.MinimumOrder).HasPrecision(12, 2);

@@ -9,10 +9,42 @@ namespace Orofoods.Web.Services.Orders;
 public sealed class OrderIntegrationService(
     ApplicationDbContext db,
     IErpOrderIntegration erp,
+    IHostEnvironment environment,
     ILogger<OrderIntegrationService>? logger = null)
 {
-    public async Task SendAsync(int orderId, CancellationToken cancellationToken = default)
+    public Task SendAsync(int orderId, CancellationToken cancellationToken = default) =>
+        SendAsync(orderId, erp, cancellationToken);
+
+    public async Task SendAsync(int orderId, IErpOrderIntegration selectedIntegration, CancellationToken cancellationToken = default)
     {
+        if (!IsAllowedEnvironment())
+        {
+            logger?.LogWarning(
+                "Envio ERP do pedido {OrderId} bloqueado no ambiente {Environment}.",
+                orderId,
+                environment.EnvironmentName);
+            return;
+        }
+
+        var claim = await db.Orders
+            .Where(order => order.Id == orderId &&
+                order.ConfirmedAt != null &&
+                order.Status != Orofoods.Web.Models.Orders.OrderStatus.Cancelled &&
+                (order.IntegrationStatus == IntegrationStatus.Pending || order.IntegrationStatus == IntegrationStatus.Failed))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(order => order.IntegrationStatus, IntegrationStatus.Processing)
+                .SetProperty(order => order.LastIntegrationAttempt, DateTime.UtcNow)
+                .SetProperty(order => order.IntegrationError, (string?)null), cancellationToken);
+        if (claim == 0)
+        {
+            if (!await db.Orders.AnyAsync(order => order.Id == orderId, cancellationToken))
+            {
+                throw new InvalidOperationException("Pedido não encontrado.");
+            }
+
+            return;
+        }
+
         var order = await db.Orders
             .Include(x => x.Customer)
             .Include(x => x.PaymentTerm)
@@ -20,15 +52,10 @@ public sealed class OrderIntegrationService(
             .ThenInclude(x => x.Product)
             .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken)
             ?? throw new InvalidOperationException("Pedido não encontrado.");
-        order.IntegrationStatus = IntegrationStatus.Processing;
-        order.LastIntegrationAttempt = DateTime.UtcNow;
-        order.IntegrationError = null;
-        await db.SaveChangesAsync(cancellationToken);
-
         ErpOrderResult result;
         try
         {
-            result = await erp.SendOrderAsync(order, cancellationToken);
+            result = await selectedIntegration.SendOrderAsync(order, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -39,10 +66,17 @@ public sealed class OrderIntegrationService(
             return;
         }
 
-        order.IntegrationStatus = result.Succeeded ? IntegrationStatus.Succeeded : IntegrationStatus.Failed;
+        order.IntegrationStatus = result.Succeeded
+            ? IntegrationStatus.Succeeded
+            : result.OutcomeUnknown ? IntegrationStatus.Unknown : IntegrationStatus.Failed;
         order.ExternalOrderId = result.ExternalOrderId;
         order.ErpOrderNumber = result.ErpOrderNumber;
         order.IntegrationError = result.Error;
-        await db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(CancellationToken.None);
     }
+
+    private bool IsAllowedEnvironment() =>
+        environment.IsDevelopment()
+        || environment.IsStaging()
+        || environment.IsEnvironment("Test");
 }

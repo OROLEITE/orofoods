@@ -700,6 +700,9 @@ namespace Orofoods.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("WmcTransmissionId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("ConfirmedAt")
                         .HasColumnType("TEXT");
 
@@ -762,6 +765,9 @@ namespace Orofoods.Web.Data.Migrations
                     b.HasIndex("DeliveryAddressId");
 
                     b.HasIndex("PaymentTermId");
+
+                    b.HasIndex("WmcTransmissionId")
+                        .IsUnique();
 
                     b.ToTable("Orders");
                 });
@@ -976,6 +982,33 @@ namespace Orofoods.Web.Data.Migrations
                     b.HasKey("Id");
                     b.HasIndex("Status", "StartedAt");
                     b.ToTable("WmcSyncRuns");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcExportAudit", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<Guid?>("AttemptId").HasColumnType("TEXT");
+                    b.Property<string>("Error").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<DateTime>("ExportedAt").HasColumnType("TEXT");
+                    b.Property<string>("ExportedByEmail").HasMaxLength(256).HasColumnType("TEXT");
+                    b.Property<string>("ExportedByUserId").HasMaxLength(450).HasColumnType("TEXT");
+                    b.Property<string>("FileName").HasMaxLength(160).HasColumnType("TEXT");
+                    b.Property<int?>("HttpStatusCode").HasColumnType("INTEGER");
+                    b.Property<string>("NroPedidoError").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<int?>("NroPedidoHttpStatusCode").HasColumnType("INTEGER");
+                    b.Property<string>("NroPedidoResponseBody").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<int>("OrderId").HasColumnType("INTEGER");
+                    b.Property<int>("Outcome").HasColumnType("INTEGER");
+                    b.Property<string>("ResponseBody").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<bool>("Succeeded").HasColumnType("INTEGER");
+                    b.Property<int>("Source").HasColumnType("INTEGER");
+                    b.Property<string>("WmcDestination").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<int?>("WmcSalesRepresentativeCode").HasColumnType("INTEGER");
+                    b.Property<int?>("WmcTransmissionId").HasColumnType("INTEGER");
+                    b.HasKey("Id");
+                    b.HasIndex("OrderId", "ExportedAt");
+                    b.HasIndex("OrderId", "AttemptId");
+                    b.ToTable("WmcExportAudits");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Pricing.PriceTableItem", b =>
@@ -1220,6 +1253,16 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Integrations.WmcExportAudit", b =>
+                {
+                    b.HasOne("Orofoods.Web.Models.Orders.Order", "Order")
+                        .WithMany("WmcExportAudits")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Orders.SavedOrder", b =>
                 {
                     b.HasOne("Orofoods.Web.Models.Customers.Customer", "Customer")
@@ -1319,6 +1362,7 @@ namespace Orofoods.Web.Data.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("StatusHistory");
+                    b.Navigation("WmcExportAudits");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Orders.SavedOrder", b =>
