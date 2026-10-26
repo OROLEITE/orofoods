@@ -51,9 +51,9 @@ public sealed class WmcJsonOrderErpIntegration(
             return new ErpOrderResult(false, Error: error);
         }
 
-        if (!TryGetSecureBaseUri(settings.BaseUrl, out var baseUri))
+        if (!TryGetAllowedBaseUri(settings.BaseUrl, out var baseUri))
         {
-            const string error = "WMC JSON base URL must use HTTPS and must not contain credentials, a query, or a fragment.";
+            const string error = "WMC JSON base URL must use HTTPS, except for the documented WMC HTTP endpoint, and must not contain credentials, a query, or a fragment.";
             await auditService.CompleteAttemptAsync(order.Id, resolvedAttemptId, WmcExportOutcome.Failed, null, null, error, cancellationToken);
             return new ErpOrderResult(false, Error: error);
         }
@@ -205,7 +205,7 @@ public sealed class WmcJsonOrderErpIntegration(
         }
 
         NroPedidoLookupResult lookup;
-        if (!TryGetSecureBaseUri(target.Destination, out var baseUri))
+        if (!TryGetAllowedBaseUri(target.Destination, out var baseUri))
         {
             lookup = new NroPedidoLookupResult(null, null, null, "Destino WMC salvo na auditoria inválido para reconciliação.");
         }
@@ -320,13 +320,22 @@ public sealed class WmcJsonOrderErpIntegration(
         }
     }
 
-    private static bool TryGetSecureBaseUri(string? value, out Uri baseUri)
+    private static bool TryGetAllowedBaseUri(string? value, out Uri baseUri)
     {
-        if (Uri.TryCreate(value, UriKind.Absolute, out var parsed) &&
-            parsed.Scheme == Uri.UriSchemeHttps &&
-            string.IsNullOrEmpty(parsed.UserInfo) &&
-            string.IsNullOrEmpty(parsed.Query) &&
-            string.IsNullOrEmpty(parsed.Fragment))
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var parsed) ||
+            !string.IsNullOrEmpty(parsed.UserInfo) ||
+            !string.IsNullOrEmpty(parsed.Query) ||
+            !string.IsNullOrEmpty(parsed.Fragment))
+        {
+            baseUri = null!;
+            return false;
+        }
+
+        if (parsed.Scheme == Uri.UriSchemeHttps ||
+            parsed.Scheme == Uri.UriSchemeHttp &&
+            string.Equals(parsed.Host, "mobileopt.wmcsistemas.com.br", StringComparison.OrdinalIgnoreCase) &&
+            parsed.Port == 8084 &&
+            parsed.AbsolutePath.TrimEnd('/') == "/oroleite")
         {
             baseUri = parsed;
             return true;
