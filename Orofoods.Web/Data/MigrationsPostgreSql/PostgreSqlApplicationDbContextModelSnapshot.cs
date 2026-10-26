@@ -1413,6 +1413,20 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<Guid?>("AttemptId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("HttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("NroPedidoHttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NroPedidoError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("NroPedidoResponseBody")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<string>("Error")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -1441,11 +1455,25 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<int>("Outcome")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ResponseBody")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<int>("Source")
                         .HasColumnType("integer");
 
                     b.Property<bool>("Succeeded")
                         .HasColumnType("boolean");
+
+                    b.Property<int?>("WmcSalesRepresentativeCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WmcDestination")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int?>("WmcTransmissionId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -1965,6 +1993,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<DateTime?>("RequestedDeliveryDate")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int?>("WmcTransmissionId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SalesRepresentativeId")
                         .HasColumnType("integer");
 
@@ -1991,6 +2022,9 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("PaymentTermId");
 
                     b.HasIndex("SalesRepresentativeId");
+
+                    b.HasIndex("WmcTransmissionId")
+                        .IsUnique();
 
                     b.HasIndex("SellerOrderDraftId")
                         .IsUnique()

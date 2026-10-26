@@ -429,6 +429,10 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
             .HasIndex(x => new { x.OrderId, x.AttemptId })
             .IsUnique();
 
+        builder.Entity<Order>()
+            .HasIndex(x => x.WmcTransmissionId)
+            .IsUnique();
+
         builder.Entity<WmcOrderExportState>()
             .HasKey(x => x.OrderId);
         builder.Entity<WmcOrderExportState>()

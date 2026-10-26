@@ -848,6 +848,9 @@ namespace Orofoods.Web.Data.Migrations
                     b.Property<DateTime?>("RequestedDeliveryDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("WmcTransmissionId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -870,6 +873,9 @@ namespace Orofoods.Web.Data.Migrations
                     b.HasIndex("PaymentTermId");
 
                     b.HasIndex("SalesRepresentativeId");
+
+                    b.HasIndex("WmcTransmissionId")
+                        .IsUnique();
 
                     b.ToTable("Orders");
                 });
@@ -1074,6 +1080,10 @@ namespace Orofoods.Web.Data.Migrations
 
                     b.Property<string>("Error").HasMaxLength(2000).HasColumnType("TEXT");
                     b.Property<Guid?>("AttemptId").HasColumnType("TEXT");
+                    b.Property<int?>("HttpStatusCode").HasColumnType("INTEGER");
+                    b.Property<int?>("NroPedidoHttpStatusCode").HasColumnType("INTEGER");
+                    b.Property<string>("NroPedidoError").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<string>("NroPedidoResponseBody").HasMaxLength(2000).HasColumnType("TEXT");
                     b.Property<DateTime>("ExportedAt").HasColumnType("TEXT");
                     b.Property<string>("ExportedByEmail").HasMaxLength(256).HasColumnType("TEXT");
                     b.Property<string>("ExportedByUserId").HasMaxLength(450).HasColumnType("TEXT");
@@ -1081,8 +1091,12 @@ namespace Orofoods.Web.Data.Migrations
                     b.Property<DateTime?>("GeneratedAt").HasColumnType("TEXT");
                     b.Property<int>("OrderId").HasColumnType("INTEGER");
                     b.Property<int>("Outcome").HasColumnType("INTEGER");
+                    b.Property<string>("ResponseBody").HasMaxLength(2000).HasColumnType("TEXT");
                     b.Property<int>("Source").HasColumnType("INTEGER");
                     b.Property<bool>("Succeeded").HasColumnType("INTEGER");
+                    b.Property<int?>("WmcSalesRepresentativeCode").HasColumnType("INTEGER");
+                    b.Property<string>("WmcDestination").HasMaxLength(2000).HasColumnType("TEXT");
+                    b.Property<int?>("WmcTransmissionId").HasColumnType("INTEGER");
                     b.HasKey("Id");
                     b.HasIndex("OrderId", "ExportedAt");
                     b.HasIndex("OrderId", "AttemptId").IsUnique();
