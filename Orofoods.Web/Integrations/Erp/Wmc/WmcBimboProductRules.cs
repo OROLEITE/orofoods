@@ -9,6 +9,7 @@ namespace Orofoods.Web.Integrations.Erp.Wmc;
 public static class WmcBimboProductRules
 {
     public const short BrandCode = 104;
+    private const string Product504342Code = "504342";
     public const string CommercialStatusPending = "Pendente";
     public const string CommercialStatusInactive = "Inativo";
     public const string CommercialStatusActive = "Ativo";
@@ -129,7 +130,7 @@ public static class WmcBimboProductRules
         if (!IsValidBarcode(product.Ean13, 13) || !IsApprovedEan13(code, product.Ean13)
             || !string.Equals(product.Ean?.Trim(), product.Ean13?.Trim(), StringComparison.Ordinal))
             issues.Add(new("COMMERCIAL_EAN_INVALID", "O EAN-13 deve ser válido e corresponder ao código WMC homologado."));
-        if (!string.Equals(product.Unit, "PCT", StringComparison.OrdinalIgnoreCase) || !product.HasPackageSalesConfiguration)
+        if (!IsAcceptedStagingUnit(code, product.Unit) || !product.HasPackageSalesConfiguration)
             issues.Add(new("COMMERCIAL_PACKAGE_CONFIGURATION_INCOMPLETE", "Informe unidade comercial PCT, unidade logística CX e fator de pacotes por caixa."));
         if (!product.IsWmcActive)
             issues.Add(new("WMC_PRODUCT_INACTIVE", "O produto está inativo no WMC."));
@@ -137,6 +138,12 @@ public static class WmcBimboProductRules
             issues.Add(new("WMC_STOCK_UNAVAILABLE", "O produto precisa ter ao menos um pacote disponível no estoque WMC."));
         return issues;
     }
+
+    private static bool IsAcceptedStagingUnit(string code, string unit) =>
+        string.Equals(unit, "PCT", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(code, Product504342Code, StringComparison.Ordinal)
+            && (string.Equals(unit, "PC", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(unit, "UN", StringComparison.OrdinalIgnoreCase));
 
     public static bool IsValidBarcode(string? value, int length)
     {
