@@ -11,6 +11,94 @@ namespace Orofoods.Web.Tests.Services;
 public sealed class WmcProductImportServiceTests
 {
     [Fact]
+    public async Task Reimport_releases_only_the_selected_product_when_all_wmc_data_is_valid()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var selected = new Product
+        {
+            WmcCode = "READY", Sku = "READY", Name = "Produto", ProductCategoryId = 1,
+            Unit = "PC", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 18,
+            BasePrice = 1, IsActive = true, IsAvailable = true, IsWmcActive = true,
+            WmcStockAvailable = true, WmcInitialLoadReady = false
+        };
+        var untouched = new Product
+        {
+            WmcCode = "NOT-SELECTED", Sku = "NOT-SELECTED", Name = "Fora do lote", ProductCategoryId = 1,
+            BasePrice = 2, IsActive = true, IsAvailable = true, IsWmcActive = true,
+            WmcStockAvailable = true, WmcInitialLoadReady = false
+        };
+        db.Products.AddRange(selected, untouched);
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "READY", "Produto", "A", "PC", 5, 5, PrecoVenda: 10,
+            Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["READY"], true);
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.True(selected.WmcInitialLoadReady);
+        Assert.False(untouched.WmcInitialLoadReady);
+        Assert.Equal(10m, selected.BasePrice);
+        Assert.Equal("PC", selected.Unit);
+        Assert.Equal("PCT", selected.CommercialUnitCode);
+    }
+
+    [Fact]
+    public async Task Invalid_import_data_keeps_the_selected_product_blocked()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "BLOCKED", Sku = "BLOCKED", Name = "Produto", ProductCategoryId = 1,
+            Unit = "PC", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 18,
+            BasePrice = 7, IsActive = true, IsAvailable = true, IsWmcActive = true,
+            WmcStockAvailable = true, WmcInitialLoadReady = true
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "BLOCKED", "Produto", "A", "PC", 5, 5, PrecoVenda: 0,
+            Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["BLOCKED"], true);
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.False(product.WmcInitialLoadReady);
+        Assert.Equal(7m, product.BasePrice);
+        Assert.Contains(result.Items, item => item.Detail?.Contains("price-invalid", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public async Task Local_available_stock_zero_blocks_release_even_when_wmc_stock_is_positive()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "LOCAL-EMPTY", Sku = "LOCAL-EMPTY", Name = "Produto", ProductCategoryId = 1,
+            Unit = "PC", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 18,
+            BasePrice = 7, IsActive = true, IsAvailable = true, IsWmcActive = true,
+            WmcStockAvailable = true, WmcInitialLoadReady = false
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.WmcProductUnits.AddRange(
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "PC", Factor = 1, Barcode = "7899679701348" },
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "CX", Factor = 18, Barcode = "17899679701345", IsMaster = true });
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 1, QuantityReserved = 1 });
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "LOCAL-EMPTY", "Produto", "A", "PC", 5, 5, PrecoVenda: 10,
+            Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)])]);
+
+        await new WmcProductImportService(db, reader).ImportAsync(104, ["LOCAL-EMPTY"], true);
+
+        Assert.False(product.WmcInitialLoadReady);
+    }
+
+    [Fact]
     public async Task Preview_exposes_PC_and_CX_factor_and_barcode_from_the_official_unit_snapshot()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
