@@ -382,8 +382,10 @@ public sealed class WmcCustomerImportService(
             .Where(item => item.WmcCode != null)
             .ToListAsync(cancellationToken);
         var matches = sellers.Where(item => string.Equals(NormalizeCode(item.WmcCode), sellerCode, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (matches.Count != 1)
-            return CommercialReadiness.Blocked("Vendedor WMC não configurado ou ambíguo para este código.");
+        if (matches.Count == 0)
+            return CommercialReadiness.Blocked($"Nenhum vendedor ativo está configurado com WmcCode '{sellerCode}'. Cadastre esse código no Admin antes de importar.");
+        if (matches.Count > 1)
+            return CommercialReadiness.Blocked($"Mais de um vendedor está configurado com WmcCode '{sellerCode}'. Corrija a duplicidade no Admin antes de importar.");
         if (!matches[0].IsActive)
             return CommercialReadiness.Blocked("O vendedor WMC configurado está inativo.");
 

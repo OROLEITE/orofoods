@@ -103,6 +103,21 @@ public sealed class WmcCustomerImportServiceTests
     }
 
     [Fact]
+    public async Task Preview_reports_duplicate_wmc_seller_configuration_separately()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.AddRange(
+            new SalesRepresentative { Name = "Vendedor 1", WmcCode = "28", IsActive = true },
+            new SalesRepresentative { Name = "Vendedor 2", WmcCode = "28", IsActive = true });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeCustomerReader([Row("C104", "A", "F", "04.252.011/0001-10", "28")]), "Tabela BIMBO");
+
+        var preview = await service.PreviewAsync("28");
+
+        Assert.Contains("Mais de um vendedor", Assert.Single(preview.Rows).Reason);
+    }
+
+    [Fact]
     public async Task Import_approves_new_customer_and_assigns_wmc_seller_and_bimbo_table()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

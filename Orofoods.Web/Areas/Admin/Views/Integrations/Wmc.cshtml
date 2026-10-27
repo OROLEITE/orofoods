@@ -5,7 +5,6 @@
     ViewData["Title"] = "Importa\u00e7\u00e3o WMC";
     var isRunning = (bool)ViewBag.IsRunning;
     var lastRun = ViewBag.LastRun as WmcSyncRunResult;
-    var sellerCodes = ViewBag.WmcCustomerSellerCodes as IReadOnlyList<string> ?? [];
     var customerPreview = ViewBag.WmcCustomerPreview as WmcCustomerImportPreview;
     var regularizationPreview = ViewBag.WmcCustomerRegularizationPreview as WmcCustomerRegularizationPreview;
 }
@@ -51,14 +50,8 @@
                 @Html.AntiForgeryToken()
                 <div class="wmc-customer-seller-field">
                     <label class="form-label" for="wmcSellerCode">CODVENDEDOR</label>
-                    <input class="form-control" id="wmcSellerCode" name="sellerCode" list="wmcSellerCodes" required maxlength="30" placeholder="Código do vendedor WMC" />
+            <input class="form-control" id="wmcSellerCode" name="sellerCode" required maxlength="30" placeholder="Código do vendedor WMC" autocomplete="off" />
                     <small class="wmc-customer-filter-help">Somente clientes ativos e sem restrição</small>
-                    <datalist id="wmcSellerCodes">
-                        @foreach (var sellerCode in sellerCodes)
-                        {
-                            <option value="@sellerCode"></option>
-                        }
-                    </datalist>
                 </div>
                 <button type="submit" class="btn admin-primary-action wmc-customer-preview-button">Gerar pr&eacute;via</button>
             </form>
@@ -86,7 +79,18 @@
                 </dl>
                 @if (customerPreview.Rows.Count > 0)
                 {
-                    <div class="table-responsive mt-3 wmc-customer-preview-table-wrap">
+            <div class="wmc-customer-preview-controls mt-3">
+                <button type="button" class="btn admin-secondary-action wmc-customer-preview-toggle" data-wmc-customer-preview-toggle aria-expanded="false" aria-controls="wmcCustomerPreviewTable">Exibir clientes (@customerPreview.Rows.Count)</button>
+                <label class="wmc-customer-preview-filter" for="wmcCustomerPreviewFilter">Filtrar lista</label>
+                <select class="form-select wmc-customer-preview-filter-select" id="wmcCustomerPreviewFilter" data-wmc-customer-preview-filter>
+                    <option value="all">Todos (@customerPreview.Rows.Count)</option>
+                    <option value="create">Novos (@customerPreview.NewCustomers)</option>
+                    <option value="existing">Existentes (@customerPreview.ExistingCustomers)</option>
+                    <option value="ignore">Ignorados (@customerPreview.Ignored)</option>
+                    <option value="conflict">Conflitos (@customerPreview.Conflicts)</option>
+                </select>
+            </div>
+            <div class="table-responsive mt-2 wmc-customer-preview-table-wrap" id="wmcCustomerPreviewTable" data-wmc-customer-preview-table hidden>
                         <table class="table align-middle wmc-customer-preview-table">
                             <thead><tr><th>Código WMC</th><th>Razão social</th><th>Fantasia</th><th>CNPJ</th><th>Resultado</th><th>Motivo</th></tr></thead>
                             <tbody>
@@ -101,7 +105,7 @@
                                     WmcCustomerImportDisposition.Conflict => "Conflito",
                                     _ => row.Disposition.ToString()
                                 };
-                                <tr>
+                        <tr data-wmc-customer-preview-row data-disposition="@row.Disposition.ToString().ToLowerInvariant()">
                                     <td>@row.WmcCode</td>
                                     <td>@row.LegalName</td>
                                     <td>@row.TradeName</td>
@@ -131,7 +135,7 @@
             <p>Revise os clientes WMC já importados que ainda estão pendentes antes de liberá-los.</p>
             <form method="post" asp-action="WmcCustomerRegularizationPreview">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn admin-secondary-action">Gerar prévia de regularização</button>
+            <button type="submit" class="btn admin-primary-action wmc-customer-regularization-preview-button"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Gerar prévia de regularização</button>
             </form>
             @if (regularizationPreview is not null)
             {
@@ -491,6 +495,27 @@
 </section>
 
 <script>
+    (() => {
+        const toggle = document.querySelector('[data-wmc-customer-preview-toggle]');
+        const table = document.querySelector('[data-wmc-customer-preview-table]');
+        const filter = document.querySelector('[data-wmc-customer-preview-filter]');
+        const rows = [...document.querySelectorAll('[data-wmc-customer-preview-row]')];
+        if (!toggle || !table) return;
+        const updateFilter = () => {
+            const selected = filter?.value ?? 'all';
+            const accepted = selected === 'existing' ? ['existing', 'update'] : [selected];
+            rows.forEach(row => row.hidden = selected !== 'all' && !accepted.includes(row.dataset.disposition ?? ''));
+        };
+        toggle.addEventListener('click', () => {
+            const expanded = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', (!expanded).toString());
+            table.hidden = expanded;
+            toggle.textContent = expanded ? `Exibir clientes (${rows.length})` : 'Recolher clientes';
+            if (!expanded) updateFilter();
+        });
+        filter?.addEventListener('change', updateFilter);
+    })();
+
     (() => {
         const search = document.getElementById('wmcBrandSearch');
         const rows = [...document.querySelectorAll('.wmc-brand-row')];
