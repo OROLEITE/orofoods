@@ -48,12 +48,13 @@
             <p>Informe o código do vendedor WMC. Somente clientes com situação <code>A</code> e restrição <code>F</code> serão considerados.</p>
             <form method="post" asp-action="WmcCustomerPreview" class="wmc-customer-import-form">
                 @Html.AntiForgeryToken()
-                <div class="wmc-customer-seller-field">
+                <div class="wmc-customer-seller-field customer-search">
                     <label class="form-label" for="wmcSellerCode">CODVENDEDOR</label>
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
             <input class="form-control" id="wmcSellerCode" name="sellerCode" required maxlength="30" placeholder="Código do vendedor WMC" autocomplete="off" />
                     <small class="wmc-customer-filter-help">Somente clientes ativos e sem restrição</small>
                 </div>
-                <button type="submit" class="btn admin-primary-action wmc-customer-preview-button">Gerar pr&eacute;via</button>
+                <button type="submit" class="btn admin-primary-action customer-filter-submit wmc-customer-preview-button">Gerar pr&eacute;via</button>
             </form>
 
             @if (customerPreview is not null)
