@@ -865,13 +865,14 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-authenticated .admin-wmc-page .wmc-import-section { margin-top: 10px; }
 .admin-authenticated .admin-wmc-page .wmc-import-wizard { padding: 14px 16px; border-radius: 12px; }
 .admin-authenticated .admin-wmc-page .wmc-customer-import-form {
-    display: flex;
-    align-items: flex-end;
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) auto;
+    align-items: end;
     gap: 10px;
-    max-width: 560px;
+    max-width: none;
     margin: 10px 0 0;
 }
-.admin-authenticated .admin-wmc-page .wmc-customer-seller-field { width: min(280px, 100%); }
+.admin-authenticated .admin-wmc-page .wmc-customer-seller-field { width: 100%; position: relative; }
 .admin-authenticated .admin-wmc-page .wmc-customer-seller-field .form-label {
     display: block;
     margin: 0 0 5px;
@@ -879,10 +880,15 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     font-weight: 700;
 }
 .admin-authenticated .admin-wmc-page #wmcSellerCode {
-    min-height: 36px;
+    min-height: 42px;
+    padding-left: 34px;
     border-color: #CBD5E1;
     background: #FFFFFF;
     color: #0F172A;
+}
+.admin-authenticated .admin-wmc-page .wmc-customer-seller-field > i {
+    top: 34px;
+    transform: translateY(-50%);
 }
 .admin-authenticated .admin-wmc-page #wmcSellerCode::placeholder { color: #64748B; }
 .admin-authenticated .admin-wmc-page .wmc-customer-filter-help {
@@ -892,8 +898,8 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     font-size: 10px;
 }
 .admin-authenticated .admin-wmc-page .wmc-customer-preview-button {
-    min-height: 36px;
-    padding: 7px 14px;
+    min-height: 42px;
+    padding: 8px 14px;
     border-color: #0E7490;
     background: #0E7490;
     color: #FFFFFF;
@@ -1018,7 +1024,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     .admin-authenticated .admin-wmc-page .wmc-page-header { align-items: flex-start; flex-direction: column; gap: 9px; padding: 12px; }
     .admin-authenticated .admin-wmc-page .wmc-header-actions { justify-content: flex-start; flex-wrap: wrap; margin-left: 0; }
     .admin-authenticated .admin-wmc-page .wmc-import-wizard { padding: 12px; }
-    .admin-authenticated .admin-wmc-page .wmc-customer-import-form { align-items: stretch; flex-direction: column; max-width: none; }
+    .admin-authenticated .admin-wmc-page .wmc-customer-import-form { grid-template-columns: 1fr; align-items: stretch; max-width: none; }
     .admin-authenticated .admin-wmc-page .wmc-customer-seller-field { width: 100%; }
     .admin-authenticated .admin-wmc-page .wmc-customer-preview-button { width: 100%; }
 }
@@ -1058,7 +1064,21 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: #FFFFFF;
 }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page #wmcSellerCode::placeholder { color: #94A3B8; }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-seller-field > i { color: #94A3B8; }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-filter-help { color: #94A3B8; }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-seller-field .form-control {
+    border-color: #334155;
+    background-color: #1E293B;
+    color: #F8FAFC;
+    color-scheme: dark;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page #wmcSellerCode::placeholder { color: #94A3B8; }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-seller-field .form-control:focus {
+    border-color: #38BDF8;
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
+}
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-preview-summary article {
     border-color: #334155;
     background: #111827;

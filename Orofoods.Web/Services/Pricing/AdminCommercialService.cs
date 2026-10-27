@@ -22,7 +22,7 @@ public class AdminCommercialService(ApplicationDbContext db)
     public async Task<SalesRepresentative> SaveSalesRepresentativeAsync(SalesRepresentative input, CancellationToken cancellationToken = default)
     {
         var entity = input.Id == 0 ? new SalesRepresentative() : await db.SalesRepresentatives.SingleAsync(x => x.Id == input.Id, cancellationToken);
-        entity.Name = input.Name.Trim(); entity.Email = input.Email.Trim(); entity.Phone = input.Phone.Trim(); entity.Region = input.Region.Trim(); entity.WmcCode = string.IsNullOrWhiteSpace(input.WmcCode) ? null : input.WmcCode.Trim(); entity.IsActive = input.IsActive;
+        entity.Name = input.Name.Trim(); entity.Email = input.Email.Trim(); entity.Phone = input.Phone.Trim(); entity.Region = input.Region.Trim(); entity.WmcCode = string.IsNullOrWhiteSpace(input.WmcCode) ? null : input.WmcCode.Trim().ToUpperInvariant(); entity.IsActive = input.IsActive;
         if (input.Id == 0) db.SalesRepresentatives.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
         return entity;

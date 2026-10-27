@@ -28,13 +28,16 @@ public sealed class WmcCustomerImportViewTests
 
         Assert.Contains("wmc-customer-import-form", view);
         Assert.Contains("wmc-customer-filter-help", view);
+        Assert.Contains("customer-search", view);
+        Assert.Contains("fa-magnifying-glass", view);
+        Assert.Contains("customer-filter-submit", view);
         Assert.Contains("#1E293B", css);
         Assert.Contains("#334155", css);
         Assert.Contains("#94A3B8", css);
         Assert.Contains("#0E7490", css);
         Assert.Contains("wmc-customer-preview-button", css);
-        Assert.Contains("max-width: 560px", css);
-        Assert.Contains("flex-direction: column", css);
+        Assert.Contains("grid-template-columns: minmax(300px, 1fr) auto", css);
+        Assert.Contains("grid-template-columns: 1fr", css);
     }
 
     [Fact]
