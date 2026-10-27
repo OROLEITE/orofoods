@@ -9,6 +9,7 @@ public enum WmcCustomerImportDisposition
 {
     Create,
     Update,
+    Existing,
     Ignore,
     Conflict
 }
@@ -72,10 +73,7 @@ public sealed class WmcCustomerImportService(
         try
         {
             var rows = await customerReader.GetBySellerAsync(sellerCode, cancellationToken);
-            var candidates = rows
-                .Where(row => string.Equals(row.Situacao, "A", StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(row.Restricao, "F", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            var candidates = rows.Where(IsEligibleStatusAndRestriction).ToList();
             var customers = await db.Customers.AsNoTracking().ToListAsync(cancellationToken);
             var byCode = customers
                 .Where(customer => !string.IsNullOrWhiteSpace(customer.WmcCode))
@@ -98,19 +96,18 @@ public sealed class WmcCustomerImportService(
                 .Select(group => group.Key)
                 .ToHashSet(StringComparer.Ordinal);
 
-            var previewRows = new List<WmcCustomerImportPreviewRow>();
-            foreach (var row in candidates)
-            {
-                var disposition = Classify(row, byCode, byCnpj, duplicateCodes, duplicateCnpjs);
-                previewRows.Add(disposition);
-            }
+            var previewRows = rows
+                .Select(row => candidates.Contains(row)
+                    ? Classify(row, byCode, byCnpj, duplicateCodes, duplicateCnpjs)
+                    : ClassifyExcluded(row))
+                .ToList();
 
             return new WmcCustomerImportPreview(
                 sellerCode,
                 rows.Count,
                 previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Create),
-                previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Update || row.Disposition == WmcCustomerImportDisposition.Ignore),
-                rows.Count - candidates.Count + previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Ignore),
+                previewRows.Count(row => row.Disposition is WmcCustomerImportDisposition.Update or WmcCustomerImportDisposition.Existing),
+                previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Ignore),
                 previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Conflict),
                 previewRows);
         }
@@ -214,7 +211,13 @@ public sealed class WmcCustomerImportService(
         if (!IsValidCnpj(row.Cnpj))
             return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore, "CNPJ inválido.");
         if (string.IsNullOrWhiteSpace(row.CodCliente) || string.IsNullOrWhiteSpace(row.Nome) || string.IsNullOrWhiteSpace(row.Fantasia))
-            return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore, "Campo obrigatório ausente.");
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(row.CodCliente)) missing.Add("CODCLIENTE");
+            if (string.IsNullOrWhiteSpace(row.Nome)) missing.Add("NOME");
+            if (string.IsNullOrWhiteSpace(row.Fantasia)) missing.Add("FANTASIA");
+            return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore, $"Campo ausente: {string.Join(", ", missing)}.");
+        }
         if (row.Nome.Length > 160 || row.Fantasia.Length > 120 || NormalizeCnpj(row.Cnpj).Length > 18)
             return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore, "Campo excede o limite do cadastro Orofoods.");
         if (duplicateCodes.Contains(NormalizeCode(row.CodCliente)) || duplicateCnpjs.Contains(NormalizeCnpj(row.Cnpj)))
@@ -235,19 +238,39 @@ public sealed class WmcCustomerImportService(
             return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj,
                 string.Equals(customer.LegalName, row.Nome.Trim(), StringComparison.Ordinal)
                     && string.Equals(customer.TradeName, row.Fantasia.Trim(), StringComparison.Ordinal)
-                    ? WmcCustomerImportDisposition.Ignore
+                    ? WmcCustomerImportDisposition.Existing
                     : WmcCustomerImportDisposition.Update);
         }
         return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Create);
     }
 
     private static bool IsEligible(WmcCustomerRecord row) =>
-        string.Equals(row.Situacao, "A", StringComparison.OrdinalIgnoreCase)
-        && string.Equals(row.Restricao, "F", StringComparison.OrdinalIgnoreCase)
+        IsEligibleStatusAndRestriction(row)
         && IsValidCnpj(row.Cnpj)
         && !string.IsNullOrWhiteSpace(row.CodCliente)
         && !string.IsNullOrWhiteSpace(row.Nome)
         && !string.IsNullOrWhiteSpace(row.Fantasia);
+
+    private static bool IsEligibleStatusAndRestriction(WmcCustomerRecord row) =>
+        string.Equals(row.Situacao, "A", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(row.Restricao, "F", StringComparison.OrdinalIgnoreCase);
+
+    private static WmcCustomerImportPreviewRow ClassifyExcluded(WmcCustomerRecord row)
+    {
+        if (!string.Equals(row.Situacao, "A", StringComparison.OrdinalIgnoreCase))
+            return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore, "SITUACAO diferente de A.");
+        if (!string.Equals(row.Restricao, "F", StringComparison.OrdinalIgnoreCase))
+            return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore, "RESTRICAO diferente de F.");
+        if (!IsValidCnpj(row.Cnpj))
+            return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore, "CNPJ invalido ou ausente.");
+
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(row.CodCliente)) missing.Add("CODCLIENTE");
+        if (string.IsNullOrWhiteSpace(row.Nome)) missing.Add("NOME");
+        if (string.IsNullOrWhiteSpace(row.Fantasia)) missing.Add("FANTASIA");
+        return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Ignore,
+            missing.Count > 0 ? $"Campo ausente: {string.Join(", ", missing)}." : "Dados fora dos limites do cadastro Orofoods.");
+    }
 
     private static WmcCustomerImportPreview EmptyPreview(string sellerCode, string error) =>
         new(sellerCode, 0, 0, 0, 0, 0, [], error);

@@ -36,4 +36,20 @@ public sealed class WmcCustomerImportViewTests
         Assert.Contains("max-width: 560px", css);
         Assert.Contains("flex-direction: column", css);
     }
+
+    [Fact]
+    public void Wmc_customer_preview_exposes_consistent_counts_reasons_and_localized_statuses()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+
+        Assert.Contains("wmc-customer-preview-summary", view);
+        Assert.Contains("wmc-customer-preview-status", view);
+        Assert.Contains("Novo", view);
+        Assert.Contains("Atualizar", view);
+        Assert.Contains("Existente", view);
+        Assert.Contains("Ignorado", view);
+        Assert.Contains("Conflito", view);
+        Assert.Contains("row.Reason", view);
+    }
 }
