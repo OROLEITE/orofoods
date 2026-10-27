@@ -321,6 +321,12 @@ public class AdminInventoryControllerTests
     {
         public Task<IReadOnlyList<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerRecord>>([]);
+
+        public Task<IReadOnlyList<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerRecord>> GetBySellerAsync(string sellerCode, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Orofoods.Web.Integrations.Erp.Wmc.WmcCustomerRecord>>([]);
+
+        public Task<IReadOnlyList<string>> GetSellerCodesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 
     private sealed class TestWmcProductReader(IReadOnlyList<WmcProductRecord> products) : IWmcProductReader

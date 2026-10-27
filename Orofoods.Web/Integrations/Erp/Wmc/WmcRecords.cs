@@ -1,7 +1,14 @@
 namespace Orofoods.Web.Integrations.Erp.Wmc;
 
 /// <summary>External-system row shapes. Field names/tables mirror only the WMC columns already confirmed.</summary>
-public sealed record WmcCustomerRecord(string CodCliente, string Nome);
+public sealed record WmcCustomerRecord(
+    string CodCliente,
+    string Nome,
+    string Fantasia,
+    string Cnpj,
+    string CodVendedor,
+    string Situacao,
+    string Restricao);
 
 public sealed record WmcProductRecord(
     string CodProduto,

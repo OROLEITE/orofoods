@@ -328,9 +328,9 @@ public sealed class WmcSyncService(
             db.WmcSyncRuns.Add(run);
             await db.SaveChangesAsync(cancellationToken);
 
-            var customers = await SyncCustomersAsync(cancellationToken);
-            run.CustomersRead = customers.RecordsRead;
-            if (customers.ErrorMessage is not null) return await FailRunAsync(run, "Customers", customers.ErrorMessage, startedAt, customers, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, cancellationToken);
+            // Customer imports are manual and scoped to an explicitly selected WMC seller.
+            // The background sync must never import every seller globally.
+            var customers = WmcSyncEntityResult.Empty;
             var products = await SyncProductsAsync(cancellationToken);
             run.ProductsRead = products.RecordsRead;
             run.ProductsCreated = products.RecordsCreated;
