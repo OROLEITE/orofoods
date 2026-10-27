@@ -182,6 +182,33 @@ public sealed class WmcCustomerImportServiceTests
     }
 
     [Fact]
+    public async Task Regularization_recognizes_active_seller_wmc_code_28_after_reload()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new SalesRepresentative { Name = "Rodrigo", WmcCode = " 28 ", IsActive = true };
+        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "TABELA BIMBO", IsActive = true };
+        db.AddRange(seller, table, new Customer
+        {
+            WmcCode = "C-28",
+            LegalName = "Cliente 28",
+            TradeName = "Cliente 28",
+            Cnpj = "04.252.011/0001-10",
+            Status = CustomerStatus.Pending,
+            IsActive = false
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = CreateService(db, new FakeCustomerReader([Row("C-28", "A", "F", "04.252.011/0001-10", "28")]), "TABELA BIMBO");
+
+        var preview = await service.PreviewPendingAsync();
+
+        Assert.Equal(1, preview.PendingCustomers);
+        Assert.Equal(1, preview.EligibleCustomers);
+        Assert.Equal(0, preview.BlockedCustomers);
+    }
+
+    [Fact]
     public async Task Preview_blocks_duplicate_rows_from_the_same_wmc_seller()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

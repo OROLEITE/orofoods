@@ -867,7 +867,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-authenticated .admin-wmc-page .wmc-customer-import-form {
     display: grid;
     grid-template-columns: minmax(300px, 1fr) auto;
-    align-items: end;
+    align-items: start;
     gap: 10px;
     max-width: none;
     margin: 10px 0 0;
@@ -898,6 +898,8 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     font-size: 10px;
 }
 .admin-authenticated .admin-wmc-page .wmc-customer-preview-button {
+    align-self: start;
+    margin-top: 22px;
     min-height: 42px;
     padding: 8px 14px;
     border-color: #0E7490;
@@ -905,6 +907,50 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     color: #FFFFFF;
     white-space: nowrap;
 }
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-summary article {
+    min-height: 64px;
+    padding: 9px 11px;
+    border: 1px solid #D9DDD4;
+    border-left: 3px solid #38BDF8;
+    border-radius: 9px;
+    background: #FFFFFF;
+}
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-summary article span {
+    display: block;
+    color: #687166;
+    font-size: 10px;
+    font-weight: 700;
+}
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-summary article strong {
+    display: block;
+    margin-top: 3px;
+    color: #17201A;
+    font-size: 20px;
+    line-height: 1;
+}
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-summary--warning { border-left-color: #F59E0B !important; }
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-blocked summary {
+    cursor: pointer;
+    color: #0E7490;
+    font-size: 12px;
+    font-weight: 800;
+}
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-blocked-list {
+    max-height: 220px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    overflow-y: auto;
+    border: 1px solid #D9DDD4;
+    border-radius: 9px;
+    background: #FFFFFF;
+}
+.admin-authenticated .admin-wmc-page .wmc-customer-regularization-blocked-list ul { margin: 0; padding-left: 18px; }
 .admin-authenticated .admin-wmc-page .wmc-customer-preview-button:hover,
 .admin-authenticated .admin-wmc-page .wmc-customer-preview-button:focus-visible {
     border-color: #0B5D75;
@@ -1026,7 +1072,8 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     .admin-authenticated .admin-wmc-page .wmc-import-wizard { padding: 12px; }
     .admin-authenticated .admin-wmc-page .wmc-customer-import-form { grid-template-columns: 1fr; align-items: stretch; max-width: none; }
     .admin-authenticated .admin-wmc-page .wmc-customer-seller-field { width: 100%; }
-    .admin-authenticated .admin-wmc-page .wmc-customer-preview-button { width: 100%; }
+    .admin-authenticated .admin-wmc-page .wmc-customer-preview-button { width: 100%; margin-top: 0; }
+    .admin-authenticated .admin-wmc-page .wmc-customer-regularization-summary { grid-template-columns: 1fr; }
 }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page {
     background: #0F172A;
@@ -1079,6 +1126,13 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     outline-offset: 2px;
     box-shadow: 0 0 0 3px rgb(56 189 248 / 16%);
 }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-regularization-summary article,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-regularization-blocked-list {
+    border-color: #334155;
+    background: #111827;
+}
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-regularization-summary article span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-regularization-summary article strong { color: #F8FAFC; }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-preview-summary article {
     border-color: #334155;
     background: #111827;

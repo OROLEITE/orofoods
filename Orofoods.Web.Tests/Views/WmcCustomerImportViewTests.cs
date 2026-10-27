@@ -67,6 +67,8 @@ public sealed class WmcCustomerImportViewTests
         Assert.Contains("data-wmc-customer-preview-filter", view);
         Assert.Contains("data-wmc-customer-preview-table", view);
         Assert.Contains("hidden>", view);
+        Assert.Contains("wmc-customer-regularization-summary", view);
+        Assert.Contains("wmc-customer-regularization-blocked", view);
         Assert.Contains("Exibir clientes (@customerPreview.Rows.Count)", view);
         Assert.Contains("Novos (@customerPreview.NewCustomers)", view);
         Assert.Contains("max-height: 400px", css);
