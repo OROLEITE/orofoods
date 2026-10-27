@@ -52,4 +52,21 @@ public sealed class WmcCustomerImportViewTests
         Assert.Contains("Conflito", view);
         Assert.Contains("row.Reason", view);
     }
+
+    [Fact]
+    public void Wmc_customer_preview_starts_collapsed_with_server_counts_and_filter_controls()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
+
+        Assert.Contains("data-wmc-customer-preview-toggle", view);
+        Assert.Contains("data-wmc-customer-preview-filter", view);
+        Assert.Contains("data-wmc-customer-preview-table", view);
+        Assert.Contains("hidden>", view);
+        Assert.Contains("Exibir clientes (@customerPreview.Rows.Count)", view);
+        Assert.Contains("Novos (@customerPreview.NewCustomers)", view);
+        Assert.Contains("max-height: 400px", css);
+        Assert.DoesNotContain("list=\"wmcSellerCodes\"", view);
+    }
 }

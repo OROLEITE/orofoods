@@ -199,7 +199,17 @@ public class IntegrationsController(
         if (wmcCustomerImportService is null) return Problem("Importação manual de clientes WMC indisponível.");
         ViewBag.WmcCustomerSellerCodes = await wmcCustomerImportService.GetSellerCodesAsync(cancellationToken);
         ViewBag.WmcCustomerPreview = null;
-        ViewBag.WmcCustomerRegularizationPreview = await wmcCustomerImportService.PreviewPendingAsync(cancellationToken);
+        WmcCustomerRegularizationPreview regularizationPreview;
+        try
+        {
+            regularizationPreview = await wmcCustomerImportService.PreviewPendingAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Falha ao gerar prévia de regularização de clientes WMC. Operation={Operation}", "CustomerRegularizationPreview");
+            regularizationPreview = new(0, 0, 0, [], "Não foi possível gerar a prévia de regularização agora. Nenhum dado foi alterado.");
+        }
+        ViewBag.WmcCustomerRegularizationPreview = regularizationPreview;
         SetWmcViewState();
         return View(nameof(Wmc), new WmcPreviewPageModel([], [], null, []));
     }
