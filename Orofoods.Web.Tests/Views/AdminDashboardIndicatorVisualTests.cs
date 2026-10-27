@@ -33,8 +33,22 @@ public class AdminDashboardIndicatorVisualTests
         Assert.Contains("#F59E0B", styles);
         Assert.Contains("#F87171", styles);
         Assert.Contains("#111827", styles);
-        Assert.Contains("font-size: clamp(1.5rem, 2vw, 2rem)", styles);
+        Assert.Contains("font-size: clamp(1.35rem, 1.8vw, 1.625rem);", styles);
         Assert.Contains("@media (max-width: 650px)", styles);
-        Assert.DoesNotMatch(@"(?:^|[;\r\n])\s*height\s*:", styles);
+        Assert.DoesNotMatch(@"\.admin-dashboard-indicator\s*\{[^}]*\bheight\s*:", styles);
+    }
+
+    [Fact]
+    public void Admin_indicator_numbers_share_compact_typography_and_priority_arrows_follow_severity()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard-indicators.css"));
+
+        Assert.Contains("font-size: clamp(1.35rem, 1.8vw, 1.625rem);", styles);
+        Assert.Contains("font-weight: 800;", styles);
+        Assert.Contains("font-variant-numeric: tabular-nums;", styles);
+        Assert.Contains("text-align: left;", styles);
+        Assert.Contains(".admin-priority-card span > i", styles);
+        Assert.Contains("color: var(--dashboard-indicator-accent);", styles);
     }
 }

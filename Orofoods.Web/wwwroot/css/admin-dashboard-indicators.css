@@ -23,11 +23,45 @@
 
 .admin-authenticated .admin-shell .admin-dashboard-indicator > strong,
 .admin-authenticated .admin-shell .admin-dashboard-indicator .dashboard-kpi-value {
+    display: block;
     color: #111827;
-    font-size: clamp(1.5rem, 2vw, 2rem);
+    font-size: clamp(1.35rem, 1.8vw, 1.625rem);
     font-weight: 800;
-    letter-spacing: -.4px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.35px;
     line-height: 1.05;
+    text-align: left;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator > strong {
+    margin: 3px 0;
+}
+
+.admin-authenticated .admin-shell .admin-priority-card {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 9px 12px;
+}
+
+.admin-authenticated .admin-shell .admin-priority-card > i {
+    width: 26px;
+    height: 26px;
+    margin: 0 0 4px;
+}
+
+.admin-authenticated .admin-shell .admin-priority-card small {
+    margin: 0;
+    line-height: 1.25;
+}
+
+.admin-authenticated .admin-shell .admin-priority-card > strong {
+    margin: 1px 0 2px;
+}
+
+.admin-authenticated .admin-shell .admin-priority-card span > i {
+    color: var(--dashboard-indicator-accent);
 }
 
 .admin-authenticated .admin-shell .admin-dashboard-indicator small,
@@ -85,5 +119,9 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 @media (max-width: 650px) {
     .admin-authenticated .admin-shell .admin-dashboard-indicator {
         padding: 12px 14px;
+    }
+
+    .admin-authenticated .admin-shell .admin-priority-card {
+        padding: 9px 12px;
     }
 }
