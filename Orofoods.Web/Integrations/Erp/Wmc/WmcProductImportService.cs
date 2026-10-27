@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Catalog;
+using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Pricing;
 
@@ -149,6 +150,11 @@ public sealed class WmcProductImportService(
             var targetItems = targetPriceTable is null
                 ? []
                 : await db.PriceTableItems.Where(item => item.PriceTableId == targetPriceTable.Id).ToListAsync(ct);
+            var inventories = selectedProductIds.Length == 0
+                ? new Dictionary<int, ProductInventory>()
+                : await db.ProductInventories
+                    .Where(inventory => selectedProductIds.Contains(inventory.ProductId))
+                    .ToDictionaryAsync(inventory => inventory.ProductId, ct);
             var pending = await db.ProductCategories.FirstOrDefaultAsync(c => c.Slug == "wmc-pending-import", ct);
             if (pending is null)
             {
@@ -229,6 +235,22 @@ public sealed class WmcProductImportService(
                 }
                 if (unitProposal.SafeToApply && HasUnitFieldChanges(unitProposal))
                     detail.Add("EAN-13, DUN-14 e fatores oficiais aplicados.");
+
+                var inventory = inventories.GetValueOrDefault(current.Id);
+                var stockValid = WmcProductRules.TryNormalizeStock(row.EstoqueDisponivel, out var availableQuantity, out _);
+                if (stockValid && inventory?.IsManuallyAdjusted != true)
+                    current.WmcStockAvailable = current.IsWmcActive && availableQuantity > 0;
+                var effectiveAvailableQuantity = inventory is null
+                    ? availableQuantity
+                    : Math.Min(availableQuantity, inventory.AvailableQuantity);
+                var readiness = stockValid
+                    ? WmcInitialLoadReadinessEvaluator.Evaluate(source: row, product: current, units: officialUnits,
+                        effectiveAvailableQuantity, inventory?.IsManuallyAdjusted == true)
+                    : WmcInitialLoadReadinessResult.Blocked("stock-invalid");
+                current.WmcInitialLoadReady = readiness.IsReady;
+                detail.Add(readiness.IsReady
+                    ? "Liberação automática WMC aplicada."
+                    : $"Prontidão WMC bloqueada: {readiness.Reason}.");
 
                 if (!isNew && before) updated++;
                 else if (!isNew) unchanged++;

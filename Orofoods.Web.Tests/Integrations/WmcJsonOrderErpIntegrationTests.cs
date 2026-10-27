@@ -117,6 +117,36 @@ public class WmcJsonOrderErpIntegrationTests
     }
 
     [Fact]
+    public async Task Allows_the_documented_wmc_http_endpoint_only()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder();
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        var handler = new RecordingHandler(
+            (HttpStatusCode.OK, "importado com sucesso"),
+            (HttpStatusCode.OK, "[{\"NROPEDIDO\":776655}]"));
+        using var client = new HttpClient(handler);
+        var integration = new WmcJsonOrderErpIntegration(
+            client,
+            Options.Create(CreateOptions(order.Id, "http://mobileopt.wmcsistemas.com.br:8084/oroleite/")),
+            new WmcMobileOrderPayloadBuilder(),
+            new WmcExportAuditService(db),
+            new FixedWmcTransmissionIdAllocator(9001));
+
+        var result = await integration.SendOrderAsync(order);
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(
+            "http://mobileopt.wmcsistemas.com.br:8084/oroleite/exportar.php?imei=device-test&serial=serial-test",
+            handler.Requests[0].Uri!.AbsoluteUri);
+        Assert.Equal(
+            "http://mobileopt.wmcsistemas.com.br:8084/oroleite/nropedido.php?idpedido=9001&codvendedor=804",
+            handler.Requests[1].Uri!.AbsoluteUri);
+    }
+
+    [Fact]
     public async Task Does_not_send_when_the_order_sales_representative_has_no_serial()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -176,6 +206,64 @@ public class WmcJsonOrderErpIntegrationTests
             Assert.Equal(0, handler.CallCount);
             Assert.Equal(WmcExportOutcome.Failed, Assert.Single(db.WmcExportAudits).Outcome);
         }
+    }
+
+    [Fact]
+    public async Task Does_not_send_to_http_variants_outside_the_exact_wmc_allowlist()
+    {
+        foreach (var baseUrl in new[]
+        {
+            "http://mobileopt.wmcsistemas.com.br:8083/oroleite/",
+            "http://mobileopt.wmcsistemas.com.br:8084/other/",
+            "http://other.example.invalid:8084/oroleite/"
+        })
+        {
+            await using var db = await TestDbContextFactory.CreateAsync();
+            var order = CreateOrder();
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+
+            var handler = new RecordingHandler((HttpStatusCode.OK, "importado com sucesso"));
+            using var client = new HttpClient(handler);
+            var integration = new WmcJsonOrderErpIntegration(
+                client,
+                Options.Create(CreateOptions(order.Id, baseUrl)),
+                new WmcMobileOrderPayloadBuilder(),
+                new WmcExportAuditService(db),
+                new FixedWmcTransmissionIdAllocator(9001));
+
+            var result = await integration.SendOrderAsync(order);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal(0, handler.CallCount);
+        }
+    }
+
+    [Fact]
+    public async Task Does_not_send_with_an_empty_device_id_on_the_wmc_http_endpoint()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder();
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        var handler = new RecordingHandler((HttpStatusCode.OK, "importado com sucesso"));
+        using var client = new HttpClient(handler);
+        var integration = new WmcJsonOrderErpIntegration(
+            client,
+            Options.Create(CreateOptions(
+                order.Id,
+                "http://mobileopt.wmcsistemas.com.br:8084/oroleite/",
+                deviceId: "")),
+            new WmcMobileOrderPayloadBuilder(),
+            new WmcExportAuditService(db),
+            new FixedWmcTransmissionIdAllocator(9001));
+
+        var result = await integration.SendOrderAsync(order);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("IMEI", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, handler.CallCount);
     }
 
     [Fact]

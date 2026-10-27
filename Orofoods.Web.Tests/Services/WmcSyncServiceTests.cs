@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Customers;
@@ -181,7 +182,7 @@ public class WmcSyncServiceTests
     }
 
     [Fact]
-    public async Task Initial_success_persists_run_and_releases_only_wmc_products()
+    public async Task Initial_success_persists_run_and_releases_only_verified_wmc_products()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var category = new ProductCategory { Name = "Local", Slug = "local", IsActive = true };
@@ -189,7 +190,22 @@ public class WmcSyncServiceTests
         await db.SaveChangesAsync();
         db.Add(new Product { WmcCode = null, Sku = "LOCAL", Name = "Local", ProductCategoryId = category.Id });
         await db.SaveChangesAsync();
-        var service = CreateService(db, products: [new WmcProductRecord("P-READY", "Produto", "A", "CX", null, 4)]);
+        var readyProduct = new Product
+        {
+            WmcCode = "P-READY", Sku = "P-READY", Name = "Produto", ProductCategoryId = category.Id,
+            Unit = "PC", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 18,
+            BasePrice = 10, IsActive = true, IsAvailable = true, IsWmcActive = true,
+            WmcStockAvailable = true, WmcInitialLoadReady = false
+        };
+        db.Add(readyProduct);
+        await db.SaveChangesAsync();
+        db.AddRange(
+            new WmcProductUnit { ProductId = readyProduct.Id, UnitCode = "PC", Description = "PACOTE", Factor = 1, Barcode = "7899679701348" },
+            new WmcProductUnit { ProductId = readyProduct.Id, UnitCode = "CX", Description = "CAIXA", Factor = 18, Barcode = "17899679701345", IsMaster = true });
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new ProductInventory { ProductId = readyProduct.Id, QuantityOnHand = 4 });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, products: [new WmcProductRecord("P-READY", "Produto", "A", "PC", null, 4, PrecoVenda: 10)]);
 
         var result = await service.SyncAllAsync();
 
@@ -197,6 +213,59 @@ public class WmcSyncServiceTests
         Assert.True(db.WmcSyncRuns.Single().InitialLoad);
         Assert.True(db.Products.Single(x => x.WmcCode == "P-READY").WmcInitialLoadReady);
         Assert.False(db.Products.Single(x => x.WmcCode == null).WmcInitialLoadReady);
+    }
+
+    [Fact]
+    public async Task Sync_does_not_release_existing_product_when_source_price_is_invalid()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Comercial", Slug = "comercial", IsActive = true };
+        var product = new Product
+        {
+            WmcCode = "P-BLOCKED", Sku = "P-BLOCKED", Name = "Produto", ProductCategory = category,
+            Unit = "PC", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 18,
+            BasePrice = 10, IsActive = true, IsAvailable = true, IsWmcActive = true,
+            WmcStockAvailable = true, WmcInitialLoadReady = true
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        db.WmcProductUnits.AddRange(
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "PC", Factor = 1, Barcode = "7899679701348" },
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "CX", Factor = 18, Barcode = "17899679701345", IsMaster = true });
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 5 });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, products: [new WmcProductRecord("P-BLOCKED", "Produto", "A", "PC", null, 5, PrecoVenda: 0)]);
+
+        await service.SyncAllAsync();
+
+        Assert.False(product.WmcInitialLoadReady);
+        Assert.Equal(10m, product.BasePrice);
+    }
+
+    [Fact]
+    public async Task Sync_releases_only_products_from_the_same_source_batch()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var category = new ProductCategory { Name = "Comercial", Slug = "comercial", IsActive = true };
+        var current = CreateReadyProduct("P-CURRENT", category);
+        var phantom = CreateReadyProduct("P-PHANTOM", category);
+        db.Products.AddRange(current, phantom);
+        await db.SaveChangesAsync();
+        AddReadyMetadata(db, current, 5);
+        AddReadyMetadata(db, phantom, 5);
+        await db.SaveChangesAsync();
+        var firstBatch = new[] { new WmcProductRecord("P-CURRENT", "Atual", "A", "PC", null, 5, PrecoVenda: 10) };
+        var laterBatch = new[]
+        {
+            firstBatch[0],
+            new WmcProductRecord("P-PHANTOM", "Fora do lote", "A", "PC", null, 5, PrecoVenda: 10)
+        };
+        var service = CreateService(db, productReader: new SequencedProductReader(firstBatch, laterBatch));
+
+        await service.SyncAllAsync();
+
+        Assert.True(current.WmcInitialLoadReady);
+        Assert.False(phantom.WmcInitialLoadReady);
     }
 
     [Fact]
@@ -477,6 +546,22 @@ public class WmcSyncServiceTests
             NullLogger<WmcSyncService>.Instance,
             TimeProvider.System);
 
+    private static Product CreateReadyProduct(string code, ProductCategory category) => new()
+    {
+        WmcCode = code, Sku = code, Name = code, ProductCategory = category,
+        Unit = "PC", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 18,
+        BasePrice = 10, IsActive = true, IsAvailable = true, IsWmcActive = true,
+        WmcStockAvailable = true, WmcInitialLoadReady = false
+    };
+
+    private static void AddReadyMetadata(ApplicationDbContext db, Product product, int quantity)
+    {
+        db.WmcProductUnits.AddRange(
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "PC", Factor = 1, Barcode = "7899679701348" },
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "CX", Factor = 18, Barcode = "17899679701345", IsMaster = true });
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = quantity });
+    }
+
     private sealed class FakeCustomerReader(IReadOnlyList<WmcCustomerRecord> rows) : IWmcCustomerReader
     {
         public Task<IReadOnlyList<WmcCustomerRecord>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult(rows);
@@ -491,6 +576,19 @@ public class WmcSyncServiceTests
     private sealed class FakeProductReader(IReadOnlyList<WmcProductRecord> rows) : IWmcProductReader
     {
         public Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult(rows);
+    }
+
+    private sealed class SequencedProductReader(
+        IReadOnlyList<WmcProductRecord> firstBatch,
+        IReadOnlyList<WmcProductRecord> laterBatch) : IWmcProductReader
+    {
+        private int calls;
+
+        public Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default)
+        {
+            calls++;
+            return Task.FromResult(calls == 1 ? firstBatch : laterBatch);
+        }
     }
 
     private sealed class FakeReader(bool canConnect) : IWmcFirebirdReader
