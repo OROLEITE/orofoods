@@ -81,7 +81,7 @@ public sealed class WmcCustomerImportServiceTests
         var second = await service.ImportAsync("V1");
 
         Assert.Equal(1, first.Created);
-        Assert.Equal(2, second.Ignored);
+        Assert.Equal(1, second.Ignored);
         var customer = Assert.Single(db.Customers);
         Assert.Equal(CustomerStatus.Pending, customer.Status);
         Assert.False(customer.IsActive);
@@ -113,6 +113,38 @@ public sealed class WmcCustomerImportServiceTests
         var preview = await service.PreviewAsync("V1");
 
         Assert.Equal(1, preview.Conflicts);
+    }
+
+    [Fact]
+    public async Task Preview_counts_are_mutually_exclusive_and_include_exclusion_reasons()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.Customers.Add(new Customer
+        {
+            WmcCode = "C031",
+            LegalName = "Existente",
+            TradeName = "Existente",
+            Cnpj = "04.252.011/0001-10"
+        });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeCustomerReader([
+            Row("C030", "A", "F", "03.932.292/0001-99", "V1"),
+            Row("C031", "A", "F", "04.252.011/0001-10", "V1", "Existente", "Existente"),
+            Row("C032", "I", "F", "04.252.011/0001-10", "V1"),
+            Row("C033", "A", "F", "12.345.678/0001-95", "V1", "", "Fantasia")
+        ]));
+
+        var preview = await service.PreviewAsync("V1");
+
+        Assert.Equal(4, preview.RecordsRead);
+        Assert.Equal(1, preview.NewCustomers);
+        Assert.Equal(1, preview.ExistingCustomers);
+        Assert.Equal(2, preview.Ignored);
+        Assert.Equal(0, preview.Conflicts);
+        Assert.Equal(preview.RecordsRead, preview.NewCustomers + preview.ExistingCustomers + preview.Ignored + preview.Conflicts);
+        Assert.Contains(preview.Rows, row => row.WmcCode == "C032" && row.Reason == "SITUACAO diferente de A.");
+        Assert.Contains(preview.Rows, row => row.WmcCode == "C033" && row.Reason!.Contains("NOME", StringComparison.Ordinal));
+        Assert.Contains(preview.Rows, row => row.Disposition == WmcCustomerImportDisposition.Existing);
     }
 
     [Fact]

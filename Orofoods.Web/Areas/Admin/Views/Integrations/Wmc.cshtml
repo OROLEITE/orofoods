@@ -68,7 +68,14 @@
                 {
                     <div class="alert alert-warning mt-3" role="alert">@customerPreview.ErrorMessage</div>
                 }
-                <dl class="row mt-3">
+                <div class="wmc-customer-preview-summary" aria-label="Resumo da prévia">
+                    <article><span>Consultados</span><strong>@customerPreview.RecordsRead</strong></article>
+                    <article class="wmc-customer-preview-summary--normal"><span>Novos</span><strong>@customerPreview.NewCustomers</strong></article>
+                    <article class="wmc-customer-preview-summary--normal"><span>Existentes</span><strong>@customerPreview.ExistingCustomers</strong></article>
+                    <article class="wmc-customer-preview-summary--warning"><span>Ignorados</span><strong>@customerPreview.Ignored</strong></article>
+                    <article class="wmc-customer-preview-summary--critical"><span>Conflitos</span><strong>@customerPreview.Conflicts</strong></article>
+                </div>
+                <dl class="row mt-3 wmc-customer-preview-legacy-summary">
                     <dt class="col-sm-3">Vendedor WMC</dt><dd class="col-sm-9">@customerPreview.SellerCode</dd>
                     <dt class="col-sm-3">Clientes consultados</dt><dd class="col-sm-9">@customerPreview.RecordsRead</dd>
                     <dt class="col-sm-3">Novos</dt><dd class="col-sm-9">@customerPreview.NewCustomers</dd>
@@ -78,13 +85,29 @@
                 </dl>
                 @if (customerPreview.Rows.Count > 0)
                 {
-                    <div class="table-responsive mt-3">
-                        <table class="table align-middle">
-                            <thead><tr><th>Código WMC</th><th>Razão social</th><th>Fantasia</th><th>CNPJ</th><th>Situação</th></tr></thead>
+                    <div class="table-responsive mt-3 wmc-customer-preview-table-wrap">
+                        <table class="table align-middle wmc-customer-preview-table">
+                            <thead><tr><th>Código WMC</th><th>Razão social</th><th>Fantasia</th><th>CNPJ</th><th>Resultado</th><th>Motivo</th></tr></thead>
                             <tbody>
                             @foreach (var row in customerPreview.Rows)
                             {
-                                <tr><td>@row.WmcCode</td><td>@row.LegalName</td><td>@row.TradeName</td><td>@row.Cnpj</td><td>@row.Disposition @row.Reason</td></tr>
+                                var dispositionLabel = row.Disposition switch
+                                {
+                                    WmcCustomerImportDisposition.Create => "Novo",
+                                    WmcCustomerImportDisposition.Update => "Atualizar",
+                                    WmcCustomerImportDisposition.Existing => "Existente",
+                                    WmcCustomerImportDisposition.Ignore => "Ignorado",
+                                    WmcCustomerImportDisposition.Conflict => "Conflito",
+                                    _ => row.Disposition.ToString()
+                                };
+                                <tr>
+                                    <td>@row.WmcCode</td>
+                                    <td>@row.LegalName</td>
+                                    <td>@row.TradeName</td>
+                                    <td>@row.Cnpj</td>
+                                    <td><span class="wmc-customer-preview-status wmc-customer-preview-status--@row.Disposition.ToString().ToLowerInvariant()">@dispositionLabel</span></td>
+                                    <td>@(row.Reason ?? "—")</td>
+                                </tr>
                             }
                             </tbody>
                         </table>
