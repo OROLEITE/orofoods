@@ -34,4 +34,17 @@ public class AdminOrdersNewOrderViewTests
         Assert.Contains("Voltar para pedidos", customersView);
         Assert.Contains("Clientes B2B", customersView);
     }
+
+    [Fact]
+    public void Assisted_order_preserves_posted_lines_when_the_backend_returns_a_validation_error()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Customers", "NewOrder.cshtml"));
+        var script = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "js", "assisted-order.js"));
+
+        Assert.Contains("name=\"ProductIds\"", view, StringComparison.Ordinal);
+        Assert.Contains("name=\"Quantities\"", view, StringComparison.Ordinal);
+        Assert.Contains("form.querySelectorAll('input[name=\"ProductIds\"]')", script, StringComparison.Ordinal);
+        Assert.Contains("lines.set(id", script, StringComparison.Ordinal);
+    }
 }

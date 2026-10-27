@@ -43,6 +43,17 @@ Antes de homologar, confira no PostgreSQL da Orofoods qual sera o proximo WmcTra
 
 O worker TXT continua independente e usa WmcFileDrop__Enabled. Durante a homologacao HTTP controlada, mantenha-o desligado para evitar disputa pelo mesmo pedido.
 
+## Importacao manual selecionada
+
+A fila `Pedidos pendentes WMC` permite que Administrador, Vendedor e Operador importem somente o pedido escolhido, após confirmação com número, cliente e total. Vendedores veem apenas clientes do próprio escopo; administradores e operadores usam seus acessos autorizados à fila. O endpoint exige POST com antiforgery e grava o usuário, o resultado de `exportar.php` e a reconciliação de `nropedido.php` na auditoria existente.
+
+O envio manual exige as duas chaves abaixo; `ManualImportEnabled` é falso por padrão. Essa opção libera somente o fluxo iniciado por uma pessoa. O worker de homologação automática continua restrito ao `HomologationOrderId` e não é alterado.
+
+WmcJsonOrder__Enabled=true
+WmcJsonOrder__ManualImportEnabled=true
+
+A fila inclui pedidos recebidos enquanto aguardam aprovação, mas só libera a ação depois da aprovação e quando não há exportação TXT, importação anterior, tentativa ativa ou resultado incerto. O serviço reserva o pedido e persiste a tentativa antes da chamada HTTP. Uma confirmação do WMC marca o pedido como Importado; se `nropedido.php` não retornar o número, a importação continua bloqueada para reenvio e a tela informa que a reconciliação está pendente.
+
 ## Auditoria e duplicidade
 
 O pedido e reivindicado atomicamente antes do envio. A auditoria registra o identificador da tentativa, WmcTransmissionId, codigo WMC do vendedor e URL base do destino usados, estado, resposta e status HTTP do POST, alem da resposta e status da consulta de NROPEDIDO.

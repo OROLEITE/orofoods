@@ -247,31 +247,8 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
     [HttpGet]
     public async Task<IActionResult> NewOrder(int id, string? q)
     {
-        var scope = await accessService.GetScopeAsync(User);
-        var customer = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
-            .Include(x => x.Addresses)
-            .Include(x => x.SalesRepresentative)
-            .SingleOrDefaultAsync(x => x.Id == id && x.IsActive && x.Status == CustomerStatus.Approved);
-        if (customer is null) return Forbid();
-
-        var productsQuery = db.Products.AsNoTracking().Where(x => x.IsActive);
-        if (!string.IsNullOrWhiteSpace(q)) productsQuery = productsQuery.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || x.Brand.Contains(q));
-        var products = await productsQuery.OrderBy(x => x.Name).Take(30).ToListAsync();
-        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id);
-        var prices = await priceService.GetPricesAsync(id, products.Select(x => x.Id));
-        return View(new AssistedOrderViewModel
-        {
-            CustomerId = id,
-            CustomerName = customer.TradeName,
-            SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Não atribuído",
-            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-            PaymentEligibility = eligibility,
-            MinimumOrder = OrderMinimumPolicy.Resolve(
-                await db.OrderMinimumSettings.AsNoTracking().Select(x => (decimal?)x.MinimumAmount).SingleOrDefaultAsync(),
-                customer.MinimumOrder),
-            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.BasePrice), x.MinimumSalesQuantity, true, x.PriceUnitLabel)).ToList(),
-            Query = q
-        });
+        var model = await BuildAssistedOrderViewModelAsync(id, q, HttpContext.RequestAborted);
+        return model is null ? Forbid() : View(model);
     }
 
     [HttpPost]
@@ -292,10 +269,54 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.ErrorMessage!);
-            return RedirectToAction(nameof(NewOrder), new { id = input.CustomerId });
+            var model = await BuildAssistedOrderViewModelAsync(input.CustomerId, input.Query, cancellationToken);
+            if (model is null) return Forbid();
+
+            model.AddressId = input.AddressId;
+            model.PaymentTermId = input.PaymentTermId;
+            model.RequestedDeliveryDate = input.RequestedDeliveryDate;
+            model.Notes = input.Notes;
+            model.AttemptKey = input.AttemptKey;
+            model.ProductIds = input.ProductIds;
+            model.Quantities = input.Quantities;
+            return View(model);
         }
         HttpContext.Session.SetString(attemptKey, result.OrderId!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return RedirectToAction("Details", "Orders", new { area = "Admin", id = result.OrderId });
+    }
+
+    private async Task<AssistedOrderViewModel?> BuildAssistedOrderViewModelAsync(
+        int id,
+        string? q,
+        CancellationToken cancellationToken)
+    {
+        var scope = await accessService.GetScopeAsync(User);
+        var customer = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+            .Include(x => x.Addresses)
+            .Include(x => x.SalesRepresentative)
+            .SingleOrDefaultAsync(x => x.Id == id && x.IsActive && x.Status == CustomerStatus.Approved, cancellationToken);
+        if (customer is null) return null;
+
+        var productsQuery = db.Products.AsNoTracking().Where(x => x.IsActive);
+        if (!string.IsNullOrWhiteSpace(q)) productsQuery = productsQuery.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || x.Brand.Contains(q));
+        var products = await productsQuery.OrderBy(x => x.Name).Take(30).ToListAsync(cancellationToken);
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id, cancellationToken);
+        var prices = await priceService.GetPricesAsync(id, products.Select(x => x.Id), cancellationToken);
+
+        return new AssistedOrderViewModel
+        {
+            CustomerId = id,
+            CustomerName = customer.TradeName,
+            SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Não atribuído",
+            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
+            PaymentTerms = eligibility.PaymentMethods,
+            PaymentEligibility = eligibility,
+            MinimumOrder = OrderMinimumPolicy.Resolve(
+                await db.OrderMinimumSettings.AsNoTracking().Select(x => (decimal?)x.MinimumAmount).SingleOrDefaultAsync(cancellationToken),
+                customer.MinimumOrder),
+            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.BasePrice), x.MinimumSalesQuantity, true, x.PriceUnitLabel)).ToList(),
+            Query = q
+        };
     }
 
     [HttpPost]

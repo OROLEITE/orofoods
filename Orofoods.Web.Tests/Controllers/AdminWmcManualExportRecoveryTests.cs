@@ -27,6 +27,24 @@ public sealed class AdminWmcManualExportRecoveryTests
             controller.GetMethod("DownloadWmcTxt")!.GetCustomAttributes().Select(attribute => attribute.GetType()));
     }
 
+    [Fact]
+    public void Json_import_endpoint_allows_the_three_roles_and_is_an_antiforgery_post()
+    {
+        var controller = typeof(WmcOrderImportsController);
+        Assert.Null(controller.GetCustomAttribute<AuthorizeAttribute>()?.Roles);
+        var method = controller.GetMethod("ImportToWmc");
+        Assert.NotNull(method);
+        Assert.Equal("Administrador,Vendedor,Operador", method!.GetCustomAttribute<AuthorizeAttribute>()?.Roles);
+        Assert.NotNull(method.GetCustomAttribute<HttpPostAttribute>());
+        Assert.NotNull(method.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+        var reconcile = controller.GetMethod("ReconcileNroPedido");
+        Assert.Equal("Administrador,Vendedor,Operador", reconcile?.GetCustomAttribute<AuthorizeAttribute>()?.Roles);
+        Assert.NotNull(reconcile?.GetCustomAttribute<HttpPostAttribute>());
+        Assert.NotNull(reconcile?.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+        var index = controller.GetMethod("Index");
+        Assert.Equal("Administrador,Vendedor,Operador", index?.GetCustomAttribute<AuthorizeAttribute>()?.Roles);
+    }
+
     private static void AssertMethodHas<TAttribute>(Type controller, string methodName)
         where TAttribute : Attribute =>
         Assert.NotNull(controller.GetMethod(methodName)?.GetCustomAttribute<TAttribute>());

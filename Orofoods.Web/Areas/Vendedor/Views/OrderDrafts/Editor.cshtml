@@ -163,7 +163,7 @@
                                     {
                                         var item = Model.Items[index];
                                         var formItemIndex = item.RemovalPending ? -1 : submittedItemIndex++;
-                                        <article class="seller-order-drafts__item @(item.RemovalPending ? "is-removal-pending" : "")" data-draft-item data-product-id="@item.ProductId" data-unit-price="@item.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-minimum="@item.MinimumCases">
+                                        <article class="seller-order-drafts__item @(item.RemovalPending ? "is-removal-pending" : "")" data-draft-item data-product-id="@item.ProductId" data-wmc-code="@item.WmcCode" data-unit-price="@item.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-minimum="@item.MinimumCases">
                                             @if (!item.RemovalPending)
                                             {
                                                 <input type="hidden" data-item-product-id name="Items[@formItemIndex].ProductId" value="@item.ProductId" />
@@ -174,8 +174,8 @@
                                                 <input id="quantity-@item.ProductId" class="visually-hidden" data-item-quantity type="number" disabled min="@item.MinimumCases" value="@item.Quantity" />
                                             }
                                             <div class="seller-order-drafts__item-main">
-                                                <span class="seller-order-drafts__sku">@item.Sku</span>
-                                                <h3>@item.Name</h3>
+                                                <span class="seller-order-drafts__wmc-code">@(string.IsNullOrWhiteSpace(item.WmcCode) ? item.Sku : $"WMC {item.WmcCode}")</span>
+                                                <h3 class="seller-order-drafts__product-name">@item.Name</h3>
                                                 <span class="seller-order-drafts__muted">@item.UnitDescription</span>
                                                 <span class="seller-order-drafts__unit-price">@item.UnitPrice.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) por @item.PriceUnitLabel</span>
                                             </div>
@@ -200,11 +200,17 @@
                                         </article>
                                     }
                                 </div>
+                                <div id="draft-entry-line" class="seller-order-drafts__entry-line" hidden>
+                                    <label for="next-wmc-code">Próximo código WMC</label>
+                                    <input id="next-wmc-code" class="form-control" type="search" maxlength="30" autocomplete="off" placeholder="Digite o código WMC e pressione Enter" aria-controls="draft-items" />
+                                    <small>Pressione Enter para adicionar uma nova linha.</small>
+                                </div>
                                 @foreach (var removedProductId in Model.RemovedProductIds)
                                 {
                                     <input type="hidden" name="RemovedProductIds" value="@removedProductId" data-removed-product-id="@removedProductId" />
                                 }
                                 <p id="draft-removal-status" class="seller-order-drafts__removal-status" role="status" aria-live="polite"></p>
+                                <p id="draft-entry-status" class="seller-order-drafts__search-status" role="status" aria-live="polite">Digite o próximo código WMC para adicionar uma nova linha.</p>
                             </section>
 
                             <section class="seller-order-drafts__card" aria-labelledby="delivery-heading">
@@ -281,7 +287,7 @@
                                 <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Salvar rascunho
                             </button>
                             <button id="submit-seller-order-button" class="btn seller-order-drafts__send" type="button" disabled aria-disabled="true" title="Aguarde a validação da cotação do servidor">
-                                <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i> Revisar e enviar
+                                <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i> Gravar pedido
                             </button>
                             <a class="btn seller-order-drafts__outline seller-order-drafts__cancel" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Index">Cancelar</a>
                         </div>
@@ -317,12 +323,12 @@
                         <div class="seller-order-drafts__review-actions">
                             <button class="btn seller-order-drafts__outline" type="button" data-close-order-review>Voltar e revisar</button>
                             <button id="confirm-seller-order-button" class="btn seller-order-drafts__send" type="submit" form="seller-order-submit-form">
-                                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Confirmar envio
+                                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Confirmar gravação
                             </button>
                         </div>
                     </dialog>
                 }
-                <p class="seller-order-drafts__stage-note">O envio definitivo revalida o preço base e os dados comerciais e cria o pedido na Orofoods. Salve alterações antes de revisar; o envio não inicia cobrança.</p>
+                <p class="seller-order-drafts__stage-note">A gravação definitiva revalida preço e estoque e cria o pedido na Orofoods. Salve alterações antes de gravar; a gravação não transmite ao WMC nem inicia cobrança.</p>
             }
             else
             {
@@ -332,7 +338,7 @@
                         @foreach (var item in Model.Items)
                         {
                             <article class="seller-order-drafts__item">
-                                <div class="seller-order-drafts__item-main"><span class="seller-order-drafts__sku">@item.Sku</span><h3>@item.Name</h3><span class="seller-order-drafts__muted">@item.UnitDescription</span></div>
+                                <div class="seller-order-drafts__item-main"><span class="seller-order-drafts__wmc-code">@(string.IsNullOrWhiteSpace(item.WmcCode) ? item.Sku : $"WMC {item.WmcCode}")</span><h3 class="seller-order-drafts__product-name">@item.Name</h3><span class="seller-order-drafts__muted">@item.UnitDescription</span></div>
                                 <div class="seller-order-drafts__item-controls"><span>Quantidade</span><strong>@item.Quantity</strong></div>
                                 <div class="seller-order-drafts__item-subtotal"><span>Subtotal</span><strong>@item.Subtotal.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong></div>
                             </article>

@@ -201,6 +201,100 @@ public class OrderIntegrationServiceTests
         Assert.Equal(WmcOrderExportStatus.Exported, order.WmcOrderExportState!.Status);
     }
 
+    [Fact]
+    public async Task Selected_send_returns_result_and_blocks_a_second_json_attempt_after_success()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrderWithWmcState("ORO-2026-000782", IntegrationStatus.Pending, WmcOrderExportStatus.Pending);
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var erp = new CountingErpOrderIntegration();
+        var service = new OrderIntegrationService(db, erp);
+
+        var first = await service.SendSelectedAsync(order.Id, erp);
+        var second = await service.SendSelectedAsync(order.Id, erp);
+
+        Assert.True(first?.Succeeded);
+        Assert.Null(second);
+        Assert.Equal(1, erp.SendCount);
+    }
+
+    [Theory]
+    [InlineData(WmcExportOutcome.Started)]
+    [InlineData(WmcExportOutcome.Unknown)]
+    [InlineData(WmcExportOutcome.Succeeded)]
+    public async Task Selected_send_does_not_reclaim_json_attempts_that_are_active_uncertain_or_succeeded(WmcExportOutcome outcome)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrderWithWmcState($"ORO-2026-{(int)outcome:000000}", IntegrationStatus.Pending, WmcOrderExportStatus.Exported);
+        order.WmcExportAudits.Add(new WmcExportAudit
+        {
+            AttemptId = Guid.NewGuid(),
+            Source = WmcExportSource.Automatic,
+            Outcome = outcome,
+            Succeeded = outcome == WmcExportOutcome.Succeeded,
+            ExportedAt = DateTime.UtcNow
+        });
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var erp = new CountingErpOrderIntegration();
+
+        var result = await new OrderIntegrationService(db, erp).SendSelectedAsync(order.Id, erp);
+
+        Assert.Null(result);
+        Assert.Equal(0, erp.SendCount);
+    }
+
+    [Fact]
+    public async Task Selected_send_does_not_reclaim_an_order_with_a_generated_txt_artifact()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrderWithWmcState("ORO-2026-000783", IntegrationStatus.Pending, WmcOrderExportStatus.Exported);
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var erp = new CountingErpOrderIntegration();
+
+        var result = await new OrderIntegrationService(db, erp).SendSelectedAsync(order.Id, erp);
+
+        Assert.Null(result);
+        Assert.Equal(0, erp.SendCount);
+    }
+
+    [Fact]
+    public async Task Concurrent_selected_sends_reserve_the_order_for_only_one_transmission()
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"selected-order-import-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+            ForeignKeys = true
+        }.ToString();
+        await using var keeper = new SqliteConnection(connectionString);
+        await keeper.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connectionString).Options;
+        int orderId;
+        await using (var setup = new ApplicationDbContext(options))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            var order = CreateOrderWithWmcState("ORO-2026-000784", IntegrationStatus.Pending, WmcOrderExportStatus.Pending);
+            setup.Add(order);
+            await setup.SaveChangesAsync();
+            orderId = order.Id;
+        }
+
+        await using var firstDb = new ApplicationDbContext(options);
+        await using var secondDb = new ApplicationDbContext(options);
+        var erp = new CountingErpOrderIntegration();
+        var results = await Task.WhenAll(
+            new OrderIntegrationService(firstDb, erp).SendSelectedAsync(orderId, erp),
+            new OrderIntegrationService(secondDb, erp).SendSelectedAsync(orderId, erp));
+
+        Assert.Single(results, result => result?.Succeeded == true);
+        Assert.Single(results, result => result is null);
+        Assert.Equal(1, erp.SendCount);
+    }
+
     private static Order CreateOrderWithWmcState(
         string orderNumber,
         IntegrationStatus integrationStatus,
