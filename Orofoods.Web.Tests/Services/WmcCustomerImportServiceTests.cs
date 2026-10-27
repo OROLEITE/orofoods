@@ -115,6 +115,18 @@ public sealed class WmcCustomerImportServiceTests
         Assert.Equal(1, preview.Conflicts);
     }
 
+    [Fact]
+    public async Task Preview_returns_a_friendly_error_when_firebird_is_unavailable()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, new UnavailableCustomerReader());
+
+        var preview = await service.PreviewAsync("V1");
+
+        Assert.Contains("clientes WMC", preview.ErrorMessage, StringComparison.Ordinal);
+        Assert.Empty(preview.Rows);
+    }
+
     private static WmcCustomerImportService CreateService(ApplicationDbContext db, IWmcCustomerReader reader) =>
         new(db, reader, NullLogger<WmcCustomerImportService>.Instance, TimeProvider.System);
 
@@ -135,5 +147,17 @@ public sealed class WmcCustomerImportServiceTests
 
         public Task<IReadOnlyList<string>> GetSellerCodesAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(rows.Select(row => row.CodVendedor).Distinct().ToList());
+    }
+
+    private sealed class UnavailableCustomerReader : IWmcCustomerReader
+    {
+        public Task<IReadOnlyList<WmcCustomerRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Firebird mirror unavailable.");
+
+        public Task<IReadOnlyList<WmcCustomerRecord>> GetBySellerAsync(string sellerCode, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Firebird mirror unavailable.");
+
+        public Task<IReadOnlyList<string>> GetSellerCodesAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Firebird mirror unavailable.");
     }
 }

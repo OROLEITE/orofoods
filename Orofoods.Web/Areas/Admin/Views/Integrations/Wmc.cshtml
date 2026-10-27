@@ -46,11 +46,12 @@
         <section class="mt-4" aria-labelledby="wmc-customer-import-title">
             <h2 id="wmc-customer-import-title">Importação manual de clientes</h2>
             <p>Informe o código do vendedor WMC. Somente clientes com situação <code>A</code> e restrição <code>F</code> serão considerados.</p>
-            <form method="post" asp-action="WmcCustomerPreview" class="row g-3 align-items-end">
+            <form method="post" asp-action="WmcCustomerPreview" class="wmc-customer-import-form">
                 @Html.AntiForgeryToken()
-                <div class="col-md-8">
+                <div class="wmc-customer-seller-field">
                     <label class="form-label" for="wmcSellerCode">CODVENDEDOR</label>
-                    <input class="form-control" id="wmcSellerCode" name="sellerCode" list="wmcSellerCodes" required maxlength="30" />
+                    <input class="form-control" id="wmcSellerCode" name="sellerCode" list="wmcSellerCodes" required maxlength="30" placeholder="Código do vendedor WMC" />
+                    <small class="wmc-customer-filter-help">Somente clientes ativos e sem restrição</small>
                     <datalist id="wmcSellerCodes">
                         @foreach (var sellerCode in sellerCodes)
                         {
@@ -58,7 +59,7 @@
                         }
                     </datalist>
                 </div>
-                <div class="col-md-4"><button type="submit" class="btn admin-primary-action">Gerar prévia</button></div>
+                <button type="submit" class="btn admin-primary-action wmc-customer-preview-button">Gerar pr&eacute;via</button>
             </form>
 
             @if (customerPreview is not null)
