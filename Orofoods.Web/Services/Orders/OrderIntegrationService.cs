@@ -76,7 +76,7 @@ public sealed class OrderIntegrationService(
         var order = await db.Orders
             .Include(item => item.Customer)
             .Include(item => item.PaymentTerm)
-            .Include(item => item.Items).ThenInclude(item => item.Product)
+            .Include(item => item.Items).ThenInclude(item => item.Product).ThenInclude(item => item!.WmcUnits)
             .Include(item => item.WmcOrderExportState)
             .SingleOrDefaultAsync(item => item.Id == orderId, cancellationToken);
         if (order is null)
@@ -162,7 +162,7 @@ public sealed class OrderIntegrationService(
             .Include(x => x.Customer)
             .Include(x => x.PaymentTerm)
             .Include(x => x.Items)
-            .ThenInclude(x => x.Product)
+            .ThenInclude(x => x.Product).ThenInclude(x => x!.WmcUnits)
             .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken)
             ?? throw new InvalidOperationException("Pedido não encontrado.");
         ErpOrderResult result;

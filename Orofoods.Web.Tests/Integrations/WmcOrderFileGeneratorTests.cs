@@ -34,6 +34,39 @@ public class WmcOrderFileGeneratorTests
     }
 
     [Fact]
+    public void Uses_confirmed_pc_for_bimbo_package_records_without_changing_commercial_snapshot()
+    {
+        var order = new Order
+        {
+            PaymentTerm = new PaymentTerm { Code = "PIX", Name = "PIX" },
+            CustomerCnpjSnapshot = "03932292000199",
+            Items =
+            [
+                new OrderItem
+                {
+                    Product = new Product
+                    {
+                        WmcCode = "503813", Unit = "UN", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX",
+                        WmcUnits =
+                        [
+                            new WmcProductUnit { UnitCode = "PC", Factor = 1, Barcode = "7899679701348" },
+                            new WmcProductUnit { UnitCode = "CX", Factor = 18, Barcode = "17899679701345", IsMaster = true }
+                        ]
+                    },
+                    SalesUnitCodeSnapshot = "PCT", ProductNameSnapshot = "Bimbo pacote", Quantity = 2,
+                    UnitPrice = 12m, Subtotal = 24m
+                }
+            ]
+        };
+
+        var generator = WmcTestOrderFileGenerator.Create();
+        Assert.DoesNotContain("WMC_PACKAGE_UNIT_CODE_UNCONFIRMED", generator.Validate(order));
+        var record = generator.Build(order).Content!.Split(Environment.NewLine)[3];
+        Assert.Equal("PC ", record.Substring(91, 3));
+        Assert.Equal("PCT", order.Items[0].SalesUnitCodeSnapshot);
+    }
+
+    [Fact]
     public void Writes_every_order_record_field_at_its_neogrid_v32_position()
     {
         const string customerCnpj = "03932292000199";

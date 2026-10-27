@@ -133,7 +133,7 @@ public class OrdersController(
 
     public async Task<IActionResult> Details(int id)
     {
-        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).ThenInclude(x => x.Product)
+        var order = await db.Orders.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).ThenInclude(x => x.Product).ThenInclude(x => x!.WmcUnits)
             .Include(x => x.DeliveryAddress).Include(x => x.PaymentTerm).Include(x => x.WmcOrderExportState)
             .Include(x => x.Payments).ThenInclude(x => x!.DriverPaymentTerminalAssignment).ThenInclude(x => x!.Driver)
             .Include(x => x.Payments).ThenInclude(x => x!.DriverPaymentTerminalAssignment).ThenInclude(x => x!.PaymentTerminal)
