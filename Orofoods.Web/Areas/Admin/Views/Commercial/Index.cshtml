@@ -63,10 +63,10 @@
         <section class="commercial-overview-today">
             <div class="commercial-section-kicker"><span></span> Hoje</div>
             <div class="commercial-metric-grid">
-                <article class="p-3"><i class="fa-solid fa-calendar-day mb-2"></i><small>ATENDIMENTOS</small><strong class="fs-5">@Model.Attention.TodayAppointments</strong><span>compromissos do dia</span></article>
-                <article class="p-3"><i class="fa-solid fa-clock mb-2"></i><small>RETORNOS VENCIDOS</small><strong class="fs-5">@Model.Attention.OverdueReturns</strong><span>precisam de atenção</span></article>
-                <article class="p-3"><i class="fa-solid fa-rotate mb-2"></i><small>POSSÍVEIS RECOMPRAS</small><strong class="fs-5">@Model.Attention.RepurchasesDue</strong><span>no momento de contato</span></article>
-                <article class="p-3"><i class="fa-solid fa-hourglass-half mb-2"></i><small>SEM COMPRAR HÁ +30 DIAS</small><strong class="fs-5">@Model.Attention.CustomersWithoutPurchase</strong><span>clientes para acompanhar</span></article>
+                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-calendar-day mb-2"></i><small>ATENDIMENTOS</small><strong class="fs-5">@Model.Attention.TodayAppointments</strong><span>compromissos do dia</span></article>
+                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--warning"><i class="fa-solid fa-clock mb-2"></i><small>RETORNOS VENCIDOS</small><strong class="fs-5">@Model.Attention.OverdueReturns</strong><span>precisam de atenção</span></article>
+                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-rotate mb-2"></i><small>POSSÍVEIS RECOMPRAS</small><strong class="fs-5">@Model.Attention.RepurchasesDue</strong><span>no momento de contato</span></article>
+                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--warning"><i class="fa-solid fa-hourglass-half mb-2"></i><small>SEM COMPRAR HÁ +30 DIAS</small><strong class="fs-5">@Model.Attention.CustomersWithoutPurchase</strong><span>clientes para acompanhar</span></article>
             </div>
         </section>
 
@@ -89,18 +89,18 @@
         </section>
 
         <div class="commercial-metric-grid commercial-metric-grid--secondary">
-            <article><i class="fa-solid fa-file-invoice"></i><small>PEDIDOS DO DIA</small><strong>@Model.OrdersToday</strong><span>registrados no portal</span></article>
-            <article><i class="fa-solid fa-chart-line"></i><small>FATURAMENTO DO DIA</small><strong>@Model.TodayRevenue.ToString("C")</strong><span>pedidos não cancelados</span></article>
+            <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-file-invoice"></i><small>PEDIDOS DO DIA</small><strong>@Model.OrdersToday</strong><span>registrados no portal</span></article>
+            <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-chart-line"></i><small>FATURAMENTO DO DIA</small><strong>@Model.TodayRevenue.ToString("C")</strong><span>pedidos não cancelados</span></article>
         </div>
 
         <section class="commercial-attention-panel">
             <header class="commercial-panel-heading"><div><p class="eyebrow"><span></span> Fila operacional</p><h2>Atenção comercial</h2></div><span>Indicadores calculados com pedidos válidos e agenda local.</span></header>
             <div class="commercial-attention-grid">
-                <a asp-action="Index" class="commercial-attention-card"><small>ATENDIMENTOS DE HOJE</small><strong>@Model.Attention.TodayAppointments</strong></a>
-                <a asp-action="Index" class="commercial-attention-card commercial-attention-card--urgent"><small>RETORNOS VENCIDOS</small><strong>@Model.Attention.OverdueReturns</strong></a>
-                <a asp-action="Index" class="commercial-attention-card"><small>CLIENTES SEM COMPRAR</small><strong>@Model.Attention.CustomersWithoutPurchase</strong></a>
-                <a asp-action="Index" class="commercial-attention-card"><small>POSSÍVEIS RECOMPRAS</small><strong>@Model.Attention.RepurchasesDue</strong></a>
-                <a asp-action="Index" class="commercial-attention-card"><small>PRIMEIRO CONTATO</small><strong>@Model.Attention.NewCustomers</strong></a>
+                <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--normal"><small>ATENDIMENTOS DE HOJE</small><strong>@Model.Attention.TodayAppointments</strong></a>
+                <a asp-action="Index" class="commercial-attention-card commercial-attention-card--urgent admin-dashboard-indicator admin-dashboard-indicator--warning"><small>RETORNOS VENCIDOS</small><strong>@Model.Attention.OverdueReturns</strong></a>
+                <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--warning"><small>CLIENTES SEM COMPRAR</small><strong>@Model.Attention.CustomersWithoutPurchase</strong></a>
+                <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--normal"><small>POSSÍVEIS RECOMPRAS</small><strong>@Model.Attention.RepurchasesDue</strong></a>
+                <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--normal"><small>PRIMEIRO CONTATO</small><strong>@Model.Attention.NewCustomers</strong></a>
             </div>
             <div class="commercial-routine-list">
                 @foreach (var item in Model.Attention.Routine)

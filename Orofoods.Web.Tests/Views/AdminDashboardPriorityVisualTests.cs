@@ -9,17 +9,18 @@ public class AdminDashboardPriorityVisualTests
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Dashboard", "Index.cshtml"));
         var baseCss = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard.css"));
         var css = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard-priority.css"));
+        var indicatorCss = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard-indicators.css"));
 
-        Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"\" : \"admin-priority-card--danger\"", view);
-        Assert.Contains("class=\"admin-priority-card @(Model.LowStockProducts == 0 ? \"\" : \"admin-priority-card--accent\")\"", view);
+        Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--critical\"", view);
+        Assert.Contains("Model.LowStockProducts == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--warning\"", view);
         Assert.Contains("min-height: 112px;", css);
         Assert.Contains("padding: 12px;", css);
         Assert.Contains("margin-top: 7px;", css);
         Assert.Contains("margin: 2px 0 4px;", css);
-        Assert.Contains("box-shadow: inset 3px 0 0 #A45149;", css);
-        Assert.Contains("background: #F8ECEB;", css);
-        Assert.Contains("background: #3A2528;", css);
-        Assert.Contains("color: #FCA5A5;", css);
+        Assert.Contains("border-left: 4px solid var(--dashboard-indicator-accent);", indicatorCss);
+        Assert.Contains("--dashboard-indicator-accent: #F87171;", indicatorCss);
+        Assert.Contains("--dashboard-indicator-accent: #F59E0B;", indicatorCss);
+        Assert.Contains("background: #111827;", indicatorCss);
         Assert.Contains("grid-template-columns: repeat(4, minmax(0, 1fr));", baseCss);
         Assert.Contains("@media (max-width: 650px)", css);
         Assert.DoesNotMatch(@"(?:^|[;\r\n])\s*height\s*:", css);

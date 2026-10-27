@@ -32,8 +32,8 @@ public class AdminDashboardIntegrationsViewTests
         Assert.Contains("asp-controller=\"Integrations\" asp-action=\"Wmc\"", integrations);
         Assert.Contains("asp-controller=\"DriverPaymentTerminalAssignments\" asp-action=\"Index\"", integrations);
         Assert.Contains("asp-controller=\"WhatsApp\" asp-action=\"Index\"", integrations);
-        Assert.Equal(3, CountOccurrences(integrations, "class=\"admin-dashboard-integration-card\""));
-        Assert.DoesNotContain("Normal", integrations, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(3, CountOccurrences(integrations, "class=\"admin-dashboard-integration-card admin-dashboard-indicator "));
+        Assert.DoesNotContain(">Normal<", integrations, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("N&atilde;o monitorado", integrations);
         Assert.Contains("Sem execu&ccedil;&atilde;o registrada nesta inst&acirc;ncia", integrations);
         Assert.Contains("html[data-theme=\"dark\"] .admin-dashboard-page .admin-dashboard-integration-card", styles);

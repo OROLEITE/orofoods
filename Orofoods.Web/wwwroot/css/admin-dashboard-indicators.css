@@ -1,0 +1,89 @@
+.admin-authenticated .admin-shell .admin-dashboard-indicator {
+    --dashboard-indicator-accent: #38BDF8;
+    min-width: 0;
+    border: 1px solid #D1D5DB;
+    border-left: 4px solid var(--dashboard-indicator-accent);
+    border-radius: 14px;
+    background: #FFFFFF;
+    color: #111827;
+    padding: 14px 16px;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator--normal {
+    --dashboard-indicator-accent: #38BDF8;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator--warning {
+    --dashboard-indicator-accent: #F59E0B;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator--critical {
+    --dashboard-indicator-accent: #F87171;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator > strong,
+.admin-authenticated .admin-shell .admin-dashboard-indicator .dashboard-kpi-value {
+    color: #111827;
+    font-size: clamp(1.5rem, 2vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -.4px;
+    line-height: 1.05;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator small,
+.admin-authenticated .admin-shell .admin-dashboard-indicator > span,
+.admin-authenticated .admin-shell .admin-dashboard-indicator p {
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator h3 {
+    color: #1F2937;
+    font-size: 15px;
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator > i {
+    background: #F1F5F9;
+    color: var(--dashboard-indicator-accent);
+}
+
+.admin-authenticated .admin-shell .admin-dashboard-indicator .dashboard-kpi-trend {
+    color: #475569;
+}
+
+.admin-authenticated .admin-shell .admin-priority-card.admin-dashboard-indicator:hover,
+.admin-authenticated .admin-shell .admin-priority-card.admin-dashboard-indicator:focus-visible {
+    border-left-color: var(--dashboard-indicator-accent);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator {
+    border-color: #334155;
+    border-left-color: var(--dashboard-indicator-accent);
+    background: #111827;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator > strong,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator .dashboard-kpi-value,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator h3 {
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator > i {
+    background: #1F2937;
+    color: var(--dashboard-indicator-accent);
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator small,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator > span,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator p,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell .admin-dashboard-indicator .dashboard-kpi-trend {
+    color: #CBD5E1;
+}
+
+@media (max-width: 650px) {
+    .admin-authenticated .admin-shell .admin-dashboard-indicator {
+        padding: 12px 14px;
+    }
+}
