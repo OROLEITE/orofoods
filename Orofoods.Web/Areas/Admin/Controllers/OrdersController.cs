@@ -316,7 +316,8 @@ public class OrdersController(
         var result = await wmcManualExportService.ExportAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
         if (result.Disposition == WmcManualExportDisposition.Exported)
         {
-            return WmcFile(result);
+            TempData["WmcManualExportMessage"] = "TXT WMC gerado e armazenado. Baixe o arquivo na seção de integração ERP.";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         if (result.Disposition == WmcManualExportDisposition.NotFound)
@@ -325,7 +326,7 @@ public class OrdersController(
         }
 
         TempData["WmcManualExportError"] = result.Error ?? "Não foi possível exportar o pedido para o WMC.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpGet]
@@ -338,7 +339,7 @@ public class OrdersController(
         }
         if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
         TempData["WmcManualExportError"] = result.Error;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -350,7 +351,7 @@ public class OrdersController(
             TempData["WmcManualExportMessage"] = "Rejeição registrada. O TXT anterior e as auditorias foram preservados.";
         else
             TempData["WmcManualExportError"] = result.Error;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -359,10 +360,13 @@ public class OrdersController(
         var result = await wmcManualExportService.RegenerateRejectedAsync(id, reason,
             User.FindFirstValue(ClaimTypes.NameIdentifier), User.Identity?.Name, cancellationToken);
         if (result.Disposition == WmcManualExportDisposition.Exported)
-            return WmcFile(result);
+        {
+            TempData["WmcManualExportMessage"] = "TXT WMC regenerado e armazenado. Baixe o arquivo na seção de integração ERP.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
         if (result.Disposition == WmcManualExportDisposition.NotFound) return NotFound();
         TempData["WmcManualExportError"] = result.Error;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     private static FileContentResult WmcFile(WmcManualExportResult result) =>
@@ -383,7 +387,7 @@ public class OrdersController(
         {
             TempData["WmcManualExportError"] = result.Error ?? "Não foi possível confirmar a importação.";
         }
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -406,7 +410,7 @@ public class OrdersController(
         {
             TempData["WmcManualExportMessage"] = "Histórico conferido. O pedido está pendente de envio manual.";
         }
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost, ValidateAntiForgeryToken]

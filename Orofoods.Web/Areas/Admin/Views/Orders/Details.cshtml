@@ -97,6 +97,14 @@
         {
             <div class="alert alert-success mt-3" role="status">@cnpjSnapshotMessage</div>
         }
+        @if (TempData["WmcManualExportError"] is string wmcError)
+        {
+            <div class="alert alert-warning mt-3" role="alert">@wmcError</div>
+        }
+        @if (TempData["WmcManualExportMessage"] is string wmcMessage)
+        {
+            <div class="alert alert-success mt-3" role="status">@wmcMessage</div>
+        }
         <div class="order-details-layout">
     <main class="order-details-primary" aria-label="Informações comerciais do pedido">
         <section class="order-detail-section order-commercial-facts" aria-label="Resumo comercial">
@@ -342,7 +350,7 @@
                 }
                 @if (wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Rejected && !wmcState.RequiresManualReview)
                 {
-                    <form asp-action="RegenerateWmcTxt" method="post" class="wmc-regeneration-form">
+                    <form asp-action="RegenerateWmcTxt" method="post" class="wmc-regeneration-form" data-wmc-submit-once>
                         <input type="hidden" name="id" value="@Model.Id" />
                         <label class="visually-hidden" for="wmc-regenerate-@Model.Id">Motivo da regeneração</label>
                         <input id="wmc-regenerate-@Model.Id" name="reason" class="form-control form-control-sm" maxlength="1000" required placeholder="Motivo da regeneração" />
@@ -353,15 +361,15 @@
                 {
                     @if (wmcState is null)
                     {
-                        <form asp-action="SendToWmc" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-sm btn-outline-warning" type="submit">Iniciar conferência do histórico</button></form>
+                        <form asp-action="SendToWmc" method="post" data-wmc-submit-once><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-sm btn-outline-warning" type="submit">Iniciar conferência do histórico</button></form>
                     }
                     else
                     {
-                        <form asp-action="ConfirmPriorWmcExport" method="post">
+                        <form asp-action="ConfirmPriorWmcExport" method="post" data-wmc-submit-once>
                             <input type="hidden" name="id" value="@Model.Id" /><input type="hidden" name="exported" value="true" />
                             <button class="btn btn-sm btn-outline-secondary" type="submit">Confirmar exportado</button>
                         </form>
-                        <form asp-action="ConfirmPriorWmcExport" method="post">
+                        <form asp-action="ConfirmPriorWmcExport" method="post" data-wmc-submit-once>
                             <input type="hidden" name="id" value="@Model.Id" /><input type="hidden" name="exported" value="false" />
                             <button class="btn btn-sm btn-outline-warning" type="submit">Confirmar que não chegou ao WMC</button>
                         </form>
@@ -369,7 +377,7 @@
                 }
                 else if (wmcCanManuallyExport)
                 {
-                    <form asp-action="SendToWmc" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-primary wmc-send-button" type="submit">Enviar ao WMC</button></form>
+                    <form asp-action="SendToWmc" method="post" data-wmc-submit-once><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-primary wmc-send-button" type="submit">Enviar ao WMC</button></form>
                 }
                 </div>
                 </section>
@@ -488,7 +496,7 @@
                         <h2 class="modal-title fs-5" id="reject-wmc-modal-title">Registrar rejei&ccedil;&atilde;o do TXT</h2>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    <form asp-action="RejectWmcTxt" method="post" class="wmc-rejection-modal-form">
+                    <form asp-action="RejectWmcTxt" method="post" class="wmc-rejection-modal-form" data-wmc-submit-once>
                         <input type="hidden" name="id" value="@Model.Id" />
                         <div class="modal-body">
                             <p id="reject-wmc-modal-message" class="wmc-import-confirm-lead">Informe o motivo da rejei&ccedil;&atilde;o. O registro ser&aacute; inclu&iacute;do na auditoria do pedido.</p>
@@ -519,7 +527,7 @@
                         <p id="confirm-wmc-import-modal-message" class="wmc-import-confirm-message">Esta confirmação registra o estado informado no Orofoods. Ela não envia nem importa o pedido novamente.</p>
                     </div>
                     <div class="modal-footer">
-                        <form asp-action="ConfirmWmcImported" method="post" data-wmc-confirmation-form>
+                        <form asp-action="ConfirmWmcImported" method="post" data-wmc-confirmation-form data-wmc-submit-once>
                             <input type="hidden" name="id" value="@Model.Id" />
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-success" data-wmc-confirmation-submit><span data-wmc-confirmation-label>Confirmar importação</span></button>
@@ -535,23 +543,21 @@
 @section Scripts {
     <script>
         (() => {
-            const form = document.querySelector("[data-wmc-confirmation-form]");
-            if (!form) return;
+            document.querySelectorAll("form[data-wmc-submit-once]").forEach(form => {
+                form.addEventListener("submit", event => {
+                    if (form.dataset.wmcSubmitting === "true") {
+                        event.preventDefault();
+                        return;
+                    }
 
-            form.addEventListener("submit", event => {
-                if (form.dataset.wmcSubmitting === "true") {
-                    event.preventDefault();
-                    return;
-                }
-
-                form.dataset.wmcSubmitting = "true";
-                const submitButton = form.querySelector("[data-wmc-confirmation-submit]");
-                if (!submitButton) return;
-
-                submitButton.disabled = true;
-                submitButton.setAttribute("aria-disabled", "true");
-                const label = submitButton.querySelector("[data-wmc-confirmation-label]");
-                if (label) label.textContent = "Confirmando...";
+                    form.dataset.wmcSubmitting = "true";
+                    form.querySelectorAll("button[type='submit'], input[type='submit']").forEach(button => {
+                        button.disabled = true;
+                        button.setAttribute("aria-disabled", "true");
+                    });
+                    const label = form.querySelector("[data-wmc-confirmation-label]");
+                    if (label) label.textContent = "Confirmando...";
+                });
             });
         })();
     </script>

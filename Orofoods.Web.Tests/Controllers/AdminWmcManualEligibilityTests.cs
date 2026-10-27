@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Tests.Infrastructure;
 using System.Security.Claims;
+using Moq;
 
 namespace Orofoods.Web.Tests.Controllers;
 
@@ -75,10 +77,13 @@ public sealed class AdminWmcManualEligibilityTests
                 ], "test"))
             }
         };
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Mock.Of<ITempDataProvider>());
 
         var result = await controller.ReprocessIntegration(order.Id);
 
-        Assert.IsType<FileContentResult>(result);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OrdersController.Details), redirect.ActionName);
+        Assert.Equal(order.Id, redirect.RouteValues!["id"]);
         Assert.Equal(WmcOrderExportStatus.Exported, (await db.WmcOrderExportStates.SingleAsync()).Status);
         Assert.Single(await db.WmcManualExportArtifacts.ToListAsync());
         Assert.Single(await db.WmcExportAudits.Where(audit => audit.Succeeded).ToListAsync());
