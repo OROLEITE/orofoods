@@ -130,6 +130,7 @@ public class IntegrationsController(
             ? []
             : await wmcCustomerImportService.GetSellerCodesAsync(cancellationToken);
         ViewBag.WmcCustomerPreview = null;
+        ViewBag.WmcCustomerRegularizationPreview = null;
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
         IReadOnlyList<WmcBrandRecord> brands = [];
@@ -189,6 +190,31 @@ public class IntegrationsController(
         }
 
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: lastProductSyncAt));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcCustomerRegularizationPreview(CancellationToken cancellationToken)
+    {
+        if (wmcCustomerImportService is null) return Problem("Importação manual de clientes WMC indisponível.");
+        ViewBag.WmcCustomerSellerCodes = await wmcCustomerImportService.GetSellerCodesAsync(cancellationToken);
+        ViewBag.WmcCustomerPreview = null;
+        ViewBag.WmcCustomerRegularizationPreview = await wmcCustomerImportService.PreviewPendingAsync(cancellationToken);
+        SetWmcViewState();
+        return View(nameof(Wmc), new WmcPreviewPageModel([], [], null, []));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcCustomerRegularization(bool confirm, CancellationToken cancellationToken)
+    {
+        if (wmcCustomerImportService is null) return Problem("Importação manual de clientes WMC indisponível.");
+        var result = await wmcSyncCoordinator.RunExclusivelyAsync(
+            () => wmcCustomerImportService.RegularizePendingAsync(confirm, cancellationToken), cancellationToken);
+        TempData["WmcCustomerImportMessage"] = result is null
+            ? "Já existe uma sincronização WMC em andamento."
+            : result.ErrorMessage ?? $"Regularização concluída: {result.Updated} cliente(s) liberado(s).";
+        return RedirectToAction(nameof(Wmc));
     }
 
     [HttpPost]

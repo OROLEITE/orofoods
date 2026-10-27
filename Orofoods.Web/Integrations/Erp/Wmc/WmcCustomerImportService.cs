@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Integrations;
@@ -40,12 +41,27 @@ public sealed record WmcCustomerImportResult(
     int Conflicts,
     string? ErrorMessage = null);
 
+public sealed record WmcCustomerRegularizationRow(string WmcCode, string SellerCode, bool Eligible, string? Reason = null);
+
+public sealed record WmcCustomerRegularizationPreview(
+    int PendingCustomers,
+    int EligibleCustomers,
+    int BlockedCustomers,
+    IReadOnlyList<WmcCustomerRegularizationRow> Rows,
+    string? ErrorMessage = null);
+
+public sealed record WmcCustomerRegularizationResult(int Updated, int Blocked, string? ErrorMessage = null);
+
 public sealed class WmcCustomerImportService(
     ApplicationDbContext db,
     IWmcCustomerReader customerReader,
     ILogger<WmcCustomerImportService> logger,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IOptions<WmcCustomerImportOptions>? importOptions = null)
 {
+    private readonly WmcCustomerImportOptions options = importOptions?.Value ?? new();
+    private readonly bool readinessConfigured = importOptions is not null;
+
     public async Task<IReadOnlyList<string>> GetSellerCodesAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -75,6 +91,7 @@ public sealed class WmcCustomerImportService(
             var rows = await customerReader.GetBySellerAsync(sellerCode, cancellationToken);
             var candidates = rows.Where(IsEligibleStatusAndRestriction).ToList();
             var customers = await db.Customers.AsNoTracking().ToListAsync(cancellationToken);
+            var readiness = await ResolveCommercialReadinessAsync(sellerCode, cancellationToken);
             var byCode = customers
                 .Where(customer => !string.IsNullOrWhiteSpace(customer.WmcCode))
                 .GroupBy(customer => NormalizeCode(customer.WmcCode!), StringComparer.OrdinalIgnoreCase)
@@ -97,9 +114,36 @@ public sealed class WmcCustomerImportService(
                 .ToHashSet(StringComparer.Ordinal);
 
             var previewRows = rows
-                .Select(row => candidates.Contains(row)
-                    ? Classify(row, byCode, byCnpj, duplicateCodes, duplicateCnpjs)
-                    : ClassifyExcluded(row))
+                .Select(row =>
+                {
+                    if (!IsEligibleStatusAndRestriction(row))
+                        return ClassifyExcluded(row);
+
+                    var disposition = Classify(row, byCode, byCnpj, duplicateCodes, duplicateCnpjs);
+                    if (!readiness.IsReady)
+                    {
+                        return disposition with
+                        {
+                            Disposition = WmcCustomerImportDisposition.Conflict,
+                            Reason = readiness.Reason
+                        };
+                    }
+
+                    var existing = byCode.GetValueOrDefault(NormalizeCode(row.CodCliente))?.SingleOrDefault()
+                        ?? byCnpj.GetValueOrDefault(NormalizeCnpj(row.Cnpj))?.SingleOrDefault();
+                    if (existing is not null && existing.Status == CustomerStatus.Pending
+                        && existing.SalesRepresentativeId is int existingSellerId
+                        && existingSellerId != readiness.SellerId)
+                    {
+                        return disposition with
+                        {
+                            Disposition = WmcCustomerImportDisposition.Conflict,
+                            Reason = "Cliente pendente já possui outro vendedor comercial configurado."
+                        };
+                    }
+
+                    return disposition;
+                })
                 .ToList();
 
             return new WmcCustomerImportPreview(
@@ -142,6 +186,10 @@ public sealed class WmcCustomerImportService(
             return new(preview.RecordsRead, 0, 0, preview.Ignored, preview.Conflicts, "A importação foi bloqueada por conflitos cadastrais.");
         }
 
+        var readiness = await ResolveCommercialReadinessAsync(preview.SellerCode, cancellationToken);
+        if (!readiness.IsReady)
+            return new(preview.RecordsRead, 0, 0, preview.Ignored, preview.Conflicts + preview.Rows.Count, readiness.Reason);
+
         var sourceRows = await customerReader.GetBySellerAsync(preview.SellerCode, cancellationToken);
         var customers = await db.Customers.ToListAsync(cancellationToken);
         var byCode = customers.Where(customer => !string.IsNullOrWhiteSpace(customer.WmcCode))
@@ -165,8 +213,11 @@ public sealed class WmcCustomerImportService(
                     LegalName = row.Nome.Trim(),
                     TradeName = row.Fantasia.Trim(),
                     Cnpj = cnpj,
-                    Status = CustomerStatus.Pending,
-                    IsActive = false
+                    Status = CustomerStatus.Approved,
+                    IsActive = true,
+                    ApprovedAt = timeProvider.GetUtcNow().UtcDateTime,
+                    SalesRepresentativeId = readiness.SellerId == 0 ? null : readiness.SellerId,
+                    PriceTableId = readiness.PriceTableId == 0 ? null : readiness.PriceTableId
                 };
                 db.Customers.Add(customer);
                 byCode[code] = customer;
@@ -191,6 +242,23 @@ public sealed class WmcCustomerImportService(
                 existing.WmcCode = code;
                 changed = true;
             }
+            if (existing.Status == CustomerStatus.Pending)
+            {
+                if (existing.SalesRepresentativeId is null && readiness.SellerId > 0)
+                {
+                    existing.SalesRepresentativeId = readiness.SellerId;
+                    changed = true;
+                }
+                if (existing.PriceTableId is null && readiness.PriceTableId > 0)
+                {
+                    existing.PriceTableId = readiness.PriceTableId;
+                    changed = true;
+                }
+                existing.Status = CustomerStatus.Approved;
+                existing.IsActive = true;
+                existing.ApprovedAt ??= timeProvider.GetUtcNow().UtcDateTime;
+                changed = true;
+            }
             if (changed) updated++; else ignored++;
         }
 
@@ -199,6 +267,67 @@ public sealed class WmcCustomerImportService(
         run.CustomersRead = preview.RecordsRead;
         await db.SaveChangesAsync(cancellationToken);
         return new(preview.RecordsRead, created, updated, ignored, 0);
+    }
+
+    public async Task<WmcCustomerRegularizationPreview> PreviewPendingAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var pending = await db.Customers.AsNoTracking()
+                .Where(customer => customer.Status == CustomerStatus.Pending && customer.WmcCode != null)
+                .ToListAsync(cancellationToken);
+            var sourceRows = await customerReader.GetAllAsync(cancellationToken);
+            var rows = new List<WmcCustomerRegularizationRow>();
+            foreach (var customer in pending)
+            {
+                var source = sourceRows.FirstOrDefault(row => string.Equals(NormalizeCode(row.CodCliente), NormalizeCode(customer.WmcCode), StringComparison.OrdinalIgnoreCase));
+                if (source is null)
+                {
+                    rows.Add(new(customer.WmcCode!, "", false, "Cliente não localizado no espelho WMC."));
+                    continue;
+                }
+                if (!IsEligible(source))
+                {
+                    rows.Add(new(customer.WmcCode!, NormalizeCode(source.CodVendedor), false, "Cliente não atende SITUACAO='A', RESTRICAO='F' e CNPJ válido."));
+                    continue;
+                }
+                var readiness = await ResolveCommercialReadinessAsync(NormalizeCode(source.CodVendedor), cancellationToken);
+                rows.Add(new(customer.WmcCode!, NormalizeCode(source.CodVendedor), readiness.IsReady, readiness.Reason));
+            }
+            return new(pending.Count, rows.Count(row => row.Eligible), rows.Count(row => !row.Eligible), rows);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Falha ao gerar prévia de regularização de clientes WMC pendentes.");
+            return new(0, 0, 0, [], "Não foi possível gerar a prévia de regularização.");
+        }
+    }
+
+    public async Task<WmcCustomerRegularizationResult> RegularizePendingAsync(bool confirm, CancellationToken cancellationToken = default)
+    {
+        if (!confirm)
+            return new(0, 0, "Confirme explicitamente a regularização após revisar a prévia.");
+        var preview = await PreviewPendingAsync(cancellationToken);
+        if (preview.ErrorMessage is not null || preview.BlockedCustomers > 0)
+            return new(0, preview.BlockedCustomers, preview.ErrorMessage ?? "A regularização foi bloqueada para os clientes sem vendedor ou tabela válidos.");
+
+        var sourceRows = await customerReader.GetAllAsync(cancellationToken);
+        var pending = await db.Customers.Where(customer => customer.Status == CustomerStatus.Pending && customer.WmcCode != null).ToListAsync(cancellationToken);
+        var updated = 0;
+        foreach (var customer in pending)
+        {
+            var source = sourceRows.First(row => string.Equals(NormalizeCode(row.CodCliente), NormalizeCode(customer.WmcCode), StringComparison.OrdinalIgnoreCase));
+            var readiness = await ResolveCommercialReadinessAsync(NormalizeCode(source.CodVendedor), cancellationToken);
+            if (!readiness.IsReady || !IsEligible(source)) continue;
+            if (customer.SalesRepresentativeId is null) customer.SalesRepresentativeId = readiness.SellerId;
+            if (customer.PriceTableId is null) customer.PriceTableId = readiness.PriceTableId;
+            customer.Status = CustomerStatus.Approved;
+            customer.IsActive = true;
+            customer.ApprovedAt ??= timeProvider.GetUtcNow().UtcDateTime;
+            updated++;
+        }
+        await db.SaveChangesAsync(cancellationToken);
+        return new(updated, 0);
     }
 
     private static WmcCustomerImportPreviewRow Classify(
@@ -242,6 +371,39 @@ public sealed class WmcCustomerImportService(
                     : WmcCustomerImportDisposition.Update);
         }
         return new(row.CodCliente, row.Nome, row.Fantasia, row.Cnpj, WmcCustomerImportDisposition.Create);
+    }
+
+    private async Task<CommercialReadiness> ResolveCommercialReadinessAsync(string sellerCode, CancellationToken cancellationToken)
+    {
+        if (!readinessConfigured)
+            return new(true, null);
+
+        var sellers = await db.SalesRepresentatives.AsNoTracking()
+            .Where(item => item.WmcCode != null)
+            .ToListAsync(cancellationToken);
+        var matches = sellers.Where(item => string.Equals(NormalizeCode(item.WmcCode), sellerCode, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (matches.Count != 1)
+            return CommercialReadiness.Blocked("Vendedor WMC não configurado ou ambíguo para este código.");
+        if (!matches[0].IsActive)
+            return CommercialReadiness.Blocked("O vendedor WMC configurado está inativo.");
+
+        if (string.IsNullOrWhiteSpace(options.PriceTableName))
+            return CommercialReadiness.Blocked("A identificação da TABELA BIMBO não está configurada neste ambiente.");
+
+        var tables = await db.PriceTables.AsNoTracking().ToListAsync(cancellationToken);
+        var tableMatches = tables.Where(item => string.Equals(NormalizeTableName(item.Name), NormalizeTableName(options.PriceTableName), StringComparison.Ordinal)).ToList();
+        if (tableMatches.Count != 1)
+            return CommercialReadiness.Blocked("A TABELA BIMBO não existe ou está ambígua neste ambiente.");
+        if (!tableMatches[0].IsActive)
+            return CommercialReadiness.Blocked("A TABELA BIMBO configurada está inativa.");
+        return new(true, null, matches[0].Id, tableMatches[0].Id);
+    }
+
+    private static string NormalizeTableName(string value) => string.Join(' ', value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
+
+    private sealed record CommercialReadiness(bool IsReady, string? Reason, int SellerId = 0, int PriceTableId = 0)
+    {
+        public static CommercialReadiness Blocked(string reason) => new(false, reason);
     }
 
     private static bool IsEligible(WmcCustomerRecord row) =>
