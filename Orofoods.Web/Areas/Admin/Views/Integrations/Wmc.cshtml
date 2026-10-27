@@ -5,6 +5,8 @@
     ViewData["Title"] = "Importa\u00e7\u00e3o WMC";
     var isRunning = (bool)ViewBag.IsRunning;
     var lastRun = ViewBag.LastRun as WmcSyncRunResult;
+    var sellerCodes = ViewBag.WmcCustomerSellerCodes as IReadOnlyList<string> ?? [];
+    var customerPreview = ViewBag.WmcCustomerPreview as WmcCustomerImportPreview;
 }
 
 <section class="section admin-wmc-page">
@@ -32,6 +34,72 @@
         {
             <div class="alert alert-info mt-4" role="alert">@message</div>
         }
+        @if (TempData["WmcCustomerImportMessage"] is string customerMessage)
+        {
+            <div class="alert alert-success mt-4" role="status">@customerMessage</div>
+        }
+        @if (TempData["WmcCustomerImportError"] is string customerError)
+        {
+            <div class="alert alert-warning mt-4" role="alert">@customerError</div>
+        }
+
+        <section class="mt-4" aria-labelledby="wmc-customer-import-title">
+            <h2 id="wmc-customer-import-title">Importação manual de clientes</h2>
+            <p>Informe o código do vendedor WMC. Somente clientes com situação <code>A</code> e restrição <code>F</code> serão considerados.</p>
+            <form method="post" asp-action="WmcCustomerPreview" class="row g-3 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-8">
+                    <label class="form-label" for="wmcSellerCode">CODVENDEDOR</label>
+                    <input class="form-control" id="wmcSellerCode" name="sellerCode" list="wmcSellerCodes" required maxlength="30" />
+                    <datalist id="wmcSellerCodes">
+                        @foreach (var sellerCode in sellerCodes)
+                        {
+                            <option value="@sellerCode"></option>
+                        }
+                    </datalist>
+                </div>
+                <div class="col-md-4"><button type="submit" class="btn admin-primary-action">Gerar prévia</button></div>
+            </form>
+
+            @if (customerPreview is not null)
+            {
+                @if (customerPreview.ErrorMessage is not null)
+                {
+                    <div class="alert alert-warning mt-3" role="alert">@customerPreview.ErrorMessage</div>
+                }
+                <dl class="row mt-3">
+                    <dt class="col-sm-3">Vendedor WMC</dt><dd class="col-sm-9">@customerPreview.SellerCode</dd>
+                    <dt class="col-sm-3">Clientes consultados</dt><dd class="col-sm-9">@customerPreview.RecordsRead</dd>
+                    <dt class="col-sm-3">Novos</dt><dd class="col-sm-9">@customerPreview.NewCustomers</dd>
+                    <dt class="col-sm-3">Existentes</dt><dd class="col-sm-9">@customerPreview.ExistingCustomers</dd>
+                    <dt class="col-sm-3">Ignorados</dt><dd class="col-sm-9">@customerPreview.Ignored</dd>
+                    <dt class="col-sm-3">Conflitos</dt><dd class="col-sm-9">@customerPreview.Conflicts</dd>
+                </dl>
+                @if (customerPreview.Rows.Count > 0)
+                {
+                    <div class="table-responsive mt-3">
+                        <table class="table align-middle">
+                            <thead><tr><th>Código WMC</th><th>Razão social</th><th>Fantasia</th><th>CNPJ</th><th>Situação</th></tr></thead>
+                            <tbody>
+                            @foreach (var row in customerPreview.Rows)
+                            {
+                                <tr><td>@row.WmcCode</td><td>@row.LegalName</td><td>@row.TradeName</td><td>@row.Cnpj</td><td>@row.Disposition @row.Reason</td></tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                @if (customerPreview.Conflicts == 0 && customerPreview.NewCustomers + customerPreview.ExistingCustomers > 0)
+                {
+                    <form method="post" asp-action="WmcCustomerImport" class="mt-3" data-wmc-customer-confirmation>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="sellerCode" value="@customerPreview.SellerCode" />
+                        <input type="hidden" name="confirm" value="true" />
+                        <button type="submit" class="btn admin-primary-action">Confirmar importação</button>
+                    </form>
+                }
+            }
+        </section>
 
         @if (lastRun is not null)
         {
@@ -359,6 +427,7 @@
             </section>
 
         </section>
+        <p class="text-muted mt-4">A sincronização automática/global de clientes está desativada. As demais integrações permanecem separadas.</p>
     </div>
 </section>
 

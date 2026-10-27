@@ -280,24 +280,23 @@ public class WmcSyncServiceTests
     }
 
     [Fact]
-    public async Task Failed_stage_is_persisted_without_marking_initial_load_ready()
+    public async Task Automatic_sync_does_not_import_customers_globally()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var service = CreateService(db, customerReader: new FailingCustomerReader());
 
         var result = await service.SyncAllAsync();
 
-        Assert.Equal("Failed", result.Status);
+        Assert.Equal("Succeeded", result.Status);
         var run = Assert.Single(db.WmcSyncRuns);
-        Assert.Equal("Customers", run.FailedStage);
-        Assert.Equal("Failed", run.Status);
-        Assert.DoesNotContain(db.Products, product => product.WmcInitialLoadReady);
+        Assert.Null(run.FailedStage);
+        Assert.Equal("Succeeded", run.Status);
     }
     [Fact]
     public async Task New_customer_is_created_pending_with_a_placeholder_cnpj()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var service = CreateService(db, customers: [new WmcCustomerRecord("C001", "Padaria Teste")]);
+        var service = CreateService(db, customers: [new WmcCustomerRecord("C001", "Padaria Teste", "Padaria Teste", "04.252.011/0001-10", "V1", "A", "F")]);
 
         var result = await service.SyncCustomersAsync();
 
@@ -317,7 +316,7 @@ public class WmcSyncServiceTests
         await using var db = await TestDbContextFactory.CreateAsync();
         db.Customers.Add(new Customer { WmcCode = "C002", LegalName = "Old", TradeName = "Old", Cnpj = "11.111.111/0001-11", Status = CustomerStatus.Approved });
         await db.SaveChangesAsync();
-        var service = CreateService(db, customers: [new WmcCustomerRecord("C002", "Nome Novo")]);
+        var service = CreateService(db, customers: [new WmcCustomerRecord("C002", "Nome Novo", "Nome Novo", "04.252.011/0001-10", "V1", "A", "F")]);
 
         var first = await service.SyncCustomersAsync();
         var second = await service.SyncCustomersAsync();
@@ -565,11 +564,21 @@ public class WmcSyncServiceTests
     private sealed class FakeCustomerReader(IReadOnlyList<WmcCustomerRecord> rows) : IWmcCustomerReader
     {
         public Task<IReadOnlyList<WmcCustomerRecord>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult(rows);
+
+        public Task<IReadOnlyList<WmcCustomerRecord>> GetBySellerAsync(string sellerCode, CancellationToken cancellationToken = default) => Task.FromResult(rows.Where(row => row.CodVendedor == sellerCode).ToList() as IReadOnlyList<WmcCustomerRecord>);
+
+        public Task<IReadOnlyList<string>> GetSellerCodesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<string>>(rows.Select(row => row.CodVendedor).Distinct().ToList());
     }
 
     private sealed class FailingCustomerReader : IWmcCustomerReader
     {
         public Task<IReadOnlyList<WmcCustomerRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Firebird mirror indisponivel.");
+
+        public Task<IReadOnlyList<WmcCustomerRecord>> GetBySellerAsync(string sellerCode, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Firebird mirror indisponivel.");
+
+        public Task<IReadOnlyList<string>> GetSellerCodesAsync(CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Firebird mirror indisponivel.");
     }
 

@@ -29,7 +29,8 @@ public class IntegrationsController(
     WmcInitialLoadReadinessReleaseService initialLoadReadinessReleaseService,
     IOptions<WmcInitialLoadReleaseOptions> initialLoadReleaseOptions,
     WmcExportAuditService? wmcExportAuditService = null,
-    WmcJsonOrderErpIntegration? wmcJsonOrderErpIntegration = null) : Controller
+    WmcJsonOrderErpIntegration? wmcJsonOrderErpIntegration = null,
+    WmcCustomerImportService? wmcCustomerImportService = null) : Controller
 {
 
     public async Task<IActionResult> Index(string? q, IntegrationStatus? status, string? wmcStatus)
@@ -125,6 +126,10 @@ public class IntegrationsController(
 
     public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {
+        ViewBag.WmcCustomerSellerCodes = wmcCustomerImportService is null
+            ? []
+            : await wmcCustomerImportService.GetSellerCodesAsync(cancellationToken);
+        ViewBag.WmcCustomerPreview = null;
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
         IReadOnlyList<WmcBrandRecord> brands = [];
@@ -151,6 +156,18 @@ public class IntegrationsController(
         SetWmcViewState();
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcCustomerPreview(string sellerCode, CancellationToken cancellationToken)
+    {
+        if (wmcCustomerImportService is null) return Problem("Importação manual de clientes WMC indisponível.");
+        ViewBag.WmcCustomerSellerCodes = await wmcCustomerImportService.GetSellerCodesAsync(cancellationToken);
+        ViewBag.WmcCustomerPreview = await wmcCustomerImportService.PreviewAsync(sellerCode, cancellationToken);
+        ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
+        ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        return View(nameof(Wmc));
     }
 
     [HttpPost]
@@ -329,6 +346,30 @@ public class IntegrationsController(
         _ => "A importação foi recusada após a validação. Revise os dados e tente novamente."
     };
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WmcCustomerImport(string sellerCode, bool confirm, CancellationToken cancellationToken)
+    {
+        if (wmcCustomerImportService is null) return Problem("Importação manual de clientes WMC indisponível.");
+        if (!confirm)
+        {
+            TempData["WmcCustomerImportError"] = "Confirme explicitamente a importação após revisar a prévia.";
+            return RedirectToAction(nameof(Wmc));
+        }
+
+        var result = await wmcSyncCoordinator.RunExclusivelyAsync(
+            () => wmcCustomerImportService.ImportAsync(sellerCode, cancellationToken),
+            cancellationToken);
+        if (result is null)
+        {
+            TempData["WmcCustomerImportError"] = "Já existe uma sincronização WMC em andamento.";
+            return RedirectToAction(nameof(Wmc));
+        }
+        TempData["WmcCustomerImportMessage"] = result.ErrorMessage is null
+            ? $"Importação concluída: {result.Created} criado(s), {result.Updated} atualizado(s), {result.Ignored} ignorado(s), {result.Conflicts} conflito(s)."
+            : result.ErrorMessage;
+        return RedirectToAction(nameof(Wmc));
+    }
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WmcSyncNow(CancellationToken cancellationToken)
