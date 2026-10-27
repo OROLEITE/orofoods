@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Services.Pricing;
@@ -26,8 +28,11 @@ public sealed class SalesRepresentativesControllerTests
         }, CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
-        var saved = Assert.Single(db.SalesRepresentatives);
+        Assert.Equal("Vendedor salvo com sucesso.", controller.TempData["SalesRepresentativeMessage"]);
+        db.ChangeTracker.Clear();
+        var saved = Assert.Single(db.SalesRepresentatives.AsNoTracking());
         Assert.Equal("28", saved.WmcCode);
+        Assert.True(saved.IsActive);
     }
 
     [Fact]
@@ -64,7 +69,15 @@ public sealed class SalesRepresentativesControllerTests
     {
         return new SalesRepresentativesController(db, new AdminCommercialService(db))
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+            TempData = new TempDataDictionary(new DefaultHttpContext(), new EmptyTempDataProvider())
         };
+    }
+
+    private sealed class EmptyTempDataProvider : ITempDataProvider
+    {
+        public IDictionary<string, object?> LoadTempData(HttpContext context) => new Dictionary<string, object?>();
+
+        public void SaveTempData(HttpContext context, IDictionary<string, object?> values) { }
     }
 }

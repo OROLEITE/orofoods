@@ -50,6 +50,7 @@ public class SalesRepresentativesController(ApplicationDbContext db, AdminCommer
             return View(input);
         }
 
+        TempData["SalesRepresentativeMessage"] = "Vendedor salvo com sucesso.";
         return RedirectToAction(nameof(Index));
     }
     [HttpPost, ValidateAntiForgeryToken]
