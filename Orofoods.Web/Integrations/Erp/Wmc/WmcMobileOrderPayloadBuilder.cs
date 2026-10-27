@@ -44,6 +44,7 @@ public sealed class WmcMobileOrderPayloadBuilder
             {
                 throw new WmcOrderMappingException($"O código WMC real do produto '{item.ProductNameSnapshot}' não está configurado.");
             }
+            _ = WmcOrderUnitResolver.Resolve(item);
         }
 
         var rows = new List<Dictionary<string, object>> { BuildHeader(order, wmcTransmissionId, customerCode.Trim(), representativeCode) };
@@ -102,18 +103,11 @@ public sealed class WmcMobileOrderPayloadBuilder
             ["preco"] = item.UnitPrice,
             ["valtotal"] = item.Subtotal,
             ["preco_s_desc"] = item.UnitPrice,
-            ["un"] = GetJsonUnit(item.Product.Unit),
-            ["undig"] = GetJsonUnit(item.Product.Unit)
+            ["un"] = WmcOrderUnitResolver.Resolve(item),
+            ["undig"] = WmcOrderUnitResolver.Resolve(item)
         };
     }
 
-    private static string GetJsonUnit(string unit)
-    {
-        return string.Equals(unit.Trim(), "PC", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(unit.Trim(), "PCT", StringComparison.OrdinalIgnoreCase)
-            ? "UN"
-            : unit;
-    }
 }
 
 public sealed class WmcOrderMappingException(string message) : Exception(message);

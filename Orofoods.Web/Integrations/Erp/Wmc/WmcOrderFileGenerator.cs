@@ -66,9 +66,8 @@ public sealed class WmcOrderFileGenerator
 
         foreach (var item in order.Items)
         {
-            if (string.Equals(item.SalesUnitCodeSnapshot, "PCT", StringComparison.OrdinalIgnoreCase)
-                || (item.SalesUnitCodeSnapshot is null
-                    && string.Equals(item.Product?.CommercialUnitCode, "PCT", StringComparison.OrdinalIgnoreCase)))
+            if (WmcOrderUnitResolver.IsPackageItem(item)
+                && !WmcOrderUnitResolver.HasConfirmedPackageUnit(item.Product))
             {
                 errors.Add("WMC_PACKAGE_UNIT_CODE_UNCONFIRMED");
             }
@@ -175,7 +174,7 @@ public sealed class WmcOrderFileGenerator
     private static string BuildItemRecord(OrderItem item, int sequence)
     {
         var product = item.Product!;
-        var unit = FixedRight(product.Unit.Trim().ToUpperInvariant(), 3);
+        var unit = FixedRight(WmcOrderUnitResolver.Resolve(item), 3);
         var payload = new StringBuilder("04");
         payload.Append(sequence.ToString("D4", CultureInfo.InvariantCulture));
         payload.Append("00000");
