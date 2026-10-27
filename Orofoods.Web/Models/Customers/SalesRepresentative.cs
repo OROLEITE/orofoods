@@ -9,6 +9,7 @@ public class SalesRepresentative
     [MaxLength(160)] public string Email { get; set; } = "";
     [MaxLength(30)] public string Phone { get; set; } = "";
     [MaxLength(120)] public string Region { get; set; } = "";
+    [MaxLength(30)] public string? WmcCode { get; set; }
     public bool IsActive { get; set; } = true;
     public List<Customer> Customers { get; set; } = [];
     public List<ApplicationUser> Users { get; set; } = [];

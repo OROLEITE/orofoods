@@ -7,6 +7,7 @@
     var lastRun = ViewBag.LastRun as WmcSyncRunResult;
     var sellerCodes = ViewBag.WmcCustomerSellerCodes as IReadOnlyList<string> ?? [];
     var customerPreview = ViewBag.WmcCustomerPreview as WmcCustomerImportPreview;
+    var regularizationPreview = ViewBag.WmcCustomerRegularizationPreview as WmcCustomerRegularizationPreview;
 }
 
 <section class="section admin-wmc-page">
@@ -121,6 +122,40 @@
                         <input type="hidden" name="confirm" value="true" />
                         <button type="submit" class="btn admin-primary-action">Confirmar importação</button>
                     </form>
+                }
+            }
+        </section>
+
+        <section class="mt-4" aria-labelledby="wmc-customer-regularization-title">
+            <h2 id="wmc-customer-regularization-title">Regularização manual de clientes pendentes</h2>
+            <p>Revise os clientes WMC já importados que ainda estão pendentes antes de liberá-los.</p>
+            <form method="post" asp-action="WmcCustomerRegularizationPreview">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn admin-secondary-action">Gerar prévia de regularização</button>
+            </form>
+            @if (regularizationPreview is not null)
+            {
+                <dl class="row mt-3">
+                    <dt class="col-sm-3">Pendentes</dt><dd class="col-sm-9">@regularizationPreview.PendingCustomers</dd>
+                    <dt class="col-sm-3">Elegíveis</dt><dd class="col-sm-9">@regularizationPreview.EligibleCustomers</dd>
+                    <dt class="col-sm-3">Bloqueados</dt><dd class="col-sm-9">@regularizationPreview.BlockedCustomers</dd>
+                </dl>
+                @if (regularizationPreview.BlockedCustomers == 0 && regularizationPreview.EligibleCustomers > 0)
+                {
+                    <form method="post" asp-action="WmcCustomerRegularization" class="mt-3" data-wmc-customer-confirmation>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="confirm" value="true" />
+                        <button type="submit" class="btn admin-primary-action">Confirmar regularização</button>
+                    </form>
+                }
+                @if (regularizationPreview.Rows.Any(row => !row.Eligible))
+                {
+                    <ul class="mt-3">
+                    @foreach (var row in regularizationPreview.Rows.Where(row => !row.Eligible))
+                    {
+                        <li><strong>@row.WmcCode</strong>: @row.Reason</li>
+                    }
+                    </ul>
                 }
             }
         </section>

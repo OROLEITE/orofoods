@@ -333,6 +333,7 @@ builder.Services.AddScoped<IErpOrderIntegration>(services => services.GetRequire
 builder.Services.AddHostedService<ErpRetryBackgroundService>();
 builder.Services.AddHostedService<WmcJsonOrderHomologationBackgroundService>();
 builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
+builder.Services.Configure<WmcCustomerImportOptions>(builder.Configuration.GetSection(WmcCustomerImportOptions.SectionName));
 builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
 builder.Services.Configure<WmcPriceImportOptions>(builder.Configuration.GetSection(WmcPriceImportOptions.SectionName));
 builder.Services.Configure<WmcInitialLoadReleaseOptions>(builder.Configuration.GetSection(WmcInitialLoadReleaseOptions.SectionName));

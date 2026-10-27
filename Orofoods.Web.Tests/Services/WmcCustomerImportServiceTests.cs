@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Tests.Infrastructure;
+using Microsoft.Extensions.Options;
 
 namespace Orofoods.Web.Tests.Services;
 
@@ -70,7 +72,7 @@ public sealed class WmcCustomerImportServiceTests
     }
 
     [Fact]
-    public async Task Import_is_idempotent_and_new_customer_stays_pending_and_unavailable()
+    public async Task Import_is_idempotent_and_new_customer_is_approved()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var service = CreateService(db, new FakeCustomerReader([
@@ -83,9 +85,85 @@ public sealed class WmcCustomerImportServiceTests
         Assert.Equal(1, first.Created);
         Assert.Equal(1, second.Ignored);
         var customer = Assert.Single(db.Customers);
-        Assert.Equal(CustomerStatus.Pending, customer.Status);
-        Assert.False(customer.IsActive);
+        Assert.Equal(CustomerStatus.Approved, customer.Status);
+        Assert.True(customer.IsActive);
         Assert.DoesNotContain("WMC-", customer.Cnpj);
+    }
+
+    [Fact]
+    public async Task Preview_blocks_when_wmc_seller_is_not_configured()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, new FakeCustomerReader([Row("C100", "A", "F", "04.252.011/0001-10", "V100")]), "Tabela BIMBO");
+
+        var preview = await service.PreviewAsync("V100");
+
+        Assert.Contains(preview.Rows, row => row.Reason!.Contains("vendedor", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1, preview.Conflicts);
+    }
+
+    [Fact]
+    public async Task Import_approves_new_customer_and_assigns_wmc_seller_and_bimbo_table()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new SalesRepresentative { Name = "Vendedor", WmcCode = "V100", IsActive = true };
+        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela BIMBO", IsActive = true };
+        db.AddRange(seller, table);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeCustomerReader([Row("C101", "A", "F", "04.252.011/0001-10", "V100")]), "Tabela BIMBO");
+
+        var result = await service.ImportAsync("V100");
+
+        Assert.Equal(1, result.Created);
+        var customer = Assert.Single(db.Customers);
+        Assert.Equal(CustomerStatus.Approved, customer.Status);
+        Assert.True(customer.IsActive);
+        Assert.NotNull(customer.ApprovedAt);
+        Assert.Equal(seller.Id, customer.SalesRepresentativeId);
+        Assert.Equal(table.Id, customer.PriceTableId);
+    }
+
+    [Fact]
+    public async Task Reimport_regularizes_pending_customer_without_overwriting_valid_commercial_data()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new SalesRepresentative { Name = "Vendedor", WmcCode = "V100", IsActive = true };
+        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela BIMBO", IsActive = true };
+        var existingTable = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela Existente", IsActive = true };
+        var customer = new Customer { WmcCode = "C102", LegalName = "Antiga", TradeName = "Antiga", Cnpj = "04.252.011/0001-10", Status = CustomerStatus.Pending, IsActive = false, PriceTable = existingTable };
+        db.AddRange(seller, table, existingTable, customer);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeCustomerReader([Row("C102", "A", "F", "04.252.011/0001-10", "V100", "Nova", "Nova")]), "Tabela BIMBO");
+
+        var result = await service.ImportAsync("V100");
+
+        Assert.Equal(1, result.Updated);
+        var updated = await db.Customers.SingleAsync();
+        Assert.Equal(CustomerStatus.Approved, updated.Status);
+        Assert.True(updated.IsActive);
+        Assert.Equal(existingTable.Id, updated.PriceTableId);
+        Assert.Equal(seller.Id, updated.SalesRepresentativeId);
+    }
+
+    [Fact]
+    public async Task Regularization_requires_confirmation_and_only_releases_pending_customers()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new SalesRepresentative { Name = "Vendedor", WmcCode = "V100", IsActive = true };
+        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela BIMBO", IsActive = true };
+        var customer = new Customer { WmcCode = "C103", LegalName = "Pendente", TradeName = "Pendente", Cnpj = "04.252.011/0001-10", Status = CustomerStatus.Pending, IsActive = false };
+        db.AddRange(seller, table, customer);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeCustomerReader([Row("C103", "A", "F", "04.252.011/0001-10", "V100")]), "Tabela BIMBO");
+
+        var preview = await service.PreviewPendingAsync();
+        var refused = await service.RegularizePendingAsync(false);
+        var result = await service.RegularizePendingAsync(true);
+
+        Assert.Equal(1, preview.EligibleCustomers);
+        Assert.Contains("Confirme", refused.ErrorMessage);
+        Assert.Equal(1, result.Updated);
+        Assert.Equal(CustomerStatus.Approved, (await db.Customers.SingleAsync()).Status);
     }
 
     [Fact]
@@ -159,8 +237,9 @@ public sealed class WmcCustomerImportServiceTests
         Assert.Empty(preview.Rows);
     }
 
-    private static WmcCustomerImportService CreateService(ApplicationDbContext db, IWmcCustomerReader reader) =>
-        new(db, reader, NullLogger<WmcCustomerImportService>.Instance, TimeProvider.System);
+    private static WmcCustomerImportService CreateService(ApplicationDbContext db, IWmcCustomerReader reader, string? priceTableName = null) =>
+        new(db, reader, NullLogger<WmcCustomerImportService>.Instance, TimeProvider.System,
+            priceTableName is null ? null : Options.Create(new WmcCustomerImportOptions { PriceTableName = priceTableName }));
 
     private static WmcCustomerRecord Row(string code, string situation, string restriction, string cnpj, string seller, string? legalName = null, string? tradeName = null) =>
         new(code, legalName ?? $"Razao {code}", tradeName ?? $"Fantasia {code}", cnpj, seller, situation, restriction);
