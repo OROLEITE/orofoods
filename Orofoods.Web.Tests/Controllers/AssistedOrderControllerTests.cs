@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using System.Reflection;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -45,17 +48,112 @@ public class AssistedOrderControllerTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var seller = new SalesRepresentative { Name = "Seller", IsActive = true };
         var customer = CreateCustomer("Owned", seller);
+        var priceTable = new PriceTable { Name = "Tabela autorizada" };
+        customer.PriceTable = priceTable;
         var term = new PaymentTerm { Code = "PIX", Name = "PIX", IsActive = true };
+        var product = new Product
+        {
+            Sku = "SKU-ENTRY", WmcCode = "WMC-ENTRY", Name = "Produto para pedido", Brand = "Marca",
+            Unit = "CX", BasePrice = 27.50m, IsActive = true, IsAvailable = true,
+            ProductCategory = new ProductCategory { Name = "Categoria", Slug = "categoria" }
+        };
         var user = new ApplicationUser { Id = "seller-user", UserName = "seller-user", Email = "seller@test.local", SalesRepresentative = seller, IsActive = true };
-        db.AddRange(seller, customer, term, user);
+        db.AddRange(seller, customer, term, product, priceTable, user);
         await db.SaveChangesAsync();
 
-        var result = await CreateController(db).NewOrder(customer.Id, null);
+        var controller = CreateController(db);
+        var suggestion = Assert.Single((await SearchOrderCustomersAsync(controller, "owned")).Items);
+        var result = await controller.NewOrder(suggestion.Id, null);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<AssistedOrderViewModel>(view.Model);
         Assert.Equal(customer.TradeName, model.CustomerName);
+        Assert.Equal("Seller", model.SalesRepresentativeName);
+        Assert.Equal("Tabela autorizada", model.PriceTableName);
+        Assert.Equal(customer.Addresses.Single().Id, Assert.Single(model.Addresses).Id);
+        Assert.Equal(product.BasePrice, Assert.Single(model.Products).UnitPrice);
         Assert.Contains(model.PaymentTerms, term => term.Code == "PIX");
+    }
+
+    [Fact]
+    public async Task NewOrder_without_a_customer_opens_the_customer_selection_entry_state()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+
+        var result = await CreateController(db).NewOrder(0, null);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<AssistedOrderViewModel>(view.Model);
+        Assert.Equal(0, model.CustomerId);
+        Assert.Empty(model.Products);
+        Assert.Empty(model.PaymentTerms);
+    }
+
+    [Fact]
+    public async Task Customer_search_matches_accent_insensitive_trade_legal_name_cnpj_and_wmc_code()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new SalesRepresentative { Name = "Seller", IsActive = true };
+        var customer = CreateCustomer("Padaria Stág", seller);
+        customer.LegalName = "Indústria Estágio Ltda";
+        customer.Cnpj = "12.345.678/0001-99";
+        customer.WmcCode = "WMC-AB-987";
+        db.AddRange(seller, customer, new ApplicationUser
+        {
+            Id = "seller-user", UserName = "seller-user", Email = "seller@test.local",
+            SalesRepresentative = seller, IsActive = true
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db);
+
+        Assert.Equal(customer.Id, Assert.Single((await SearchOrderCustomersAsync(controller, "STAG")).Items).Id);
+        Assert.Equal(customer.Id, Assert.Single((await SearchOrderCustomersAsync(controller, "estagio")).Items).Id);
+        Assert.Equal(customer.Id, Assert.Single((await SearchOrderCustomersAsync(controller, "12345678")).Items).Id);
+        Assert.Equal(customer.Id, Assert.Single((await SearchOrderCustomersAsync(controller, "ab-987")).Items).Id);
+    }
+
+    [Fact]
+    public async Task Customer_search_is_scoped_and_returns_a_bounded_server_page()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new SalesRepresentative { Name = "Seller", IsActive = true };
+        var outsideSeller = new SalesRepresentative { Name = "Other", IsActive = true };
+        var ownedCustomers = Enumerable.Range(1, 12).Select(index => CreateCustomer($"Stág Cliente {index:00}", seller)).ToList();
+        var outside = CreateCustomer("Stág Cliente externo", outsideSeller);
+        var pending = CreateCustomer("Stág Cliente pendente", seller);
+        pending.Status = CustomerStatus.Pending;
+        var inactive = CreateCustomer("Stág Cliente inativo", seller);
+        inactive.IsActive = false;
+        db.AddRange(seller, outsideSeller, outside, pending, inactive);
+        db.AddRange(ownedCustomers);
+        db.Users.Add(new ApplicationUser
+        {
+            Id = "seller-user", UserName = "seller-user", Email = "seller@test.local",
+            SalesRepresentative = seller, IsActive = true
+        });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db);
+
+        var firstPage = await SearchOrderCustomersAsync(controller, "stag", 1);
+        var secondPage = await SearchOrderCustomersAsync(controller, "stag", 2);
+        var outOfScope = await SearchOrderCustomersAsync(controller, "externo");
+
+        Assert.Equal(10, firstPage.Items.Count);
+        Assert.True(firstPage.HasMore);
+        Assert.Equal(2, secondPage.Items.Count);
+        Assert.False(secondPage.HasMore);
+        Assert.Empty(outOfScope.Items);
+        Assert.DoesNotContain(firstPage.Items.Concat(secondPage.Items), result => result.Id == outside.Id);
+    }
+
+    [Fact]
+    public void Customer_search_uses_the_existing_admin_seller_and_commercial_manager_authorization()
+    {
+        var controllerAuthorization = typeof(CustomersController).GetCustomAttribute<AuthorizeAttribute>();
+        var searchAction = typeof(CustomersController).GetMethod("SearchOrderCustomers");
+
+        Assert.Equal("Administrador,Vendedor,GerenteComercial", controllerAuthorization?.Roles);
+        Assert.NotNull(searchAction?.GetCustomAttribute<HttpGetAttribute>());
     }
 
     [Fact]
@@ -112,6 +210,24 @@ public class AssistedOrderControllerTests
         };
         return controller;
     }
+
+    private static async Task<SearchPage> SearchOrderCustomersAsync(
+        CustomersController controller,
+        string query,
+        int page = 1)
+    {
+        var action = typeof(CustomersController).GetMethod("SearchOrderCustomers");
+        Assert.NotNull(action);
+        var task = Assert.IsAssignableFrom<Task<IActionResult>>(
+            action!.Invoke(controller, [query, page, CancellationToken.None]));
+        var result = Assert.IsType<JsonResult>(await task);
+        return JsonSerializer.Deserialize<SearchPage>(
+            JsonSerializer.Serialize(result.Value),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+    }
+
+    private sealed record SearchPage(IReadOnlyList<SearchItem> Items, bool HasMore, int Page);
+    private sealed record SearchItem(int Id, string TradeName, string LegalName, string Cnpj, string? WmcCode);
 
     private sealed class TestSession : ISession
     {
