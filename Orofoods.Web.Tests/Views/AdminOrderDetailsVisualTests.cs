@@ -55,6 +55,26 @@ public class AdminOrderDetailsVisualTests
     }
 
     [Fact]
+    public void Wmc_post_actions_use_details_prg_and_disable_duplicate_submissions()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+
+        Assert.Contains("return RedirectToAction(nameof(Details), new { id });", controller);
+        Assert.Contains("data-wmc-submit-once", view);
+        Assert.Contains("wmcSubmitting", view);
+        Assert.Contains("WmcManualExportMessage", view);
+        Assert.Contains("WmcManualExportError", view);
+        var sendStart = controller.IndexOf("public async Task<IActionResult> SendToWmc", StringComparison.Ordinal);
+        var sendEnd = controller.IndexOf("[HttpGet]", sendStart, StringComparison.Ordinal);
+        Assert.DoesNotContain("return WmcFile(result);", controller[sendStart..sendEnd]);
+        var regenerateStart = controller.IndexOf("public async Task<IActionResult> RegenerateWmcTxt", StringComparison.Ordinal);
+        var regenerateEnd = controller.IndexOf("private static FileContentResult WmcFile", regenerateStart, StringComparison.Ordinal);
+        Assert.DoesNotContain("return WmcFile(result);", controller[regenerateStart..regenerateEnd]);
+    }
+
+    [Fact]
     public void Order_details_groups_operational_information_without_changing_actions()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
