@@ -14,6 +14,9 @@
     var scope = ViewData["Scope"] as string;
     var fromDate = ViewData["FromDate"] is DateOnly from ? from : (DateOnly?)null;
     var toDate = ViewData["ToDate"] is DateOnly to ? to : (DateOnly?)null;
+    var awaitingActionCount = ViewData["AwaitingActionCount"] is int awaitingActionValue ? awaitingActionValue : 0;
+    var wmcAwaitingConfirmationCount = ViewData["WmcAwaitingConfirmationCount"] is int wmcConfirmationValue ? wmcConfirmationValue : 0;
+    var wmcAttentionCount = ViewData["WmcAttentionCount"] is int wmcAttentionValue ? wmcAttentionValue : 0;
     var deliveredWmcPendingIds = ViewData["DeliveredWmcPendingOrderIds"] as IReadOnlySet<int> ?? new HashSet<int>();
     string NextDirection(string column) => sort == column && direction == "asc" ? "desc" : "asc";
     string? RouteDate(DateOnly? date) => date?.ToString("yyyy-MM-dd");
@@ -62,10 +65,10 @@
             </div>
             @if (ViewData["DateRangeError"] is string dateRangeError) { <div class="orders-filter-error" role="alert">@dateRangeError</div> }
             <div class="orders-monitor-summary" aria-label="Resumo do recorte atual">
-                <article><span>Total do recorte</span><strong>@ViewData["TotalOrders"]</strong></article>
-                <article><span>Aguardando a&ccedil;&atilde;o</span><strong>@ViewData["AwaitingActionCount"]</strong></article>
-                <article><span>TXT aguardando confirma&ccedil;&atilde;o</span><strong>@ViewData["WmcAwaitingConfirmationCount"]</strong></article>
-                <article><span>Aten&ccedil;&atilde;o WMC</span><strong>@ViewData["WmcAttentionCount"]</strong></article>
+                <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Total do recorte</span><strong>@ViewData["TotalOrders"]</strong></article>
+                <article class="admin-dashboard-indicator @(awaitingActionCount == 0 ? "admin-dashboard-indicator--normal" : "admin-dashboard-indicator--warning")"><span>Aguardando a&ccedil;&atilde;o</span><strong>@ViewData["AwaitingActionCount"]</strong></article>
+                <article class="admin-dashboard-indicator @(wmcAwaitingConfirmationCount == 0 ? "admin-dashboard-indicator--normal" : "admin-dashboard-indicator--warning")"><span>TXT aguardando confirma&ccedil;&atilde;o</span><strong>@ViewData["WmcAwaitingConfirmationCount"]</strong></article>
+                <article class="admin-dashboard-indicator @(wmcAttentionCount == 0 ? "admin-dashboard-indicator--normal" : "admin-dashboard-indicator--warning")"><span>Aten&ccedil;&atilde;o WMC</span><strong>@ViewData["WmcAttentionCount"]</strong></article>
             </div>
             <div class="orders-list-meta"><small>@paged.TotalItems pedido@(paged.TotalItems == 1 ? "" : "s") encontrado@(paged.TotalItems == 1 ? "" : "s")</small><small>P&aacute;gina @paged.Page de @paged.TotalPages</small></div>
         </form>

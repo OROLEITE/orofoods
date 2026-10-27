@@ -287,10 +287,10 @@
                     <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Etapa 3</span><h4>Confirmar importação · @Model.SelectedBrandDescription</h4></div></header>
                     <p class="wmc-stage-copy">Revise o resumo antes de gravar os produtos selecionados no catálogo local.</p>
                     <div class="wmc-import-summary" aria-label="Resumo da seleção">
-                        <article><span>Selecionados</span><strong>@Model.Confirmation.Selected</strong></article>
-                        <article class="wmc-summary-new"><span>Novos</span><strong>@Model.Confirmation.NewProducts</strong></article>
-                        <article class="wmc-summary-existing"><span>Existentes</span><strong>@Model.Confirmation.ExistingProducts</strong></article>
-                        <article class="wmc-summary-blocked"><span>Bloqueados</span><strong>@blockedCount</strong></article>
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Selecionados</span><strong>@Model.Confirmation.Selected</strong></article>
+                        <article class="wmc-summary-new admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Novos</span><strong>@Model.Confirmation.NewProducts</strong></article>
+                        <article class="wmc-summary-existing admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Existentes</span><strong>@Model.Confirmation.ExistingProducts</strong></article>
+                        <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--warning"><span>Bloqueados</span><strong>@blockedCount</strong></article>
                     </div>
                     <details class="wmc-confirmation-details">
                         <summary>Ver alterações, preços e unidades oficiais</summary>
@@ -331,11 +331,11 @@
                 {
                     <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Resultado</span><h4>Importação @(Model.ImportResult.Status == "Succeeded" ? "concluída" : "não concluída")</h4></div></header>
                     <div class="wmc-import-summary">
-                        <article class="wmc-summary-new"><span>Criados</span><strong>@Model.ImportResult.Created</strong></article>
-                        <article class="wmc-summary-existing"><span>Atualizados</span><strong>@Model.ImportResult.Updated</strong></article>
-                        <article><span>Inalterados</span><strong>@Model.ImportResult.Unchanged</strong></article>
-                        <article class="wmc-summary-blocked"><span>Bloqueados</span><strong>@Model.ImportResult.Blocked</strong></article>
-                        <article class="wmc-summary-blocked"><span>Erros</span><strong>@Model.ImportResult.Errors</strong></article>
+                        <article class="wmc-summary-new admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Criados</span><strong>@Model.ImportResult.Created</strong></article>
+                        <article class="wmc-summary-existing admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Atualizados</span><strong>@Model.ImportResult.Updated</strong></article>
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Inalterados</span><strong>@Model.ImportResult.Unchanged</strong></article>
+                        <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--warning"><span>Bloqueados</span><strong>@Model.ImportResult.Blocked</strong></article>
+                        <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--critical"><span>Erros</span><strong>@Model.ImportResult.Errors</strong></article>
                     </div>
                     @if (Model.ImportResult.ErrorMessage is not null)
                     {
