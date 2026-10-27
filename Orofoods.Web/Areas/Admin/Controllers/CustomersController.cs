@@ -2,11 +2,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Security.Claims;
+using System.Text;
 using Orofoods.Web.Models;
 using Orofoods.Web.Api;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
+using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Commercial;
@@ -21,6 +26,26 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Authorize(Roles = "Administrador,Vendedor,GerenteComercial")]
 public class CustomersController(ApplicationDbContext db, CustomerApprovalService customerApprovalService, SalesRepresentativeAccessService accessService, IPaymentEligibilityService paymentEligibilityService, PriceService priceService, AssistedOrderService assistedOrderService, CommercialAttentionService attentionService) : Controller
 {
+    private const int AssistedOrderCustomerSearchPageSize = 10;
+    private const int AssistedOrderCustomerSearchMaxLength = 80;
+    private static readonly MethodInfo StringContainsMethod = typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!;
+    private static readonly MethodInfo StringReplaceMethod = typeof(string).GetMethod(nameof(string.Replace), [typeof(string), typeof(string)])!;
+    private static readonly MethodInfo StringToLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)!;
+    private static readonly MethodInfo TranslateSearchTextMethod = typeof(ApplicationDbContext).GetMethod(nameof(ApplicationDbContext.TranslateSearchText))!;
+    private static readonly (string Characters, char Replacement)[] SearchCharacterReplacements =
+    [
+        ("àáâãäåÀÁÂÃÄÅ", 'a'),
+        ("èéêëÈÉÊË", 'e'),
+        ("ìíîïÌÍÎÏ", 'i'),
+        ("òóôõöøÒÓÔÕÖØ", 'o'),
+        ("ùúûüÙÚÛÜ", 'u'),
+        ("çÇ", 'c'),
+        ("ñÑ", 'n'),
+        ("ýÿÝŸ", 'y')
+    ];
+    private static readonly string SearchFromCharacters = string.Concat(SearchCharacterReplacements.Select(group => group.Characters));
+    private static readonly string SearchToCharacters = string.Concat(SearchCharacterReplacements.SelectMany(group => group.Characters.Select(_ => group.Replacement)));
+
     public async Task<IActionResult> Index(string? q, string? status, string sort = "status", string direction = "asc", int page = 1)
     {
         var scope = await accessService.GetScopeAsync(User);
@@ -245,9 +270,57 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
     }
 
     [HttpGet]
-    public async Task<IActionResult> NewOrder(int id, string? q)
+    public async Task<IActionResult> SearchOrderCustomers(string? q, int page = 1, CancellationToken cancellationToken = default)
     {
-        var model = await BuildAssistedOrderViewModelAsync(id, q, HttpContext.RequestAborted);
+        q = q?.Trim();
+        if (q?.Length > AssistedOrderCustomerSearchMaxLength)
+        {
+            q = q[..AssistedOrderCustomerSearchMaxLength];
+        }
+
+        var normalizedQuery = NormalizeCustomerSearchTerm(q);
+        if (normalizedQuery.Length < 2)
+        {
+            return Json(new AssistedOrderCustomerSearchPage([], false, 1));
+        }
+
+        var searchSource = q ?? string.Empty;
+        var digitsQuery = searchSource.All(character => char.IsDigit(character) || char.IsWhiteSpace(character) || character is '.' or '/' or '-')
+            ? new string(searchSource.Where(char.IsDigit).ToArray())
+            : string.Empty;
+        var scope = await accessService.GetScopeAsync(User, cancellationToken);
+        var query = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+            .Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved)
+            .Where(CreateCustomerSearchPredicate(normalizedQuery, digitsQuery));
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AssistedOrderCustomerSearchPageSize));
+        var currentPage = Math.Clamp(page, 1, totalPages);
+        var customers = await query
+            .OrderBy(customer => customer.TradeName)
+            .ThenBy(customer => customer.Id)
+            .Skip((currentPage - 1) * AssistedOrderCustomerSearchPageSize)
+            .Take(AssistedOrderCustomerSearchPageSize)
+            .Select(customer => new AssistedOrderCustomerSuggestion(
+                customer.Id,
+                customer.TradeName,
+                customer.LegalName,
+                customer.Cnpj,
+                customer.WmcCode))
+            .ToListAsync(cancellationToken);
+
+        return Json(new AssistedOrderCustomerSearchPage(customers, currentPage < totalPages, currentPage));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> NewOrder(int? id, string? q)
+    {
+        if (id is null or <= 0)
+        {
+            return View(new AssistedOrderViewModel());
+        }
+
+        var model = await BuildAssistedOrderViewModelAsync(id.Value, q, HttpContext.RequestAborted);
         return model is null ? Forbid() : View(model);
     }
 
@@ -294,11 +367,12 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
         var customer = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
             .Include(x => x.Addresses)
             .Include(x => x.SalesRepresentative)
+            .Include(x => x.PriceTable)
             .SingleOrDefaultAsync(x => x.Id == id && x.IsActive && x.Status == CustomerStatus.Approved, cancellationToken);
         if (customer is null) return null;
 
         var productsQuery = db.Products.AsNoTracking().Where(x => x.IsActive);
-        if (!string.IsNullOrWhiteSpace(q)) productsQuery = productsQuery.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || x.Brand.Contains(q));
+        if (!string.IsNullOrWhiteSpace(q)) productsQuery = productsQuery.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || (x.WmcCode != null && x.WmcCode.Contains(q)) || x.Brand.Contains(q));
         var products = await productsQuery.OrderBy(x => x.Name).Take(30).ToListAsync(cancellationToken);
         var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id, cancellationToken);
         var prices = await priceService.GetPricesAsync(id, products.Select(x => x.Id), cancellationToken);
@@ -308,6 +382,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             CustomerId = id,
             CustomerName = customer.TradeName,
             SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Não atribuído",
+            PriceTableName = customer.PriceTable?.Name ?? "Sem tabela",
             Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
             PaymentTerms = eligibility.PaymentMethods,
             PaymentEligibility = eligibility,
@@ -317,6 +392,63 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.BasePrice), x.MinimumSalesQuantity, true, x.PriceUnitLabel)).ToList(),
             Query = q
         };
+    }
+
+    private static Expression<Func<Customer, bool>> CreateCustomerSearchPredicate(string searchTerm, string digitsTerm)
+    {
+        var customer = Expression.Parameter(typeof(Customer), "customer");
+        Expression? predicate = null;
+        foreach (var propertyName in new[] { nameof(Customer.TradeName), nameof(Customer.LegalName), nameof(Customer.Cnpj), nameof(Customer.WmcCode) })
+        {
+            var field = Expression.Property(customer, propertyName);
+            var normalizedField = NormalizeDatabaseSearchText(field);
+            Expression fieldMatches = Expression.Call(normalizedField, StringContainsMethod, Expression.Constant(searchTerm));
+            if (propertyName == nameof(Customer.WmcCode))
+            {
+                fieldMatches = Expression.AndAlso(
+                    Expression.NotEqual(field, Expression.Constant(null, typeof(string))),
+                    fieldMatches);
+            }
+
+            if (propertyName == nameof(Customer.Cnpj) && digitsTerm.Length >= 3)
+            {
+                var digitsOnlyCnpj = Expression.Call(
+                    Expression.Call(
+                        Expression.Call(field, StringReplaceMethod, Expression.Constant("."), Expression.Constant(string.Empty)),
+                        StringReplaceMethod,
+                        Expression.Constant("/"),
+                        Expression.Constant(string.Empty)),
+                    StringReplaceMethod,
+                    Expression.Constant("-"),
+                    Expression.Constant(string.Empty));
+                var digitsMatch = Expression.Call(digitsOnlyCnpj, StringContainsMethod, Expression.Constant(digitsTerm));
+                fieldMatches = Expression.OrElse(fieldMatches, digitsMatch);
+            }
+
+            predicate = predicate is null ? fieldMatches : Expression.OrElse(predicate, fieldMatches);
+        }
+
+        return Expression.Lambda<Func<Customer, bool>>(predicate!, customer);
+    }
+
+    private static Expression NormalizeDatabaseSearchText(Expression field) =>
+        Expression.Call(
+            Expression.Call(
+                TranslateSearchTextMethod,
+                field,
+                Expression.Constant(SearchFromCharacters),
+                Expression.Constant(SearchToCharacters)),
+            StringToLowerMethod);
+
+    private static string NormalizeCustomerSearchTerm(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+        var decomposed = value.Trim().Normalize(NormalizationForm.FormD);
+        var withoutDiacritics = new string(decomposed
+            .Where(character => CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        return withoutDiacritics.Normalize(NormalizationForm.FormC).ToLowerInvariant();
     }
 
     [HttpPost]

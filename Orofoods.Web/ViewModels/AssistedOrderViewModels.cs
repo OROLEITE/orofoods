@@ -9,6 +9,7 @@ public sealed class AssistedOrderViewModel
     public int CustomerId { get; init; }
     public string CustomerName { get; init; } = "";
     public string SalesRepresentativeName { get; init; } = "";
+    public string PriceTableName { get; init; } = "Sem tabela";
     public IReadOnlyList<CustomerAddress> Addresses { get; init; } = [];
     public IReadOnlyList<PaymentTerm> PaymentTerms { get; init; } = [];
     public IReadOnlyList<AssistedOrderProductViewModel> Products { get; init; } = [];
@@ -25,6 +26,13 @@ public sealed class AssistedOrderViewModel
 }
 
 public sealed record AssistedOrderProductViewModel(int Id, string Sku, string Name, string Unit, decimal UnitPrice, int MinimumCases, bool IsAvailable, string PriceUnitLabel = "caixa");
+
+public sealed record AssistedOrderCustomerSuggestion(int Id, string TradeName, string LegalName, string Cnpj, string? WmcCode);
+
+public sealed record AssistedOrderCustomerSearchPage(
+    IReadOnlyList<AssistedOrderCustomerSuggestion> Items,
+    bool HasMore,
+    int Page);
 
 public sealed record AssistedOrderResult(bool Succeeded, int? OrderId, string? ErrorMessage)
 {

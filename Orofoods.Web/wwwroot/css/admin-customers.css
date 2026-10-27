@@ -403,3 +403,91 @@ body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .customer-list-page .cu
         min-height: 44px;
     }
 }
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-picker {
+    position: relative;
+    display: grid;
+    gap: 8px;
+    margin: 16px 0 20px;
+    max-width: 760px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-picker > label {
+    font-weight: 700;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-picker input {
+    min-height: 48px;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-results:not(:empty) {
+    display: grid;
+    gap: 4px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid #CBD5E1;
+    border-radius: 10px;
+    background: #FFFFFF;
+    box-shadow: 0 12px 28px rgb(15 23 42 / 14%);
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option {
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #1F2937;
+    text-align: left;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option:hover,
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option:focus-visible,
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option[aria-selected="true"] {
+    outline: none;
+    background: #EFF6FF;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-more {
+    justify-self: start;
+}
+
+body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-status {
+    min-height: 1.25rem;
+    color: #475569;
+    font-size: .9rem;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-results {
+    border-color: #334155;
+    background: #111827;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option {
+    color: #E5E7EB;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option:hover,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-option[aria-selected="true"] {
+    background: #1E293B;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-status {
+    color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-picker input {
+    border-color: #334155;
+    background-color: #1E293B;
+    color: #E5E7EB;
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .assisted-order-page .assisted-customer-picker input:focus-visible {
+    border-color: #38BDF8;
+    outline: 2px solid #38BDF8;
+    outline-offset: 2px;
+    box-shadow: none;
+}
