@@ -167,7 +167,28 @@ public class IntegrationsController(
         ViewBag.WmcCustomerPreview = await wmcCustomerImportService.PreviewAsync(sellerCode, cancellationToken);
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
-        return View(nameof(Wmc));
+        IReadOnlyList<WmcBrandRecord> brands = [];
+        try
+        {
+            brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "WMC brand loading failed while rendering customer preview. Operation={Operation}", "CustomerPreview");
+            TempData["WmcPreviewError"] = "NÃ£o foi possÃ­vel consultar o espelho WMC agora. Tente novamente mais tarde.";
+        }
+
+        DateTime? lastProductSyncAt = null;
+        try
+        {
+            lastProductSyncAt = await wmcProductImportService.GetLastProductImportAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "WMC product sync timestamp unavailable while rendering customer preview.");
+        }
+
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: lastProductSyncAt));
     }
 
     [HttpPost]
