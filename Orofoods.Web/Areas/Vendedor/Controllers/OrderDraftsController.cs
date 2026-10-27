@@ -362,14 +362,14 @@ public sealed class OrderDraftsController(
                 : postedItems ?? [];
         var productRowsById = draft is not null && !usePostedInput
             ? draft.Items.ToDictionary(item => item.ProductId, item => new SellerCatalogProductRow(
-                item.ProductId, item.Sku, item.ProductName, "", item.UnitDescription, item.ResolvedUnitPrice, item.MinimumCases, null))
+                item.ProductId, item.Sku, item.ProductName, "", item.UnitDescription, item.ResolvedUnitPrice, item.MinimumCases, null, WmcCode: item.WmcCode))
             : new Dictionary<int, SellerCatalogProductRow>();
         if (draft is not null && usePostedInput)
         {
             foreach (var item in draft.Items.Where(item => pendingRemovals.Contains(item.ProductId)))
             {
                 productRowsById[item.ProductId] = new SellerCatalogProductRow(
-                    item.ProductId, item.Sku, item.ProductName, "", item.UnitDescription, item.ResolvedUnitPrice, item.MinimumCases, null);
+                    item.ProductId, item.Sku, item.ProductName, "", item.UnitDescription, item.ResolvedUnitPrice, item.MinimumCases, null, WmcCode: item.WmcCode);
             }
         }
         var freshRows = await catalogService.GetSelectableProductsByIdsAsync(
@@ -380,9 +380,9 @@ public sealed class OrderDraftsController(
         }
         var editorItems = sourceItems.Select(item => productRowsById.TryGetValue(item.ProductId, out var product)
             ? new SellerOrderDraftEditorItem(item.ProductId, product.Sku, product.Name, product.UnitDescription,
-                item.Quantity, product.MinimumCases, product.UnitPrice, pendingRemovals.Contains(item.ProductId), product.PriceUnitLabel)
+                item.Quantity, product.MinimumCases, product.UnitPrice, pendingRemovals.Contains(item.ProductId), product.PriceUnitLabel, product.WmcCode)
             : new SellerOrderDraftEditorItem(item.ProductId, "", "Produto indisponível no catálogo atual", "", item.Quantity,
-                1, 0m, pendingRemovals.Contains(item.ProductId))).ToArray();
+                1, 0m, pendingRemovals.Contains(item.ProductId), "caixa", null)).ToArray();
 
         string? quoteToken = null;
         var ownerUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;

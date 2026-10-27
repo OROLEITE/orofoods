@@ -1,0 +1,70 @@
+@using Orofoods.Web.Models.Integrations
+@using Orofoods.Web.Models.Orders
+@model IReadOnlyList<Order>
+@{
+    ViewData["Title"] = "Importação manual ao WMC";
+    var eligibleOrderIds = ViewData["WmcImportEligibleOrderIds"] as IReadOnlySet<int> ?? new HashSet<int>();
+    var importEnabled = ViewData["WmcImportEnabled"] is true;
+}
+<section class="section admin-orders-page orders-index-compact">
+    <div class="container">
+        <header class="admin-page-header d-flex align-items-center justify-content-between gap-3 flex-wrap">
+            <div><div class="eyebrow"><span></span> INTEGRAÇÃO WMC</div><h1>Pedidos pendentes WMC</h1><p>Revise cada pedido e importe somente após confirmar os dados.</p></div>
+        </header>
+        @if (TempData["WmcImportMessage"] is string message) { <div class="alert alert-success" role="status">@message</div> }
+        @if (TempData["WmcImportError"] is string error) { <div class="alert alert-warning" role="alert">@error</div> }
+        @if (!importEnabled) { <div class="alert alert-warning" role="alert">A importação JSON manual está desabilitada na configuração do WMC.</div> }
+        <div class="orders-table-card"><div class="table-responsive"><table class="table orders-table">
+            <thead><tr><th>Número</th><th>Cliente</th><th>Status</th><th class="text-end">Total</th><th>WMC</th><th>Ação</th></tr></thead>
+            <tbody>
+            @foreach (var order in Model)
+            {
+                var state = order.WmcOrderExportState;
+                var imported = state?.Status == WmcOrderExportStatus.Imported && !state.RequiresManualReview;
+                var eligible = eligibleOrderIds.Contains(order.Id);
+                var hasUncertainAudit = order.WmcExportAudits.Any(audit => audit.Outcome is WmcExportOutcome.Started or WmcExportOutcome.Unknown or WmcExportOutcome.Succeeded);
+                var statusLabel = imported ? $"Importado WMC{(string.IsNullOrWhiteSpace(order.ErpOrderNumber) ? "" : $" · Nº {order.ErpOrderNumber}")}" :
+                    hasUncertainAudit || state?.RequiresManualReview == true ? "Conferência necessária" :
+                    state?.Status == WmcOrderExportStatus.Exported ? "TXT aguardando confirmação" : "Pendente";
+                <tr>
+                    <td data-label="Número"><strong class="orders-number">@order.Number</strong></td>
+                    <td data-label="Cliente">@order.Customer?.TradeName</td>
+                    <td data-label="Status">@order.Status.ToDisplayName()</td>
+                    <td data-label="Total" class="text-end orders-nowrap"><strong>@order.Total.ToString("C")</strong></td>
+                    <td data-label="WMC">@statusLabel</td>
+                    <td data-label="Ação">
+                        @if (eligible)
+                        {
+                            var confirmation = $"Importar ao WMC somente o pedido {order.Number}, cliente {order.Customer?.TradeName}, total {order.Total:C}?";
+                            <form asp-area="Admin" asp-controller="WmcOrderImports" asp-action="ImportToWmc" method="post" data-wmc-import-confirm="@confirmation">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@order.Id" />
+                                <button type="submit" class="btn btn-sm admin-primary-action">Importar ao WMC</button>
+                            </form>
+                        }
+                        else if (imported && string.IsNullOrWhiteSpace(order.ErpOrderNumber))
+                        {
+                            <form asp-area="Admin" asp-controller="WmcOrderImports" asp-action="ReconcileNroPedido" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@order.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-dark">Consultar número WMC</button>
+                            </form>
+                        }
+                        else if (hasUncertainAudit || state?.RequiresManualReview == true)
+                        {
+                            <span class="text-warning">Bloqueado para evitar reenvio</span>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum pedido aprovado na fila de importação WMC.</td></tr>
+            }
+            </tbody>
+        </table></div></div>
+    </div>
+</section>
+@section Scripts {
+    <script src="~/js/wmc-order-imports.js" asp-append-version="true"></script>
+}

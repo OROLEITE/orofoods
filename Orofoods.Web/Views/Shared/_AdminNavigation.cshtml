@@ -7,7 +7,7 @@
     var isOperator = User.IsInRole(ApplicationRoles.Operator);
     var isCommercialUser = isAdministrator || User.IsInRole(ApplicationRoles.Seller) || User.IsInRole(ApplicationRoles.CommercialManager);
     var crmActive = controller is "Commercial" or "Customers" or "Opportunities" or "Notifications" or "WhatsApp";
-    var operationActive = controller is "Orders" or "Products" or "Inventory" or "Drivers" or "PaymentTerminals" or "DriverPaymentTerminalAssignments";
+    var operationActive = controller is "Orders" or "WmcOrderImports" or "Products" or "Inventory" or "Drivers" or "PaymentTerminals" or "DriverPaymentTerminalAssignments";
     var registrationsActive = controller is "Categories" or "PriceTables" or "PaymentTerms";
     var teamActive = controller == "SalesRepresentatives";
     var managementActive = controller == "Reports";
@@ -28,6 +28,7 @@
         <div class="admin-nav-cluster @(controller == "WhatsApp" ? "is-active" : string.Empty)">
             <div class="admin-nav-submenu show">
                 <a class="admin-nav-link @Active("WhatsApp")" asp-area="Admin" asp-controller="WhatsApp" asp-action="Index"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
+                <a class="admin-nav-link @Active("WmcOrderImports")" asp-area="Admin" asp-controller="WmcOrderImports" asp-action="Index"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span>Pedidos pendentes WMC</span></a>
             </div>
         </div>
     }
@@ -43,6 +44,10 @@
                 <a class="admin-nav-link admin-nav-link--nested @Active("Opportunities")" asp-area="Admin" asp-controller="Opportunities" asp-action="Index"><i class="fa-solid fa-bullseye" aria-hidden="true"></i><span>Oportunidades</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Notifications")" asp-area="Admin" asp-controller="Notifications" asp-action="Index"><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Notificações</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("WhatsApp")" asp-area="Admin" asp-controller="WhatsApp" asp-action="Index"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
+                @if (User.IsInRole(ApplicationRoles.Seller))
+                {
+                    <a class="admin-nav-link admin-nav-link--nested @Active("WmcOrderImports")" asp-area="Admin" asp-controller="WmcOrderImports" asp-action="Index"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span>Pedidos pendentes WMC</span></a>
+                }
             </div>
         </div>
     }
@@ -53,6 +58,7 @@
             <button class="admin-nav-group" type="button" data-bs-toggle="collapse" data-bs-target="#@prefix-Operation" data-admin-nav-group aria-expanded="@operationActive.ToString().ToLowerInvariant()" aria-controls="@prefix-Operation" aria-label="Alternar menu Operação" title="Operação"><span><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span class="admin-nav-label">Operação</span></span><i class="fa-solid fa-chevron-down admin-nav-chevron" aria-hidden="true"></i></button>
             <div id="@prefix-Operation" class="admin-nav-submenu collapse @(operationActive ? "show" : string.Empty)" data-bs-parent="#@prefix-admin-menu" data-admin-active-group="@operationActive.ToString().ToLowerInvariant()">
                 <a class="admin-nav-link admin-nav-link--nested @Active("Orders")" asp-area="Admin" asp-controller="Orders" asp-action="Index"><i class="fa-solid fa-receipt" aria-hidden="true"></i><span>Pedidos</span></a>
+                <a class="admin-nav-link admin-nav-link--nested @Active("WmcOrderImports")" asp-area="Admin" asp-controller="WmcOrderImports" asp-action="Index"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span>Pedidos pendentes WMC</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Products")" asp-area="Admin" asp-controller="Products" asp-action="Index"><i class="fa-solid fa-box" aria-hidden="true"></i><span>Produtos</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Inventory")" asp-area="Admin" asp-controller="Inventory" asp-action="Index"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span>Estoque</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("Drivers")" asp-area="Admin" asp-controller="Drivers" asp-action="Index"><i class="fa-solid fa-truck" aria-hidden="true"></i><span>Motoristas</span></a>
