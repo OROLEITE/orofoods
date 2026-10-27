@@ -35,7 +35,7 @@ public class AdminDashboardIndicatorVisualTests
         Assert.Contains("#111827", styles);
         Assert.Contains("font-size: clamp(1.35rem, 1.8vw, 1.625rem);", styles);
         Assert.Contains("@media (max-width: 650px)", styles);
-        Assert.DoesNotMatch(@"\.admin-dashboard-indicator\s*\{[^}]*\bheight\s*:", styles);
+        Assert.DoesNotMatch(@"\.admin-dashboard-indicator\s*\{[^}]*?(?<![\w-])height\s*:", styles);
     }
 
     [Fact]

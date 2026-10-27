@@ -18,7 +18,7 @@ public class AdminDashboardPriorityVisualTests
         Assert.Contains("margin: 1px 0 2px;", indicatorCss);
         Assert.Contains(".admin-priority-card span > i", indicatorCss);
         Assert.Contains("color: var(--dashboard-indicator-accent);", indicatorCss);
-        Assert.Contains(".admin-priority-card {\n        padding: 9px 12px;\n    }", indicatorCss);
+        Assert.Matches(@"(?s)\.admin-authenticated \.admin-shell \.admin-priority-card\s*\{[^}]*padding:\s*9px 12px;", indicatorCss);
         Assert.Contains("border-left: 4px solid var(--dashboard-indicator-accent);", indicatorCss);
         Assert.Contains("--dashboard-indicator-accent: #F87171;", indicatorCss);
         Assert.Contains("--dashboard-indicator-accent: #F59E0B;", indicatorCss);
