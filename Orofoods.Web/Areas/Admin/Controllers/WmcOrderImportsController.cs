@@ -11,7 +11,7 @@ using Orofoods.Web.Services.Orders;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
 
-[Area("Admin"), Authorize(Roles = "Administrador,Vendedor,Operador")]
+[Area("Admin"), Authorize]
 public sealed class WmcOrderImportsController(
     ApplicationDbContext db,
     WmcOrderImportAccessService accessService,
@@ -19,7 +19,7 @@ public sealed class WmcOrderImportsController(
     WmcJsonOrderErpIntegration jsonIntegration,
     IOptions<WmcJsonOrderOptions> jsonOptions) : Controller
 {
-    [HttpGet]
+    [HttpGet, Authorize(Roles = "Administrador,Vendedor,Operador")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var ordersQuery = db.Orders.AsNoTracking()
@@ -45,7 +45,7 @@ public sealed class WmcOrderImportsController(
         return View(orders);
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = "Administrador,Vendedor,Operador"), ValidateAntiForgeryToken]
     public async Task<IActionResult> ImportToWmc(int id, CancellationToken cancellationToken)
     {
         var order = await db.Orders
@@ -106,7 +106,7 @@ public sealed class WmcOrderImportsController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = "Administrador,Vendedor,Operador"), ValidateAntiForgeryToken]
     public async Task<IActionResult> ReconcileNroPedido(int id, CancellationToken cancellationToken)
     {
         var order = await db.Orders
