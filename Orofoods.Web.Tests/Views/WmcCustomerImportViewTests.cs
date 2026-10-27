@@ -18,4 +18,22 @@ public sealed class WmcCustomerImportViewTests
         Assert.Contains("RunExclusivelyAsync", controller);
         Assert.Contains("ValidateAntiForgeryToken", controller);
     }
+
+    [Fact]
+    public void Wmc_customer_filter_uses_compact_responsive_dark_mode_styles()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var css = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "admin-integrations.css"));
+
+        Assert.Contains("wmc-customer-import-form", view);
+        Assert.Contains("wmc-customer-filter-help", view);
+        Assert.Contains("#1E293B", css);
+        Assert.Contains("#334155", css);
+        Assert.Contains("#94A3B8", css);
+        Assert.Contains("#0E7490", css);
+        Assert.Contains("wmc-customer-preview-button", css);
+        Assert.Contains("max-width: 560px", css);
+        Assert.Contains("flex-direction: column", css);
+    }
 }
