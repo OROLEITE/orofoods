@@ -51,7 +51,7 @@ public sealed class WmcManualExportService(
             .Include(x => x.Customer)
             .Include(x => x.PaymentTerm)
             .Include(x => x.Items)
-            .ThenInclude(x => x.Product)
+            .ThenInclude(x => x.Product).ThenInclude(x => x!.WmcUnits)
             .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
         if (order is null)
         {
@@ -69,7 +69,7 @@ public sealed class WmcManualExportService(
             .Include(x => x.Customer)
             .Include(x => x.PaymentTerm)
             .Include(x => x.Items)
-            .ThenInclude(x => x.Product)
+            .ThenInclude(x => x.Product).ThenInclude(x => x!.WmcUnits)
             .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
         if (order is null)
         {
@@ -206,7 +206,7 @@ public sealed class WmcManualExportService(
         }
 
         var order = await db.Orders.Include(x => x.Customer).Include(x => x.PaymentTerm)
-            .Include(x => x.Items).ThenInclude(x => x.Product)
+            .Include(x => x.Items).ThenInclude(x => x.Product).ThenInclude(x => x!.WmcUnits)
             .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
         if (order is null)
         {
