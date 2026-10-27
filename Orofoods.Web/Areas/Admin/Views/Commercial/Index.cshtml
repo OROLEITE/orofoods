@@ -63,15 +63,15 @@
         <section class="commercial-overview-today">
             <div class="commercial-section-kicker"><span></span> Hoje</div>
             <div class="commercial-metric-grid">
-                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-calendar-day mb-2"></i><small>ATENDIMENTOS</small><strong class="fs-5">@Model.Attention.TodayAppointments</strong><span>compromissos do dia</span></article>
-                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--warning"><i class="fa-solid fa-clock mb-2"></i><small>RETORNOS VENCIDOS</small><strong class="fs-5">@Model.Attention.OverdueReturns</strong><span>precisam de atenção</span></article>
-                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-rotate mb-2"></i><small>POSSÍVEIS RECOMPRAS</small><strong class="fs-5">@Model.Attention.RepurchasesDue</strong><span>no momento de contato</span></article>
-                <article class="p-3 admin-dashboard-indicator admin-dashboard-indicator--warning"><i class="fa-solid fa-hourglass-half mb-2"></i><small>SEM COMPRAR HÁ +30 DIAS</small><strong class="fs-5">@Model.Attention.CustomersWithoutPurchase</strong><span>clientes para acompanhar</span></article>
+                <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-calendar-day"></i><small>ATENDIMENTOS</small><strong>@Model.Attention.TodayAppointments</strong><span>compromissos do dia</span></article>
+                <article class="admin-dashboard-indicator @(Model.Attention.OverdueReturns == 0 ? "admin-dashboard-indicator--normal" : "admin-dashboard-indicator--warning")"><i class="fa-solid fa-clock"></i><small>RETORNOS VENCIDOS</small><strong>@Model.Attention.OverdueReturns</strong><span>precisam de atenção</span></article>
+                <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><i class="fa-solid fa-rotate"></i><small>POSSÍVEIS RECOMPRAS</small><strong>@Model.Attention.RepurchasesDue</strong><span>no momento de contato</span></article>
+                <article class="admin-dashboard-indicator @(Model.Attention.CustomersWithoutPurchase == 0 ? "admin-dashboard-indicator--normal" : "admin-dashboard-indicator--warning")"><i class="fa-solid fa-hourglass-half"></i><small>SEM COMPRAR HÁ +30 DIAS</small><strong>@Model.Attention.CustomersWithoutPurchase</strong><span>clientes para acompanhar</span></article>
             </div>
         </section>
 
         <section class="commercial-routine-panel">
-            <header class="commercial-panel-heading"><div><p class="eyebrow"><span></span> Operação comercial</p><h2>Minha rotina</h2></div><span>Fila de atenção do dia</span></header>
+            <header class="commercial-panel-heading commercial-routine-heading"><div><p class="eyebrow"><span></span> Operação comercial</p><h2>Minha rotina</h2></div><div class="commercial-routine-heading-meta"><span>Fila de atenção do dia</span><div class="commercial-priority-legend" aria-label="Prioridades comerciais"><div><i class="fa-solid fa-circle priority-dot priority-dot--urgent"></i><span>Retornos vencidos</span></div><div><i class="fa-solid fa-circle priority-dot priority-dot--repurchase"></i><span>Recompra provável</span></div><div><i class="fa-solid fa-circle priority-dot priority-dot--no-purchase"></i><span>Clientes sem comprar</span></div><div><i class="fa-solid fa-circle priority-dot priority-dot--first-contact"></i><span>Primeiro contato</span></div></div></div></header>
             <div class="commercial-routine-list commercial-routine-list--overview">
                 @foreach (var item in Model.Attention.Routine.Where(x => x.ScheduledAt.Date == Model.ReferenceDate.Date || x.ActivityId is null))
                 {
@@ -79,13 +79,6 @@
                 }
                 @if (!Model.Attention.Routine.Any(x => x.ScheduledAt.Date == Model.ReferenceDate.Date || x.ActivityId is null)) { <p class="commercial-empty-column">Nenhum item na rotina de hoje.</p> }
             </div>
-        </section>
-
-        <section class="commercial-priority-legend" aria-label="Prioridades comerciais">
-            <div><i class="fa-solid fa-circle priority-dot priority-dot--urgent"></i><span>Retornos vencidos</span></div>
-            <div><i class="fa-solid fa-circle priority-dot priority-dot--repurchase"></i><span>Recompra provável</span></div>
-            <div><i class="fa-solid fa-circle priority-dot priority-dot--no-purchase"></i><span>Clientes sem comprar</span></div>
-            <div><i class="fa-solid fa-circle priority-dot priority-dot--first-contact"></i><span>Primeiro contato</span></div>
         </section>
 
         <div class="commercial-metric-grid commercial-metric-grid--secondary">
@@ -97,8 +90,8 @@
             <header class="commercial-panel-heading"><div><p class="eyebrow"><span></span> Fila operacional</p><h2>Atenção comercial</h2></div><span>Indicadores calculados com pedidos válidos e agenda local.</span></header>
             <div class="commercial-attention-grid">
                 <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--normal"><small>ATENDIMENTOS DE HOJE</small><strong>@Model.Attention.TodayAppointments</strong></a>
-                <a asp-action="Index" class="commercial-attention-card commercial-attention-card--urgent admin-dashboard-indicator admin-dashboard-indicator--warning"><small>RETORNOS VENCIDOS</small><strong>@Model.Attention.OverdueReturns</strong></a>
-                <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--warning"><small>CLIENTES SEM COMPRAR</small><strong>@Model.Attention.CustomersWithoutPurchase</strong></a>
+                <a asp-action="Index" class="commercial-attention-card commercial-attention-card--urgent admin-dashboard-indicator @(Model.Attention.OverdueReturns == 0 ? "admin-dashboard-indicator--normal" : "admin-dashboard-indicator--warning")"><small>RETORNOS VENCIDOS</small><strong>@Model.Attention.OverdueReturns</strong></a>
+                <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator @(Model.Attention.CustomersWithoutPurchase == 0 ? "admin-dashboard-indicator--normal" : "admin-dashboard-indicator--warning")"><small>CLIENTES SEM COMPRAR</small><strong>@Model.Attention.CustomersWithoutPurchase</strong></a>
                 <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--normal"><small>POSSÍVEIS RECOMPRAS</small><strong>@Model.Attention.RepurchasesDue</strong></a>
                 <a asp-action="Index" class="commercial-attention-card admin-dashboard-indicator admin-dashboard-indicator--normal"><small>PRIMEIRO CONTATO</small><strong>@Model.Attention.NewCustomers</strong></a>
             </div>

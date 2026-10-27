@@ -13,10 +13,12 @@ public class AdminDashboardPriorityVisualTests
 
         Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--critical\"", view);
         Assert.Contains("Model.LowStockProducts == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--warning\"", view);
-        Assert.Contains("min-height: 112px;", css);
-        Assert.Contains("padding: 12px;", css);
-        Assert.Contains("margin-top: 7px;", css);
-        Assert.Contains("margin: 2px 0 4px;", css);
+        Assert.Contains("min-height: 0;", indicatorCss);
+        Assert.Contains("padding: 9px 12px;", indicatorCss);
+        Assert.Contains("margin: 1px 0 2px;", indicatorCss);
+        Assert.Contains(".admin-priority-card span > i", indicatorCss);
+        Assert.Contains("color: var(--dashboard-indicator-accent);", indicatorCss);
+        Assert.Matches(@"(?s)\.admin-authenticated \.admin-shell \.admin-priority-card\s*\{[^}]*padding:\s*9px 12px;", indicatorCss);
         Assert.Contains("border-left: 4px solid var(--dashboard-indicator-accent);", indicatorCss);
         Assert.Contains("--dashboard-indicator-accent: #F87171;", indicatorCss);
         Assert.Contains("--dashboard-indicator-accent: #F59E0B;", indicatorCss);
