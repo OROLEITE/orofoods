@@ -257,6 +257,19 @@ public sealed class SellerOrderDraftEntryContractTests
     }
 
     [Fact]
+    public void Wmc_code_is_presented_before_the_description_with_larger_type()
+    {
+        var script = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "js", "seller-order-drafts.js"));
+        var css = File.ReadAllText(ProjectFile("Orofoods.Web", "wwwroot", "css", "seller-order-drafts.css"));
+        var codePosition = script.IndexOf("seller-order-drafts__wmc-code", StringComparison.Ordinal);
+        var descriptionPosition = script.IndexOf("seller-order-drafts__product-name", StringComparison.Ordinal);
+
+        Assert.True(codePosition >= 0 && descriptionPosition > codePosition);
+        Assert.Contains(".seller-order-drafts__wmc-code { color:var(--draft-selected); font-size:1.12rem", css, StringComparison.Ordinal);
+        Assert.Contains(".seller-order-drafts__product-name { color:var(--draft-text); font-size:1.05rem", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Seller_entry_hides_delivery_date_but_keeps_the_legacy_field_in_its_form_contract()
     {
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));

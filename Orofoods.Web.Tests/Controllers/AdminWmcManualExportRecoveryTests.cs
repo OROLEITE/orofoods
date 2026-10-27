@@ -27,6 +27,20 @@ public sealed class AdminWmcManualExportRecoveryTests
             controller.GetMethod("DownloadWmcTxt")!.GetCustomAttributes().Select(attribute => attribute.GetType()));
     }
 
+    [Fact]
+    public void Json_import_endpoint_allows_the_three_roles_and_is_an_antiforgery_post()
+    {
+        var controller = typeof(WmcOrderImportsController);
+        Assert.Equal("Administrador,Vendedor,Operador", controller.GetCustomAttribute<AuthorizeAttribute>()?.Roles);
+        var method = controller.GetMethod("ImportToWmc");
+        Assert.NotNull(method);
+        Assert.NotNull(method!.GetCustomAttribute<HttpPostAttribute>());
+        Assert.NotNull(method.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+        var reconcile = controller.GetMethod("ReconcileNroPedido");
+        Assert.NotNull(reconcile?.GetCustomAttribute<HttpPostAttribute>());
+        Assert.NotNull(reconcile?.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+    }
+
     private static void AssertMethodHas<TAttribute>(Type controller, string methodName)
         where TAttribute : Attribute =>
         Assert.NotNull(controller.GetMethod(methodName)?.GetCustomAttribute<TAttribute>());

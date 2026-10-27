@@ -18,7 +18,24 @@ public sealed class WmcJsonOrderErpIntegration(
     IWmcTransmissionIdAllocator transmissionIdAllocator,
     IHostEnvironment? environment = null) : IErpOrderIntegration
 {
-    public async Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default, Guid? attemptId = null)
+    public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default, Guid? attemptId = null) =>
+        SendOrderCoreAsync(order, WmcExportSource.Automatic, WmcExportAudit.AutomatedAttemptMarker, null, cancellationToken, attemptId);
+
+    public Task<ErpOrderResult> SendManualOrderAsync(
+        Order order,
+        string? initiatedByUserId,
+        string? initiatedByEmail,
+        CancellationToken cancellationToken = default,
+        Guid? attemptId = null) =>
+        SendOrderCoreAsync(order, WmcExportSource.Manual, initiatedByEmail, initiatedByUserId, cancellationToken, attemptId);
+
+    private async Task<ErpOrderResult> SendOrderCoreAsync(
+        Order order,
+        WmcExportSource source,
+        string? initiatedByEmail,
+        string? initiatedByUserId,
+        CancellationToken cancellationToken,
+        Guid? attemptId)
     {
         var resolvedAttemptId = attemptId ?? Guid.NewGuid();
         var settings = options.Value;
@@ -26,10 +43,11 @@ public sealed class WmcJsonOrderErpIntegration(
         {
             OrderId = order.Id,
             AttemptId = resolvedAttemptId,
-            Source = WmcExportSource.Automatic,
+            Source = source,
             Outcome = WmcExportOutcome.Started,
             Succeeded = false,
-            ExportedByEmail = WmcExportAudit.AutomatedAttemptMarker,
+            ExportedByUserId = initiatedByUserId,
+            ExportedByEmail = initiatedByEmail,
             ExportedAt = DateTime.UtcNow
         };
         await auditService.BeginAttemptAsync(audit, cancellationToken);
@@ -41,10 +59,18 @@ public sealed class WmcJsonOrderErpIntegration(
             return new ErpOrderResult(false, Error: error);
         }
 
-        if (settings.HomologationOrderId is not int selectedOrderId ||
-            selectedOrderId <= 0 ||
-            order.Id != selectedOrderId ||
-            !settings.HomologationOrderIdConfirmedUnique)
+        if (source == WmcExportSource.Manual && !settings.ManualImportEnabled)
+        {
+            const string error = "WMC manual JSON import is disabled.";
+            await auditService.CompleteAttemptAsync(order.Id, resolvedAttemptId, WmcExportOutcome.Failed, null, null, error, cancellationToken);
+            return new ErpOrderResult(false, Error: error);
+        }
+
+        if (source == WmcExportSource.Automatic &&
+            (settings.HomologationOrderId is not int selectedOrderId ||
+             selectedOrderId <= 0 ||
+             order.Id != selectedOrderId ||
+             !settings.HomologationOrderIdConfirmedUnique))
         {
             const string error = "Transmission requires the explicitly selected Order.Id and confirmed WMC uniqueness.";
             await auditService.CompleteAttemptAsync(order.Id, resolvedAttemptId, WmcExportOutcome.Failed, null, null, error, cancellationToken);
@@ -176,7 +202,12 @@ public sealed class WmcJsonOrderErpIntegration(
         int orderId,
         CancellationToken cancellationToken = default)
     {
-        if (!options.Value.Enabled || environment is not null && !environment.IsDevelopment() && !environment.IsStaging() && !environment.IsEnvironment("Test"))
+        var settings = options.Value;
+        var environmentBlocksReconciliation = environment is not null
+            && !environment.IsDevelopment()
+            && !environment.IsStaging()
+            && !environment.IsEnvironment("Test");
+        if (!settings.Enabled || environmentBlocksReconciliation && !settings.ManualImportEnabled)
         {
             return new WmcOrderNumberReconciliationResult(false, null, "WMC JSON integration is disabled.");
         }

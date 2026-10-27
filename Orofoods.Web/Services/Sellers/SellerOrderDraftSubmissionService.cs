@@ -112,26 +112,26 @@ public sealed class SellerOrderDraftSubmissionService(
                     "Não há política de desconto autorizada para vendedores; nenhum desconto foi aplicado.");
             }
 
-            if (draft.Items.Any(x => x.ProductId <= 0 || x.Quantity <= 0)
-                || draft.Items.Select(x => x.ProductId).Distinct().Count() != draft.Items.Count)
+            if (draft.Items.Any(x => x.ProductId <= 0 || x.Quantity <= 0))
             {
                 return await AbortAsync(SellerOrderDraftErrorCodes.InvalidOrder,
-                    "O rascunho contém produtos repetidos ou quantidades inválidas. Corrija-o antes do envio.");
+                    "O rascunho contém produtos ou quantidades inválidas. Corrija-o antes do envio.");
             }
 
-            var wmcCodes = await db.Products.AsNoTracking()
+            var wmcCodesByProductId = await db.Products.AsNoTracking()
                 .Where(product => draft.Items.Select(item => item.ProductId).Contains(product.Id))
-                .Select(product => product.WmcCode)
-                .Where(code => code != null && code.Trim() != "")
-                .ToListAsync(cancellationToken);
-            var duplicateWmcCode = wmcCodes
-                .Select(code => code!.Trim())
+                .Select(product => new { product.Id, product.WmcCode })
+                .ToDictionaryAsync(product => product.Id, product => product.WmcCode, cancellationToken);
+            var duplicateWmcCode = draft.Items
+                .Select(item => wmcCodesByProductId.GetValueOrDefault(item.ProductId)?.Trim())
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Select(code => code!)
                 .GroupBy(code => code, StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault(group => group.Count() > 1)?.Key;
             if (duplicateWmcCode is not null)
             {
                 return await AbortAsync(SellerOrderDraftErrorCodes.InvalidOrder,
-                    $"Este item já existe no pedido! O código WMC {duplicateWmcCode} está repetido.");
+                    "Este item já existe no pedido!");
             }
 
             if (!IsQuoteBoundToDraft(quoteToken, ownerUserId, draft, expectedVersion, out var protectedQuote)

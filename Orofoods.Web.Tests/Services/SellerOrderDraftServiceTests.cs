@@ -478,7 +478,23 @@ public sealed class SellerOrderDraftServiceTests
 
         Assert.False(result.Succeeded);
         Assert.Equal(SellerOrderDraftErrorCodes.InvalidInput, result.ErrorCode);
-        Assert.Contains("código WMC", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Este item já existe no pedido!", result.ErrorMessage);
+        Assert.Empty(await fixture.Db.SellerOrderDrafts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_rejects_the_same_product_twice_by_its_wmc_code()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        fixture.Product.WmcCode = "504342";
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.Service.CreateAsync(fixture.SellerPrincipal, new SellerOrderDraftInput(
+            fixture.Customer.Id, fixture.Address.Id, fixture.PaymentTerm.Id, null, null,
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 1), new SellerOrderDraftItemInput(fixture.Product.Id, 2)]));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Este item já existe no pedido!", result.ErrorMessage);
         Assert.Empty(await fixture.Db.SellerOrderDrafts.ToListAsync());
     }
 

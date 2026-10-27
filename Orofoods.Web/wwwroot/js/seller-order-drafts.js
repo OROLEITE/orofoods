@@ -101,7 +101,7 @@
             ? itemRows().find(row => normalizeWmcCode(row.dataset.wmcCode) === wmcCode)
             : null;
         if (existing) {
-            if (existing.classList.contains('is-removal-pending')) undoRemoval(product.id);
+            if (existing.classList.contains('is-removal-pending')) undoRemoval(Number(existing.dataset.productId));
             const quantity = existing.querySelector('[data-item-quantity]');
             existing.classList.add('is-duplicate');
             quantity?.focus();

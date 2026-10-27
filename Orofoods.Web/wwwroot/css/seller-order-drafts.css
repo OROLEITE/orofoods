@@ -360,7 +360,7 @@ html[data-theme="dark"] .seller-order-drafts__notice--warning { background:#4220
         padding-inline: .55rem;
     }
 }
-.seller-order-drafts__wmc-code { color:var(--draft-selected); font-size:.72rem; font-weight:850; letter-spacing:.05em; }
+.seller-order-drafts__wmc-code { color:var(--draft-selected); font-size:1.12rem; font-weight:850; letter-spacing:.05em; }
 .seller-order-drafts__product-name { color:var(--draft-text); font-size:1.05rem; font-weight:800; line-height:1.3; margin:.12rem 0; overflow-wrap:anywhere; }
 .seller-order-drafts__item.is-duplicate { border-color:var(--draft-error); box-shadow:0 0 0 3px color-mix(in srgb, var(--draft-error) 15%, transparent); }
 .seller-order-drafts__entry-line { display:grid; gap:.35rem; margin-top:.8rem; padding:.8rem; border:1px dashed var(--draft-selected); border-radius:.65rem; background:var(--draft-soft-blue); }

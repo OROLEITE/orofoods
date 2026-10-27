@@ -20,6 +20,74 @@ namespace Orofoods.Web.Tests.Integrations;
 public class WmcJsonOrderErpIntegrationTests
 {
     [Fact]
+    public async Task Manual_send_stays_disabled_by_default_and_does_not_issue_an_http_request()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder();
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        var handler = new RecordingHandler((HttpStatusCode.OK, "importado com sucesso"));
+        using var client = new HttpClient(handler);
+        var integration = new WmcJsonOrderErpIntegration(
+            client,
+            Options.Create(CreateOptions(order.Id)),
+            new WmcMobileOrderPayloadBuilder(),
+            new WmcExportAuditService(db),
+            new FixedWmcTransmissionIdAllocator(9001));
+
+        var result = await integration.SendManualOrderAsync(order, "operator-user", "operator@example.test");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, handler.CallCount);
+        var audit = Assert.Single(db.WmcExportAudits);
+        Assert.Equal(WmcExportSource.Manual, audit.Source);
+        Assert.Equal(WmcExportOutcome.Failed, audit.Outcome);
+        Assert.Equal("operator-user", audit.ExportedByUserId);
+    }
+
+    [Fact]
+    public async Task Selected_manual_send_records_the_actor_reconciles_the_order_number_and_marks_wmc_imported()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder();
+        order.WmcOrderExportState = new WmcOrderExportState { Status = WmcOrderExportStatus.Pending };
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        var handler = new RecordingHandler(
+            (HttpStatusCode.OK, "importado com sucesso"),
+            (HttpStatusCode.OK, "[{\"NROPEDIDO\":776655}]"));
+        using var client = new HttpClient(handler);
+        var manualOptions = CreateOptions(order.Id, "https://wmc.example.invalid/integracao/", "device-test", "global-serial", sellerSerial: "seller-27-serial");
+        manualOptions.ManualImportEnabled = true;
+        manualOptions.HomologationOrderId = order.Id + 1;
+        manualOptions.HomologationOrderIdConfirmedUnique = false;
+        var integration = new WmcJsonOrderErpIntegration(
+            client,
+            Options.Create(manualOptions),
+            new WmcMobileOrderPayloadBuilder(),
+            new WmcExportAuditService(db),
+            new FixedWmcTransmissionIdAllocator(9001));
+        var service = new OrderIntegrationService(db, integration);
+
+        var result = await service.SendSelectedAsync(order.Id, integration, "operator-user", "operator@example.test");
+
+        Assert.True(result?.Succeeded);
+        Assert.Equal("776655", result!.ErpOrderNumber);
+        var persisted = await db.Orders.Include(item => item.WmcOrderExportState).SingleAsync(item => item.Id == order.Id);
+        Assert.Equal(WmcOrderExportStatus.Imported, persisted.WmcOrderExportState!.Status);
+        Assert.Equal("operator-user", persisted.WmcOrderExportState.ImportedByUserId);
+        Assert.Equal("776655", persisted.ErpOrderNumber);
+        var audit = Assert.Single(db.WmcExportAudits);
+        Assert.Equal(WmcExportSource.Manual, audit.Source);
+        Assert.Equal("operator-user", audit.ExportedByUserId);
+        Assert.Equal("operator@example.test", audit.ExportedByEmail);
+        Assert.Equal(WmcExportOutcome.Succeeded, audit.Outcome);
+        Assert.Equal(2, handler.CallCount);
+    }
+
+    [Fact]
     public async Task Uses_the_serial_assigned_to_the_order_sales_representative()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

@@ -186,6 +186,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddScoped<CustomerAccessService>();
 builder.Services.AddScoped<SalesRepresentativeAccessService>();
+builder.Services.AddScoped<WmcOrderImportAccessService>();
 builder.Services.AddScoped<SellerWorkspaceService>();
 builder.Services.AddScoped<SellerCatalogService>();
 builder.Services.AddScoped<SellerOrderDraftService>();
