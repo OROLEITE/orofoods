@@ -103,7 +103,6 @@
                             <small id="assisted-minimum-gap" role="status" aria-live="polite">Faltam @Model.MinimumOrder.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) para atingir o mínimo.</small>
                         </div>
                         <div class="assisted-order-fields">
-                            <label asp-for="AddressId">Endereço<select asp-for="AddressId">@foreach (var address in Model.Addresses) { <option value="@address.Id">@address.Label - @address.City</option> }</select></label>
                             <label asp-for="PaymentTermId">Condição de pagamento<select asp-for="PaymentTermId">@foreach (var term in Model.PaymentTerms) { <option value="@term.Id">@term.Name</option> }</select></label>
                             <label asp-for="RequestedDeliveryDate">Data de entrega<input asp-for="RequestedDeliveryDate" /></label>
                             <label asp-for="Notes">Observações<textarea asp-for="Notes" rows="3"></textarea></label>

@@ -38,12 +38,11 @@ WmcJsonOrder__SalesRepresentativeCodes__<SalesRepresentativeId>=<codigo WMC real
 WmcJsonOrder__SalesRepresentativeSerials__<SalesRepresentativeId>=<serial proprio do vendedor emitido pelo WMC>
 
 `WmcJsonOrder__DeviceId` e opcional. Se configurado, seu valor e enviado em `imei`; se omitido ou vazio, a requisicao preserva o parametro como `imei=`. Nao ha comprovacao neste contrato de que um DeviceId global seja obrigatorio. Codigo WMC e serial permanecem configurados por vendedor.
-
 O worker HTTP de homologacao e separado de WmcFileDrop__Enabled e consulta apenas o Order.Id configurado, se estiver Pending. Nao percorre outros pedidos. Para uma homologacao de um pedido, mantenha `AutomaticWorkerEnabled=false`; essa flag pertence ao worker geral e nao respeita `HomologationOrderId`.
 
 Antes de homologar, confira no PostgreSQL da Orofoods qual sera o proximo WmcTransmissionId e confirme em consulta somente leitura ao WMC que esse id ainda nao existe no ambiente alvo. O identificador nao deriva de Order.Id. Mantenha outros transmissores JSON desligados entre a verificacao e o envio selecionado. A flag HomologationOrderIdConfirmedUnique registra a confirmacao operacional; ela nao faz a consulta por conta propria. Os testes locais nao consultam o WMC.
 
-O worker TXT continua independente e usa WmcFileDrop__Enabled. Durante a homologacao HTTP controlada, mantenha-o desligado para evitar disputa pelo mesmo pedido.
+O TXT e gerado somente por uma acao manual explicita e nao participa do processamento automatico. O worker geral usa exclusivamente HTTP/JSON; `WmcFileDrop__Enabled` nao habilita transmissao automatica de pedidos.
 
 ## Processamento automatico geral
 

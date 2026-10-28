@@ -10,7 +10,6 @@ public sealed class SellerOrderDraftCreateForm
     public int CustomerId { get; set; }
 
     public Guid CreateRequestKey { get; set; }
-    public int? DeliveryAddressId { get; set; }
     public int? PaymentTermId { get; set; }
     public DateTime? RequestedDeliveryDate { get; set; }
 
@@ -25,7 +24,6 @@ public sealed class SellerOrderDraftSaveForm
     [Range(1, int.MaxValue)]
     public int ExpectedVersion { get; set; }
 
-    public int? DeliveryAddressId { get; set; }
     public int? PaymentTermId { get; set; }
     public DateTime? RequestedDeliveryDate { get; set; }
 
@@ -83,9 +81,7 @@ public sealed class SellerOrderDraftEditorViewModel
     public int CustomerTotalCount { get; init; }
     public int CustomerTotalPages { get; init; }
     public string? ProductSearchUrl { get; init; }
-    public IReadOnlyList<SellerDraftAddressOption> Addresses { get; init; } = [];
     public IReadOnlyList<SellerDraftPaymentOption> PaymentTerms { get; init; } = [];
-    public int? DeliveryAddressId { get; init; }
     public int? PaymentTermId { get; init; }
     public DateTime? RequestedDeliveryDate { get; init; }
     public decimal MinimumOrder { get; init; } = 160m;
@@ -95,8 +91,6 @@ public sealed class SellerOrderDraftEditorViewModel
     public IReadOnlyList<int> RemovedProductIds { get; init; } = [];
     public decimal Total => Items.Where(item => !item.RemovalPending).Sum(item => item.Subtotal);
 }
-
-public sealed record SellerDraftAddressOption(int Id, string Label, string FullAddress);
 
 public sealed record SellerDraftPaymentOption(int Id, string Code, string Name, int DaysUntilDue);
 

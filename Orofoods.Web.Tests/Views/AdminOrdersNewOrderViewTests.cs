@@ -53,6 +53,17 @@ public class AdminOrdersNewOrderViewTests
     }
 
     [Fact]
+    public void Admin_assisted_order_has_no_delivery_address_field()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Customers", "NewOrder.cshtml"));
+
+        Assert.DoesNotContain("AddressId", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Endereço", view, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("PaymentTermId", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Enter_and_mouse_selection_open_the_selected_customer_order_entry()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

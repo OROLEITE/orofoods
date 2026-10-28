@@ -41,7 +41,7 @@ public sealed class SellerOrderDraftServiceTests
     }
 
     [Fact]
-    public async Task Create_and_reopen_persists_a_draft_with_current_customer_price_without_creating_an_order_or_reservation()
+    public async Task Create_and_reopen_persists_an_addressless_draft_with_current_price_without_order_or_reservation()
     {
         await using var fixture = await DraftFixture.CreateAsync();
 
@@ -63,7 +63,7 @@ public sealed class SellerOrderDraftServiceTests
 
         Assert.NotNull(reopened);
         Assert.Equal(fixture.Customer.Id, reopened.CustomerId);
-        Assert.Equal(fixture.Address.Id, reopened.DeliveryAddressId);
+        Assert.Null(reopened.DeliveryAddressId);
         Assert.Equal(fixture.PaymentTerm.Id, reopened.PaymentTermId);
         Assert.Equal("Entregar pela manhã", reopened.Notes);
         var item = Assert.Single(reopened.Items);
@@ -104,6 +104,33 @@ public sealed class SellerOrderDraftServiceTests
         Assert.Equal(3, Assert.Single(saved.Draft.Items).Quantity);
         Assert.Empty(await fixture.Db.Orders.ToListAsync());
         Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Saving_without_an_address_preserves_a_legacy_draft_address()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, fixture.ValidInput());
+        Assert.True(created.Succeeded, created.ErrorMessage);
+
+        var persistedDraft = await fixture.Db.SellerOrderDrafts.SingleAsync(draft => draft.Id == created.Draft!.Id);
+        persistedDraft.DeliveryAddressId = fixture.Address.Id;
+        await fixture.Db.SaveChangesAsync();
+
+        var saved = await fixture.Service.SaveAsync(fixture.SellerPrincipal, persistedDraft.Id, new SellerOrderDraftSaveInput(
+            persistedDraft.Version,
+            DeliveryAddressId: null,
+            fixture.PaymentTerm.Id,
+            null,
+            "Mantém o histórico",
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2)]));
+
+        Assert.True(saved.Succeeded, saved.ErrorMessage);
+        Assert.Equal(fixture.Address.Id, saved.Draft!.DeliveryAddressId);
+        Assert.Equal(fixture.Address.Id, await fixture.Db.SellerOrderDrafts
+            .Where(draft => draft.Id == persistedDraft.Id)
+            .Select(draft => draft.DeliveryAddressId)
+            .SingleAsync());
     }
 
     [Fact]
@@ -531,7 +558,7 @@ public sealed class SellerOrderDraftServiceTests
     }
 
     [Fact]
-    public async Task Create_rejects_an_address_from_another_customer_and_a_disallowed_payment_term()
+    public async Task Create_ignores_delivery_address_and_still_rejects_a_disallowed_payment_term()
     {
         await using var fixture = await DraftFixture.CreateAsync();
         var otherCustomer = new Customer
@@ -553,9 +580,10 @@ public sealed class SellerOrderDraftServiceTests
         var invalidPayment = await fixture.Service.CreateAsync(fixture.SellerPrincipal, new SellerOrderDraftInput(
             fixture.Customer.Id, fixture.Address.Id, creditTerm.Id, null, null, []));
 
-        Assert.Equal(SellerOrderDraftErrorCodes.InvalidAddress, invalidAddress.ErrorCode);
+        Assert.True(invalidAddress.Succeeded, invalidAddress.ErrorMessage);
+        Assert.Null(invalidAddress.Draft!.DeliveryAddressId);
         Assert.Equal(SellerOrderDraftErrorCodes.PaymentTermNotAllowed, invalidPayment.ErrorCode);
-        Assert.Empty(await fixture.Db.SellerOrderDrafts.ToListAsync());
+        Assert.Single(await fixture.Db.SellerOrderDrafts.ToListAsync());
     }
 
     private sealed class DraftFixture : IAsyncDisposable

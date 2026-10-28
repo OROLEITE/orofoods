@@ -429,9 +429,9 @@ public class PortalController(
             return View(checkout);
         }
 
-        if (!checkout.Addresses.Any(x => x.Id == input.AddressId) || !checkout.PaymentTerms.Any(x => x.Id == input.PaymentTermId))
+        if (!checkout.PaymentTerms.Any(x => x.Id == input.PaymentTermId))
         {
-            ModelState.AddModelError(string.Empty, "Endereço ou condição de pagamento inválidos.");
+            ModelState.AddModelError(string.Empty, "Condição de pagamento inválida.");
             return View(checkout);
         }
 
@@ -458,7 +458,7 @@ public class PortalController(
         var result = await assistedOrderService.PlaceAsync(
             customer.Id,
             userId,
-            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, input.AttemptKey),
+            new OrderPlacementCommand(input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, input.AttemptKey),
             HttpContext.Session,
             CartScope.CustomerSelfService,
             clearCart: false);
@@ -530,7 +530,6 @@ public class PortalController(
         return new CheckoutViewModel
         {
             Cart = await cartService.GetAsync(customer.Id, HttpContext.Session),
-            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
             PaymentTerms = eligibility.PaymentMethods,
             PaymentEligibility = eligibility,
             MercadoPagoPublicKey = mercadoPagoOptions.Value.PublicKey
@@ -575,7 +574,6 @@ public class PortalController(
             Customer = customer,
             SourceOrder = order,
             Items = items,
-            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
             PaymentTerms = (await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id)).PaymentMethods.ToList(),
             AttemptKey = Guid.NewGuid().ToString("N"),
             MinimumOrder = OrderMinimumPolicy.Resolve(
@@ -589,13 +587,6 @@ public class PortalController(
     public async Task<IActionResult> Confirm(ConfirmOrderVm input)
     {
         var customer = await GetCurrentCustomerAsync();
-        var hasDeliveryAddress = await db.CustomerAddresses.AnyAsync(address =>
-            address.Id == input.AddressId && address.CustomerId == customer.Id && address.IsActive);
-        if (!hasDeliveryAddress)
-        {
-            return Forbid();
-        }
-
         var sourceOrder = await db.Orders
             .Include(order => order.Items)
             .AsNoTracking()
@@ -623,7 +614,7 @@ public class PortalController(
         var result = await assistedOrderService.PlaceLinesAsync(
             customer.Id,
             userId,
-            new OrderPlacementCommand(input.AddressId, input.PaymentTermId, input.RequestedDate, input.Notes, input.AttemptKey),
+            new OrderPlacementCommand(input.PaymentTermId, input.RequestedDate, input.Notes, input.AttemptKey),
             requestedLines);
         if (!result.Succeeded)
         {
@@ -638,7 +629,6 @@ public class PortalController(
         var order = await db.Orders
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
-            .Include(x => x.DeliveryAddress)
             .Include(x => x.Payments)
             .SingleAsync(x => x.Id == id && x.CustomerId == customer.Id);
         return View(order);

@@ -16,7 +16,6 @@ public class WmcAutomaticOrderIntegrationTests
     public async Task Does_not_fall_back_to_automatic_txt_when_json_is_disabled()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var outputDirectory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-fallback-{Guid.NewGuid():N}");
         var handler = new ThrowingHandler();
         using var client = new HttpClient(handler);
         var json = new WmcJsonOrderErpIntegration(
@@ -54,9 +53,6 @@ public class WmcAutomaticOrderIntegrationTests
         Assert.False(result.Succeeded);
         Assert.Contains("JSON", result.Error, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, handler.CallCount);
-        var outputCreated = Directory.Exists(outputDirectory);
-        if (outputCreated) Directory.Delete(outputDirectory, recursive: true);
-        Assert.False(outputCreated);
         Assert.Empty(db.WmcExportAudits);
     }
 

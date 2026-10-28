@@ -5,7 +5,7 @@
     <div class="container">
         <div class="eyebrow light"><span></span> Finaliza&ccedil;&atilde;o</div>
         <h1>Finalizar pedido</h1>
-        <p>Revise os dados de entrega, pagamento e o resumo antes de confirmar.</p>
+        <p>Revise a data desejada, o pagamento e o resumo antes de confirmar.</p>
     </div>
 </section>
 
@@ -20,17 +20,8 @@
                 <div asp-validation-summary="All" class="checkout-validation" role="alert"></div>
 
                 <section class="checkout-panel">
-                    <header><span>01</span><div><small>ENTREGA</small><h2>Quando e onde entregar?</h2></div></header>
+                    <header><span>01</span><div><small>DATA DESEJADA</small><h2>Quando deseja receber?</h2></div></header>
                     <div class="checkout-form-grid">
-                        <div class="checkout-field checkout-field-wide">
-                            <label asp-for="AddressId">Endere&ccedil;o de entrega</label>
-                            <select asp-for="AddressId">
-                                @foreach (var address in Model.Addresses)
-                                {
-                                    <option value="@address.Id">@address.Label | @address.Street, @address.Number - @address.City</option>
-                                }
-                            </select>
-                        </div>
                         <div class="checkout-field"><label asp-for="RequestedDeliveryDate">Data desejada</label><input asp-for="RequestedDeliveryDate" /></div>
                     </div>
                 </section>

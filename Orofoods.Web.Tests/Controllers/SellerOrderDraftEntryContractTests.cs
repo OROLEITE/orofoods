@@ -135,6 +135,16 @@ public sealed class SellerOrderDraftEntryContractTests
     }
 
     [Fact]
+    public void Seller_draft_create_and_save_forms_do_not_bind_a_delivery_address()
+    {
+        Assert.Null(typeof(SellerOrderDraftCreateForm).GetProperty("DeliveryAddressId"));
+        Assert.Null(typeof(SellerOrderDraftSaveForm).GetProperty("DeliveryAddressId"));
+
+        var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
+        Assert.DoesNotContain("form.DeliveryAddressId", controller, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Mobile_action_bar_exposes_the_total_and_a_44px_product_search_shortcut()
     {
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
