@@ -3,7 +3,7 @@ namespace Orofoods.Web.Tests.Views;
 public class SellerViewTests
 {
     [Fact]
-    public void Seller_customer_search_uses_supported_terms_and_the_dark_seller_layout_placeholder_style()
+    public void Seller_customer_search_uses_supported_terms_and_a_contrasting_seller_placeholder_style()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../.."));
         var view = File.ReadAllText(Path.Combine(root, "Orofoods.Web", "Areas", "Vendedor", "Views", "Customers", "Index.cshtml"));
@@ -15,10 +15,16 @@ public class SellerViewTests
         Assert.Contains("seller-app-page", sellerLayout);
         Assert.Contains("<body class=\"@bodyClass\">", layout);
         Assert.Contains("seller-customer-search", view);
-        Assert.Contains("body.seller-app-page .seller-customer-search::placeholder", styles);
-        Assert.Contains("color: var(--seller-muted)", styles);
+        Assert.Contains("body.seller-app-page .customer-search--wallet", styles);
+        Assert.Contains("--customer-search-surface: #111827;", styles);
+        Assert.Contains("--customer-search-text: #F8FAFC;", styles);
+        Assert.Contains("body.seller-app-page .seller-customer-search::placeholder,", styles);
+        Assert.Contains("body.seller-app-page .seller-customer-search:focus::placeholder", styles);
+        Assert.Contains("color: #94A3B8", styles);
         Assert.Contains("opacity: 1", styles);
         Assert.DoesNotContain("html[data-theme=\"dark\"] body.seller-app-page .seller-customer-search::placeholder", styles);
+        Assert.Contains("href=\"~/css/customer-search.css\" asp-append-version=\"true\"", view);
+        Assert.Contains("href=\"~/css/seller-area.css\" asp-append-version=\"true\"", layout);
     }
 
     [Fact]
