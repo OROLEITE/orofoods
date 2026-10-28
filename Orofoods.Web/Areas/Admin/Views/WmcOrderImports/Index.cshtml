@@ -21,6 +21,9 @@
             {
                 var state = order.WmcOrderExportState;
                 var imported = state?.Status == WmcOrderExportStatus.Imported && !state.RequiresManualReview;
+                var canReconcileNumber = order.WmcTransmissionId is > 0
+                    && string.IsNullOrWhiteSpace(order.ErpOrderNumber)
+                    && (imported || order.IntegrationStatus == IntegrationStatus.Unknown);
                 var eligible = eligibleOrderIds.Contains(order.Id);
                 var hasUncertainAudit = order.WmcExportAudits.Any(audit => audit.Outcome is WmcExportOutcome.Started or WmcExportOutcome.Unknown or WmcExportOutcome.Succeeded);
                 var statusLabel = imported ? $"Importado WMC{(string.IsNullOrWhiteSpace(order.ErpOrderNumber) ? "" : $" · Nº {order.ErpOrderNumber}")}" :
@@ -42,7 +45,7 @@
                                 <button type="submit" class="btn btn-sm admin-primary-action">Importar ao WMC</button>
                             </form>
                         }
-                        else if (imported && string.IsNullOrWhiteSpace(order.ErpOrderNumber))
+                        else if (canReconcileNumber)
                         {
                             <form asp-area="Admin" asp-controller="WmcOrderImports" asp-action="ReconcileNroPedido" method="post">
                                 @Html.AntiForgeryToken()

@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
@@ -29,7 +30,10 @@ public class WmcAutomaticOrderIntegrationTests
             Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = outputDirectory }),
             new WmcOrderFileGenerator(Options.Create(new WmcOrderFileOptions { SupplierCnpj = "51735297000174" })),
             new WmcExportAuditService(db));
-        var integration = new WmcAutomaticOrderIntegration(Options.Create(new WmcJsonOrderOptions()), json, fileDrop);
+        var fileDropServices = new ServiceCollection();
+        fileDropServices.AddSingleton(fileDrop);
+        using var fileDropProvider = fileDropServices.BuildServiceProvider();
+        var integration = new WmcAutomaticOrderIntegration(Options.Create(new WmcJsonOrderOptions()), json, fileDropProvider);
         var order = new Order
         {
             Number = "ORO-2026-000901",
@@ -119,18 +123,14 @@ public class WmcAutomaticOrderIntegrationTests
             new WmcMobileOrderPayloadBuilder(),
             new WmcExportAuditService(db),
             new FixedWmcTransmissionIdAllocator(9001));
-        var outputDirectory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-disabled-{Guid.NewGuid():N}");
-        var fileDrop = new WmcFileDropErpOrderIntegration(
-            Options.Create(new WmcFileDropOptions { Enabled = false, OutputDirectory = outputDirectory }),
-            new WmcOrderFileGenerator(Options.Create(new WmcOrderFileOptions { SupplierCnpj = "51735297000174" })),
-            new WmcExportAuditService(db));
-        var integration = new WmcAutomaticOrderIntegration(jsonOptions, json, fileDrop);
+        using var emptyProvider = new ServiceCollection().BuildServiceProvider();
+        var integration = new WmcAutomaticOrderIntegration(jsonOptions, json, emptyProvider);
 
         var result = await integration.SendOrderAsync(order);
 
         Assert.True(result.Succeeded);
         Assert.Equal(2, handler.CallCount);
-        Assert.Empty(Directory.Exists(outputDirectory) ? Directory.GetFiles(outputDirectory) : []);
+        Assert.Empty(db.WmcExportAudits.Where(audit => audit.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Manual));
     }
 
     private sealed class ThrowingHandler : HttpMessageHandler

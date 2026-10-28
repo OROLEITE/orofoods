@@ -5,6 +5,7 @@ public sealed class WmcJsonOrderOptions
     public const string SectionName = "WmcJsonOrder";
 
     public bool Enabled { get; set; }
+    public bool AutomaticWorkerEnabled { get; set; }
     public bool ManualImportEnabled { get; set; }
     public bool HomologationWorkerEnabled { get; set; }
     public int? HomologationOrderId { get; set; }

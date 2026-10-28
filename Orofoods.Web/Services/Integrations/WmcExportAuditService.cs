@@ -152,13 +152,15 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
         }
 
         return await db.WmcExportAudits.AsNoTracking()
-            .Where(item => item.OrderId == orderId && item.Outcome == WmcExportOutcome.Succeeded && item.Succeeded &&
-                item.HttpStatusCode == 200 && item.AttemptId != null && item.WmcTransmissionId == orderTransmissionId &&
+            .Where(item => item.OrderId == orderId &&
+                ((item.Outcome == WmcExportOutcome.Succeeded && item.Succeeded && item.HttpStatusCode == 200) ||
+                    item.Outcome == WmcExportOutcome.Unknown) &&
+                item.AttemptId != null && item.WmcTransmissionId == orderTransmissionId &&
                 item.WmcSalesRepresentativeCode > 0 && item.WmcSalesRepresentativeCode <= short.MaxValue &&
-                item.WmcDestination != null && item.ResponseBody != null)
+                item.WmcDestination != null && (item.Outcome == WmcExportOutcome.Unknown || item.ResponseBody != null))
             .OrderByDescending(item => item.ExportedAt)
             .Select(item => new WmcOrderNumberReconciliationTarget(item.AttemptId!.Value, item.WmcTransmissionId!.Value,
-                item.WmcSalesRepresentativeCode!.Value, item.WmcDestination!, item.ResponseBody!))
+                item.WmcSalesRepresentativeCode!.Value, item.WmcDestination!, item.ResponseBody, item.Outcome))
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -173,6 +175,25 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
         {
             var order = await db.Orders.SingleAsync(item => item.Id == orderId, cancellationToken);
             order.ErpOrderNumber = erpOrderNumber;
+            if (attempt.Outcome == WmcExportOutcome.Unknown)
+            {
+                order.IntegrationStatus = IntegrationStatus.Succeeded;
+                order.IntegrationError = null;
+                var state = await db.WmcOrderExportStates.SingleOrDefaultAsync(item => item.OrderId == orderId, cancellationToken);
+                if (state is null)
+                {
+                    state = new WmcOrderExportState { OrderId = orderId };
+                    db.WmcOrderExportStates.Add(state);
+                }
+
+                state.Status = WmcOrderExportStatus.Imported;
+                state.RequiresManualReview = false;
+                state.UpdatedAt = DateTime.UtcNow;
+                state.ImportedAt = DateTime.UtcNow;
+                state.ImportedByUserId = attempt.ExportedByUserId;
+                state.ImportedByEmail = attempt.ExportedByEmail;
+                state.LastError = null;
+            }
         }
         await db.SaveChangesAsync(cancellationToken);
     }
@@ -181,4 +202,4 @@ public sealed class WmcExportAuditService(ApplicationDbContext db)
 }
 
 public sealed record WmcOrderNumberReconciliationTarget(Guid AttemptId, int WmcTransmissionId, int SalesRepresentativeCode,
-    string Destination, string ExportResponseBody);
+    string Destination, string? ExportResponseBody, WmcExportOutcome Outcome);
