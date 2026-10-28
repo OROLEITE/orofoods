@@ -75,6 +75,38 @@ public sealed class SellerOrderDraftServiceTests
     }
 
     [Fact]
+    public async Task Create_and_save_accept_a_draft_without_delivery_address()
+    {
+        await using var fixture = await DraftFixture.CreateAsync();
+        var input = new SellerOrderDraftInput(
+            fixture.Customer.Id,
+            DeliveryAddressId: null,
+            fixture.PaymentTerm.Id,
+            DateTime.UtcNow.Date.AddDays(1),
+            "Pedido sem selecao manual de endereco",
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 2)]);
+
+        var created = await fixture.Service.CreateAsync(fixture.SellerPrincipal, input);
+
+        Assert.True(created.Succeeded, created.ErrorMessage);
+        Assert.Null(created.Draft!.DeliveryAddressId);
+
+        var saved = await fixture.Service.SaveAsync(fixture.SellerPrincipal, created.Draft.Id, new SellerOrderDraftSaveInput(
+            created.Draft.Version,
+            DeliveryAddressId: null,
+            fixture.PaymentTerm.Id,
+            DateTime.UtcNow.Date.AddDays(2),
+            "Rascunho sem endereco",
+            [new SellerOrderDraftItemInput(fixture.Product.Id, 3)]));
+
+        Assert.True(saved.Succeeded, saved.ErrorMessage);
+        Assert.Null(saved.Draft!.DeliveryAddressId);
+        Assert.Equal(3, Assert.Single(saved.Draft.Items).Quantity);
+        Assert.Empty(await fixture.Db.Orders.ToListAsync());
+        Assert.Empty(await fixture.Db.InventoryReservations.ToListAsync());
+    }
+
+    [Fact]
     public async Task Save_and_reopen_preserves_all_draft_items_and_updated_quantities()
     {
         await using var fixture = await DraftFixture.CreateAsync();

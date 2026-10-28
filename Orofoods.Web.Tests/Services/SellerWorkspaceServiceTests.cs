@@ -124,4 +124,38 @@ public sealed class SellerWorkspaceServiceTests
         Assert.Empty(initial.Customers);
         Assert.Equal(0, initial.TotalCount);
     }
+
+    [Fact]
+    public async Task Seller_customer_search_matches_partial_name_normalized_cnpj_and_partial_wmc_code()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller-customer-search", UserName = "seller-customer-search", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer
+        {
+            LegalName = "Mercado Brasil Distribuidora",
+            TradeName = "Mercado Central",
+            Cnpj = "51.735.297/0001-74",
+            WmcCode = "WMC-92841",
+            Status = CustomerStatus.Approved,
+            IsActive = true,
+            SalesRepresentative = representative
+        };
+        db.AddRange(representative, seller, customer);
+        await db.SaveChangesAsync();
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, seller.Id), new Claim(ClaimTypes.Role, ApplicationRoles.Seller)], "test"));
+        var service = new SellerWorkspaceService(db, new SalesRepresentativeAccessService(db));
+
+        var partialName = await service.SearchCustomersAsync(principal, "Mercado Cen");
+        var partialLegalName = await service.SearchCustomersAsync(principal, "Brasil Distrib");
+        var normalizedCnpj = await service.SearchCustomersAsync(principal, "735.297/0001");
+        var partialWmcCode = await service.SearchCustomersAsync(principal, "WMC-928");
+
+        Assert.Equal(customer.Id, Assert.Single(partialName!.Customers).Id);
+        Assert.Equal(customer.Id, Assert.Single(partialLegalName!.Customers).Id);
+        Assert.Equal(customer.Id, Assert.Single(normalizedCnpj!.Customers).Id);
+        Assert.Equal(customer.Id, Assert.Single(partialWmcCode!.Customers).Id);
+    }
 }

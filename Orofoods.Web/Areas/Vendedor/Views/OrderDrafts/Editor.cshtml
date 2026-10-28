@@ -223,17 +223,6 @@
                                 </div>
                                 <div class="seller-order-drafts__fields-grid">
                                     <div>
-                                        <label for="delivery-address">Endereço cadastrado</label>
-                                        <select id="delivery-address" class="form-select" name="DeliveryAddressId">
-                                            <option value="">Selecionar endereço</option>
-                                            @foreach (var address in Model.Addresses)
-                                            {
-                                                <option value="@address.Id" selected="@(Model.DeliveryAddressId == address.Id)">@address.Label — @address.FullAddress</option>
-                                            }
-                                        </select>
-                                        @if (Model.Addresses.Count == 0) { <small class="seller-order-drafts__field-hint">Este cliente não possui endereço ativo cadastrado.</small> }
-                                    </div>
-                                    <div>
                                         <label for="payment-term">Condição de pagamento permitida</label>
                                         <select id="payment-term" class="form-select" name="PaymentTermId">
                                             <option value="">Selecionar condição</option>

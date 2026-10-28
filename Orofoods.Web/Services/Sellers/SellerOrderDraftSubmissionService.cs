@@ -86,11 +86,6 @@ public sealed class SellerOrderDraftSubmissionService(
                     "O rascunho foi alterado em outra sessão. Reabra-o para revisar os dados antes do envio.");
             }
 
-            if (draft.DeliveryAddressId is null)
-            {
-                return await AbortAsync(SellerOrderDraftErrorCodes.InvalidOrder, "Selecione um endereço de entrega cadastrado.");
-            }
-
             if (draft.PaymentTermId is null)
             {
                 return await AbortAsync(SellerOrderDraftErrorCodes.InvalidOrder, "Selecione uma condição de pagamento autorizada.");
@@ -145,10 +140,11 @@ public sealed class SellerOrderDraftSubmissionService(
                 draft.CustomerId,
                 ownerUserId,
                 new OrderPlacementCommand(
-                    draft.DeliveryAddressId.Value,
+                    draft.DeliveryAddressId,
                     draft.PaymentTermId.Value,
                     draft.RequestedDeliveryDate,
-                    draft.Notes),
+                    draft.Notes,
+                    AllowMissingAddress: true),
                 draft.Id,
                 draft.Items.Select(x => (x.ProductId, x.Quantity)).ToArray(),
                 protectedQuote.Quote,
