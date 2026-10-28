@@ -1632,7 +1632,13 @@ body.seller-app-page .seller-order-confirmation__actions .seller-button {
     }
 }
 
-body.seller-app-page .seller-customer-search::placeholder {
-    color: var(--seller-muted);
+body.seller-app-page .customer-search--wallet {
+    --customer-search-surface: #111827;
+    --customer-search-text: #F8FAFC;
+}
+
+body.seller-app-page .seller-customer-search::placeholder,
+body.seller-app-page .seller-customer-search:focus::placeholder {
+    color: #94A3B8;
     opacity: 1;
 }
