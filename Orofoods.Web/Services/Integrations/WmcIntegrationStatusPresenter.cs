@@ -26,11 +26,6 @@ public static class WmcIntegrationStatusPresenter
             return WmcIntegrationStatusDisplay.Confirmed;
         }
 
-        if (state?.Status is WmcOrderExportStatus.Rejected or WmcOrderExportStatus.Error)
-        {
-            return WmcIntegrationStatusDisplay.Error;
-        }
-
         var latestHttpAttempt = order.WmcExportAudits
             .Where(audit => !IsTxtAudit(audit))
             .OrderByDescending(audit => audit.ExportedAt)
@@ -46,6 +41,11 @@ public static class WmcIntegrationStatusPresenter
                 WmcExportOutcome.Failed or WmcExportOutcome.Rejected => WmcIntegrationStatusDisplay.Error,
                 _ => WmcIntegrationStatusDisplay.Pending
             };
+        }
+
+        if (state?.Status is WmcOrderExportStatus.Rejected or WmcOrderExportStatus.Error)
+        {
+            return WmcIntegrationStatusDisplay.Error;
         }
 
         if (order.IntegrationStatus == IntegrationStatus.Failed)
