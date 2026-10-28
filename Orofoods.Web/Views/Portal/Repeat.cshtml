@@ -43,8 +43,6 @@
                         <div class="summary-line"><span>Frete</span><b class="free">Gratis</b></div>
                         <div class="minimum"><div><span>Pedido mínimo</span><b>@Model.MinimumOrder.ToString("C")</b></div><div class="progress"><div id="minimumProgress"></div></div><small id="minimumText"></small></div>
                         <div class="summary-total"><span>Total</span><strong id="total">-</strong></div>
-                        <label>Endereco de entrega</label>
-                        <select name="AddressId">@foreach (var address in Model.Addresses) { <option value="@address.Id">@address.Label - @address.DeliveryDay</option> }</select>
                         <label>Data desejada</label>
                         <input name="RequestedDate" type="date" value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" />
                         <label>Pagamento</label>

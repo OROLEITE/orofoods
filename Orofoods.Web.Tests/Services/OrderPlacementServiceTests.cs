@@ -27,7 +27,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Observacao"),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Observacao"),
             fixture.Session,
             fixture.Scope);
 
@@ -64,7 +64,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            new(fixture.PaymentTerm.Id, null, null),
             [(fixture.Product.Id, 2)],
             clearCart: false);
 
@@ -97,7 +97,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            new(fixture.PaymentTerm.Id, null, null),
             [(fixture.Product.Id, 1)],
             clearCart: false);
 
@@ -114,7 +114,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
             [(fixture.Product.Id, 1)],
             clearCart: false);
 
@@ -134,7 +134,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            new(fixture.PaymentTerm.Id, null, null),
             [(fixture.Product.Id, 1)],
             clearCart: false);
 
@@ -159,7 +159,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            new(fixture.PaymentTerm.Id, null, null),
             [(fixture.Product.Id, 3)],
             clearCart: false);
 
@@ -180,7 +180,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, null, null),
+            new(fixture.PaymentTerm.Id, null, null),
             [(fixture.Product.Id, 2)],
             clearCart: false);
 
@@ -199,7 +199,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             internalOperator.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
             [(fixture.Product.Id, 1)],
             clearCart: false);
 
@@ -232,7 +232,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceLinesAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
             [(fixture.Product.Id, 1)],
             clearCart: false);
 
@@ -247,7 +247,7 @@ public class OrderPlacementServiceTests
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
-        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Rascunho enviado");
+        var command = new OrderPlacementCommand(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Rascunho enviado");
         var lines = new[] { (fixture.Product.Id, 2) };
         var quote = await fixture.CreateQuoteAsync(command, lines);
 
@@ -280,7 +280,7 @@ public class OrderPlacementServiceTests
         var secondProduct = await fixture.AddAvailableProductAsync("PLACE-002");
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
-        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var command = new OrderPlacementCommand(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
         var lines = new[] { (fixture.Product.Id, 1), (secondProduct.Id, 0) };
         var quote = await fixture.CreateQuoteAsync(command, lines);
 
@@ -303,7 +303,7 @@ public class OrderPlacementServiceTests
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
-        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var command = new OrderPlacementCommand(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
         var lines = new[] { (fixture.Product.Id, 1), (fixture.Product.Id, 2) };
         var quote = await fixture.CreateQuoteAsync(command, lines);
 
@@ -328,7 +328,7 @@ public class OrderPlacementServiceTests
         await fixture.Db.SaveChangesAsync();
         var draft = await fixture.CreateDraftAsync();
         await using var transaction = await fixture.Db.Database.BeginTransactionAsync();
-        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
+        var command = new OrderPlacementCommand(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null);
         var lines = new[] { (fixture.Product.Id, 1) };
         var quote = await fixture.CreateQuoteAsync(command, lines);
 
@@ -355,7 +355,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Pagamento na entrega"),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), "Pagamento na entrega"),
             fixture.Session,
             fixture.Scope);
 
@@ -377,7 +377,7 @@ public class OrderPlacementServiceTests
     public async Task PlaceLinesAsync_returns_existing_order_for_the_same_customer_and_attempt_key()
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
-        var command = new OrderPlacementCommand(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "same-attempt");
+        var command = new OrderPlacementCommand(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "same-attempt");
 
         var first = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id, command, [(fixture.Product.Id, 1)], clearCart: false);
         var replay = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id, command, [(fixture.Product.Id, 1)], clearCart: false);
@@ -398,9 +398,9 @@ public class OrderPlacementServiceTests
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
 
         var first = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "attempt-one"), [(fixture.Product.Id, 1)], clearCart: false);
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "attempt-one"), [(fixture.Product.Id, 1)], clearCart: false);
         var second = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "attempt-two"), [(fixture.Product.Id, 1)], clearCart: false);
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "attempt-two"), [(fixture.Product.Id, 1)], clearCart: false);
 
         Assert.True(first.Succeeded, string.Join("; ", first.Errors));
         Assert.True(second.Succeeded, string.Join("; ", second.Errors));
@@ -414,7 +414,7 @@ public class OrderPlacementServiceTests
     {
         await using var fixture = await PlacementFixture.CreateAsync(availableQuantity: 10);
         var first = await fixture.Service.PlaceLinesAsync(fixture.Customer.Id, fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "shared-attempt"), [(fixture.Product.Id, 1)], clearCart: false);
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "shared-attempt"), [(fixture.Product.Id, 1)], clearCart: false);
         var otherCustomer = new Customer
         {
             LegalName = "Outro cliente", TradeName = "Outro cliente", Cnpj = "22.222.222/0001-22",
@@ -423,10 +423,10 @@ public class OrderPlacementServiceTests
         };
         fixture.Db.Customers.Add(otherCustomer);
         await fixture.Db.SaveChangesAsync();
-        var otherAddress = Assert.Single(otherCustomer.Addresses);
+        Assert.Single(otherCustomer.Addresses);
 
         var second = await fixture.Service.PlaceLinesAsync(otherCustomer.Id, fixture.SellerUser.Id,
-            new(otherAddress.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "shared-attempt"), [(fixture.Product.Id, 1)], clearCart: false);
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null, "shared-attempt"), [(fixture.Product.Id, 1)], clearCart: false);
 
         Assert.True(first.Succeeded, string.Join("; ", first.Errors));
         Assert.True(second.Succeeded, string.Join("; ", second.Errors));
@@ -455,7 +455,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
             fixture.Session,
             CartScope.ForSeller(7, fixture.Customer.Id + 1));
 
@@ -472,7 +472,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
             fixture.Session,
             fixture.Scope);
 
@@ -490,7 +490,7 @@ public class OrderPlacementServiceTests
         var result = await fixture.Service.PlaceAsync(
             fixture.Customer.Id,
             fixture.SellerUser.Id,
-            new(fixture.Address.Id, fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
+            new(fixture.PaymentTerm.Id, DateTime.UtcNow.AddDays(1), null),
             fixture.Session,
             fixture.Scope);
 
@@ -542,7 +542,7 @@ public class OrderPlacementServiceTests
             var subtotal = quotedLines.Sum(line => line.Subtotal);
             return new OrderPlacementQuote(
                 Customer.Id,
-                command.AddressId,
+                null,
                 command.PaymentTermId,
                 command.RequestedDeliveryDate,
                 quotedLines,

@@ -140,11 +140,9 @@ public sealed class SellerOrderDraftSubmissionService(
                 draft.CustomerId,
                 ownerUserId,
                 new OrderPlacementCommand(
-                    draft.DeliveryAddressId,
                     draft.PaymentTermId.Value,
                     draft.RequestedDeliveryDate,
-                    draft.Notes,
-                    AllowMissingAddress: true),
+                    draft.Notes),
                 draft.Id,
                 draft.Items.Select(x => (x.ProductId, x.Quantity)).ToArray(),
                 protectedQuote.Quote,
@@ -232,7 +230,6 @@ public sealed class SellerOrderDraftSubmissionService(
     private static bool QuoteMatchesDraft(OrderPlacementQuote quote, SellerOrderDraft draft)
     {
         if (quote.CustomerId != draft.CustomerId
-            || quote.DeliveryAddressId != draft.DeliveryAddressId
             || quote.PaymentTermId != draft.PaymentTermId
             || quote.RequestedDeliveryDate != draft.RequestedDeliveryDate
             || quote.Lines.Count != draft.Items.Count)

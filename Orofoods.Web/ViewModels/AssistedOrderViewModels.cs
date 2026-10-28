@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Orofoods.Web.Services.Customers;
 
 namespace Orofoods.Web.ViewModels;
@@ -10,13 +9,11 @@ public sealed class AssistedOrderViewModel
     public string CustomerName { get; init; } = "";
     public string SalesRepresentativeName { get; init; } = "";
     public string PriceTableName { get; init; } = "Sem tabela";
-    public IReadOnlyList<CustomerAddress> Addresses { get; init; } = [];
     public IReadOnlyList<PaymentTerm> PaymentTerms { get; init; } = [];
     public IReadOnlyList<AssistedOrderProductViewModel> Products { get; init; } = [];
     public decimal MinimumOrder { get; init; } = 160m;
     public PaymentEligibilityResult? PaymentEligibility { get; init; }
     public string? Query { get; init; }
-    [Range(1, int.MaxValue)] public int AddressId { get; set; }
     [Range(1, int.MaxValue)] public int PaymentTermId { get; set; }
     [DataType(DataType.Date)] public DateTime RequestedDeliveryDate { get; set; } = DateTime.Today.AddDays(1);
     [StringLength(1000)] public string? Notes { get; set; }
