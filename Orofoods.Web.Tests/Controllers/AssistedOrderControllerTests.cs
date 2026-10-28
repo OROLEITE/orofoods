@@ -186,8 +186,10 @@ public class AssistedOrderControllerTests
         Assert.Contains(model.PaymentTerms, paymentTerm => paymentTerm.Code == "CASH");
     }
 
-    [Fact]
-    public async Task Admin_assisted_order_creates_order_without_a_delivery_address()
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("GerenteComercial")]
+    public async Task Admin_and_commercial_manager_assisted_order_creates_order_without_a_delivery_address(string role)
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var seller = new SalesRepresentative { Name = "Seller", IsActive = true };
@@ -203,13 +205,13 @@ public class AssistedOrderControllerTests
             new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
         await db.SaveChangesAsync();
 
-        var controller = CreateController(db, "Administrador");
+        var controller = CreateController(db, role);
         controller.HttpContext.Session = new TestSession();
         var result = await controller.NewOrder(new AssistedOrderViewModel
         {
             CustomerId = customer.Id,
             PaymentTermId = term.Id,
-            AttemptKey = "admin-checkout-without-address",
+            AttemptKey = $"{role}-checkout-without-address",
             ProductIds = [product.Id],
             Quantities = [1]
         }, CancellationToken.None);
@@ -222,7 +224,7 @@ public class AssistedOrderControllerTests
 
     private static CustomersController CreateController(Orofoods.Web.Data.ApplicationDbContext db, string role = "Vendedor")
     {
-        var userId = role == "Administrador" ? "admin-user" : "seller-user";
+        var userId = role == "Vendedor" ? "seller-user" : "admin-user";
         var priceService = new PriceService(db);
         var controller = new CustomersController(
             db,
