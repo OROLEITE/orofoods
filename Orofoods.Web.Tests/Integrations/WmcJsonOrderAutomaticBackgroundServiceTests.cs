@@ -77,10 +77,30 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
         var seller = new SalesRepresentative { Id = 27, Name = "Vendedor teste", Email = "seller@example.invalid" };
         var category = new ProductCategory { Name = "Teste", Slug = "teste" };
         var historicalPending = CreateOrder("000", OrderStatus.Approved, IntegrationStatus.Pending, seller, category);
+        var blockedOrders = Enumerable.Range(0, 20)
+            .Select(index => CreateOrder($"B{index:D2}", OrderStatus.Approved, IntegrationStatus.Pending, seller, category))
+            .ToArray();
+        for (var index = 0; index < 5; index++)
+        {
+            blockedOrders[index].WmcOrderExportState = new WmcOrderExportState { Status = WmcOrderExportStatus.Exported };
+            blockedOrders[index + 5].WmcOrderExportState = new WmcOrderExportState { Status = WmcOrderExportStatus.Imported };
+            blockedOrders[index + 10].WmcOrderExportState = new WmcOrderExportState
+            {
+                Status = WmcOrderExportStatus.Processing,
+                RequiresManualReview = true
+            };
+            blockedOrders[index + 15].WmcExportAudits.Add(new WmcExportAudit
+            {
+                Source = WmcExportSource.Automatic,
+                Outcome = index % 2 == 0 ? WmcExportOutcome.Available : WmcExportOutcome.Unknown,
+                FileName = index % 2 == 0 ? $"WMC_B{index}.txt" : null
+            });
+        }
+
         var approvedPending = CreateOrder("001", OrderStatus.Approved, IntegrationStatus.Pending, seller, category);
         var approvedFailed = CreateOrder("002", OrderStatus.Approved, IntegrationStatus.Failed, seller, category);
         var unapprovedPending = CreateOrder("003", OrderStatus.Draft, IntegrationStatus.Pending, seller, category);
-        setupDb.Orders.AddRange(historicalPending, approvedPending, approvedFailed, unapprovedPending);
+        setupDb.Orders.AddRange(new[] { historicalPending }.Concat(blockedOrders).Append(approvedPending).Append(approvedFailed).Append(unapprovedPending));
         await setupDb.SaveChangesAsync();
 
         var handler = new SuccessHandler();
@@ -115,6 +135,10 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
         Assert.EndsWith("/nropedido.php", handler.Requests[1].AbsolutePath, StringComparison.Ordinal);
         setupDb.ChangeTracker.Clear();
         Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == historicalPending.Id)).IntegrationStatus);
+        foreach (var blockedOrder in blockedOrders)
+        {
+            Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == blockedOrder.Id)).IntegrationStatus);
+        }
         Assert.Equal(IntegrationStatus.Succeeded, (await setupDb.Orders.SingleAsync(order => order.Id == approvedPending.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Failed, (await setupDb.Orders.SingleAsync(order => order.Id == approvedFailed.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == unapprovedPending.Id)).IntegrationStatus);

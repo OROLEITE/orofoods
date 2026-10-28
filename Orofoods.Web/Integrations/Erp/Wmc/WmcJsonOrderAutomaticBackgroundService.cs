@@ -44,6 +44,19 @@ public sealed class WmcJsonOrderAutomaticBackgroundService(
             .Where(order => order.Id > startAfterOrderId
                 && order.Status == OrderStatus.Approved
                 && order.IntegrationStatus == IntegrationStatus.Pending)
+            .Where(order => !db.WmcOrderExportStates.Any(state => state.OrderId == order.Id
+                && (state.RequiresManualReview
+                    || state.Status == WmcOrderExportStatus.Processing
+                    || state.Status == WmcOrderExportStatus.Imported
+                    || state.Status == WmcOrderExportStatus.Exported)))
+            .Where(order => !db.WmcExportAudits.Any(audit => audit.OrderId == order.Id
+                && (audit.Outcome == WmcExportOutcome.Started
+                    || audit.Outcome == WmcExportOutcome.Unknown
+                    || audit.Outcome == WmcExportOutcome.Succeeded
+                    || audit.Outcome == WmcExportOutcome.Imported
+                    || audit.Outcome == WmcExportOutcome.Generated
+                    || audit.Outcome == WmcExportOutcome.Available
+                    || audit.Outcome == WmcExportOutcome.Regenerated)))
             .OrderBy(order => order.LastIntegrationAttempt ?? order.CreatedAt)
             .Select(order => order.Id)
             .Take(20)
