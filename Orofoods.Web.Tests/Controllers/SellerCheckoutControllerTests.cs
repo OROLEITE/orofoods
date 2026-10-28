@@ -54,7 +54,7 @@ public sealed class SellerCheckoutControllerTests
     }
 
     [Fact]
-    public async Task Seller_checkout_post_model_accepts_null_AddressId_while_customer_checkout_still_requires_it()
+    public async Task Seller_customer_and_assisted_checkout_models_do_not_expose_or_require_AddressId()
     {
         var sellerInput = new SellerCheckoutViewModel { CustomerId = 21, PaymentTermId = 1 };
         var sellerErrors = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
@@ -66,21 +66,21 @@ public sealed class SellerCheckoutControllerTests
             await controller.Index(21, sellerInput, CancellationToken.None));
 
         Assert.True(sellerValid, string.Join("; ", sellerErrors.Select(error => error.ErrorMessage)));
-        Assert.Equal(typeof(int?), typeof(SellerCheckoutViewModel).GetProperty(nameof(SellerCheckoutViewModel.AddressId))!.PropertyType);
+        Assert.Null(typeof(SellerCheckoutViewModel).GetProperty("AddressId"));
         Assert.True(controller.ModelState.IsValid);
         Assert.Equal("OrderDrafts", postResult.ControllerName);
 
-        var customerInput = new CheckoutViewModel { AddressId = 0, PaymentTermId = 1 };
+        var customerInput = new CheckoutViewModel { PaymentTermId = 1 };
         var customerErrors = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
-        Assert.False(System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+        Assert.True(System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
             customerInput, new System.ComponentModel.DataAnnotations.ValidationContext(customerInput), customerErrors, validateAllProperties: true));
-        Assert.Contains(customerErrors, error => error.MemberNames.Contains(nameof(CheckoutViewModel.AddressId)));
+        Assert.Null(typeof(CheckoutViewModel).GetProperty("AddressId"));
 
         var assistedInput = new AssistedOrderViewModel { PaymentTermId = 1 };
         var assistedErrors = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
-        Assert.False(System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+        Assert.True(System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
             assistedInput, new System.ComponentModel.DataAnnotations.ValidationContext(assistedInput), assistedErrors, validateAllProperties: true));
-        Assert.Contains(assistedErrors, error => error.MemberNames.Contains(nameof(AssistedOrderViewModel.AddressId)));
+        Assert.Null(typeof(AssistedOrderViewModel).GetProperty("AddressId"));
     }
 
     [Fact]

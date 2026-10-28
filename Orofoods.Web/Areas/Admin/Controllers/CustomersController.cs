@@ -338,14 +338,13 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             return RedirectToAction("Details", "Orders", new { area = "Admin", id = parsedOrderId });
         }
         var lines = input.ProductIds.Zip(input.Quantities, (productId, quantity) => (ProductId: productId, Quantity: quantity)).ToList();
-        var result = await assistedOrderService.CreateAsync(input.CustomerId, userId, input.AddressId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, lines, cancellationToken);
+        var result = await assistedOrderService.CreateAsync(input.CustomerId, userId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, lines, cancellationToken);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.ErrorMessage!);
             var model = await BuildAssistedOrderViewModelAsync(input.CustomerId, input.Query, cancellationToken);
             if (model is null) return Forbid();
 
-            model.AddressId = input.AddressId;
             model.PaymentTermId = input.PaymentTermId;
             model.RequestedDeliveryDate = input.RequestedDeliveryDate;
             model.Notes = input.Notes;
@@ -365,7 +364,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
     {
         var scope = await accessService.GetScopeAsync(User);
         var customer = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
-            .Include(x => x.Addresses)
             .Include(x => x.SalesRepresentative)
             .Include(x => x.PriceTable)
             .SingleOrDefaultAsync(x => x.Id == id && x.IsActive && x.Status == CustomerStatus.Approved, cancellationToken);
@@ -383,7 +381,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             CustomerName = customer.TradeName,
             SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Não atribuído",
             PriceTableName = customer.PriceTable?.Name ?? "Sem tabela",
-            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
             PaymentTerms = eligibility.PaymentMethods,
             PaymentEligibility = eligibility,
             MinimumOrder = OrderMinimumPolicy.Resolve(

@@ -14,7 +14,6 @@ public sealed class SellerCheckoutViewModel
     public IReadOnlyList<PaymentTerm> PaymentTerms { get; init; } = [];
     public PaymentEligibilityResult? PaymentEligibility { get; init; }
     public string MercadoPagoPublicKey { get; init; } = "";
-    public int? AddressId { get; set; }
     [Range(1, int.MaxValue)] public int PaymentTermId { get; set; }
     [DataType(DataType.Date)] public DateTime RequestedDeliveryDate { get; set; } = DateTime.Today.AddDays(1);
     [StringLength(1000)] public string? Notes { get; set; }

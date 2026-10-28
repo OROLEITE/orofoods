@@ -22,7 +22,6 @@ public sealed class AssistedOrderService
     public async Task<AssistedOrderResult> CreateAsync(
         int customerId,
         string userId,
-        int addressId,
         int paymentTermId,
         DateTime requestedDeliveryDate,
         string? notes,
@@ -32,7 +31,7 @@ public sealed class AssistedOrderService
         var result = await orderPlacementService.PlaceLinesAsync(
             customerId,
             userId,
-            new OrderPlacementCommand(addressId, paymentTermId, requestedDeliveryDate, notes),
+            new OrderPlacementCommand(paymentTermId, requestedDeliveryDate, notes),
             requestedLines,
             cancellationToken: cancellationToken);
         return result.Succeeded

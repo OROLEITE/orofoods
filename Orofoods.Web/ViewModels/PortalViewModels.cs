@@ -33,7 +33,6 @@ public class RepeatOrderVm
     public required CustomerModel Customer { get; init; }
     public required OrderModel SourceOrder { get; init; }
     public required List<RepeatItemVm> Items { get; init; }
-    public required List<CustomerAddressModel> Addresses { get; init; }
     public required List<PaymentTerm> PaymentTerms { get; init; }
     public required string AttemptKey { get; init; }
     public decimal MinimumOrder { get; init; } = 160m;
@@ -42,7 +41,6 @@ public class RepeatOrderVm
 public class ConfirmOrderVm
 {
     public int SourceOrderId { get; set; }
-    public int AddressId { get; set; }
     public DateTime RequestedDate { get; set; }
     public int PaymentTermId { get; set; }
     public string Notes { get; set; } = "";

@@ -65,7 +65,7 @@ public sealed class SellerOrderDraftService(
         }
 
         var validation = await ValidateDraftFieldsAsync(
-            user, input.CustomerId, input.DeliveryAddressId, input.PaymentTermId, input.Notes, input.Items, cancellationToken);
+            user, input.CustomerId, input.PaymentTermId, input.Notes, input.Items, cancellationToken);
         if (validation.Error is not null)
         {
             return validation.Error;
@@ -78,7 +78,7 @@ public sealed class SellerOrderDraftService(
             SalesRepresentativeId = representativeId,
             CustomerId = input.CustomerId,
             CreateRequestKey = createRequestKey,
-            DeliveryAddressId = input.DeliveryAddressId,
+            DeliveryAddressId = null,
             PaymentTermId = input.PaymentTermId,
             RequestedDeliveryDate = input.RequestedDeliveryDate,
             Notes = input.Notes?.Trim() ?? "",
@@ -239,7 +239,7 @@ public sealed class SellerOrderDraftService(
         }
 
         var validation = await ValidateDraftFieldsAsync(
-            user, draft.CustomerId, input.DeliveryAddressId, input.PaymentTermId, input.Notes, input.UpsertItems, cancellationToken);
+            user, draft.CustomerId, input.PaymentTermId, input.Notes, input.UpsertItems, cancellationToken);
         if (validation.Error is not null)
         {
             return validation.Error;
@@ -277,7 +277,6 @@ public sealed class SellerOrderDraftService(
             db.SellerOrderDraftItems.Remove(item);
         }
 
-        draft.DeliveryAddressId = input.DeliveryAddressId;
         draft.PaymentTermId = input.PaymentTermId;
         if (input.RequestedDeliveryDate.HasValue)
         {
@@ -394,7 +393,6 @@ public sealed class SellerOrderDraftService(
     private async Task<(bool IsValid, SellerOrderDraftOperationResult? Error)> ValidateDraftFieldsAsync(
         ClaimsPrincipal user,
         int customerId,
-        int? deliveryAddressId,
         int? paymentTermId,
         string? notes,
         IReadOnlyList<SellerOrderDraftItemInput> items,
@@ -424,17 +422,6 @@ public sealed class SellerOrderDraftService(
         {
             return (false, Failure(SellerOrderDraftErrorCodes.DiscountPolicyNotConfigured,
                 "Não há política de desconto autorizada configurada para vendedores; nenhum desconto foi aplicado."));
-        }
-
-        if (deliveryAddressId.HasValue)
-        {
-            var addressIsValid = await db.CustomerAddresses.AsNoTracking().AnyAsync(x =>
-                x.Id == deliveryAddressId.Value && x.CustomerId == customerId && x.IsActive,
-                cancellationToken);
-            if (!addressIsValid)
-            {
-                return (false, Failure(SellerOrderDraftErrorCodes.InvalidAddress, "Selecione um endereço ativo cadastrado para este cliente."));
-            }
         }
 
         if (paymentTermId.HasValue)
@@ -611,7 +598,6 @@ public static class SellerOrderDraftErrorCodes
     public const string InvalidInput = "invalid_input";
     public const string ProductNotSelectable = "product_not_selectable";
     public const string BelowMinimumQuantity = "below_minimum_quantity";
-    public const string InvalidAddress = "invalid_address";
     public const string PaymentTermNotAllowed = "payment_term_not_allowed";
     public const string ItemNotFound = "item_not_found";
     public const string CreateRequestKeyConflict = "create_request_key_conflict";
