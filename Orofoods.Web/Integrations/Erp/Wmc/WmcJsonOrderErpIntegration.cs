@@ -19,7 +19,13 @@ public sealed class WmcJsonOrderErpIntegration(
     IHostEnvironment? environment = null) : IErpOrderIntegration
 {
     public Task<ErpOrderResult> SendOrderAsync(Order order, CancellationToken cancellationToken = default, Guid? attemptId = null) =>
-        SendOrderCoreAsync(order, WmcExportSource.Automatic, WmcExportAudit.AutomatedAttemptMarker, null, cancellationToken, attemptId);
+        SendOrderCoreAsync(order, WmcExportSource.Automatic, WmcExportAudit.AutomatedAttemptMarker, null, false, cancellationToken, attemptId);
+
+    public Task<ErpOrderResult> SendAutomaticWorkerOrderAsync(
+        Order order,
+        CancellationToken cancellationToken = default,
+        Guid? attemptId = null) =>
+        SendOrderCoreAsync(order, WmcExportSource.Automatic, WmcExportAudit.AutomatedAttemptMarker, null, true, cancellationToken, attemptId);
 
     public Task<ErpOrderResult> SendManualOrderAsync(
         Order order,
@@ -27,13 +33,14 @@ public sealed class WmcJsonOrderErpIntegration(
         string? initiatedByEmail,
         CancellationToken cancellationToken = default,
         Guid? attemptId = null) =>
-        SendOrderCoreAsync(order, WmcExportSource.Manual, initiatedByEmail, initiatedByUserId, cancellationToken, attemptId);
+        SendOrderCoreAsync(order, WmcExportSource.Manual, initiatedByEmail, initiatedByUserId, false, cancellationToken, attemptId);
 
     private async Task<ErpOrderResult> SendOrderCoreAsync(
         Order order,
         WmcExportSource source,
         string? initiatedByEmail,
         string? initiatedByUserId,
+        bool automaticWorker,
         CancellationToken cancellationToken,
         Guid? attemptId)
     {
@@ -59,6 +66,13 @@ public sealed class WmcJsonOrderErpIntegration(
             return new ErpOrderResult(false, Error: error);
         }
 
+        if (automaticWorker && (!settings.AutomaticWorkerEnabled || order.Status != OrderStatus.Approved))
+        {
+            const string error = "WMC automatic JSON processing requires the enabled worker and an approved order.";
+            await auditService.CompleteAttemptAsync(order.Id, resolvedAttemptId, WmcExportOutcome.Failed, null, null, error, cancellationToken);
+            return new ErpOrderResult(false, Error: error);
+        }
+
         if (source == WmcExportSource.Manual && !settings.ManualImportEnabled)
         {
             const string error = "WMC manual JSON import is disabled.";
@@ -66,7 +80,7 @@ public sealed class WmcJsonOrderErpIntegration(
             return new ErpOrderResult(false, Error: error);
         }
 
-        if (source == WmcExportSource.Automatic &&
+        if (source == WmcExportSource.Automatic && !automaticWorker &&
             (settings.HomologationOrderId is not int selectedOrderId ||
              selectedOrderId <= 0 ||
              order.Id != selectedOrderId ||
@@ -156,7 +170,14 @@ public sealed class WmcJsonOrderErpIntegration(
 
             if (!succeeded)
             {
-                return new ErpOrderResult(false, Error: error, OutcomeUnknown: true);
+                return await ReconcileAmbiguousTransmissionAsync(
+                    order,
+                    resolvedAttemptId,
+                    baseUri,
+                    transmissionId,
+                    sellerCode,
+                    error!,
+                    cancellationToken);
             }
 
             var lookup = await LookupNroPedidoAsync(baseUri, transmissionId, sellerCode, cancellationToken);
@@ -194,8 +215,55 @@ public sealed class WmcJsonOrderErpIntegration(
                 // The persisted Started attempt and Processing order continue to block automatic retransmission.
             }
 
-            return new ErpOrderResult(false, Error: error, OutcomeUnknown: true);
+            return await ReconcileAmbiguousTransmissionAsync(
+                order,
+                resolvedAttemptId,
+                baseUri,
+                transmissionId,
+                sellerCode,
+                error,
+                cancellationToken);
         }
+    }
+
+    private async Task<ErpOrderResult> ReconcileAmbiguousTransmissionAsync(
+        Order order,
+        Guid attemptId,
+        Uri baseUri,
+        int transmissionId,
+        int sellerCode,
+        string transmissionError,
+        CancellationToken cancellationToken)
+    {
+        var lookup = await LookupNroPedidoAsync(baseUri, transmissionId, sellerCode, cancellationToken);
+        try
+        {
+            await auditService.RecordNroPedidoLookupAsync(
+                order.Id,
+                attemptId,
+                lookup.HttpStatusCode,
+                lookup.ResponseBody,
+                lookup.Error,
+                lookup.OrderNumber?.ToString(CultureInfo.InvariantCulture),
+                CancellationToken.None);
+        }
+        catch
+        {
+            // Preserve the Unknown export attempt; it continues to block automatic retransmission.
+        }
+
+        if (lookup.OrderNumber is > 0)
+        {
+            return new ErpOrderResult(
+                true,
+                ExternalOrderId: transmissionId.ToString(CultureInfo.InvariantCulture),
+                ErpOrderNumber: lookup.OrderNumber.Value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return new ErpOrderResult(
+            false,
+            Error: $"{transmissionError} nropedido.php nÃ£o confirmou um nÃºmero; reenvio bloqueado.",
+            OutcomeUnknown: true);
     }
 
     public async Task<WmcOrderNumberReconciliationResult> ReconcileNroPedidoAsync(
@@ -213,8 +281,8 @@ public sealed class WmcJsonOrderErpIntegration(
         }
 
         var target = await auditService.GetOrderNumberReconciliationTargetAsync(orderId, cancellationToken);
-        if (target is null ||
-            !string.Equals(target.ExportResponseBody.Trim(), "importado com sucesso", StringComparison.Ordinal))
+        if (target is null || target.Outcome == WmcExportOutcome.Succeeded &&
+            !string.Equals(target.ExportResponseBody?.Trim(), "importado com sucesso", StringComparison.Ordinal))
         {
             return new WmcOrderNumberReconciliationResult(false, null, "Pedido sem exportação WMC confirmada e pendente de número.");
         }

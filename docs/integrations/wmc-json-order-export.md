@@ -29,6 +29,7 @@ O construtor recusa pedidos nao persistidos, clientes ou produtos sem codigo WMC
 Mantenha os valores fora do repositorio, em configuracao protegida:
 
 WmcJsonOrder__Enabled=true
+WmcJsonOrder__AutomaticWorkerEnabled=false
 WmcJsonOrder__HomologationWorkerEnabled=true
 WmcJsonOrder__HomologationOrderId=<Order.Id selecionado>
 WmcJsonOrder__HomologationOrderIdConfirmedUnique=true
@@ -37,11 +38,17 @@ WmcJsonOrder__DeviceId=<deviceId exclusivo da Orofoods emitido pelo WMC>
 WmcJsonOrder__SalesRepresentativeCodes__<SalesRepresentativeId>=<codigo WMC real>
 WmcJsonOrder__SalesRepresentativeSerials__<SalesRepresentativeId>=<serial proprio do vendedor emitido pelo WMC>
 
-O worker HTTP e separado de WmcFileDrop__Enabled e consulta apenas o Order.Id configurado, se estiver Pending. Nao percorre outros pedidos. A integracao HTTP permanece desativada por padrao.
+O worker HTTP de homologacao e separado de WmcFileDrop__Enabled e consulta apenas o Order.Id configurado, se estiver Pending. Nao percorre outros pedidos. Para uma homologacao de um pedido, mantenha `AutomaticWorkerEnabled=false`; essa flag pertence ao worker geral e nao respeita `HomologationOrderId`.
 
 Antes de homologar, confira no PostgreSQL da Orofoods qual sera o proximo WmcTransmissionId e confirme em consulta somente leitura ao WMC que esse id ainda nao existe no ambiente alvo. O identificador nao deriva de Order.Id. Mantenha outros transmissores JSON desligados entre a verificacao e o envio selecionado. A flag HomologationOrderIdConfirmedUnique registra a confirmacao operacional; ela nao faz a consulta por conta propria. Os testes locais nao consultam o WMC.
 
 O worker TXT continua independente e usa WmcFileDrop__Enabled. Durante a homologacao HTTP controlada, mantenha-o desligado para evitar disputa pelo mesmo pedido.
+
+## Processamento automatico geral
+
+`WmcJsonOrder__AutomaticWorkerEnabled` e falso por padrao e so tem efeito junto com `WmcJsonOrder__Enabled=true`. Quando habilitado, um worker separado do FileDrop consulta a cada cinco minutos ate 20 pedidos `Approved` com integracao `Pending`. Ele usa a reserva atomica e bloqueios de auditoria/estado existentes; nao seleciona `Failed`, nao reenvia tentativas `Started`/`Unknown` e exclui pedidos com artefato TXT. Uma resposta ambigua aciona somente a consulta `nropedido.php`; um numero positivo confirma a importacao, enquanto a ausencia de numero mantem `Unknown` e bloqueia nova exportacao. A reconciliacao manual posterior tambem consulta somente `nropedido.php`.
+
+Ativar essa flag permite o envio de todos os pedidos elegiveis da fila, nao de um pedido escolhido por `HomologationOrderId`. O servico de integracao mantém o bloqueio existente fora dos ambientes Development, Staging e Test. Para homologar um pedido isolado, use somente `HomologationWorkerEnabled` com `HomologationOrderId` e `HomologationOrderIdConfirmedUnique`, mantendo `AutomaticWorkerEnabled=false`. A flag do worker geral deve permanecer desligada ate haver aprovacao operacional para a fila completa.
 
 ## Importacao manual selecionada
 

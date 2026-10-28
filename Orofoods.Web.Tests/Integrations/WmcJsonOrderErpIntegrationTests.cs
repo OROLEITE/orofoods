@@ -511,6 +511,45 @@ public class WmcJsonOrderErpIntegrationTests
     }
 
     [Fact]
+    public async Task Reconciles_an_unknown_transmission_even_when_the_export_response_was_not_received()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder();
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+        order.WmcTransmissionId = 9001;
+        order.IntegrationStatus = IntegrationStatus.Unknown;
+        var attemptId = Guid.NewGuid();
+        db.WmcExportAudits.Add(new WmcExportAudit
+        {
+            OrderId = order.Id,
+            AttemptId = attemptId,
+            Source = WmcExportSource.Automatic,
+            Outcome = WmcExportOutcome.Unknown,
+            WmcTransmissionId = 9001,
+            WmcSalesRepresentativeCode = 804,
+            WmcDestination = "https://wmc.example.invalid/integracao",
+            ResponseBody = null
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new RecordingHandler(HttpStatusCode.OK, "[{\"NROPEDIDO\":776657}]");
+        using var client = new HttpClient(handler);
+        var integration = CreateIntegration(client, db);
+
+        var result = await integration.ReconcileNroPedidoAsync(order.Id);
+
+        Assert.True(result.Recovered);
+        Assert.Equal("776657", result.ErpOrderNumber);
+        Assert.Equal(1, handler.CallCount);
+        Assert.EndsWith("/nropedido.php", handler.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        Assert.Equal(IntegrationStatus.Succeeded, order.IntegrationStatus);
+        Assert.Equal("776657", order.ErpOrderNumber);
+        Assert.Equal(WmcOrderExportStatus.Imported, order.WmcOrderExportState!.Status);
+        Assert.Equal(WmcExportOutcome.Unknown, (await db.WmcExportAudits.SingleAsync()).Outcome);
+    }
+
+    [Fact]
     public async Task Reuses_the_persisted_transmission_id_after_a_pre_post_mapping_failure()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -620,7 +659,8 @@ public class WmcJsonOrderErpIntegrationTests
 
         Assert.False(result.Succeeded);
         Assert.True(result.OutcomeUnknown);
-        Assert.Equal(1, handler.CallCount);
+        Assert.Equal(2, handler.CallCount);
+        Assert.EndsWith("/nropedido.php", handler.Requests[1].Uri!.AbsolutePath, StringComparison.Ordinal);
         var audit = Assert.Single(db.WmcExportAudits);
         Assert.Equal(WmcExportOutcome.Unknown, audit.Outcome);
         Assert.Equal("pedido já processado", audit.ResponseBody);
@@ -700,7 +740,9 @@ public class WmcJsonOrderErpIntegrationTests
 
         Assert.False(result.Succeeded);
         Assert.True(result.OutcomeUnknown);
-        Assert.Equal(1, handler.CallCount);
+        Assert.Equal(2, handler.CallCount);
+        Assert.EndsWith("/exportar.php", handler.Requests[0].AbsolutePath, StringComparison.Ordinal);
+        Assert.EndsWith("/nropedido.php", handler.Requests[1].AbsolutePath, StringComparison.Ordinal);
         var audit = Assert.Single(db.WmcExportAudits);
         Assert.Equal(WmcExportOutcome.Unknown, audit.Outcome);
         Assert.Null(audit.HttpStatusCode);
@@ -843,10 +885,12 @@ public class WmcJsonOrderErpIntegrationTests
     private sealed class ThrowingHandler : HttpMessageHandler
     {
         public int CallCount { get; private set; }
+        public List<Uri> Requests { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             CallCount++;
+            Requests.Add(request.RequestUri!);
             throw new HttpRequestException("simulated network interruption");
         }
     }

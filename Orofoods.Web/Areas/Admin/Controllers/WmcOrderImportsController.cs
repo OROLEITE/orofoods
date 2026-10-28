@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
+using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Orders;
@@ -122,14 +123,22 @@ public sealed class WmcOrderImportsController(
             return Forbid();
         }
 
-        if (order.WmcOrderExportState?.Status != WmcOrderExportStatus.Imported
+        var confirmedImportWithoutNumber = order.WmcOrderExportState?.Status == WmcOrderExportStatus.Imported;
+        var uncertainImportWithTransmissionId = order.IntegrationStatus == IntegrationStatus.Unknown && order.WmcTransmissionId is > 0;
+        if ((!confirmedImportWithoutNumber && !uncertainImportWithTransmissionId)
             || !string.IsNullOrWhiteSpace(order.ErpOrderNumber))
         {
-            TempData["WmcImportError"] = "Somente pedidos importados e sem número WMC podem consultar nropedido.php.";
+            TempData["WmcImportError"] = "Somente pedidos importados ou com transmissão incerta, sem número WMC, podem consultar nropedido.php.";
             return RedirectToAction(nameof(Index));
         }
 
         var result = await jsonIntegration.ReconcileNroPedidoAsync(order.Id, cancellationToken);
+        if (!result.Recovered && order.IntegrationStatus == IntegrationStatus.Unknown)
+        {
+            TempData["WmcImportError"] = $"A transmissão de {order.Number} continua incerta; nropedido.php ainda não confirmou a importação. Nenhum novo exportar.php foi enviado.";
+            return RedirectToAction(nameof(Index));
+        }
+
         if (result.Recovered && !string.IsNullOrWhiteSpace(result.ErpOrderNumber))
         {
             TempData["WmcImportMessage"] = $"Número WMC {result.ErpOrderNumber} reconciliado para o pedido {order.Number}.";
