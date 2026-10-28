@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Orofoods.Web.Areas.Admin.Controllers;
 using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Services.Pricing;
@@ -65,9 +66,37 @@ public sealed class SalesRepresentativesControllerTests
             error => error.ErrorMessage!.Contains("Código WMC", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task Edit_returns_visible_error_when_database_rejects_save()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TRIGGER reject_sales_representative_insert
+            BEFORE INSERT ON SalesRepresentatives
+            BEGIN
+                SELECT RAISE(ABORT, 'simulated database failure');
+            END;
+            """);
+        var controller = CreateController(db);
+
+        var result = await controller.Edit(new SalesRepresentative
+        {
+            Name = "Vendedor 28",
+            Email = "vendedor28@example.test",
+            Phone = "11999999999",
+            WmcCode = "28",
+            IsActive = true
+        }, CancellationToken.None);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(controller.ModelState.Values.SelectMany(value => value.Errors),
+            error => error.ErrorMessage!.Contains("Não foi possível salvar o vendedor"));
+        Assert.Empty(await db.SalesRepresentatives.AsNoTracking().ToListAsync());
+    }
+
     private static SalesRepresentativesController CreateController(Orofoods.Web.Data.ApplicationDbContext db)
     {
-        return new SalesRepresentativesController(db, new AdminCommercialService(db))
+        return new SalesRepresentativesController(db, new AdminCommercialService(db), NullLogger<SalesRepresentativesController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
             TempData = new TempDataDictionary(new DefaultHttpContext(), new EmptyTempDataProvider())

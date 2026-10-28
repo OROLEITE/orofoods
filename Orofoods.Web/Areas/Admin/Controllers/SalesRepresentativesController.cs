@@ -7,7 +7,7 @@ using Orofoods.Web.Services.Pricing;
 namespace Orofoods.Web.Areas.Admin.Controllers;
 
 [Area("Admin"), Authorize(Roles = "Administrador")]
-public class SalesRepresentativesController(ApplicationDbContext db, AdminCommercialService service) : Controller
+public class SalesRepresentativesController(ApplicationDbContext db, AdminCommercialService service, ILogger<SalesRepresentativesController> logger) : Controller
 {
     public async Task<IActionResult> Index() => View(await db.SalesRepresentatives.AsNoTracking().Include(x => x.Customers).OrderBy(x => x.Name).ToListAsync());
     public async Task<IActionResult> Edit(int? id) { var entity = id is null ? new SalesRepresentative() : await db.SalesRepresentatives.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id); return entity is null ? NotFound() : View(entity); }
@@ -44,9 +44,13 @@ public class SalesRepresentativesController(ApplicationDbContext db, AdminCommer
         {
             await service.SaveSalesRepresentativeAsync(input, cancellationToken);
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("WmcCode", StringComparison.OrdinalIgnoreCase) == true)
+        catch (DbUpdateException ex)
         {
-            ModelState.AddModelError(string.Empty, "Não foi possível salvar o Código WMC. Verifique se a migration do campo foi aplicada no banco.");
+            logger.LogError(ex, "Erro ao salvar vendedor {SalesRepresentativeId}.", input.Id);
+            var wmcColumnFailure = ex.InnerException?.Message.Contains("WmcCode", StringComparison.OrdinalIgnoreCase) == true;
+            ModelState.AddModelError(string.Empty, wmcColumnFailure
+                ? "Não foi possível salvar o Código WMC. Verifique se a migration do campo foi aplicada no banco."
+                : "Não foi possível salvar o vendedor. Verifique os dados e tente novamente.");
             return View(input);
         }
 
