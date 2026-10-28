@@ -88,6 +88,8 @@ public class IntegrationDashboardViewTests
         Assert.Contains("eligibleOrderIds.Contains(order.Id)", view);
         Assert.Contains("Confirmado pelo WMC", view);
         Assert.Contains("WmcIntegrationStatusPresenter.GetCssClass(wmcIntegrationStatus)", view);
+        Assert.Contains("class=\"erp-status-badge @integrationStatusClass\"", view);
+        Assert.DoesNotContain("erp-status-badge--@integrationStatusClass", view);
         Assert.Contains("wmcSummaryLabel", view);
         Assert.Contains("@if (manualState is not null)", view);
         Assert.Contains("@if (lastWmcExport is not null)", view);
