@@ -2,7 +2,7 @@
 
 O transmissor segue o contrato extraido do WMC Mobile:
 
-- POST em {BaseUrl}/exportar.php?imei={DeviceId}&serial={SalesRepresentativeSerials[SalesRepresentativeId]}.
+- POST em {BaseUrl}/exportar.php?imei={DeviceId}&serial={SalesRepresentativeSerials[SalesRepresentativeId]}. `DeviceId` e opcional: quando ausente ou vazio, a URL mantem `imei=` sem valor. O serial continua sendo resolvido pelo vendedor do pedido.
 - Corpo application/x-www-form-urlencoded com o unico campo HTTP_JSON.
 - HTTP_JSON e codificado em UTF-8 e URL-encoded como no URLEncoder do aplicativo: espacos viram +, caracteres seguros sao letras, digitos e *._-, e os outros bytes UTF-8 usam %HH maiusculo.
 - O Content-Type nao declara charset, como no helper form-urlencoded do aplicativo.
@@ -34,9 +34,10 @@ WmcJsonOrder__HomologationWorkerEnabled=true
 WmcJsonOrder__HomologationOrderId=<Order.Id selecionado>
 WmcJsonOrder__HomologationOrderIdConfirmedUnique=true
 WmcJsonOrder__BaseUrl=<URL de homologacao emitida pelo WMC>
-WmcJsonOrder__DeviceId=<deviceId exclusivo da Orofoods emitido pelo WMC>
 WmcJsonOrder__SalesRepresentativeCodes__<SalesRepresentativeId>=<codigo WMC real>
 WmcJsonOrder__SalesRepresentativeSerials__<SalesRepresentativeId>=<serial proprio do vendedor emitido pelo WMC>
+
+`WmcJsonOrder__DeviceId` e opcional. Se configurado, seu valor e enviado em `imei`; se omitido ou vazio, a requisicao preserva o parametro como `imei=`. Nao ha comprovacao neste contrato de que um DeviceId global seja obrigatorio. Codigo WMC e serial permanecem configurados por vendedor.
 
 O worker HTTP de homologacao e separado de WmcFileDrop__Enabled e consulta apenas o Order.Id configurado, se estiver Pending. Nao percorre outros pedidos. Para uma homologacao de um pedido, mantenha `AutomaticWorkerEnabled=false`; essa flag pertence ao worker geral e nao respeita `HomologationOrderId`.
 
