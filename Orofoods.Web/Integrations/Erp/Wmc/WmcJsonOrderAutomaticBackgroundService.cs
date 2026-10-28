@@ -30,12 +30,20 @@ public sealed class WmcJsonOrderAutomaticBackgroundService(
             return;
         }
 
+        if (settings.AutomaticWorkerStartAfterOrderId is not int startAfterOrderId || startAfterOrderId < 0)
+        {
+            logger.LogError("Automatic WMC JSON worker is blocked because AutomaticWorkerStartAfterOrderId is missing or invalid.");
+            return;
+        }
+
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var integrationService = scope.ServiceProvider.GetRequiredService<OrderIntegrationService>();
         var jsonIntegration = scope.ServiceProvider.GetRequiredService<WmcJsonOrderErpIntegration>();
         var candidates = await db.Orders
-            .Where(order => order.Status == OrderStatus.Approved && order.IntegrationStatus == IntegrationStatus.Pending)
+            .Where(order => order.Id > startAfterOrderId
+                && order.Status == OrderStatus.Approved
+                && order.IntegrationStatus == IntegrationStatus.Pending)
             .OrderBy(order => order.LastIntegrationAttempt ?? order.CreatedAt)
             .Select(order => order.Id)
             .Take(20)

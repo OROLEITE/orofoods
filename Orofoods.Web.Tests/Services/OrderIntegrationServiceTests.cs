@@ -334,6 +334,31 @@ public class OrderIntegrationServiceTests
     }
 
     [Fact]
+    public async Task Automatic_json_service_does_not_claim_an_order_at_the_activation_cutoff()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateApprovedJsonOrder("ORO-2026-000784");
+        db.Add(order);
+        await db.SaveChangesAsync();
+
+        var handler = new AutomaticJsonHandler();
+        var (service, jsonIntegration) = CreateAutomaticJsonService(
+            db,
+            handler,
+            serviceCutoff: order.Id,
+            transmitterCutoff: 0);
+
+        var result = await service.SendAutomaticJsonAsync(order.Id, jsonIntegration);
+
+        Assert.Null(result);
+        var persisted = await db.Orders.SingleAsync(item => item.Id == order.Id);
+        Assert.Equal(IntegrationStatus.Pending, persisted.IntegrationStatus);
+        Assert.Null(persisted.LastIntegrationAttempt);
+        Assert.Empty(handler.Requests);
+        Assert.Empty(db.WmcExportAudits);
+    }
+
+    [Fact]
     public async Task Concurrent_automatic_json_workers_claim_a_pending_order_for_only_one_transmission()
     {
         var connectionString = new SqliteConnectionStringBuilder
@@ -570,16 +595,24 @@ public class OrderIntegrationServiceTests
 
     private static (OrderIntegrationService Service, WmcJsonOrderErpIntegration JsonIntegration) CreateAutomaticJsonService(
         ApplicationDbContext db,
-        HttpMessageHandler handler)
+        HttpMessageHandler handler,
+        int? serviceCutoff = 0,
+        int? transmitterCutoff = null)
     {
         var jsonOptions = CreateAutomaticJsonOptions();
+        jsonOptions.AutomaticWorkerStartAfterOrderId = transmitterCutoff ?? serviceCutoff;
         var jsonIntegration = new WmcJsonOrderErpIntegration(
             new HttpClient(handler),
             Options.Create(jsonOptions),
             new WmcMobileOrderPayloadBuilder(),
             new WmcExportAuditService(db),
             new FixedTransmissionIdAllocator());
-        return (new OrderIntegrationService(db, new UnusedAutomaticJsonIntegration()), jsonIntegration);
+        var serviceOptions = CreateAutomaticJsonOptions();
+        serviceOptions.AutomaticWorkerStartAfterOrderId = serviceCutoff;
+        return (new OrderIntegrationService(
+            db,
+            new UnusedAutomaticJsonIntegration(),
+            jsonOrderOptions: Options.Create(serviceOptions)), jsonIntegration);
     }
 
     private static WmcJsonOrderOptions CreateAutomaticJsonOptions() => new ConfigurationBuilder()
@@ -587,6 +620,7 @@ public class OrderIntegrationServiceTests
         {
             ["WmcJsonOrder:Enabled"] = "true",
             ["WmcJsonOrder:AutomaticWorkerEnabled"] = "true",
+            ["WmcJsonOrder:AutomaticWorkerStartAfterOrderId"] = "0",
             ["WmcJsonOrder:BaseUrl"] = "https://wmc.example.invalid/",
             ["WmcJsonOrder:DeviceId"] = "device-test",
             ["WmcJsonOrder:SalesRepresentativeCodes:27"] = "804",

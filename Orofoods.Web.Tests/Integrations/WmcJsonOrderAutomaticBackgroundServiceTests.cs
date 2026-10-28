@@ -36,6 +36,36 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
     }
 
     [Fact]
+    public async Task Worker_does_not_open_a_scope_without_an_activation_marker()
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var worker = new WmcJsonOrderAutomaticBackgroundService(
+            services.GetRequiredService<IServiceScopeFactory>(),
+            Options.Create(new WmcJsonOrderOptions { Enabled = true, AutomaticWorkerEnabled = true }),
+            NullLogger<WmcJsonOrderAutomaticBackgroundService>.Instance);
+
+        await worker.ProcessPendingOrdersAsync();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    public async Task Worker_does_not_open_a_scope_for_a_negative_activation_marker(int marker)
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var worker = new WmcJsonOrderAutomaticBackgroundService(
+            services.GetRequiredService<IServiceScopeFactory>(),
+            Options.Create(new WmcJsonOrderOptions
+            {
+                Enabled = true,
+                AutomaticWorkerEnabled = true,
+                AutomaticWorkerStartAfterOrderId = marker
+            }),
+            NullLogger<WmcJsonOrderAutomaticBackgroundService>.Instance);
+
+        await worker.ProcessPendingOrdersAsync();
+    }
+
+    [Fact]
     public async Task Worker_processes_only_approved_pending_orders_without_resolving_filedrop()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
@@ -46,15 +76,17 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
 
         var seller = new SalesRepresentative { Id = 27, Name = "Vendedor teste", Email = "seller@example.invalid" };
         var category = new ProductCategory { Name = "Teste", Slug = "teste" };
+        var historicalPending = CreateOrder("000", OrderStatus.Approved, IntegrationStatus.Pending, seller, category);
         var approvedPending = CreateOrder("001", OrderStatus.Approved, IntegrationStatus.Pending, seller, category);
         var approvedFailed = CreateOrder("002", OrderStatus.Approved, IntegrationStatus.Failed, seller, category);
         var unapprovedPending = CreateOrder("003", OrderStatus.Draft, IntegrationStatus.Pending, seller, category);
-        setupDb.Orders.AddRange(approvedPending, approvedFailed, unapprovedPending);
+        setupDb.Orders.AddRange(historicalPending, approvedPending, approvedFailed, unapprovedPending);
         await setupDb.SaveChangesAsync();
 
         var handler = new SuccessHandler();
         using var httpClient = new HttpClient(handler);
         var options = CreateEnabledOptions();
+        options.AutomaticWorkerStartAfterOrderId = historicalPending.Id;
         var environment = new Mock<IHostEnvironment>();
         environment.SetupGet(item => item.EnvironmentName).Returns("Test");
         var services = new ServiceCollection();
@@ -82,6 +114,7 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
         Assert.EndsWith("/exportar.php", handler.Requests[0].AbsolutePath, StringComparison.Ordinal);
         Assert.EndsWith("/nropedido.php", handler.Requests[1].AbsolutePath, StringComparison.Ordinal);
         setupDb.ChangeTracker.Clear();
+        Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == historicalPending.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Succeeded, (await setupDb.Orders.SingleAsync(order => order.Id == approvedPending.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Failed, (await setupDb.Orders.SingleAsync(order => order.Id == approvedFailed.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == unapprovedPending.Id)).IntegrationStatus);
@@ -91,6 +124,7 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
     {
         Enabled = true,
         AutomaticWorkerEnabled = true,
+        AutomaticWorkerStartAfterOrderId = 0,
         BaseUrl = "https://wmc.example.invalid/",
         DeviceId = "device-test",
         SalesRepresentativeCodes = new Dictionary<int, int> { [27] = 804 },
