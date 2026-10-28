@@ -2,6 +2,7 @@
 @using Orofoods.Web.Api
 @using Orofoods.Web.Models.Integrations
 @using Orofoods.Web.Models.Orders
+@using Orofoods.Web.Services.Integrations
 @section Head { <link rel="stylesheet" href="~/css/admin-orders-list.css" asp-append-version="true" /> }
 @{
     ViewData["Title"] = "Pedidos";
@@ -88,20 +89,18 @@
                 var statusClass = order.Status.ToString().ToLowerInvariant();
                 var state = order.WmcOrderExportState;
                 var latestAudit = order.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).FirstOrDefault();
-                var uncertainHistory = state?.RequiresManualReview == true || (state is null && latestAudit is not null);
-                var (wmcLabel, wmcClass) = uncertainHistory
-                    ? ("Pendente", "review")
-                    : state?.Status switch
-                    {
-                        WmcOrderExportStatus.Exported => ("TXT gerado", "exported"),
-                        WmcOrderExportStatus.Rejected => ("Rejeitado", "rejected"),
-                        WmcOrderExportStatus.Imported => ("Importado", "imported"),
-                        WmcOrderExportStatus.Error => ("Erro", "rejected"),
-                        _ => ("Pendente", "pending")
-                    };
-                var wmcTitle = uncertainHistory ? "Revisão manual necessária; confira o histórico do pedido"
-                    : latestAudit is null ? "Nenhuma exportação registrada"
-                    : $"{latestAudit.ExportedAt.ToLocalTime():dd/MM/yyyy HH:mm}" + (latestAudit.FileName is null ? "" : $" · {latestAudit.FileName}");
+                var wmcIntegrationStatus = WmcIntegrationStatusPresenter.GetStatus(order);
+                var wmcLabel = WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus);
+                var wmcClass = wmcIntegrationStatus switch
+                {
+                    WmcIntegrationStatusDisplay.Sent => "exported",
+                    WmcIntegrationStatusDisplay.Confirmed => "imported",
+                    WmcIntegrationStatusDisplay.Error => "rejected",
+                    _ => state?.RequiresManualReview == true ? "review" : "pending"
+                };
+                var wmcTitle = WmcIntegrationStatusPresenter.GetDetail(order)
+                    ?? (latestAudit is null ? "Nenhuma integração registrada"
+                        : $"{latestAudit.ExportedAt.ToLocalTime():dd/MM/yyyy HH:mm}");
                 var deliveredWmcPending = deliveredWmcPendingIds.Contains(order.Id);
                 <tr class="@(deliveredWmcPending ? "orders-row--delivered-wmc-pending" : null)">
                     <td data-label="N&uacute;mero"><strong class="orders-number">@order.Number</strong></td>

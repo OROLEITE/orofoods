@@ -42,9 +42,11 @@ public class AdminOrderDetailsVisualTests
         Assert.DoesNotContain("<form", view.Substring(view.IndexOf("<tbody>", StringComparison.Ordinal)));
         Assert.DoesNotContain("name=\"reason\"", view);
         Assert.Contains("wmc-status-badge", view);
-        Assert.Contains("\"TXT gerado\"", view);
-        Assert.Contains("\"Rejeitado\"", view);
-        Assert.Contains("\"Importado\"", view);
+        Assert.Contains("<div class=\"order-details-summary-item\"><small>STATUS WMC</small><strong>@WmcIntegrationStatusPresenter.GetLabel(WmcIntegrationStatusPresenter.GetStatus(Model))</strong></div>", details);
+        Assert.Contains("TXT disponível para importação manual", details);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)", view);
+        Assert.Contains("WmcIntegrationStatusDisplay.Error", view);
+        Assert.Contains("WmcIntegrationStatusDisplay.Confirmed", view);
         Assert.Contains("CurrentArtifactId is not null", details);
         Assert.Contains("maxlength=\"1000\" required", details);
         Assert.Contains("btn-primary wmc-send-button", details);
@@ -99,7 +101,7 @@ public class AdminOrderDetailsVisualTests
 
         Assert.Contains("asp-action=\"UpdateStatus\"", view);
         Assert.DoesNotContain("asp-action=\"ReprocessIntegration\"", view);
-        Assert.Contains("return SendToWmc(id, cancellationToken);", controller);
+        Assert.Contains("RedirectToAction(\"Index\", \"WmcOrderImports\")", controller);
         Assert.Contains("asp-action=\"StartPointCharge\"", view);
         Assert.Contains("asp-action=\"RefreshPointCharge\"", view);
         Assert.Contains("asp-action=\"CancelPointCharge\"", view);

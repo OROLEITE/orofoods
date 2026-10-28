@@ -78,10 +78,7 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Reprocess(int id, CancellationToken cancellationToken = default)
-    {
-        return ExportWmc(id, cancellationToken);
-    }
+    public IActionResult Reprocess() => RedirectToAction("Index", "WmcOrderImports");
 
     [HttpPost]
     [ValidateAntiForgeryToken]

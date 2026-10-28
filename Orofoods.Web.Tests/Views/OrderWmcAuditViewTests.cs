@@ -42,7 +42,8 @@ public class OrderWmcAuditViewTests
         Assert.Contains("@wmcManualExportDiagnostic.BlockReason", view);
         Assert.Contains(": \"Bloqueado\")", view);
         Assert.Contains("Exported ? \"TXT gerado\"", view);
-        Assert.Contains("EXPORTA&#199;&#195;O WMC</small><strong>@(wmcImportConfirmed ? \"Importa\\u00e7\\u00e3o WMC confirmada\" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? \"TXT gerado\"", view);
+        Assert.Contains("STATUS WMC</small><strong>@WmcIntegrationStatusPresenter.GetLabel", view);
+        Assert.Contains("ESTADO TXT MANUAL</small><strong>", view);
         Assert.DoesNotContain("alert alert-warning order-wmc-block-reason", view);
         Assert.Contains("background: var(--order-detail-surface-secondary);", styles);
         Assert.Contains("color: var(--order-detail-muted);", styles);
@@ -58,13 +59,13 @@ public class OrderWmcAuditViewTests
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Index.cshtml"));
         var details = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
 
-        Assert.Contains("\"Pendente\"", view);
-        Assert.Contains("\"TXT gerado\"", view);
-        Assert.Contains("\"Importado\"", view);
-        Assert.Contains("\"Erro\"", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetDetail(order)", view);
+        Assert.Contains("WmcIntegrationStatusDisplay.Confirmed", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)", view);
         Assert.DoesNotContain("asp-action=\"SendToWmc\"", view);
         Assert.DoesNotContain("asp-action=\"ConfirmWmcImported\"", view);
-        Assert.Contains("Enviar ao WMC", details);
+        Assert.Contains("Baixar TXT (manual)", details);
         Assert.Contains("Confirmar importação", details);
         Assert.Contains("Confirmar exportado", details);
         Assert.Contains("Confirmar que não chegou ao WMC", details);
@@ -90,8 +91,8 @@ public class OrderWmcAuditViewTests
         Assert.Contains("@Model.Number", view);
         Assert.Contains("TXT gerado — aguardando importação", view);
         Assert.Contains("form.dataset.wmcSubmitting", view);
-        Assert.Contains("WmcExportOutcome.Imported => \"Importação confirmada\"", view);
-        Assert.Contains("WmcExportOutcome.Imported => \"Importado\"", integrationView);
+        Assert.Contains("WmcExportOutcome.Imported => \"Confirmado pelo WMC\"", view);
+        Assert.Contains("WmcOrderExportStatus.Imported => \"Confirmado pelo WMC\"", integrationView);
         Assert.Contains("html[data-theme=\"dark\"]", styles);
         Assert.Contains("@media (max-width: 575.98px)", styles);
     }
@@ -120,7 +121,7 @@ public class OrderWmcAuditViewTests
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
 
         Assert.DoesNotContain("asp-action=\"ReprocessIntegration\"", view);
-        Assert.Contains("return SendToWmc(id, cancellationToken);", controller);
+        Assert.Contains("RedirectToAction(\"Index\", \"WmcOrderImports\")", controller);
         Assert.Contains("Model.WmcExportAudits.OrderByDescending(x => x.ExportedAt).ThenByDescending(x => x.Id)", view);
     }
 }

@@ -44,7 +44,7 @@ public class WmcManualExportControllerTests
     }
 
     [Fact]
-    public async Task Legacy_reprocess_action_uses_the_persistent_manual_export_service()
+    public async Task Legacy_reprocess_action_routes_to_json_queue_without_generating_txt()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var order = new Order
@@ -76,12 +76,14 @@ public class WmcManualExportControllerTests
         await db.SaveChangesAsync();
         var controller = CreateController(db);
 
-        var result = await controller.Reprocess(order.Id);
+        var result = controller.Reprocess();
 
-        Assert.IsType<FileContentResult>(result);
-        Assert.Equal(WmcOrderExportStatus.Exported, (await db.WmcOrderExportStates.SingleAsync()).Status);
-        Assert.Single(await db.WmcManualExportArtifacts.ToListAsync());
-        Assert.Single(await db.WmcExportAudits.Where(audit => audit.Succeeded).ToListAsync());
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.Equal("WmcOrderImports", redirect.ControllerName);
+        Assert.Empty(await db.WmcOrderExportStates.ToListAsync());
+        Assert.Empty(await db.WmcManualExportArtifacts.ToListAsync());
+        Assert.Empty(await db.WmcExportAudits.ToListAsync());
     }
 
     private static IntegrationsController CreateController(ApplicationDbContext db)

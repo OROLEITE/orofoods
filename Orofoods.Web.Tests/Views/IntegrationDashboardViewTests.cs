@@ -14,15 +14,17 @@ public class IntegrationDashboardViewTests
         Assert.Contains("Reprocess", controller);
         Assert.Contains("ExportWmc", controller);
         Assert.Contains("WmcManualExportService", controller);
-        Assert.Contains("return ExportWmc(id, cancellationToken);", controller);
+        Assert.Contains("RedirectToAction(\"Index\", \"WmcOrderImports\")", controller);
         Assert.Contains("status", view);
         Assert.Contains("wmcStatus", view);
         Assert.DoesNotContain("asp-action=\"Reprocess\"", view);
-        Assert.Contains("Exportar WMC", view);
-        Assert.Contains("&Uacute;ltima exporta&ccedil;&atilde;o WMC", view);
+        Assert.Contains("Baixar TXT (manual)", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetStatus(order)", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)", view);
+        Assert.Contains("&Uacute;ltimo evento WMC", view);
         Assert.Contains("WmcExportAudits.OrderByDescending", view);
         Assert.Contains("lastWmcExport.Source", view);
-        Assert.Contains("lastWmcExport.Outcome", view);
+        Assert.Contains("lastWmcExport?.Outcome", view);
         Assert.Contains("asp-controller=\"Orders\" asp-action=\"Details\"", view);
         Assert.Contains("order.Status == OrderStatus.Approved", view);
     }
@@ -74,18 +76,18 @@ public class IntegrationDashboardViewTests
 
         Assert.Contains("order.Status.ToDisplayName()", view);
         Assert.Contains("Aguardando aprovação", view);
-        Assert.Contains("Aguardando envio WMC", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)", view);
         Assert.Contains("Não elegível para envio", view);
         Assert.Contains("IntegrationStatus.Succeeded => \"Arquivo disponibilizado\"", statusDisplay);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetStatus(order)", view);
         Assert.DoesNotContain("Importado WMC", view, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Importado WMC", orderDetails, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("order.Status == OrderStatus.Approved", view);
         Assert.Contains("WmcManualExportEligibleOrderIds", controller);
         Assert.Contains("WmcOrderExportState", controller);
         Assert.Contains("eligibleOrderIds.Contains(order.Id)", view);
-        Assert.Contains("Importa&ccedil;&atilde;o confirmada", view);
-        Assert.Contains("WmcOrderExportStatus.Rejected => \"erp-status-badge--failed\"", view);
-        Assert.Contains("WmcOrderExportStatus.Processing => \"erp-status-badge--processing\"", view);
+        Assert.Contains("Confirmado pelo WMC", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetCssClass(wmcIntegrationStatus)", view);
         Assert.Contains("wmcSummaryLabel", view);
         Assert.Contains("@if (manualState is not null)", view);
         Assert.Contains("@if (lastWmcExport is not null)", view);

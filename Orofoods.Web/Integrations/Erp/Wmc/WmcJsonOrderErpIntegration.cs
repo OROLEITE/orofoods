@@ -107,10 +107,6 @@ public sealed class WmcJsonOrderErpIntegration(
             transmissionId = await transmissionIdAllocator.GetOrAllocateAsync(order, cancellationToken);
             await auditService.RecordTransmissionIdAsync(order.Id, resolvedAttemptId, transmissionId, cancellationToken);
             payload = payloadBuilder.Build(order, transmissionId, settings.SalesRepresentativeCodes);
-            if (string.IsNullOrWhiteSpace(settings.DeviceId))
-            {
-                throw new WmcOrderMappingException("O IMEI/dispositivo emitido pelo WMC não está configurado.");
-            }
 
             var sellerId = order.Customer!.SalesRepresentativeId!.Value;
             sellerCode = settings.SalesRepresentativeCodes[sellerId];

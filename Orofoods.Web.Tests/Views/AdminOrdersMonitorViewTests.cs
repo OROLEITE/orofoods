@@ -28,7 +28,7 @@ public sealed class AdminOrdersMonitorViewTests
         Assert.Contains("Limpar filtros", view);
         Assert.Contains("Total do recorte", view);
         Assert.Contains("Aguardando a&ccedil;&atilde;o", view);
-        Assert.Contains("TXT aguardando confirma&ccedil;&atilde;o", view);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)", view);
         Assert.Contains("Aten&ccedil;&atilde;o WMC", view);
         Assert.Contains("asp-route-q=\"@queryText\"", view);
         Assert.Contains("asp-route-status=\"@statusFilter\"", view);
@@ -50,10 +50,9 @@ public sealed class AdminOrdersMonitorViewTests
         var view = File.ReadAllText(Path.Combine(WebProjectPath, "Areas", "Admin", "Views", "Orders", "Index.cshtml"));
         var styles = File.ReadAllText(Path.Combine(WebProjectPath, "wwwroot", "css", "admin-orders-list.css"));
 
-        Assert.Contains("WmcOrderExportStatus.Exported", view);
-        Assert.Contains("WmcOrderExportStatus.Imported", view);
-        Assert.Contains("WmcOrderExportStatus.Rejected", view);
-        Assert.Contains("WmcOrderExportStatus.Error", view);
+        Assert.Contains("WmcIntegrationStatusDisplay.Sent", view);
+        Assert.Contains("WmcIntegrationStatusDisplay.Confirmed", view);
+        Assert.Contains("WmcIntegrationStatusDisplay.Error", view);
         Assert.Contains("orders-delivered-wmc-note", view);
         Assert.Contains("orders-row--delivered-wmc-pending", styles);
         Assert.Contains("@media (max-width: 767px)", styles);

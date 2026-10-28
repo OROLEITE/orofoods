@@ -240,30 +240,46 @@ public class WmcJsonOrderErpIntegrationTests
     }
 
     [Fact]
-    public async Task Does_not_send_with_an_empty_device_id_on_the_wmc_http_endpoint()
+    public async Task Sends_with_an_empty_device_id_and_keeps_the_seller_serial_and_reconciliation()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var order = CreateOrder();
         db.Orders.Add(order);
         await db.SaveChangesAsync();
 
-        var handler = new RecordingHandler((HttpStatusCode.OK, "importado com sucesso"));
+        var handler = new RecordingHandler(
+            (HttpStatusCode.OK, "importado com sucesso"),
+            (HttpStatusCode.OK, "[{\"NROPEDIDO\":776655}]"));
         using var client = new HttpClient(handler);
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["WmcJsonOrder:Enabled"] = "true",
+            ["WmcJsonOrder:BaseUrl"] = "http://mobileopt.wmcsistemas.com.br:8084/oroleite/",
+            ["WmcJsonOrder:SalesRepresentativeSerials:27"] = "serial-test",
+            ["WmcJsonOrder:HomologationOrderId"] = order.Id.ToString(CultureInfo.InvariantCulture),
+            ["WmcJsonOrder:HomologationOrderIdConfirmedUnique"] = "true",
+            ["WmcJsonOrder:SalesRepresentativeCodes:27"] = "804"
+        }).Build();
         var integration = new WmcJsonOrderErpIntegration(
             client,
-            Options.Create(CreateOptions(
-                order.Id,
-                "http://mobileopt.wmcsistemas.com.br:8084/oroleite/",
-                deviceId: "")),
+            Options.Create(configuration.GetSection(WmcJsonOrderOptions.SectionName).Get<WmcJsonOrderOptions>()!),
             new WmcMobileOrderPayloadBuilder(),
             new WmcExportAuditService(db),
             new FixedWmcTransmissionIdAllocator(9001));
 
         var result = await integration.SendOrderAsync(order);
 
-        Assert.False(result.Succeeded);
-        Assert.Contains("IMEI", result.Error, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(0, handler.CallCount);
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal("776655", result.ErpOrderNumber);
+        Assert.Equal(
+            "http://mobileopt.wmcsistemas.com.br:8084/oroleite/exportar.php?imei=&serial=serial-test",
+            handler.Requests[0].Uri!.AbsoluteUri);
+        Assert.Equal(
+            "http://mobileopt.wmcsistemas.com.br:8084/oroleite/nropedido.php?idpedido=9001&codvendedor=804",
+            handler.Requests[1].Uri!.AbsoluteUri);
+        Assert.Equal(2, handler.CallCount);
+        Assert.Equal(WmcExportOutcome.Succeeded, Assert.Single(db.WmcExportAudits).Outcome);
+        Assert.Equal(804, db.WmcExportAudits.Single().WmcSalesRepresentativeCode);
     }
 
     [Fact]

@@ -414,8 +414,6 @@ public class OrdersController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public Task<IActionResult> ReprocessIntegration(int id, CancellationToken cancellationToken = default)
-    {
-        return SendToWmc(id, cancellationToken);
-    }
+    public IActionResult ReprocessIntegration(int id, CancellationToken cancellationToken = default) =>
+        RedirectToAction("Index", "WmcOrderImports");
 }
