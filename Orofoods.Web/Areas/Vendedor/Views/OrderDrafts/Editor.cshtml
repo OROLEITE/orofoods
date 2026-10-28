@@ -105,7 +105,6 @@
             @if (isEditable)
             {
                 var formAction = Model.IsPersisted ? "Save" : "Create";
-                var selectedAddress = Model.Addresses.SingleOrDefault(address => address.Id == Model.DeliveryAddressId);
                 var selectedPayment = Model.PaymentTerms.SingleOrDefault(term => term.Id == Model.PaymentTermId);
                 @if (Model.IsPersisted)
                 {
@@ -294,7 +293,6 @@
                         </div>
                         <dl class="seller-order-drafts__review-details">
                             <div><dt>Cliente</dt><dd>@Model.CustomerName <small>@Model.CustomerCode</small></dd></div>
-                            <div><dt>Endereço</dt><dd>@(selectedAddress is null ? "Não informado" : $"{selectedAddress.Label} — {selectedAddress.FullAddress}")</dd></div>
                             <div><dt>Pagamento</dt><dd>@(selectedPayment is null ? "Não informado" : $"{selectedPayment.Name} — {(selectedPayment.DaysUntilDue == 0 ? "à vista" : $"{selectedPayment.DaysUntilDue} dias")}")</dd></div>
                         </dl>
                         <div class="seller-order-drafts__review-items" aria-label="Itens para confirmação">

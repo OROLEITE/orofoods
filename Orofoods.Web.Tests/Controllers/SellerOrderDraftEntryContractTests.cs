@@ -114,7 +114,7 @@ public sealed class SellerOrderDraftEntryContractTests
     }
 
     [Fact]
-    public void Saved_order_requires_a_review_with_customer_address_payment_items_prices_and_total()
+    public void Saved_order_review_shows_customer_payment_items_prices_and_total_without_an_address_field()
     {
         var view = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Views", "OrderDrafts", "Editor.cshtml"));
         var controller = File.ReadAllText(ProjectFile("Orofoods.Web", "Areas", "Vendedor", "Controllers", "OrderDraftsController.cs"));
@@ -123,7 +123,8 @@ public sealed class SellerOrderDraftEntryContractTests
         Assert.Contains("Gravar pedido", view, StringComparison.Ordinal);
         Assert.Contains("Revisão do pedido", view, StringComparison.Ordinal);
         Assert.Contains("Cliente", view, StringComparison.Ordinal);
-        Assert.Contains("Endereço", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Endereço", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("DeliveryAddressId", view, StringComparison.Ordinal);
         Assert.Contains("Pagamento", view, StringComparison.Ordinal);
         Assert.Contains("@foreach (var item in Model.Items.Where(item => !item.RemovalPending))", view, StringComparison.Ordinal);
         Assert.Contains("@item.UnitPrice", view, StringComparison.Ordinal);
