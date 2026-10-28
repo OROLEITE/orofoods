@@ -12,12 +12,10 @@ using Orofoods.Web.Services.Pricing;
 namespace Orofoods.Web.Services.Orders;
 
 public sealed record OrderPlacementCommand(
-    int? AddressId,
     int PaymentTermId,
     DateTime? RequestedDeliveryDate,
     string? Notes,
-    string? CheckoutAttemptKey = null,
-    bool AllowMissingAddress = false);
+    string? CheckoutAttemptKey = null);
 
 public sealed record OrderPlacementResult(
     Order? Order,
@@ -152,23 +150,10 @@ public sealed class OrderPlacementService(
         CancellationToken cancellationToken)
     {
         var customer = await db.Customers
-            .Include(x => x.Addresses)
             .SingleOrDefaultAsync(x => x.Id == customerId && x.IsActive && x.Status == CustomerStatus.Approved, cancellationToken);
         if (customer is null)
         {
             return OrderPlacementResult.Failure("Cliente não encontrado ou não está aprovado.");
-        }
-
-        var activeAddressId = command.AddressId;
-        if (activeAddressId is int requestedAddressId
-            && !customer.Addresses.Any(x => x.Id == requestedAddressId && x.IsActive))
-        {
-            return OrderPlacementResult.Failure("Endereço de entrega inválido.");
-        }
-
-        if (activeAddressId is null && !command.AllowMissingAddress)
-        {
-            return OrderPlacementResult.Failure("Endereço de entrega inválido.");
         }
 
         var eligibility = await paymentEligibilityService.ValidateAsync(customerId, command.PaymentTermId, cancellationToken);
@@ -245,7 +230,6 @@ public sealed class OrderPlacementService(
             SellerOrderDraftId = sellerOrderDraftId,
             CheckoutAttemptKey = string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) ? null : command.CheckoutAttemptKey,
             CreatedByUserId = createdByUserId,
-            DeliveryAddressId = activeAddressId,
             PaymentTermId = paymentTerm.Id,
             PaymentMethod = paymentTerm.Name,
             RequestedDeliveryDate = command.RequestedDeliveryDate,
@@ -362,7 +346,6 @@ public sealed class OrderPlacementService(
     private static bool MatchesQuote(OrderPlacementQuote quote, Order order, OrderPlacementCommand command)
     {
         if (quote.CustomerId != order.CustomerId
-            || quote.DeliveryAddressId != command.AddressId
             || quote.PaymentTermId != command.PaymentTermId
             || quote.RequestedDeliveryDate != command.RequestedDeliveryDate
             || quote.Subtotal != order.Subtotal

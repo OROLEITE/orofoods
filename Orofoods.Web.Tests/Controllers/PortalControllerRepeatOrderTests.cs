@@ -69,7 +69,7 @@ public class PortalControllerRepeatOrderTests
     }
 
     [Fact]
-    public async Task Confirm_forbids_using_an_address_owned_by_another_customer()
+    public async Task Confirm_forbids_an_unknown_source_order()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = new Customer
@@ -81,25 +81,6 @@ public class PortalControllerRepeatOrderTests
             IsActive = true,
             MinimumOrder = 1m
         };
-        var otherCustomer = new Customer
-        {
-            LegalName = "Cliente B Ltda",
-            TradeName = "Cliente B",
-            Cnpj = "98.765.432/0001-10",
-            Status = CustomerStatus.Approved,
-            IsActive = true
-        };
-        otherCustomer.Addresses.Add(new CustomerAddress
-        {
-            Label = "Endereco de outro cliente",
-            Street = "Rua B",
-            Number = "2",
-            District = "Centro",
-            City = "Campinas",
-            State = "SP",
-            ZipCode = "13000-000",
-            IsActive = true
-        });
         var category = new ProductCategory { Name = "Paes", Slug = "paes", IsActive = true };
         var product = new Product
         {
@@ -113,7 +94,7 @@ public class PortalControllerRepeatOrderTests
             IsActive = true,
             IsAvailable = true
         };
-        db.AddRange(customer, otherCustomer, product);
+        db.AddRange(customer, product);
         await db.SaveChangesAsync();
         db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 10 });
         db.Users.Add(new ApplicationUser
@@ -133,7 +114,6 @@ public class PortalControllerRepeatOrderTests
         var result = await controller.Confirm(new ConfirmOrderVm
         {
             SourceOrderId = 1,
-            AddressId = otherCustomer.Addresses.Single().Id,
             ProductIds = [product.Id],
             Quantities = [1]
         });
@@ -159,12 +139,6 @@ public class PortalControllerRepeatOrderTests
             CreditLimit = 1000m,
             SalesRepresentative = new SalesRepresentative { Name = "Carteira externa", IsActive = true }
         };
-        var address = new CustomerAddress
-        {
-            Label = "Principal", Street = "Rua A", Number = "1", District = "Centro",
-            City = "Campinas", State = "SP", ZipCode = "13000-000", IsActive = true,
-            IsPrimary = true, Customer = customer
-        };
         var user = new Orofoods.Web.Models.Identity.ApplicationUser
         {
             Id = "customer-user", UserName = "customer@orofoods.local", Email = "customer@orofoods.local",
@@ -186,14 +160,13 @@ public class PortalControllerRepeatOrderTests
             StatusHistory = [new Orofoods.Web.Models.Orders.OrderStatusHistory { Status = Orofoods.Web.Models.Orders.OrderStatus.Approved, ChangedAt = DateTime.UtcNow, ChangedByUserId = user.Id }],
             Payments = [new Payment { Customer = customer, PaymentMethod = "PIX", Method = PaymentMethodType.Pix, Amount = 297m, Status = PaymentStatus.Paid }]
         };
-        db.AddRange(customer, address, user, product, paymentTerm, sourceOrder, new Orofoods.Web.Models.Inventory.ProductInventory { Product = product, QuantityOnHand = 10 });
+        db.AddRange(customer, user, product, paymentTerm, sourceOrder, new Orofoods.Web.Models.Inventory.ProductInventory { Product = product, QuantityOnHand = 10 });
         await db.SaveChangesAsync();
 
         var controller = CreateController(db, user.Id);
         var result = await controller.Confirm(new ConfirmOrderVm
         {
             SourceOrderId = sourceOrder.Id,
-            AddressId = address.Id,
             PaymentTermId = paymentTerm.Id,
             RequestedDate = DateTime.Today.AddDays(1),
             ProductIds = [product.Id],
@@ -205,6 +178,7 @@ public class PortalControllerRepeatOrderTests
         Assert.IsType<RedirectToActionResult>(result);
         var createdOrder = await db.Orders.SingleAsync(order => order.Id != sourceOrder.Id);
         Assert.Equal(expectedNotes, createdOrder.Notes);
+        Assert.Null(createdOrder.DeliveryAddressId);
         Assert.Equal(10m, createdOrder.Total);
         Assert.Equal(Orofoods.Web.Models.Orders.OrderStatus.Received, createdOrder.Status);
         Assert.Equal(IntegrationStatus.Pending, createdOrder.IntegrationStatus);
@@ -259,14 +233,14 @@ public class PortalControllerRepeatOrderTests
         var controller = CreateController(db, user.Id);
         var input = new ConfirmOrderVm
         {
-            SourceOrderId = sourceOrder.Id, AddressId = address.Id, PaymentTermId = paymentTerm.Id,
+            SourceOrderId = sourceOrder.Id, PaymentTermId = paymentTerm.Id,
             RequestedDate = DateTime.Today.AddDays(1), ProductIds = [product.Id], Quantities = [2],
             AttemptKey = "repeat-idempotency-key"
         };
 
         var unrelatedItemSubmission = new ConfirmOrderVm
         {
-            SourceOrderId = sourceOrder.Id, AddressId = address.Id, PaymentTermId = paymentTerm.Id,
+            SourceOrderId = sourceOrder.Id, PaymentTermId = paymentTerm.Id,
             RequestedDate = input.RequestedDate, ProductIds = [unrelatedProduct.Id], Quantities = [1],
             AttemptKey = "unrelated-item-attempt"
         };

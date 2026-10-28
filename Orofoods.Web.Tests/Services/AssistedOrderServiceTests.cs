@@ -27,7 +27,7 @@ public class AssistedOrderServiceTests
         await db.SaveChangesAsync();
 
         var service = CreateService(db);
-        var result = await service.CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 3)]);
+        var result = await service.CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 3)]);
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         var order = await db.Orders.Include(x => x.Items).SingleAsync();
@@ -51,7 +51,7 @@ public class AssistedOrderServiceTests
         customer.PriceTable = table;
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 2)]);
+        var result = await CreateService(db).CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 2)]);
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         var item = await db.OrderItems.SingleAsync();
@@ -69,7 +69,7 @@ public class AssistedOrderServiceTests
         db.AddRange(customer, term, product, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
+        var result = await CreateService(db).CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
 
         Assert.False(result.Succeeded);
         Assert.Contains("WMC", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
@@ -87,7 +87,7 @@ public class AssistedOrderServiceTests
         db.AddRange(customer, term, product, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
+        var result = await CreateService(db).CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
 
         Assert.False(result.Succeeded);
         Assert.Empty(db.Orders);

@@ -240,7 +240,7 @@ public sealed class SellerOrderDraftSubmissionServiceTests
     }
 
     [Fact]
-    public async Task Submit_rejects_an_inactive_delivery_address_without_creating_an_order()
+    public async Task Submit_ignores_an_inactive_legacy_delivery_address_and_creates_an_addressless_order()
     {
         await using var fixture = await SubmissionFixture.CreateAsync();
         var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 1, 0m));
@@ -249,9 +249,12 @@ public sealed class SellerOrderDraftSubmissionServiceTests
 
         var result = await fixture.SubmitAsync(draft);
 
-        Assert.False(result.Succeeded);
-        Assert.Empty(await fixture.Db.Orders.ToListAsync());
-        Assert.Equal(SellerOrderDraftStatus.Draft, (await fixture.Db.SellerOrderDrafts.SingleAsync(x => x.Id == draft.Id)).Status);
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        var order = await fixture.Db.Orders.SingleAsync();
+        Assert.Null(order.DeliveryAddressId);
+        var persistedDraft = await fixture.Db.SellerOrderDrafts.SingleAsync(x => x.Id == draft.Id);
+        Assert.Equal(SellerOrderDraftStatus.Submitted, persistedDraft.Status);
+        Assert.Equal(fixture.Address.Id, persistedDraft.DeliveryAddressId);
     }
 
     [Fact]

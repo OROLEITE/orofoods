@@ -81,7 +81,7 @@ public sealed class OrderDraftsController(
         }
 
         var editor = await BuildEditorAsync(
-            selectedCustomerId, null, null, null, null, null, initialItems, Guid.NewGuid(), cancellationToken);
+            selectedCustomerId, null, null, null, null, initialItems, Guid.NewGuid(), cancellationToken);
         return editor is null ? Forbid() : View("Editor", editor);
     }
 
@@ -148,7 +148,7 @@ public sealed class OrderDraftsController(
         {
             return RedirectToAction(nameof(Submitted), new { id });
         }
-        var editor = await BuildEditorAsync(draft.CustomerId, draft, null, null, null, null, [], Guid.NewGuid(), cancellationToken);
+        var editor = await BuildEditorAsync(draft.CustomerId, draft, null, null, null, [], Guid.NewGuid(), cancellationToken);
         return editor is null ? NotFound() : View("Editor", editor);
     }
 
@@ -183,7 +183,7 @@ public sealed class OrderDraftsController(
 
         var result = await draftService.CreateAsync(User, new SellerOrderDraftInput(
             form.CustomerId,
-            form.DeliveryAddressId,
+            null,
             form.PaymentTermId,
             form.RequestedDeliveryDate,
             form.Notes,
@@ -221,7 +221,7 @@ public sealed class OrderDraftsController(
 
         var result = await draftService.SaveAsync(User, id, new SellerOrderDraftSaveInput(
             form.ExpectedVersion,
-            form.DeliveryAddressId,
+            null,
             form.PaymentTermId,
             form.RequestedDeliveryDate,
             form.Notes,
@@ -298,7 +298,7 @@ public sealed class OrderDraftsController(
         }
 
         var editor = await BuildEditorAsync(
-            form.CustomerId, null, form.DeliveryAddressId, form.PaymentTermId, form.RequestedDeliveryDate, form.Notes,
+            form.CustomerId, null, form.PaymentTermId, form.RequestedDeliveryDate, form.Notes,
             form.Items, form.CreateRequestKey == Guid.Empty ? Guid.NewGuid() : form.CreateRequestKey, cancellationToken,
             usePostedInput: true);
         return editor is null ? Forbid() : View("Editor", editor);
@@ -312,7 +312,7 @@ public sealed class OrderDraftsController(
         var draft = await draftService.GetAsync(User, id, cancellationToken);
         if (draft is null) return NotFound();
         var editor = await BuildEditorAsync(
-            draft.CustomerId, draft, form.DeliveryAddressId, form.PaymentTermId, form.RequestedDeliveryDate, form.Notes,
+            draft.CustomerId, draft, form.PaymentTermId, form.RequestedDeliveryDate, form.Notes,
             form.Items, Guid.NewGuid(), cancellationToken, form.RemovedProductIds, usePostedInput: true);
         return editor is null ? NotFound() : View("Editor", editor);
     }
@@ -320,7 +320,6 @@ public sealed class OrderDraftsController(
     private async Task<SellerOrderDraftEditorViewModel?> BuildEditorAsync(
         int customerId,
         SellerOrderDraftView? draft,
-        int? postedAddressId,
         int? postedPaymentTermId,
         DateTime? postedDeliveryDate,
         string? postedNotes,
@@ -337,15 +336,6 @@ public sealed class OrderDraftsController(
         var configuredMinimum = await db.OrderMinimumSettings.AsNoTracking()
             .Select(x => (decimal?)x.MinimumAmount).SingleOrDefaultAsync(cancellationToken);
 
-        var addresses = await db.CustomerAddresses.AsNoTracking()
-            .Where(address => address.CustomerId == customerId && address.IsActive)
-            .OrderByDescending(address => address.IsPrimary)
-            .ThenBy(address => address.Label)
-            .Select(address => new SellerDraftAddressOption(
-                address.Id,
-                address.Label,
-                address.Street + ", " + address.Number + " — " + address.District + " — " + address.City + "/" + address.State))
-            .ToListAsync(cancellationToken);
         var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customerId, cancellationToken);
         var paymentTerms = eligibility.PaymentMethods.Select(term => new SellerDraftPaymentOption(
             term.Id, term.Code, term.Name, term.DaysUntilDue)).ToArray();
@@ -401,7 +391,7 @@ public sealed class OrderDraftsController(
             var subtotal = quoteLines.Sum(item => item.Subtotal);
             quoteToken = quoteProtector.Protect(ownerUserId, draft.Id, draft.Version, new OrderPlacementQuote(
                 customerId,
-                draft.DeliveryAddressId,
+                null,
                 draft.PaymentTermId,
                 draft.RequestedDeliveryDate,
                 quoteLines,
@@ -423,9 +413,7 @@ public sealed class OrderDraftsController(
             CustomerName = workspace.Customer.Name,
             CustomerCode = workspace.Customer.Code,
             ProductSearchUrl = Url.Action(nameof(SearchProducts), "OrderDrafts", new { area = "Vendedor", customerId }),
-            Addresses = addresses,
             PaymentTerms = paymentTerms,
-            DeliveryAddressId = usePostedInput ? postedAddressId : draft?.DeliveryAddressId,
             PaymentTermId = usePostedInput ? postedPaymentTermId : draft?.PaymentTermId,
             RequestedDeliveryDate = usePostedInput ? postedDeliveryDate : draft?.RequestedDeliveryDate,
             MinimumOrder = OrderMinimumPolicy.Resolve(configuredMinimum, customerMinimum),

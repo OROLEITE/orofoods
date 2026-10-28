@@ -70,7 +70,7 @@ public class AssistedOrderControllerTests
         Assert.Equal(customer.TradeName, model.CustomerName);
         Assert.Equal("Seller", model.SalesRepresentativeName);
         Assert.Equal("Tabela autorizada", model.PriceTableName);
-        Assert.Equal(customer.Addresses.Single().Id, Assert.Single(model.Addresses).Id);
+        Assert.Null(typeof(AssistedOrderViewModel).GetProperty("AddressId"));
         Assert.Equal(product.BasePrice, Assert.Single(model.Products).UnitPrice);
         Assert.Contains(model.PaymentTerms, term => term.Code == "PIX");
     }
@@ -176,7 +176,6 @@ public class AssistedOrderControllerTests
         var result = await controller.NewOrder(new AssistedOrderViewModel
         {
             CustomerId = customer.Id,
-            AddressId = customer.Addresses.Single().Id,
             PaymentTermId = 0,
             AttemptKey = "attempt-1"
         }, CancellationToken.None);
@@ -187,8 +186,45 @@ public class AssistedOrderControllerTests
         Assert.Contains(model.PaymentTerms, paymentTerm => paymentTerm.Code == "CASH");
     }
 
-    private static CustomersController CreateController(Orofoods.Web.Data.ApplicationDbContext db)
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("GerenteComercial")]
+    public async Task Admin_and_commercial_manager_assisted_order_creates_order_without_a_delivery_address(string role)
     {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new SalesRepresentative { Name = "Seller", IsActive = true };
+        var customer = CreateCustomer("Owned", seller);
+        var term = new PaymentTerm { Code = "CASH", Name = "À vista", DaysUntilDue = 0, IsActive = true };
+        var product = new Product
+        {
+            Sku = "SKU-ADMIN-ADDRESSLESS", Name = "Produto", Brand = "Marca", Unit = "PC", BasePrice = 200m,
+            IsActive = true, IsAvailable = true, ProductCategory = new ProductCategory { Name = "Categoria", Slug = "categoria" }
+        };
+        db.AddRange(seller, customer, term, product, new ProductInventory { Product = product, QuantityOnHand = 10 },
+            new ApplicationUser { Id = "admin-user", UserName = "admin-user", Email = "admin@test.local", IsActive = true },
+            new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, role);
+        controller.HttpContext.Session = new TestSession();
+        var result = await controller.NewOrder(new AssistedOrderViewModel
+        {
+            CustomerId = customer.Id,
+            PaymentTermId = term.Id,
+            AttemptKey = $"{role}-checkout-without-address",
+            ProductIds = [product.Id],
+            Quantities = [1]
+        }, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var order = await db.Orders.SingleAsync();
+        Assert.Null(order.DeliveryAddressId);
+        Assert.Empty(controller.ModelState.Values.SelectMany(value => value.Errors));
+    }
+
+    private static CustomersController CreateController(Orofoods.Web.Data.ApplicationDbContext db, string role = "Vendedor")
+    {
+        var userId = role == "Vendedor" ? "seller-user" : "admin-user";
         var priceService = new PriceService(db);
         var controller = new CustomersController(
             db,
@@ -203,8 +239,8 @@ public class AssistedOrderControllerTests
             HttpContext = new DefaultHttpContext
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity([
-                    new Claim(ClaimTypes.NameIdentifier, "seller-user"),
-                    new Claim(ClaimTypes.Role, "Vendedor")
+                    new Claim(ClaimTypes.NameIdentifier, userId),
+                    new Claim(ClaimTypes.Role, role)
                 ], "test"))
             }
         };

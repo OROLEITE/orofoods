@@ -27,6 +27,30 @@ namespace Orofoods.Web.Tests.Controllers;
 public class PortalControllerCheckoutCardTests
 {
     [Fact]
+    public async Task Customer_checkout_creates_order_without_a_delivery_address()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (customer, _, product, _) = await SeedCheckoutContextAsync(db);
+        var cashTerm = await db.PaymentTerms.SingleAsync(term => term.Code == "CASH");
+        var session = new TestSession();
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
+        var controller = CreateController(db, session, new ConfigurableCardGateway());
+
+        var result = await controller.Checkout(new CheckoutViewModel
+        {
+            PaymentTermId = cashTerm.Id,
+            RequestedDeliveryDate = DateTime.Today.AddDays(1),
+            AttemptKey = "customer-checkout-without-address"
+        });
+
+        Assert.Equal("Success", Assert.IsType<RedirectToActionResult>(result).ActionName);
+        var order = await db.Orders.SingleAsync(order => order.CustomerId == customer.Id);
+        Assert.Null(order.DeliveryAddressId);
+        Assert.Single(await db.CustomerAddresses.Where(address => address.CustomerId == customer.Id).ToListAsync());
+        Assert.True(controller.ModelState.IsValid);
+    }
+
+    [Fact]
     public async Task Card_on_delivery_creates_pending_local_payment_without_calling_gateway_or_redirecting()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -41,7 +65,6 @@ public class PortalControllerCheckoutCardTests
 
         var result = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = term.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-card-on-delivery"
@@ -75,7 +98,6 @@ public class PortalControllerCheckoutCardTests
 
         var result = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = term.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-card-on-delivery-disabled"
@@ -102,7 +124,6 @@ public class PortalControllerCheckoutCardTests
 
         var result = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-rejected-1",
@@ -153,7 +174,6 @@ public class PortalControllerCheckoutCardTests
 
         await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-rejected-2",
@@ -168,7 +188,6 @@ public class PortalControllerCheckoutCardTests
 
         var secondResult = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-approved-2",
@@ -206,7 +225,6 @@ public class PortalControllerCheckoutCardTests
         var controller = CreateController(db, session, gateway);
         var input = new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-duplicate-card",
@@ -249,7 +267,6 @@ public class PortalControllerCheckoutCardTests
         var controller = CreateController(db, session, gateway);
         var input = new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = pixTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-duplicate-pix"
@@ -286,7 +303,6 @@ public class PortalControllerCheckoutCardTests
         var controller = CreateController(db, firstSession, gateway);
         var input = new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = cashTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-duplicate-cash"
