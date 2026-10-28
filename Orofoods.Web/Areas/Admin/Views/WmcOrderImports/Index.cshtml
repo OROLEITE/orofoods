@@ -1,5 +1,6 @@
 @using Orofoods.Web.Models.Integrations
 @using Orofoods.Web.Models.Orders
+@using Orofoods.Web.Services.Integrations
 @model IReadOnlyList<Order>
 @{
     ViewData["Title"] = "Importação manual ao WMC";
@@ -25,16 +26,28 @@
                     && string.IsNullOrWhiteSpace(order.ErpOrderNumber)
                     && (imported || order.IntegrationStatus == IntegrationStatus.Unknown);
                 var eligible = eligibleOrderIds.Contains(order.Id);
-                var hasUncertainAudit = order.WmcExportAudits.Any(audit => audit.Outcome is WmcExportOutcome.Started or WmcExportOutcome.Unknown or WmcExportOutcome.Succeeded);
-                var statusLabel = imported ? $"Importado WMC{(string.IsNullOrWhiteSpace(order.ErpOrderNumber) ? "" : $" · Nº {order.ErpOrderNumber}")}" :
-                    hasUncertainAudit || state?.RequiresManualReview == true ? "Conferência necessária" :
-                    state?.Status == WmcOrderExportStatus.Exported ? "TXT aguardando confirmação" : "Pendente";
+                var wmcIntegrationStatus = WmcIntegrationStatusPresenter.GetStatus(order);
+                var wmcIntegrationDetail = WmcIntegrationStatusPresenter.GetDetail(order);
+                var statusLabel = WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus);
+                if (wmcIntegrationStatus == WmcIntegrationStatusDisplay.Confirmed && !string.IsNullOrWhiteSpace(order.ErpOrderNumber))
+                {
+                    statusLabel += $" · Nº {order.ErpOrderNumber}";
+                }
+                var hasUncertainAudit = order.WmcExportAudits.Any(audit => audit.Outcome is WmcExportOutcome.Started or WmcExportOutcome.Unknown or WmcExportOutcome.Succeeded or WmcExportOutcome.Imported or WmcExportOutcome.Generated or WmcExportOutcome.Available or WmcExportOutcome.Regenerated)
+                    || state?.RequiresManualReview == true
+                    || state?.Status == WmcOrderExportStatus.Exported;
                 <tr>
                     <td data-label="Número"><strong class="orders-number">@order.Number</strong></td>
                     <td data-label="Cliente">@order.Customer?.TradeName</td>
                     <td data-label="Status">@order.Status.ToDisplayName()</td>
                     <td data-label="Total" class="text-end orders-nowrap"><strong>@order.Total.ToString("C")</strong></td>
-                    <td data-label="WMC">@statusLabel</td>
+                    <td data-label="WMC">
+                        <span class="erp-status-badge @WmcIntegrationStatusPresenter.GetCssClass(wmcIntegrationStatus)">@statusLabel</span>
+                        @if (!string.IsNullOrWhiteSpace(wmcIntegrationDetail))
+                        {
+                            <small class="d-block text-muted">@wmcIntegrationDetail</small>
+                        }
+                    </td>
                     <td data-label="Ação">
                         @if (eligible)
                         {

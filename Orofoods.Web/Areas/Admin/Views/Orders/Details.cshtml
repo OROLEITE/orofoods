@@ -45,7 +45,7 @@
     void RenderWmcEntry(Orofoods.Web.Models.Integrations.WmcExportAudit entry)
     {
         <li class="list-group-item order-history-entry">
-            <div><strong>@(entry.Outcome switch { Orofoods.Web.Models.Integrations.WmcExportOutcome.Generated => "TXT gerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Available => "Arquivo disponibilizado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Failed => "Falha na exportação", Orofoods.Web.Models.Integrations.WmcExportOutcome.Imported => "Importação confirmada", _ => entry.Succeeded ? "TXT gerado" : "Falha na exportação" })</strong><small>@(entry.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Automatic ? "Automática" : "Manual")</small>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (entry.GeneratedAt is not null) { <small>TXT gerado @entry.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
+            <div><strong>@(entry.Outcome switch { Orofoods.Web.Models.Integrations.WmcExportOutcome.Generated => "TXT gerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Available => "TXT disponível para importação manual", Orofoods.Web.Models.Integrations.WmcExportOutcome.Regenerated => "TXT regenerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Started => "Tentativa HTTP/JSON iniciada", Orofoods.Web.Models.Integrations.WmcExportOutcome.Unknown => string.IsNullOrWhiteSpace(entry.FileName) ? "Resultado HTTP/JSON incerto" : "Resultado TXT incerto", Orofoods.Web.Models.Integrations.WmcExportOutcome.Succeeded or Orofoods.Web.Models.Integrations.WmcExportOutcome.Imported => "Confirmado pelo WMC", Orofoods.Web.Models.Integrations.WmcExportOutcome.Rejected => "Erro WMC", Orofoods.Web.Models.Integrations.WmcExportOutcome.Failed => string.IsNullOrWhiteSpace(entry.FileName) ? "Erro WMC" : "Erro ao gerar TXT", _ => "Evento WMC" })</strong><small>@(entry.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Automatic ? "Automática" : "Manual")</small>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (entry.GeneratedAt is not null) { <small>TXT gerado @entry.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
             <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
         </li>
     }
@@ -72,9 +72,9 @@
         </div>
 
         <div class="commercial-bar order-details-summary order-details-status-strip" aria-label="Resumo de status">
-            <div class="order-details-summary-item"><small>INTEGRA&#199;&#195;O ERP</small><strong>@Model.IntegrationStatus.ToDisplayName()</strong></div>
+            <div class="order-details-summary-item"><small>STATUS WMC</small><strong>@WmcIntegrationStatusPresenter.GetLabel(WmcIntegrationStatusPresenter.GetStatus(Model))</strong></div>
             <div class="order-details-summary-item"><small>PEDIDO ERP</small><strong>@(Model.ErpOrderNumber ?? "Pendente")</strong></div>
-            <div class="order-details-summary-item"><small>EXPORTA&#199;&#195;O WMC</small><strong>@(wmcImportConfirmed ? "Importa\u00e7\u00e3o WMC confirmada" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT gerado" : wmcState?.Status.ToString() ?? "Sem tentativa")</strong></div>
+            <div class="order-details-summary-item"><small>ESTADO TXT MANUAL</small><strong>@(wmcImportConfirmed ? "Importa\u00e7\u00e3o confirmada" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT aguardando importa\u00e7\u00e3o" : wmcState?.Status.ToString() ?? "Sem TXT manual")</strong></div>
         </div>
         </div>
         @if (TempData["OrderStatusError"] is string statusError)
@@ -289,6 +289,7 @@
                 <p class="text-danger order-wmc-last-error"><strong>Último erro registrado:</strong> @Model.WmcOrderExportState.LastError</p>
             }
             <dl class="order-wmc-facts">
+                <div><dt>Status da integração WMC</dt><dd><span class="erp-status-badge @WmcIntegrationStatusPresenter.GetCssClass(WmcIntegrationStatusPresenter.GetStatus(Model))">@WmcIntegrationStatusPresenter.GetLabel(WmcIntegrationStatusPresenter.GetStatus(Model))</span>@if (WmcIntegrationStatusPresenter.GetDetail(Model) is string wmcIntegrationDetail) { <small class="d-block">@wmcIntegrationDetail</small> }</dd></div>
                 <div><dt>Estado da exportação manual</dt><dd>@(wmcImportConfirmed ? "Importa\u00e7\u00e3o WMC confirmada" : wmcState?.Status == Orofoods.Web.Models.Integrations.WmcOrderExportStatus.Exported ? "TXT gerado" : wmcState?.Status.ToString() ?? "Sem tentativa registrada")</dd></div>
                 <div><dt>Revisão manual</dt><dd>@(Model.WmcOrderExportState?.RequiresManualReview == true ? "Necessária" : "Não necessária")</dd></div>
                 <div class="order-wmc-fact-cnpj"><dt>CNPJ do cliente</dt><dd><code class="order-wmc-cnpj">@(Model.Customer?.Cnpj ?? "Não informado")</code></dd></div>
@@ -377,7 +378,7 @@
                 }
                 else if (wmcCanManuallyExport)
                 {
-                    <form asp-action="SendToWmc" method="post" data-wmc-submit-once><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-primary wmc-send-button" type="submit">Enviar ao WMC</button></form>
+                    <form asp-action="SendToWmc" method="post" data-wmc-submit-once><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-primary wmc-send-button" type="submit">Baixar TXT (manual)</button></form>
                 }
                 </div>
                 </section>

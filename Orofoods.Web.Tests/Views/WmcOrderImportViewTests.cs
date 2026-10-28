@@ -15,6 +15,9 @@ public sealed class WmcOrderImportViewTests
         Assert.Contains("somente o pedido", view, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("ReconcileNroPedido", view, StringComparison.Ordinal);
         Assert.Contains("Consultar número WMC", view, StringComparison.Ordinal);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)", view, StringComparison.Ordinal);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetDetail(order)", view, StringComparison.Ordinal);
+        Assert.Contains("WmcIntegrationStatusPresenter.GetDetail(order)", view, StringComparison.Ordinal);
         Assert.Contains("window.confirm", script, StringComparison.Ordinal);
         Assert.Contains("event.preventDefault()", script, StringComparison.Ordinal);
     }

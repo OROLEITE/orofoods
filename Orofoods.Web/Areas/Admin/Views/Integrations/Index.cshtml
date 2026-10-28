@@ -1,5 +1,6 @@
 @using Orofoods.Web.Models.Integrations
 @using Orofoods.Web.Models.Orders
+@using Orofoods.Web.Services.Integrations
 @model IReadOnlyList<Orofoods.Web.Models.Orders.Order>
 @{ ViewData["Title"] = "Integra&ccedil;&otilde;es ERP"; var eligibleOrderIds = ViewData["WmcManualExportEligibleOrderIds"] as IReadOnlySet<int> ?? new HashSet<int>(); }
 
@@ -42,10 +43,10 @@
                     <tr>
                         <th>Pedido</th>
                         <th>Cliente</th>
-                        <th>Integra&ccedil;&atilde;o</th>
+                        <th>Status de integra&ccedil;&atilde;o WMC</th>
                         <th>&Uacute;ltima tentativa</th>
                         <th>Refer&ecirc;ncia ERP</th>
-                        <th>&Uacute;ltima exporta&ccedil;&atilde;o WMC</th>
+                        <th>&Uacute;ltimo evento WMC</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -54,50 +55,43 @@
                     {
                         var lastWmcExport = order.WmcExportAudits.OrderByDescending(item => item.ExportedAt).ThenByDescending(item => item.Id).FirstOrDefault();
                         var manualState = order.WmcOrderExportState;
-                        var wmcOutcome = lastWmcExport is null || lastWmcExport.Outcome == WmcExportOutcome.Unknown
-                            ? (lastWmcExport?.Succeeded == true ? WmcExportOutcome.Generated : WmcExportOutcome.Failed)
-                            : lastWmcExport.Outcome;
-                        var wmcOutcomeLabel = wmcOutcome switch
+                        var wmcIntegrationStatus = WmcIntegrationStatusPresenter.GetStatus(order);
+                        var wmcIntegrationDetail = WmcIntegrationStatusPresenter.GetDetail(order);
+                        var wmcOutcomeLabel = lastWmcExport?.Outcome switch
                         {
-                            WmcExportOutcome.Generated => "TXT gerado",
-                            WmcExportOutcome.Available => "Arquivo disponibilizado",
-                            WmcExportOutcome.Imported => "Importado",
-                            _ => "Falhou"
+                            WmcExportOutcome.Generated or WmcExportOutcome.Available or WmcExportOutcome.Regenerated => "TXT gerado; importa&ccedil;&atilde;o pendente",
+                            WmcExportOutcome.Started => "Tentativa HTTP/JSON iniciada",
+                            WmcExportOutcome.Unknown => "Resultado HTTP/JSON incerto",
+                            WmcExportOutcome.Succeeded or WmcExportOutcome.Imported => "Confirmado pelo WMC",
+                            WmcExportOutcome.Failed or WmcExportOutcome.Rejected => "Erro WMC",
+                            _ => "Sem resultado registrado"
                         };
                         var manualStatusLabel = manualState?.Status switch
                         {
-                            WmcOrderExportStatus.Exported => "TXT gerado",
-                            WmcOrderExportStatus.Imported => "Importa&ccedil;&atilde;o confirmada",
-                            WmcOrderExportStatus.Processing => "Processando",
-                            WmcOrderExportStatus.Rejected => "Rejeitado",
-                            WmcOrderExportStatus.Error => "Falhou",
+                            WmcOrderExportStatus.Exported => "TXT gerado; importa&ccedil;&atilde;o pendente",
+                            WmcOrderExportStatus.Imported => "Confirmado pelo WMC",
+                            WmcOrderExportStatus.Processing => "TXT em processamento",
+                            WmcOrderExportStatus.Rejected => "Importa&ccedil;&atilde;o rejeitada",
+                            WmcOrderExportStatus.Error => "Erro na importa&ccedil;&atilde;o",
                             WmcOrderExportStatus.Pending => "Pendente",
                             _ => null
                         };
-                        var manualStatusClass = manualState?.Status switch
-                        {
-                            WmcOrderExportStatus.Exported or WmcOrderExportStatus.Imported => "erp-status-badge--succeeded",
-                            WmcOrderExportStatus.Rejected => "erp-status-badge--failed",
-                            WmcOrderExportStatus.Error => "erp-status-badge--failed",
-                            WmcOrderExportStatus.Processing => "erp-status-badge--processing",
-                            _ => "erp-status-badge--pending"
-                        };
-                        var wmcSummaryLabel = manualStatusLabel ?? (lastWmcExport is null ? null : wmcOutcomeLabel);
-                        var wmcSummaryClass = manualState is not null
-                            ? manualStatusClass
-                            : lastWmcExport?.Succeeded == true ? "erp-status-badge--succeeded" : "erp-status-badge--failed";
-                        var wmcSummaryDate = lastWmcExport?.ExportedAt ?? manualState?.ExportedAt;
-                        var integrationStatusClass = order.IntegrationStatus == IntegrationStatus.Pending && order.Status is OrderStatus.Received or OrderStatus.UnderReview or OrderStatus.Cancelled
-                            ? "order-context"
-                            : order.IntegrationStatus.ToString().ToLowerInvariant();
+                        var wmcSummaryLabel = WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus);
+                        var wmcSummaryClass = WmcIntegrationStatusPresenter.GetCssClass(wmcIntegrationStatus);
+                        var wmcSummaryDate = lastWmcExport?.ExportedAt ?? manualState?.ImportedAt ?? manualState?.ExportedAt ?? manualState?.UpdatedAt;
+                        var integrationStatusClass = order.Status == OrderStatus.Approved
+                            ? WmcIntegrationStatusPresenter.GetCssClass(wmcIntegrationStatus)
+                            : order.IntegrationStatus == IntegrationStatus.Pending && order.Status is OrderStatus.Received or OrderStatus.UnderReview or OrderStatus.Cancelled
+                                ? "order-context"
+                                : order.IntegrationStatus.ToString().ToLowerInvariant();
                         var integrationStatusLabel = order.Status switch
                         {
                             OrderStatus.Received or OrderStatus.UnderReview => "Aguardando aprovação",
                             OrderStatus.Cancelled => "Não elegível para envio",
                             _ => null
                         };
-                        var integrationStatusDisplay = order.Status == OrderStatus.Approved && order.IntegrationStatus == IntegrationStatus.Pending
-                            ? "Aguardando envio WMC"
+                        var integrationStatusDisplay = order.Status == OrderStatus.Approved
+                            ? WmcIntegrationStatusPresenter.GetLabel(wmcIntegrationStatus)
                             : order.IntegrationStatus.ToDisplayName();
                         var hasIntegrationError = !string.IsNullOrWhiteSpace(order.IntegrationError);
                         <tr>
@@ -123,6 +117,10 @@
                                     {
                                         <span class="erp-status-badge @wmcSummaryClass">@Html.Raw(wmcSummaryLabel)</span>
                                     }
+                                    @if (!string.IsNullOrWhiteSpace(wmcIntegrationDetail))
+                                    {
+                                        <small class="erp-wmc-summary-detail">@wmcIntegrationDetail</small>
+                                    }
                                     @if (wmcSummaryDate is not null)
                                     {
                                         <time class="erp-wmc-summary-date" datetime="@wmcSummaryDate.Value.ToString("O")">@wmcSummaryDate.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
@@ -145,14 +143,14 @@
                                                 <dl class="erp-wmc-popover-meta">
                                                     @if (manualState is not null)
                                                     {
-                                                        <div><dt>Exporta&ccedil;&atilde;o manual</dt><dd>@Html.Raw(manualStatusLabel)</dd></div>
+                                                        <div><dt>Estado do pedido WMC</dt><dd>@Html.Raw(manualStatusLabel)</dd></div>
                                                         @if (manualState.ExportedAt is not null) { <div><dt>Data manual</dt><dd>@manualState.ExportedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div> }
                                                         @if (!string.IsNullOrWhiteSpace(manualState.FileName)) { <div><dt>Arquivo manual</dt><dd>@manualState.FileName</dd></div> }
                                                         @if (!string.IsNullOrWhiteSpace(manualState.LastError)) { <div><dt>Erro manual</dt><dd class="erp-wmc-popover-error">@manualState.LastError</dd></div> }
                                                     }
                                                     @if (lastWmcExport is not null)
                                                     {
-                                                        <div><dt>Hist&oacute;rico mais recente</dt><dd>@wmcOutcomeLabel</dd></div>
+                                                        <div><dt>Resultado do evento</dt><dd>@Html.Raw(wmcOutcomeLabel)</dd></div>
                                                         <div><dt>Modalidade</dt><dd>@(lastWmcExport.Source == WmcExportSource.Automatic ? "Autom&aacute;tica" : "Manual")</dd></div>
                                                         <div><dt>Data da tentativa</dt><dd>@lastWmcExport.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
                                                         @if (lastWmcExport.GeneratedAt is not null) { <div><dt>TXT gerado</dt><dd>@lastWmcExport.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div> }
@@ -168,13 +166,13 @@
                             </td>
                             <td class="text-end">
                                 <div class="erp-row-actions">
-                                    @if (lastWmcExport?.Source == WmcExportSource.Automatic)
+                                    @if (lastWmcExport?.WmcTransmissionId is > 0)
                                     {
-                                        <span class="erp-status-badge erp-status-badge--succeeded">Transmissão JSON</span>
+                                        <span class="erp-status-badge erp-status-badge--processing">HTTP/JSON</span>
                                     }
                                     else if (lastWmcExport is not null)
                                     {
-                                        <span class="erp-status-badge erp-status-badge--succeeded">Arquivo TXT manual</span>
+                                        <span class="erp-status-badge erp-status-badge--pending">TXT; importa&ccedil;&atilde;o pendente</span>
                                     }
                                     @if (order.WmcTransmissionId is > 0 && string.IsNullOrWhiteSpace(order.ErpOrderNumber))
                                     {
@@ -187,7 +185,7 @@
                                     {
                                         <form asp-action="ExportWmc" method="post">
                                             <input type="hidden" name="id" value="@order.Id" />
-                                            <button class="btn btn-sm btn-erp-export" type="submit">Exportar WMC</button>
+                                            <button class="btn btn-sm btn-erp-export" type="submit">Baixar TXT (manual)</button>
                                         </form>
                                     }
                                 </div>

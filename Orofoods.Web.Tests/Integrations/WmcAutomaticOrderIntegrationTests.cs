@@ -1,5 +1,4 @@
 using System.Net;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
@@ -14,7 +13,7 @@ namespace Orofoods.Web.Tests.Integrations;
 public class WmcAutomaticOrderIntegrationTests
 {
     [Fact]
-    public async Task Keeps_the_existing_txt_adapter_active_when_json_is_not_enabled()
+    public async Task Does_not_fall_back_to_automatic_txt_when_json_is_disabled()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var outputDirectory = Path.Combine(Path.GetTempPath(), $"orofoods-wmc-fallback-{Guid.NewGuid():N}");
@@ -26,14 +25,7 @@ public class WmcAutomaticOrderIntegrationTests
             new WmcMobileOrderPayloadBuilder(),
             new WmcExportAuditService(db),
             new FixedWmcTransmissionIdAllocator(9001));
-        var fileDrop = new WmcFileDropErpOrderIntegration(
-            Options.Create(new WmcFileDropOptions { Enabled = true, OutputDirectory = outputDirectory }),
-            new WmcOrderFileGenerator(Options.Create(new WmcOrderFileOptions { SupplierCnpj = "51735297000174" })),
-            new WmcExportAuditService(db));
-        var fileDropServices = new ServiceCollection();
-        fileDropServices.AddSingleton(fileDrop);
-        using var fileDropProvider = fileDropServices.BuildServiceProvider();
-        var integration = new WmcAutomaticOrderIntegration(Options.Create(new WmcJsonOrderOptions()), json, fileDropProvider);
+        var integration = new WmcAutomaticOrderIntegration(Options.Create(new WmcJsonOrderOptions()), json);
         var order = new Order
         {
             Number = "ORO-2026-000901",
@@ -59,10 +51,13 @@ public class WmcAutomaticOrderIntegrationTests
 
         var result = await integration.SendOrderAsync(order);
 
-        Assert.True(result.Succeeded, result.Error);
+        Assert.False(result.Succeeded);
+        Assert.Contains("JSON", result.Error, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, handler.CallCount);
-        Assert.True(File.Exists(Path.Combine(outputDirectory, result.ExternalOrderId!)));
-        Directory.Delete(outputDirectory, recursive: true);
+        var outputCreated = Directory.Exists(outputDirectory);
+        if (outputCreated) Directory.Delete(outputDirectory, recursive: true);
+        Assert.False(outputCreated);
+        Assert.Empty(db.WmcExportAudits);
     }
 
     [Fact]
@@ -72,6 +67,7 @@ public class WmcAutomaticOrderIntegrationTests
         var order = new Order
         {
             Number = "ORO-2026-000902",
+            Status = OrderStatus.Approved,
             Customer = new Customer
             {
                 LegalName = "Cliente teste",
@@ -110,6 +106,7 @@ public class WmcAutomaticOrderIntegrationTests
         var jsonOptions = Options.Create(new WmcJsonOrderOptions
         {
             Enabled = true,
+            AutomaticWorkerEnabled = true,
             HomologationOrderIdConfirmedUnique = true,
             HomologationOrderId = order.Id,
             BaseUrl = "https://wmc.example.invalid/",
@@ -123,14 +120,89 @@ public class WmcAutomaticOrderIntegrationTests
             new WmcMobileOrderPayloadBuilder(),
             new WmcExportAuditService(db),
             new FixedWmcTransmissionIdAllocator(9001));
-        using var emptyProvider = new ServiceCollection().BuildServiceProvider();
-        var integration = new WmcAutomaticOrderIntegration(jsonOptions, json, emptyProvider);
+        var integration = new WmcAutomaticOrderIntegration(jsonOptions, json);
 
         var result = await integration.SendOrderAsync(order);
 
         Assert.True(result.Succeeded);
         Assert.Equal(2, handler.CallCount);
         Assert.Empty(db.WmcExportAudits.Where(audit => audit.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Manual));
+    }
+
+    [Fact]
+    public async Task Does_not_transmit_json_when_the_automatic_worker_is_disabled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var seller = new Orofoods.Web.Models.Customers.SalesRepresentative
+        {
+            Id = 27,
+            Name = "Vendedor teste",
+            Email = "seller@example.invalid"
+        };
+        var order = new Order
+        {
+            Number = "ORO-2026-000903",
+            Status = OrderStatus.Approved,
+            Customer = new Customer
+            {
+                LegalName = "Cliente teste",
+                TradeName = "Cliente teste",
+                Cnpj = "00000000000000",
+                WmcCode = "107072",
+                SalesRepresentativeId = seller.Id,
+                SalesRepresentative = seller
+            },
+            CreatedByUser = TestDbContextFactory.CreateOrderCreator(),
+            PaymentTerm = new PaymentTerm { Code = "CASH", Name = "A vista", DaysUntilDue = 0 },
+            Items =
+            [
+                new OrderItem
+                {
+                    Product = new Product
+                    {
+                        Sku = "TEST-3",
+                        WmcCode = "610601553",
+                        Name = "Produto teste",
+                        Unit = "caixa",
+                        Brand = "Teste",
+                        ProductCategory = new ProductCategory { Name = "Teste", Slug = "teste" }
+                    },
+                    ProductNameSnapshot = "Produto teste",
+                    Quantity = 1,
+                    UnitPrice = 10m,
+                    Subtotal = 10m
+                }
+            ]
+        };
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+        var handler = new SuccessHandler();
+        using var client = new HttpClient(handler);
+        var options = Options.Create(new WmcJsonOrderOptions
+        {
+            Enabled = true,
+            AutomaticWorkerEnabled = false,
+            HomologationOrderId = order.Id,
+            HomologationOrderIdConfirmedUnique = true,
+            BaseUrl = "https://wmc.example.invalid/",
+            DeviceId = "device-test",
+            SalesRepresentativeCodes = new Dictionary<int, int> { [seller.Id] = 804 },
+            SalesRepresentativeSerials = new Dictionary<int, string> { [seller.Id] = "serial-test" }
+        });
+        var json = new WmcJsonOrderErpIntegration(
+            client,
+            options,
+            new WmcMobileOrderPayloadBuilder(),
+            new WmcExportAuditService(db),
+            new FixedWmcTransmissionIdAllocator(9001));
+        var integration = new WmcAutomaticOrderIntegration(options, json);
+
+        var result = await integration.SendOrderAsync(order);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("automatic", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, handler.CallCount);
+        Assert.Empty(db.WmcExportAudits);
     }
 
     private sealed class ThrowingHandler : HttpMessageHandler

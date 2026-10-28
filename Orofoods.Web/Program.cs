@@ -330,7 +330,8 @@ builder.Services.AddScoped<IWmcTransmissionIdAllocator, WmcTransmissionIdAllocat
 builder.Services.AddHttpClient<WmcJsonOrderErpIntegration>();
 builder.Services.AddScoped<WmcAutomaticOrderIntegration>();
 builder.Services.AddScoped<IErpOrderIntegration>(services => services.GetRequiredService<WmcAutomaticOrderIntegration>());
-builder.Services.AddHostedService<ErpRetryBackgroundService>();
+// WMC FileDrop is available only through the explicit manual TXT export action.
+// Approved orders use the guarded HTTP/JSON worker below when its flag is enabled.
 builder.Services.AddHostedService<WmcJsonOrderHomologationBackgroundService>();
 builder.Services.AddHostedService<WmcJsonOrderAutomaticBackgroundService>();
 builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));

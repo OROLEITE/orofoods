@@ -52,7 +52,7 @@ public sealed class AdminWmcManualEligibilityTests
     }
 
     [Fact]
-    public async Task Legacy_reprocess_action_uses_the_persistent_manual_export_service()
+    public async Task Legacy_reprocess_action_routes_to_the_json_import_queue()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var order = CreateOrder("ORO-2026-000905", "PIX");
@@ -79,14 +79,14 @@ public sealed class AdminWmcManualEligibilityTests
         };
         controller.TempData = new TempDataDictionary(controller.HttpContext, Mock.Of<ITempDataProvider>());
 
-        var result = await controller.ReprocessIntegration(order.Id);
+        var result = controller.ReprocessIntegration(order.Id);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OrdersController.Details), redirect.ActionName);
-        Assert.Equal(order.Id, redirect.RouteValues!["id"]);
-        Assert.Equal(WmcOrderExportStatus.Exported, (await db.WmcOrderExportStates.SingleAsync()).Status);
-        Assert.Single(await db.WmcManualExportArtifacts.ToListAsync());
-        Assert.Single(await db.WmcExportAudits.Where(audit => audit.Succeeded).ToListAsync());
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.Equal("WmcOrderImports", redirect.ControllerName);
+        Assert.Empty(await db.WmcOrderExportStates.ToListAsync());
+        Assert.Empty(await db.WmcManualExportArtifacts.ToListAsync());
+        Assert.Empty(await db.WmcExportAudits.ToListAsync());
     }
 
     [Fact]
