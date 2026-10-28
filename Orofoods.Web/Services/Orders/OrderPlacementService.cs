@@ -12,11 +12,12 @@ using Orofoods.Web.Services.Pricing;
 namespace Orofoods.Web.Services.Orders;
 
 public sealed record OrderPlacementCommand(
-    int AddressId,
+    int? AddressId,
     int PaymentTermId,
     DateTime? RequestedDeliveryDate,
     string? Notes,
-    string? CheckoutAttemptKey = null);
+    string? CheckoutAttemptKey = null,
+    bool AllowMissingAddress = false);
 
 public sealed record OrderPlacementResult(
     Order? Order,
@@ -158,7 +159,14 @@ public sealed class OrderPlacementService(
             return OrderPlacementResult.Failure("Cliente não encontrado ou não está aprovado.");
         }
 
-        if (!customer.Addresses.Any(x => x.Id == command.AddressId && x.IsActive))
+        var activeAddressId = command.AddressId;
+        if (activeAddressId is int requestedAddressId
+            && !customer.Addresses.Any(x => x.Id == requestedAddressId && x.IsActive))
+        {
+            return OrderPlacementResult.Failure("Endereço de entrega inválido.");
+        }
+
+        if (activeAddressId is null && !command.AllowMissingAddress)
         {
             return OrderPlacementResult.Failure("Endereço de entrega inválido.");
         }
@@ -237,7 +245,7 @@ public sealed class OrderPlacementService(
             SellerOrderDraftId = sellerOrderDraftId,
             CheckoutAttemptKey = string.IsNullOrWhiteSpace(command.CheckoutAttemptKey) ? null : command.CheckoutAttemptKey,
             CreatedByUserId = createdByUserId,
-            DeliveryAddressId = command.AddressId,
+            DeliveryAddressId = activeAddressId,
             PaymentTermId = paymentTerm.Id,
             PaymentMethod = paymentTerm.Name,
             RequestedDeliveryDate = command.RequestedDeliveryDate,

@@ -1631,3 +1631,8 @@ body.seller-app-page .seller-order-confirmation__actions .seller-button {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+body.seller-app-page .seller-customer-search::placeholder {
+    color: var(--seller-muted);
+    opacity: 1;
+}

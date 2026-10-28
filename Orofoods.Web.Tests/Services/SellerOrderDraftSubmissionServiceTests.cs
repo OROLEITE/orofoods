@@ -85,6 +85,26 @@ public sealed class SellerOrderDraftSubmissionServiceTests
     }
 
     [Fact]
+    public async Task Submit_accepts_draft_without_delivery_address_and_still_reserves_stock()
+    {
+        await using var fixture = await SubmissionFixture.CreateAsync();
+        var draft = await fixture.CreateDraftAsync((fixture.Product.Id, 2, 0m));
+        draft.DeliveryAddressId = null;
+        await fixture.Db.SaveChangesAsync();
+
+        var result = await fixture.SubmitAsync(draft);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        var order = await fixture.Db.Orders.SingleAsync(x => x.Id == result.OrderId);
+        Assert.Null(order.DeliveryAddressId);
+        Assert.Single(await fixture.Db.InventoryReservations.Where(x => x.OrderId == order.Id && x.Status == InventoryReservationStatus.Active).ToListAsync());
+        Assert.Equal(2, await fixture.Db.ProductInventories.Where(x => x.ProductId == fixture.Product.Id)
+            .Select(x => x.QuantityReserved).SingleAsync());
+        Assert.Empty(await fixture.Db.WmcExportAudits.ToListAsync());
+        Assert.Null(await fixture.Db.WmcOrderExportStates.SingleOrDefaultAsync(x => x.OrderId == order.Id));
+    }
+
+    [Fact]
     public async Task Submit_rejects_price_changes_since_the_last_server_quote_without_side_effects()
     {
         await using var fixture = await SubmissionFixture.CreateAsync();
