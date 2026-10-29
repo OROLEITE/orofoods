@@ -44,9 +44,37 @@
     }
     void RenderWmcEntry(Orofoods.Web.Models.Integrations.WmcExportAudit entry)
     {
+        var auditTimestamp = WmcAuditDisplayFormatter.FormatTimestamp(entry.ExportedAt);
+        var generatedTimestamp = entry.GeneratedAt is DateTime generatedAt
+            ? WmcAuditDisplayFormatter.FormatTimestamp(generatedAt)
+            : null;
         <li class="list-group-item order-history-entry">
-            <div><strong>@(entry.Outcome switch { Orofoods.Web.Models.Integrations.WmcExportOutcome.Generated => "TXT gerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Available => "TXT disponível para importação manual", Orofoods.Web.Models.Integrations.WmcExportOutcome.Regenerated => "TXT regenerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Started => "Tentativa HTTP/JSON iniciada", Orofoods.Web.Models.Integrations.WmcExportOutcome.Unknown => string.IsNullOrWhiteSpace(entry.FileName) ? "Resultado HTTP/JSON incerto" : "Resultado TXT incerto", Orofoods.Web.Models.Integrations.WmcExportOutcome.Succeeded or Orofoods.Web.Models.Integrations.WmcExportOutcome.Imported => "Confirmado pelo WMC", Orofoods.Web.Models.Integrations.WmcExportOutcome.Rejected => "Erro WMC", Orofoods.Web.Models.Integrations.WmcExportOutcome.Failed => string.IsNullOrWhiteSpace(entry.FileName) ? "Erro WMC" : "Erro ao gerar TXT", _ => "Evento WMC" })</strong><small>@(entry.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Automatic ? "Automática" : "Manual")</small>@if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }@if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }@if (entry.GeneratedAt is not null) { <small>TXT gerado @entry.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }@if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@entry.Error</small> }</div>
-            <time>@entry.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+            <div class="wmc-audit-entry-content">
+                <strong>@(entry.Outcome switch { Orofoods.Web.Models.Integrations.WmcExportOutcome.Generated => "TXT gerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Available => "TXT disponível para importação manual", Orofoods.Web.Models.Integrations.WmcExportOutcome.Regenerated => "TXT regenerado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Started => "Integração iniciada; HTTP não confirmado", Orofoods.Web.Models.Integrations.WmcExportOutcome.Unknown => string.IsNullOrWhiteSpace(entry.FileName) ? "Resultado HTTP/JSON incerto" : "Resultado TXT incerto", Orofoods.Web.Models.Integrations.WmcExportOutcome.Succeeded or Orofoods.Web.Models.Integrations.WmcExportOutcome.Imported => "Confirmado pelo WMC", Orofoods.Web.Models.Integrations.WmcExportOutcome.Rejected => "Erro WMC", Orofoods.Web.Models.Integrations.WmcExportOutcome.Failed => string.IsNullOrWhiteSpace(entry.FileName) ? "Erro WMC" : "Erro ao gerar TXT", _ => "Evento WMC" })</strong>
+                <small>@(entry.Source == Orofoods.Web.Models.Integrations.WmcExportSource.Automatic ? "Automática" : "Manual")</small>
+                @if (!string.IsNullOrWhiteSpace(entry.ExportedByEmail)) { <small>@entry.ExportedByEmail</small> }
+                @if (!string.IsNullOrWhiteSpace(entry.FileName)) { <small>@entry.FileName</small> }
+                @if (generatedTimestamp is not null) { <small>TXT gerado · UTC: @generatedTimestamp.Utc · Brasília: @generatedTimestamp.Brasilia</small> }
+                <div class="wmc-audit-timestamps">
+                    <small>Horário do registro da auditoria · UTC: @auditTimestamp.Utc</small>
+                    <small>Horário do registro da auditoria · Brasília: @auditTimestamp.Brasilia</small>
+                    <small>Este horário pertence ao registro da auditoria; não há horário independente para a consulta nropedido.php.</small>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(entry.Error)) { <small class="text-danger">@WmcAuditDisplayFormatter.Sanitize(entry.Error)</small> }
+                <details class="wmc-audit-diagnostics">
+                    <summary>Detalhes HTTP e reconciliação</summary>
+                    <dl class="wmc-audit-diagnostics-grid">
+                        <div><dt>Status HTTP — exportar.php</dt><dd>@(entry.HttpStatusCode?.ToString() ?? "Não registrado")</dd></div>
+                        <div><dt>Resposta — exportar.php</dt><dd><pre class="wmc-audit-response">@(WmcAuditDisplayFormatter.Sanitize(entry.ResponseBody) ?? "Não registrado")</pre></dd></div>
+                        <div><dt>ID de transmissão</dt><dd>@(entry.WmcTransmissionId?.ToString() ?? "Não registrado")</dd></div>
+                        <div><dt>Código WMC do vendedor</dt><dd>@(entry.WmcSalesRepresentativeCode?.ToString() ?? "Não registrado")</dd></div>
+                        <div><dt>Status HTTP — nropedido.php</dt><dd>@(entry.NroPedidoHttpStatusCode?.ToString() ?? "Não registrado")</dd></div>
+                        <div><dt>Resposta — nropedido.php</dt><dd><pre class="wmc-audit-response">@(WmcAuditDisplayFormatter.Sanitize(entry.NroPedidoResponseBody) ?? "Não registrado")</pre></dd></div>
+                        <div><dt>Erro da reconciliação</dt><dd><pre class="wmc-audit-response">@(WmcAuditDisplayFormatter.Sanitize(entry.NroPedidoError) ?? "Não registrado")</pre></dd></div>
+                    </dl>
+                    <small>Respostas e erros são mascarados e codificados como texto; nenhum novo contato com o WMC é feito.</small>
+                </details>
+            </div>
         </li>
     }
 }
@@ -309,6 +337,9 @@
         </section>
         @{
             var wmcLatestAudit = Model.WmcExportAudits.OrderByDescending(audit => audit.ExportedAt).ThenByDescending(audit => audit.Id).FirstOrDefault();
+            var wmcLatestAuditTimestamp = wmcLatestAudit is not null
+                ? WmcAuditDisplayFormatter.FormatTimestamp(wmcLatestAudit.ExportedAt)
+                : null;
             var wmcUncertainHistory = wmcState?.RequiresManualReview == true || (wmcState is null && wmcLatestAudit is not null);
             var wmcCanManuallyExport = wmcManualExportDiagnostic.CanExport;
             var wmcHasActions = wmcUncertainHistory || wmcCanManuallyExport
@@ -325,7 +356,8 @@
                     <div class="order-wmc-last-audit" aria-label="Última exportação WMC">
                         @if (!string.IsNullOrWhiteSpace(wmcLatestAudit.FileName)) { <strong title="@wmcLatestAudit.FileName">@wmcLatestAudit.FileName</strong> }
                         <div class="order-wmc-last-audit-meta">
-                            <time>@wmcLatestAudit.ExportedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+                            <time>UTC: @wmcLatestAuditTimestamp!.Utc</time>
+                            <time>Brasília: @wmcLatestAuditTimestamp!.Brasilia</time>
                             <span title="@(wmcLatestAudit.ExportedByEmail ?? "Usuário desconhecido")">@(wmcLatestAudit.ExportedByEmail ?? "Usuário desconhecido")</span>
                         </div>
                     </div>
