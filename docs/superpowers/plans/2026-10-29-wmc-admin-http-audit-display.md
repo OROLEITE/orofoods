@@ -78,6 +78,6 @@ git commit -m "feat(admin): show WMC HTTP audit details"
 **Files:**
 - Verify: diff completo, `Orofoods.Web.Tests` e build Release.
 
-- [x] Executar todos os testes do projeto (1.779 aprovados, 2 ignorados por exigirem PostgreSQL) e o build Release (0 avisos, 0 erros), com pacotes do cache local.
+- [x] Executar todos os testes do projeto (1.798 aprovados, 2 ignorados por exigirem PostgreSQL) e o build Release (0 avisos, 0 erros), com pacotes do cache local.
 - [x] Rever o diff e confirmar que não há alterações de integração, banco, Azure, worker ou retransmissão.
 - [ ] Commitar, enviar a branch e abrir PR contra `main`; não mesclar.

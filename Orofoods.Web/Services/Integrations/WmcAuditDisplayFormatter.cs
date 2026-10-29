@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -10,6 +12,7 @@ public sealed record WmcAuditTimestampDisplay(string Utc, string Brasilia);
 
 public static class WmcAuditDisplayFormatter
 {
+    private const int MaximumMarkupDecodePasses = 8;
     private const RegexOptions SafeOptions = RegexOptions.IgnoreCase
         | RegexOptions.CultureInvariant
         | RegexOptions.Compiled;
@@ -37,6 +40,10 @@ public static class WmcAuditDisplayFormatter
 
     private static readonly Regex SensitiveAssignmentRegex = new(
         @"(?<prefix>[""']?(?:" + SensitiveKeyPattern + @")[""']?\s*(?:=|:)\s*)(?:""(?:\\.|[^""\\])*""|'(?:\\.|[^'\\])*'|[^,\r\n;&}\]>]+)",
+        SafeOptions);
+
+    private static readonly Regex XmlTagStartRegex = new(
+        @"<(?<tag>[A-Za-z_][A-Za-z0-9_.:-]*)",
         SafeOptions);
 
     private static readonly Regex UrlCredentialsRegex = new(
@@ -69,6 +76,11 @@ public static class WmcAuditDisplayFormatter
                 return value;
             }
 
+            if (root is JsonValue rootValue && rootValue.TryGetValue<string>(out var rootString))
+            {
+                return JsonSerializer.Serialize(SanitizeXmlMarkupString(rootString));
+            }
+
             RedactJsonNode(root);
             return root.ToJsonString();
         }
@@ -80,26 +92,134 @@ public static class WmcAuditDisplayFormatter
 
     private static string SanitizeXmlFields(string value)
     {
-        if (!value.AsSpan().TrimStart().StartsWith("<", StringComparison.Ordinal))
+        if (value.AsSpan().TrimStart().StartsWith("<", StringComparison.Ordinal))
         {
-            return value;
+            try
+            {
+                var document = XDocument.Parse(value, LoadOptions.PreserveWhitespace);
+                if (document.Root is not null)
+                {
+                    RedactXmlElement(document.Root);
+                    return document.ToString(SaveOptions.DisableFormatting);
+                }
+            }
+            catch (System.Xml.XmlException)
+            {
+                // Audit bodies can be truncated at the storage limit. Preserve surrounding
+                // diagnostics while failing closed from any sensitive XML tag to its close
+                // or the end of the body.
+            }
         }
 
-        try
+        // Error responses can mix prose and XML fragments, and JSON messages can contain
+        // XML snippets. Scan these bodies too, rather than only parsing a document root.
+        return RedactXmlFragments(value);
+    }
+
+    private static string RedactXmlFragments(string value)
+    {
+        var matches = XmlTagStartRegex.Matches(value);
+        var output = new StringBuilder(value.Length);
+        var copiedThrough = 0;
+
+        foreach (Match match in matches)
         {
-            var document = XDocument.Parse(value, LoadOptions.PreserveWhitespace);
-            if (document.Root is null)
+            if (match.Index < copiedThrough)
             {
-                return value;
+                continue;
             }
 
-            RedactXmlElement(document.Root);
-            return document.ToString(SaveOptions.DisableFormatting);
+            var qualifiedName = match.Groups["tag"].Value;
+            var localName = qualifiedName[(qualifiedName.LastIndexOf(':') + 1)..];
+            if (!IsSensitiveJsonKey(localName))
+            {
+                continue;
+            }
+
+            var startTagEnd = FindXmlTagEnd(value, match.Index + match.Length);
+            var startTagIsComplete = startTagEnd >= 0;
+            var isSelfClosing = startTagIsComplete && IsSelfClosingXmlTag(value, match.Index, startTagEnd);
+            var redactionEnd = value.Length;
+
+            if (startTagIsComplete && isSelfClosing)
+            {
+                redactionEnd = startTagEnd + 1;
+            }
+
+            output.Append(value, copiedThrough, match.Index - copiedThrough);
+            output.Append("[REDACTED]");
+            copiedThrough = redactionEnd;
         }
-        catch (System.Xml.XmlException)
+
+        if (copiedThrough == 0)
         {
             return value;
         }
+
+        output.Append(value, copiedThrough, value.Length - copiedThrough);
+        return output.ToString();
+    }
+
+    private static string SanitizeXmlMarkupString(string value)
+    {
+        var candidate = value;
+        var sanitizerChangedContent = false;
+        for (var pass = 0; pass < MaximumMarkupDecodePasses; pass++)
+        {
+            var sanitized = SanitizeXmlFields(candidate);
+            if (!string.Equals(sanitized, candidate, StringComparison.Ordinal))
+            {
+                candidate = sanitized;
+                sanitizerChangedContent = true;
+            }
+
+            var decoded = WebUtility.HtmlDecode(candidate);
+            if (string.Equals(decoded, candidate, StringComparison.Ordinal))
+            {
+                return sanitizerChangedContent ? candidate : value;
+            }
+
+            candidate = decoded;
+        }
+
+        return "[REDACTED]";
+    }
+
+    private static int FindXmlTagEnd(string value, int searchStart)
+    {
+        var quote = '\0';
+        for (var index = searchStart; index < value.Length; index++)
+        {
+            var character = value[index];
+            if (quote != '\0')
+            {
+                if (character == quote)
+                {
+                    quote = '\0';
+                }
+            }
+            else if (character is '"' or '\'')
+            {
+                quote = character;
+            }
+            else if (character == '>')
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static bool IsSelfClosingXmlTag(string value, int start, int tagEnd)
+    {
+        var lastContentCharacter = tagEnd - 1;
+        while (lastContentCharacter >= start && char.IsWhiteSpace(value[lastContentCharacter]))
+        {
+            lastContentCharacter--;
+        }
+
+        return lastContentCharacter >= start && value[lastContentCharacter] == '/';
     }
 
     private static void RedactXmlElement(XElement element)
@@ -111,6 +231,10 @@ public static class WmcAuditDisplayFormatter
             {
                 attribute.Value = "[REDACTED]";
             }
+            else if (attribute.Value.Contains('<', StringComparison.Ordinal))
+            {
+                attribute.Value = SanitizeXmlMarkupString(attribute.Value);
+            }
         }
 
         if (sensitiveElement)
@@ -119,9 +243,24 @@ public static class WmcAuditDisplayFormatter
             return;
         }
 
-        foreach (var child in element.Elements())
+        foreach (var node in element.Nodes().ToList())
         {
-            RedactXmlElement(child);
+            if (node is XElement child)
+            {
+                RedactXmlElement(child);
+            }
+            else if (node is XText text && text.Value.Contains('<', StringComparison.Ordinal))
+            {
+                text.Value = SanitizeXmlMarkupString(text.Value);
+            }
+            else if (node is XComment comment)
+            {
+                comment.Value = SanitizeXmlMarkupString(comment.Value);
+            }
+            else if (node is XProcessingInstruction instruction)
+            {
+                instruction.Data = SanitizeXmlMarkupString(instruction.Data);
+            }
         }
     }
 
@@ -135,6 +274,11 @@ public static class WmcAuditDisplayFormatter
                 {
                     jsonObject[property.Key] = "[REDACTED]";
                 }
+                else if (property.Value is JsonValue jsonValue
+                    && jsonValue.TryGetValue<string>(out var stringValue))
+                {
+                    jsonObject[property.Key] = SanitizeXmlMarkupString(stringValue);
+                }
                 else if (property.Value is not null)
                 {
                     RedactJsonNode(property.Value);
@@ -143,11 +287,19 @@ public static class WmcAuditDisplayFormatter
         }
         else if (node is JsonArray jsonArray)
         {
-            foreach (var item in jsonArray)
+            for (var index = 0; index < jsonArray.Count; index++)
             {
+                var item = jsonArray[index];
                 if (item is not null)
                 {
-                    RedactJsonNode(item);
+                    if (item is JsonValue jsonValue && jsonValue.TryGetValue<string>(out var stringValue))
+                    {
+                        jsonArray[index] = SanitizeXmlMarkupString(stringValue);
+                    }
+                    else
+                    {
+                        RedactJsonNode(item);
+                    }
                 }
             }
         }
@@ -167,7 +319,7 @@ public static class WmcAuditDisplayFormatter
         }
 
         var sanitized = SanitizeJsonFields(value);
-        sanitized = SanitizeXmlFields(sanitized);
+        sanitized = SanitizeXmlMarkupString(sanitized);
         sanitized = AuthorizationHeaderRegex.Replace(sanitized, "${prefix}[REDACTED]");
         sanitized = SchemeCredentialsRegex.Replace(sanitized, "${scheme}[REDACTED]");
         sanitized = SensitiveAssignmentRegex.Replace(sanitized, "${prefix}\"[REDACTED]\"");

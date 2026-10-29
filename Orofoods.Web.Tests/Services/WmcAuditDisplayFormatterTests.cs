@@ -63,6 +63,183 @@ public class WmcAuditDisplayFormatterTests
     }
 
     [Fact]
+    public void Sanitize_redacts_sensitive_xml_content_when_body_is_truncated()
+    {
+        const string response = "<root><ns:password>truncated-xml-secret";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("truncated-xml-secret", sanitized);
+        Assert.Contains("[REDACTED]", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_sensitive_xml_value_when_opening_tag_is_truncated()
+    {
+        const string response = "<password value=\"credential-secret\"";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("credential-secret", sanitized);
+        Assert.Contains("[REDACTED]", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_uses_sensitive_key_normalization_for_truncated_compound_xml_names()
+    {
+        const string response = "<ns:customerName>Jane Doe";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("Jane Doe", sanitized);
+        Assert.Contains("[REDACTED]", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_xml_fragments_embedded_in_plain_text()
+    {
+        const string response = "WMC error: <password>embedded-xml-secret</password>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("embedded-xml-secret", sanitized);
+        Assert.Contains("WMC error:", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_does_not_treat_quoted_greater_than_as_an_xml_tag_boundary()
+    {
+        const string response = "WMC error: <password note=\"x/>\">quoted-xml-secret</password>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("quoted-xml-secret", sanitized);
+        Assert.Contains("WMC error:", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_to_end_when_xml_close_may_be_inside_cdata()
+    {
+        const string response = "WMC error: <password><![CDATA[prefix</password>suffix]]></password>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("suffix", sanitized);
+        Assert.Contains("WMC error:", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_xml_fragments_in_document_cdata_text_and_attribute_values()
+    {
+        const string response = "<response><![CDATA[<password>cdata-secret</password>]]><message>&lt;password&gt;text-secret&lt;/password&gt;</message><item detail=\"&lt;password&gt;attribute-secret&lt;/password&gt;\" /></response>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("cdata-secret", sanitized);
+        Assert.DoesNotContain("text-secret", sanitized);
+        Assert.DoesNotContain("attribute-secret", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_double_encoded_markup_in_xml_text_and_attribute_values()
+    {
+        const string response = "<response><message>&amp;lt;password&amp;gt;double-text-secret&amp;lt;/password&amp;gt;</message><item detail=\"&amp;lt;password&amp;gt;double-attribute-secret&amp;lt;/password&amp;gt;\" /></response>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("double-text-secret", sanitized);
+        Assert.DoesNotContain("double-attribute-secret", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_xml_fragments_inside_comments()
+    {
+        const string response = "<response><!-- <password>comment-secret</password> --></response>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("comment-secret", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_entity_encoded_markup_in_xml_comments_and_processing_instructions()
+    {
+        const string response = "<response><!-- &lt;password&gt;encoded-comment-secret&lt;/password&gt; --><?wmc &lt;password&gt;encoded-pi-secret&lt;/password&gt;?></response>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("encoded-comment-secret", sanitized);
+        Assert.DoesNotContain("encoded-pi-secret", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_keeps_redacted_comments_and_processing_instructions_well_formed()
+    {
+        const string response = "<response><!-- &lt;password/&gt;&#45;&#45; --><?wmc &lt;password/&gt;?&gt; ?></response>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("password", sanitized);
+        Assert.Contains("[REDACTED]", sanitized);
+        Assert.NotNull(System.Xml.Linq.XDocument.Parse(sanitized!));
+    }
+
+    [Fact]
+    public void Sanitize_redacts_double_entity_encoded_xml_markup_in_comments()
+    {
+        const string response = "<response><!-- &amp;lt;password&amp;gt;double-encoded-secret&amp;lt;/password&amp;gt; --></response>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("double-encoded-secret", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_continues_decoding_after_redacting_raw_xml_in_the_same_value()
+    {
+        const string response = "<response><!-- <password/> &amp;lt;password&amp;gt;mixed-encoded-secret&amp;lt;/password&amp;gt; --></response>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("mixed-encoded-secret", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_entity_encoded_xml_fragments_in_plain_and_json_text()
+    {
+        const string plainText = "WMC error: &lt;password&gt;entity-plain-secret&lt;/password&gt;";
+        const string json = "{\"message\":\"WMC error: &lt;password&gt;entity-json-secret&lt;/password&gt;\"}";
+
+        var sanitizedPlainText = WmcAuditDisplayFormatter.Sanitize(plainText);
+        var sanitizedJson = WmcAuditDisplayFormatter.Sanitize(json);
+
+        Assert.DoesNotContain("entity-plain-secret", sanitizedPlainText);
+        Assert.DoesNotContain("entity-json-secret", sanitizedJson);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_xml_fragments_inside_json_message_values()
+    {
+        const string response = "{\"message\":\"WMC error: <password>json-xml-secret</password>\"}";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("json-xml-secret", sanitized);
+        Assert.Contains("WMC error:", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_xml_fragments_inside_top_level_json_string_values()
+    {
+        const string response = "\"<password>scalar-json-xml-secret</password>\"";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("scalar-json-xml-secret", sanitized);
+        Assert.Contains("[REDACTED]", sanitized);
+    }
+
+    [Fact]
     public void Sanitize_redacts_whole_unquoted_assignment_until_a_safe_delimiter()
     {
         const string assignment = "password=correct horse battery staple, status=failed";
