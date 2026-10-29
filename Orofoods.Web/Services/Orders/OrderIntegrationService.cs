@@ -144,38 +144,36 @@ public sealed class OrderIntegrationService(
             return null;
         }
 
-        await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
+        try
         {
-            var claim = db.Orders
-                .Where(order => order.Id == orderId
-                    && order.Id > startAfterOrderId
-                    && order.Status == OrderStatus.Approved
-                    && order.IntegrationStatus == IntegrationStatus.Pending)
-                .Where(order => !db.WmcOrderExportStates.Any(state => state.OrderId == order.Id
-                    && (state.RequiresManualReview
-                        || state.Status == WmcOrderExportStatus.Processing
-                        || state.Status == WmcOrderExportStatus.Imported
-                        || state.Status == WmcOrderExportStatus.Exported)))
-                .Where(order => !db.WmcExportAudits.Any(audit => audit.OrderId == order.Id
-                    && (audit.Outcome == WmcExportOutcome.Started
-                        || audit.Outcome == WmcExportOutcome.Unknown
-                        || audit.Outcome == WmcExportOutcome.Succeeded
-                        || audit.Outcome == WmcExportOutcome.Imported
-                        || audit.Outcome == WmcExportOutcome.Generated
-                        || audit.Outcome == WmcExportOutcome.Available
-                        || audit.Outcome == WmcExportOutcome.Regenerated)));
-
-            var claimed = await claim.ExecuteUpdateAsync(setters => setters
-                .SetProperty(order => order.IntegrationStatus, IntegrationStatus.Processing)
-                .SetProperty(order => order.LastIntegrationAttempt, DateTime.UtcNow)
-                .SetProperty(order => order.IntegrationError, (string?)null), cancellationToken);
-            if (claimed == 0)
+            await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
             {
-                await transaction.RollbackAsync(cancellationToken);
-                return null;
-            }
+                var claim = WmcJsonOrderCandidateQuery.Build(db, startAfterOrderId)
+                    .Where(order => order.Id == orderId);
 
-            await transaction.CommitAsync(cancellationToken);
+                var claimed = await claim.ExecuteUpdateAsync(setters => setters
+                    .SetProperty(order => order.IntegrationStatus, IntegrationStatus.Processing)
+                    .SetProperty(order => order.LastIntegrationAttempt, DateTime.UtcNow)
+                    .SetProperty(order => order.IntegrationError, (string?)null), cancellationToken);
+                if (claimed == 0)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    logger?.LogWarning(
+                        "Automatic WMC JSON atomic reservation rejected OrderId={OrderId}; reason=EligibilityPredicatesMatchedNoRows.",
+                        orderId);
+                    return new ErpOrderResult(
+                        false,
+                        Error: "Automatic WMC JSON atomic reservation predicates matched no rows.",
+                        AtomicReservationRejected: true);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            LogSafeAutomaticJsonReservationFailure(logger, orderId, exception);
+            throw;
         }
 
         db.ChangeTracker.Clear();
@@ -197,7 +195,7 @@ public sealed class OrderIntegrationService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger?.LogError(exception, "Falha inesperada ao integrar automaticamente o pedido {OrderNumber} com WMC HTTP/JSON.", order.Number);
+            LogSafeAutomaticJsonFailure(logger, orderId, exception);
             result = new ErpOrderResult(false, Error: "O resultado do envio Ã© incerto; nÃ£o reenvie este pedido.", OutcomeUnknown: true);
         }
 
@@ -224,6 +222,22 @@ public sealed class OrderIntegrationService(
         await db.SaveChangesAsync(cancellationToken);
         return result;
     }
+
+    internal static void LogSafeAutomaticJsonFailure(
+        ILogger<OrderIntegrationService>? logger,
+        int orderId,
+        Exception exception) => logger?.LogError(
+            "Automatic WMC JSON integration failed; OrderId={OrderId}; ErrorType={ErrorType}.",
+            orderId,
+            exception.GetType().Name);
+
+    internal static void LogSafeAutomaticJsonReservationFailure(
+        ILogger<OrderIntegrationService>? logger,
+        int orderId,
+        Exception exception) => logger?.LogError(
+            "Automatic WMC JSON atomic reservation failed; OrderId={OrderId}; ErrorType={ErrorType}.",
+            orderId,
+            exception.GetType().Name);
 
     private async Task SendCoreAsync(int orderId, IErpOrderIntegration selectedIntegration, CancellationToken cancellationToken,
         IntegrationStatus? expectedIntegrationStatus)

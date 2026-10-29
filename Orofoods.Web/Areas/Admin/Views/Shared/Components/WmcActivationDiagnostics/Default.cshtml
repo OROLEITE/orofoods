@@ -2,8 +2,10 @@
 
 <section class="card mt-4" aria-labelledby="wmc-activation-diagnostics-title">
     <div class="card-body">
-        <h2 class="h4" id="wmc-activation-diagnostics-title">Marco de ativação automática WMC</h2>
-        <p class="text-muted">Consulta somente leitura. Não altera pedidos nem inicia transmissões.</p>
+        <h2 class="h4" id="wmc-activation-diagnostics-title">Marco e execução automática WMC</h2>
+        <p class="text-muted">Consulta somente leitura. Não reserva, altera ou transmite pedidos.</p>
+        <p class="text-muted">Telemetria em memória desta instância; reinicia com o processo.</p>
+
         <dl class="row mb-0">
             <dt class="col-sm-6">Maior <code>Orders.Id</code></dt>
             <dd class="col-sm-6" data-wmc-max-order-id>@Model.MaxOrderId</dd>
@@ -14,9 +16,6 @@
             <dt class="col-sm-6"><code>AutomaticWorkerStartAfterOrderId</code></dt>
             <dd class="col-sm-6" data-wmc-activation-cutoff>@(Model.AutomaticWorkerStartAfterOrderId?.ToString() ?? "Não configurado")</dd>
 
-            <dt class="col-sm-6">Estado configurado do worker automático</dt>
-            <dd class="col-sm-6" data-wmc-worker-state>@Model.AutomaticWorkerState</dd>
-
             <dt class="col-sm-6"><code>WmcJsonOrder__Enabled</code></dt>
             <dd class="col-sm-6">@(Model.WmcJsonOrderEnabled ? "true" : "false")</dd>
 
@@ -25,6 +24,119 @@
 
             <dt class="col-sm-6"><code>WmcFileDrop__Enabled</code></dt>
             <dd class="col-sm-6">@(Model.WmcFileDropEnabled ? "true" : "false")</dd>
+
+            <dt class="col-sm-6">Estado pela configuração</dt>
+            <dd class="col-sm-6" data-wmc-worker-config-state>@Model.AutomaticWorkerState</dd>
+
+            <dt class="col-sm-6">Serviço hospedado</dt>
+            <dd class="col-sm-6" data-wmc-worker-runtime-state>@Model.AutomaticWorkerRuntimeState</dd>
+
+            <dt class="col-sm-6">Início do serviço nesta instância</dt>
+            <dd class="col-sm-6">@(Model.WorkerRuntime.ServiceStartedAtUtc?.ToString("u") ?? "Não observado")</dd>
+
+            <dt class="col-sm-6">Início do ciclo atual</dt>
+            <dd class="col-sm-6">@(Model.WorkerRuntime.CurrentCycleStartedAtUtc?.ToString("u") ?? "Sem ciclo ativo")</dd>
         </dl>
+
+        <hr />
+        <h3 class="h5">Último ciclo</h3>
+        @if (Model.WorkerRuntime.LastCycle is { } lastCycle)
+        {
+            <p>
+                Início: <time>@lastCycle.StartedAtUtc.ToString("u")</time> ·
+                Fim: <time>@lastCycle.FinishedAtUtc.ToString("u")</time>
+            </p>
+            <dl class="row mb-0" data-wmc-last-cycle>
+                <dt class="col-sm-6">Elegíveis antes do limite</dt>
+                <dd class="col-sm-6">@lastCycle.EligibleCount</dd>
+                <dt class="col-sm-6">Candidatos no lote</dt>
+                <dd class="col-sm-6">@lastCycle.CandidateCount</dd>
+                <dt class="col-sm-6">Pedidos processados</dt>
+                <dd class="col-sm-6" data-wmc-processed-count>@lastCycle.ProcessedCount</dd>
+                <dt class="col-sm-6">Resultados com sucesso</dt>
+                <dd class="col-sm-6">@lastCycle.SucceededCount</dd>
+                <dt class="col-sm-6">Falhas em pedidos</dt>
+                <dd class="col-sm-6" data-wmc-failed-count>@lastCycle.FailedCount</dd>
+                <dt class="col-sm-6">Erros do ciclo</dt>
+                <dd class="col-sm-6" data-wmc-error-count>@lastCycle.CycleErrorCount</dd>
+                <dt class="col-sm-6">Reservas atômicas sem correspondência</dt>
+                <dd class="col-sm-6">@lastCycle.ReservationRejectedCount</dd>
+                <dt class="col-sm-6">Ignorados antes da reserva</dt>
+                <dd class="col-sm-6">@lastCycle.SkippedBeforeReservationCount</dd>
+                <dt class="col-sm-6">Excluídos por revisão manual</dt>
+                <dd class="col-sm-6">@lastCycle.ExcludedManualReviewCount</dd>
+                <dt class="col-sm-6">Excluídos por estado WMC</dt>
+                <dd class="col-sm-6">@lastCycle.ExcludedExportStateCount</dd>
+                <dt class="col-sm-6">Excluídos por auditoria</dt>
+                <dd class="col-sm-6">@lastCycle.ExcludedAuditCount</dd>
+                <dt class="col-sm-6">Excluídos pelo limite de 20</dt>
+                <dd class="col-sm-6">@lastCycle.ExcludedBatchLimitCount</dd>
+                @if (lastCycle.LastSafeErrorType is not null)
+                {
+                    <dt class="col-sm-6">Tipo do último erro</dt>
+                    <dd class="col-sm-6">@lastCycle.LastSafeErrorType</dd>
+                }
+            </dl>
+        }
+        else
+        {
+            <p class="text-muted" data-wmc-no-cycle>Nenhum ciclo observado nesta instância.</p>
+        }
+
+        <hr />
+        <h3 class="h5">Diagnóstico de elegibilidade por Order.Id</h3>
+        <form method="get" asp-area="Admin" asp-controller="Integrations" asp-action="Wmc" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label" for="diagnosticOrderId">Order.Id</label>
+                <input class="form-control" type="number" min="1" step="1" id="diagnosticOrderId" name="diagnosticOrderId" value="@(Model.OrderEligibility?.OrderId.ToString() ?? string.Empty)" />
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-outline-primary" type="submit">Consultar elegibilidade</button>
+            </div>
+        </form>
+
+        @if (Model.DiagnosticInputError is not null)
+        {
+            <p class="alert alert-warning mt-3" role="alert">@Model.DiagnosticInputError</p>
+        }
+        @if (Model.OrderEligibility is { } eligibility)
+        {
+            <div class="mt-3" data-wmc-order-eligibility>
+                <h4 class="h6">Resultado para Order.Id @eligibility.OrderId</h4>
+                @if (!eligibility.Exists)
+                {
+                    <p>Pedido não encontrado.</p>
+                }
+                else
+                {
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Status do pedido</dt>
+                        <dd class="col-sm-6">@eligibility.OrderStatus</dd>
+                        <dt class="col-sm-6">Status de integração</dt>
+                        <dd class="col-sm-6">@eligibility.IntegrationStatus</dd>
+                        <dt class="col-sm-6">Acima do marco</dt>
+                        <dd class="col-sm-6">@(eligibility.AboveActivationCutoff ? "Sim" : "Não")</dd>
+                        <dt class="col-sm-6">Corresponde aos predicados da reserva</dt>
+                        <dd class="col-sm-6">@(eligibility.MatchesReservationPredicates ? "Sim" : "Não")</dd>
+                        <dt class="col-sm-6">Incluído no próximo lote de 20</dt>
+                        <dd class="col-sm-6">@(eligibility.IncludedInNextBatch ? "Sim" : "Não")</dd>
+                    </dl>
+                    <h5 class="h6 mt-3">Motivos de exclusão</h5>
+                    @if (eligibility.ExclusionReasons.Count == 0)
+                    {
+                        <p>Nenhum bloqueio encontrado nos predicados de seleção.</p>
+                    }
+                    else
+                    {
+                        <ul class="mb-0" data-wmc-exclusion-reasons>
+                            @foreach (var reason in eligibility.ExclusionReasons)
+                            {
+                                <li>@reason</li>
+                            }
+                        </ul>
+                    }
+                }
+            </div>
+        }
     </div>
 </section>

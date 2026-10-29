@@ -12,4 +12,5 @@ public sealed record ErpOrderResult(
     string? ExternalOrderId = null,
     string? ErpOrderNumber = null,
     string? Error = null,
-    bool OutcomeUnknown = false);
+    bool OutcomeUnknown = false,
+    bool AtomicReservationRejected = false);

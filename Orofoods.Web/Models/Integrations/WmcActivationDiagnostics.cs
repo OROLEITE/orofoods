@@ -6,7 +6,10 @@ public sealed record WmcActivationDiagnostics(
     int? AutomaticWorkerStartAfterOrderId,
     bool WmcJsonOrderEnabled,
     bool AutomaticWorkerEnabled,
-    bool WmcFileDropEnabled)
+    bool WmcFileDropEnabled,
+    WmcJsonOrderWorkerRuntimeSnapshot WorkerRuntime,
+    WmcOrderEligibilityDiagnostic? OrderEligibility,
+    string? DiagnosticInputError)
 {
     public string AutomaticWorkerState =>
         !WmcJsonOrderEnabled || !AutomaticWorkerEnabled
@@ -14,4 +17,12 @@ public sealed record WmcActivationDiagnostics(
             : AutomaticWorkerStartAfterOrderId is not int cutoff || cutoff < 0
                 ? "Bloqueado: marco ausente ou inválido"
                 : "Habilitado pela configuração";
+
+    public string AutomaticWorkerRuntimeState => !WorkerRuntime.IsServiceRunning
+        ? WorkerRuntime.ServiceStartedAtUtc is null
+            ? "Não observado nesta instância"
+            : "Parado"
+        : WorkerRuntime.CurrentCycleStartedAtUtc is not null
+            ? "Executando ciclo"
+            : "Serviço ativo; aguardando próximo ciclo";
 }

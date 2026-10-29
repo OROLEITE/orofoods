@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -123,10 +124,13 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
         services.AddScoped<WmcAutomaticOrderIntegration>();
         services.AddScoped<IErpOrderIntegration>(provider => provider.GetRequiredService<WmcAutomaticOrderIntegration>());
         await using var provider = services.BuildServiceProvider();
+        var runtime = new WmcJsonOrderWorkerRuntime();
+        var workerLogger = new CapturingLogger<WmcJsonOrderAutomaticBackgroundService>();
         var worker = new WmcJsonOrderAutomaticBackgroundService(
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(options),
-            NullLogger<WmcJsonOrderAutomaticBackgroundService>.Instance);
+            workerLogger,
+            runtime);
 
         await worker.ProcessPendingOrdersAsync();
 
@@ -142,6 +146,89 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
         Assert.Equal(IntegrationStatus.Succeeded, (await setupDb.Orders.SingleAsync(order => order.Id == approvedPending.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Failed, (await setupDb.Orders.SingleAsync(order => order.Id == approvedFailed.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == unapprovedPending.Id)).IntegrationStatus);
+
+        var lastCycle = Assert.IsType<WmcJsonOrderWorkerCycleSummary>(runtime.Snapshot.LastCycle);
+        Assert.Equal(1, lastCycle.EligibleCount);
+        Assert.Equal(1, lastCycle.CandidateCount);
+        Assert.Equal(1, lastCycle.ProcessedCount);
+        Assert.Equal(1, lastCycle.SucceededCount);
+        Assert.Equal(0, lastCycle.SkippedBeforeReservationCount);
+        Assert.Equal(5, lastCycle.ExcludedManualReviewCount);
+        Assert.Equal(10, lastCycle.ExcludedExportStateCount);
+        Assert.Equal(5, lastCycle.ExcludedAuditCount);
+        Assert.Equal(0, lastCycle.ExcludedBatchLimitCount);
+        Assert.NotEqual(default, lastCycle.StartedAtUtc);
+        Assert.NotEqual(default, lastCycle.FinishedAtUtc);
+        Assert.Contains(workerLogger.Messages, message => message.Contains("cycle started", StringComparison.Ordinal));
+        Assert.Contains(workerLogger.Messages, message => message.Contains("cycle finished", StringComparison.Ordinal));
+        var completion = Assert.Single(workerLogger.Messages, message => message.Contains("cycle finished", StringComparison.Ordinal));
+        Assert.Contains("Candidates=1", completion, StringComparison.Ordinal);
+        Assert.Contains("Processed=1", completion, StringComparison.Ordinal);
+        Assert.Contains("Succeeded=1", completion, StringComparison.Ordinal);
+        Assert.Contains("ExcludedManualReview=5", completion, StringComparison.Ordinal);
+        Assert.Contains("ExcludedExportState=10", completion, StringComparison.Ordinal);
+        Assert.Contains("ExcludedAudit=5", completion, StringComparison.Ordinal);
+        Assert.Contains("SkippedBeforeReservation=0", completion, StringComparison.Ordinal);
+        Assert.Contains("Errors=0", completion, StringComparison.Ordinal);
+        Assert.DoesNotContain(workerLogger.Messages, message => message.Contains("Cliente teste", StringComparison.Ordinal));
+        Assert.DoesNotContain(workerLogger.Messages, message => message.Contains("serial-test", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Environment_gate_is_counted_as_skipped_before_reservation_not_as_atomic_rejection()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+        await using var setupDb = new ApplicationDbContext(dbOptions);
+        await setupDb.Database.EnsureCreatedAsync();
+
+        var seller = new SalesRepresentative { Id = 27, Name = "Vendedor teste", Email = "seller@example.invalid" };
+        var category = new ProductCategory { Name = "Teste", Slug = "teste" };
+        var candidate = CreateOrder("ENV", OrderStatus.Approved, IntegrationStatus.Pending, seller, category);
+        setupDb.Orders.Add(candidate);
+        await setupDb.SaveChangesAsync();
+
+        var environment = new Mock<IHostEnvironment>();
+        environment.SetupGet(item => item.EnvironmentName).Returns("Production");
+        var handler = new SuccessHandler();
+        using var httpClient = new HttpClient(handler);
+        var options = CreateEnabledOptions();
+        var services = new ServiceCollection();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILogger<OrderIntegrationService>>(NullLogger<OrderIntegrationService>.Instance);
+        services.AddSingleton<IHostEnvironment>(environment.Object);
+        services.AddScoped(_ => new ApplicationDbContext(dbOptions));
+        services.AddScoped<WmcExportAuditService>();
+        services.AddScoped<OrderIntegrationService>();
+        services.AddScoped<IWmcTransmissionIdAllocator>(_ => new FixedTransmissionIdAllocator());
+        services.AddSingleton(httpClient);
+        services.AddSingleton(Options.Create(options));
+        services.AddSingleton<WmcMobileOrderPayloadBuilder>();
+        services.AddScoped<WmcJsonOrderErpIntegration>();
+        services.AddScoped<WmcAutomaticOrderIntegration>();
+        services.AddScoped<IErpOrderIntegration>(provider => provider.GetRequiredService<WmcAutomaticOrderIntegration>());
+        await using var provider = services.BuildServiceProvider();
+
+        var runtime = new WmcJsonOrderWorkerRuntime();
+        var workerLogger = new CapturingLogger<WmcJsonOrderAutomaticBackgroundService>();
+        var worker = new WmcJsonOrderAutomaticBackgroundService(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Options.Create(options),
+            workerLogger,
+            runtime);
+
+        await worker.ProcessPendingOrdersAsync();
+
+        var lastCycle = Assert.IsType<WmcJsonOrderWorkerCycleSummary>(runtime.Snapshot.LastCycle);
+        Assert.Equal(1, lastCycle.CandidateCount);
+        Assert.Equal(1, lastCycle.ProcessedCount);
+        Assert.Equal(1, lastCycle.SkippedBeforeReservationCount);
+        Assert.Equal(0, lastCycle.ReservationRejectedCount);
+        Assert.Equal(0, lastCycle.FailedCount);
+        Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == candidate.Id)).IntegrationStatus);
+        Assert.Empty(setupDb.WmcExportAudits);
+        Assert.Empty(handler.Requests);
+        Assert.Contains(workerLogger.Messages, message => message.Contains("SendReturnedNoResult", StringComparison.Ordinal));
     }
 
     private static WmcJsonOrderOptions CreateEnabledOptions() => new()
@@ -218,5 +305,17 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
             order.WmcTransmissionId = 9001;
             return Task.FromResult(9001);
         }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 }

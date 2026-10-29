@@ -31,6 +31,16 @@ public sealed class WmcActivationDiagnosticsViewTests
         Assert.DoesNotContain("Customer", view, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ConnectionString", view, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Credential", view, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Último ciclo", view, StringComparison.Ordinal);
+        Assert.Contains("Serviço hospedado", view, StringComparison.Ordinal);
+        Assert.Contains("Telemetria em memória desta instância", view, StringComparison.Ordinal);
+        Assert.Contains("diagnosticOrderId", view, StringComparison.Ordinal);
+        Assert.Contains("motivos", view, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("processados", view, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("@lastCycle.FailedCount", view, StringComparison.Ordinal);
+        Assert.Contains("@lastCycle.CycleErrorCount", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("lastCycle.FailedCount + lastCycle.CycleErrorCount", view, StringComparison.Ordinal);
+        Assert.Contains("Ignorados antes da reserva", view, StringComparison.Ordinal);
     }
 
     [Fact]
