@@ -358,6 +358,33 @@ public class OrderIntegrationServiceTests
         Assert.Empty(db.WmcExportAudits);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(-1)]
+    public async Task Automatic_json_service_does_not_claim_an_order_without_a_valid_activation_cutoff(int? activationCutoff)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateApprovedJsonOrder("ORO-2026-000785");
+        db.Add(order);
+        await db.SaveChangesAsync();
+
+        var handler = new AutomaticJsonHandler();
+        var (service, jsonIntegration) = CreateAutomaticJsonService(
+            db,
+            handler,
+            serviceCutoff: activationCutoff,
+            transmitterCutoff: 0);
+
+        var result = await service.SendAutomaticJsonAsync(order.Id, jsonIntegration);
+
+        Assert.Null(result);
+        var persisted = await db.Orders.SingleAsync(item => item.Id == order.Id);
+        Assert.Equal(IntegrationStatus.Pending, persisted.IntegrationStatus);
+        Assert.Null(persisted.LastIntegrationAttempt);
+        Assert.Empty(handler.Requests);
+        Assert.Empty(db.WmcExportAudits);
+    }
+
     [Fact]
     public async Task Concurrent_automatic_json_workers_claim_a_pending_order_for_only_one_transmission()
     {
