@@ -14,6 +14,43 @@ public class OrderWmcAuditViewTests
     }
 
     [Fact]
+    public void Admin_wmc_audit_shows_sanitized_http_and_reconciliation_details_with_explicit_timezones()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Controllers", "OrdersController.cs"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Orders", "Details.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-order-details.css"));
+
+        Assert.Contains("Authorize(Roles = \"Administrador\")", controller);
+        Assert.Contains("Status HTTP — exportar.php", view);
+        Assert.Contains("Resposta — exportar.php", view);
+        Assert.Contains("ID de transmissão", view);
+        Assert.Contains("Código WMC do vendedor", view);
+        Assert.Contains("Status HTTP — nropedido.php", view);
+        Assert.Contains("Resposta — nropedido.php", view);
+        Assert.Contains("Erro da reconciliação", view);
+        Assert.Contains("WmcAuditDisplayFormatter.Sanitize(entry.ResponseBody)", view);
+        Assert.Contains("WmcAuditDisplayFormatter.Sanitize(entry.NroPedidoResponseBody)", view);
+        Assert.Contains("WmcAuditDisplayFormatter.Sanitize(entry.NroPedidoError)", view);
+        Assert.Contains("WmcAuditDisplayFormatter.FormatTimestamp(entry.ExportedAt)", view);
+        Assert.Contains("auditTimestamp.Utc", view);
+        Assert.Contains("auditTimestamp.Brasilia", view);
+        Assert.Contains("WmcAuditDisplayFormatter.FormatTimestamp(wmcLatestAudit.ExportedAt)", view);
+        Assert.Contains("wmcLatestAuditTimestamp!.Utc", view);
+        Assert.Contains("wmcLatestAuditTimestamp!.Brasilia", view);
+        Assert.Contains("Horário do registro da auditoria", view);
+        Assert.Contains("Não registrado", view);
+        Assert.DoesNotContain("entry.ExportedAt.ToLocalTime()", view);
+        Assert.DoesNotContain("entry.GeneratedAt.Value.ToLocalTime()", view);
+        Assert.DoesNotContain("wmcLatestAudit.ExportedAt.ToLocalTime()", view);
+        Assert.DoesNotContain("WmcDestination", view);
+        Assert.DoesNotContain("Html.Raw", view);
+        Assert.Contains("wmc-audit-diagnostics", view);
+        Assert.Contains("wmc-audit-diagnostics", styles);
+        Assert.Contains("overflow-wrap: anywhere;", styles);
+    }
+
+    [Fact]
     public void Admin_order_details_use_compact_layout_without_raw_html_entities_in_code_strings()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

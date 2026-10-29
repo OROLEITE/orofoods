@@ -520,6 +520,80 @@
     flex: 0 0 auto;
 }
 
+.admin-authenticated .admin-order-details-page .wmc-audit-entry-content,
+.admin-authenticated .admin-order-details-page .wmc-audit-timestamps,
+.admin-authenticated .admin-order-details-page .wmc-audit-diagnostics {
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-timestamps {
+    display: grid;
+    gap: 2px;
+    margin-top: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-diagnostics {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 8px;
+    background: var(--order-detail-surface-secondary);
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-diagnostics > summary {
+    color: var(--order-detail-text);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-diagnostics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-diagnostics-grid > div {
+    min-width: 0;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-diagnostics-grid dt {
+    color: var(--order-detail-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-diagnostics-grid dd {
+    min-width: 0;
+    margin: 4px 0 0;
+    color: var(--order-detail-text);
+    overflow-wrap: anywhere;
+}
+
+.admin-authenticated .admin-order-details-page .wmc-audit-response {
+    max-height: 18rem;
+    margin: 0;
+    padding: 8px;
+    border: 1px solid var(--order-detail-border);
+    border-radius: 6px;
+    background: var(--order-detail-surface);
+    color: var(--order-detail-text);
+    font: 11px/1.5 var(--font-monospace, Consolas, monospace);
+    white-space: pre-wrap;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .admin-authenticated .admin-order-details-page .wmc-audit-diagnostics-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .admin-authenticated .admin-order-details-page .order-empty-state {
     display: flex;
     align-items: center;
