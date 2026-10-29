@@ -1,0 +1,30 @@
+@model Orofoods.Web.Models.Integrations.WmcActivationDiagnostics
+
+<section class="card mt-4" aria-labelledby="wmc-activation-diagnostics-title">
+    <div class="card-body">
+        <h2 class="h4" id="wmc-activation-diagnostics-title">Marco de ativação automática WMC</h2>
+        <p class="text-muted">Consulta somente leitura. Não altera pedidos nem inicia transmissões.</p>
+        <dl class="row mb-0">
+            <dt class="col-sm-6">Maior <code>Orders.Id</code></dt>
+            <dd class="col-sm-6" data-wmc-max-order-id>@Model.MaxOrderId</dd>
+
+            <dt class="col-sm-6">Total de pedidos existentes</dt>
+            <dd class="col-sm-6" data-wmc-order-count>@Model.TotalOrderCount</dd>
+
+            <dt class="col-sm-6"><code>AutomaticWorkerStartAfterOrderId</code></dt>
+            <dd class="col-sm-6" data-wmc-activation-cutoff>@(Model.AutomaticWorkerStartAfterOrderId?.ToString() ?? "Não configurado")</dd>
+
+            <dt class="col-sm-6">Estado configurado do worker automático</dt>
+            <dd class="col-sm-6" data-wmc-worker-state>@Model.AutomaticWorkerState</dd>
+
+            <dt class="col-sm-6"><code>WmcJsonOrder__Enabled</code></dt>
+            <dd class="col-sm-6">@(Model.WmcJsonOrderEnabled ? "true" : "false")</dd>
+
+            <dt class="col-sm-6"><code>AutomaticWorkerEnabled</code></dt>
+            <dd class="col-sm-6">@(Model.AutomaticWorkerEnabled ? "true" : "false")</dd>
+
+            <dt class="col-sm-6"><code>WmcFileDrop__Enabled</code></dt>
+            <dd class="col-sm-6">@(Model.WmcFileDropEnabled ? "true" : "false")</dd>
+        </dl>
+    </div>
+</section>

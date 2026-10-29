@@ -262,6 +262,7 @@ builder.Services.AddHttpClient<IWhatsAppMediaClient, MetaWhatsAppMediaClient>((s
 });
 builder.Services.AddScoped<WmcExportAuditService>();
 builder.Services.AddScoped<WmcManualExportService>();
+builder.Services.AddScoped<WmcActivationDiagnosticsQuery>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();
 builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
