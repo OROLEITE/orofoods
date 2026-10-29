@@ -92,6 +92,26 @@ public sealed class WmcIntegrationStatusPresenterTests
         Assert.Equal("Configuração ausente", WmcIntegrationStatusPresenter.GetDetail(order));
     }
 
+    [Theory]
+    [InlineData(WmcOrderExportStatus.Rejected)]
+    [InlineData(WmcOrderExportStatus.Error)]
+    public void Latest_uncertain_json_attempt_overrides_an_older_txt_error(WmcOrderExportStatus oldTxtStatus)
+    {
+        var order = OrderWithJsonAudit(WmcExportOutcome.Unknown);
+        order.IntegrationStatus = IntegrationStatus.Unknown;
+        order.WmcOrderExportState = new WmcOrderExportState { Status = oldTxtStatus };
+        order.WmcExportAudits.Add(new WmcExportAudit
+        {
+            Source = WmcExportSource.Manual,
+            Outcome = WmcExportOutcome.Rejected,
+            FileName = "WMC_ORO2026000016.txt",
+            ExportedAt = DateTime.UtcNow.AddMinutes(-5)
+        });
+
+        Assert.Equal(WmcIntegrationStatusDisplay.Sent, WmcIntegrationStatusPresenter.GetStatus(order));
+        Assert.Contains("Reconcilie", WmcIntegrationStatusPresenter.GetDetail(order));
+    }
+
     [Fact]
     public void Confirmed_manual_txt_import_is_shown_as_confirmed()
     {

@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -13,7 +14,8 @@ public sealed class OrderIntegrationService(
     ApplicationDbContext db,
     IErpOrderIntegration erp,
     IHostEnvironment? environment = null,
-    ILogger<OrderIntegrationService>? logger = null)
+    ILogger<OrderIntegrationService>? logger = null,
+    IOptions<WmcJsonOrderOptions>? jsonOrderOptions = null)
 {
     public Task SendAsync(
         int orderId,
@@ -135,10 +137,18 @@ public sealed class OrderIntegrationService(
             return null;
         }
 
+        var activationCutoff = jsonOrderOptions?.Value.AutomaticWorkerStartAfterOrderId;
+        if (activationCutoff is not int startAfterOrderId || startAfterOrderId < 0)
+        {
+            logger?.LogError("Automatic WMC JSON claim blocked because the activation cutoff is missing or invalid.");
+            return null;
+        }
+
         await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
         {
             var claim = db.Orders
                 .Where(order => order.Id == orderId
+                    && order.Id > startAfterOrderId
                     && order.Status == OrderStatus.Approved
                     && order.IntegrationStatus == IntegrationStatus.Pending)
                 .Where(order => !db.WmcOrderExportStates.Any(state => state.OrderId == order.Id

@@ -24,8 +24,23 @@ public sealed class WmcJsonOrderErpIntegration(
     public Task<ErpOrderResult> SendAutomaticWorkerOrderAsync(
         Order order,
         CancellationToken cancellationToken = default,
-        Guid? attemptId = null) =>
-        SendOrderCoreAsync(order, WmcExportSource.Automatic, WmcExportAudit.AutomatedAttemptMarker, null, true, cancellationToken, attemptId);
+        Guid? attemptId = null)
+    {
+        var settings = options.Value;
+        if (!settings.Enabled ||
+            !settings.AutomaticWorkerEnabled ||
+            order.Status != OrderStatus.Approved ||
+            settings.AutomaticWorkerStartAfterOrderId is not int startAfterOrderId ||
+            startAfterOrderId < 0 ||
+            order.Id <= startAfterOrderId)
+        {
+            return Task.FromResult(new ErpOrderResult(
+                false,
+                Error: "Automatic WMC JSON transmission requires an enabled worker and an approved order above its activation cutoff."));
+        }
+
+        return SendOrderCoreAsync(order, WmcExportSource.Automatic, WmcExportAudit.AutomatedAttemptMarker, null, true, cancellationToken, attemptId);
+    }
 
     public Task<ErpOrderResult> SendManualOrderAsync(
         Order order,

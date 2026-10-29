@@ -30,12 +30,33 @@ public sealed class WmcJsonOrderAutomaticBackgroundService(
             return;
         }
 
+        if (settings.AutomaticWorkerStartAfterOrderId is not int startAfterOrderId || startAfterOrderId < 0)
+        {
+            logger.LogError("Automatic WMC JSON worker is blocked because AutomaticWorkerStartAfterOrderId is missing or invalid.");
+            return;
+        }
+
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var integrationService = scope.ServiceProvider.GetRequiredService<OrderIntegrationService>();
         var jsonIntegration = scope.ServiceProvider.GetRequiredService<WmcJsonOrderErpIntegration>();
         var candidates = await db.Orders
-            .Where(order => order.Status == OrderStatus.Approved && order.IntegrationStatus == IntegrationStatus.Pending)
+            .Where(order => order.Id > startAfterOrderId
+                && order.Status == OrderStatus.Approved
+                && order.IntegrationStatus == IntegrationStatus.Pending)
+            .Where(order => !db.WmcOrderExportStates.Any(state => state.OrderId == order.Id
+                && (state.RequiresManualReview
+                    || state.Status == WmcOrderExportStatus.Processing
+                    || state.Status == WmcOrderExportStatus.Imported
+                    || state.Status == WmcOrderExportStatus.Exported)))
+            .Where(order => !db.WmcExportAudits.Any(audit => audit.OrderId == order.Id
+                && (audit.Outcome == WmcExportOutcome.Started
+                    || audit.Outcome == WmcExportOutcome.Unknown
+                    || audit.Outcome == WmcExportOutcome.Succeeded
+                    || audit.Outcome == WmcExportOutcome.Imported
+                    || audit.Outcome == WmcExportOutcome.Generated
+                    || audit.Outcome == WmcExportOutcome.Available
+                    || audit.Outcome == WmcExportOutcome.Regenerated)))
             .OrderBy(order => order.LastIntegrationAttempt ?? order.CreatedAt)
             .Select(order => order.Id)
             .Take(20)

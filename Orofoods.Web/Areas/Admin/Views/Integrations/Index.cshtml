@@ -82,8 +82,8 @@
                         var integrationStatusClass = order.Status == OrderStatus.Approved
                             ? WmcIntegrationStatusPresenter.GetCssClass(wmcIntegrationStatus)
                             : order.IntegrationStatus == IntegrationStatus.Pending && order.Status is OrderStatus.Received or OrderStatus.UnderReview or OrderStatus.Cancelled
-                                ? "order-context"
-                                : order.IntegrationStatus.ToString().ToLowerInvariant();
+                                ? "erp-status-badge--order-context"
+                                : $"erp-status-badge--{order.IntegrationStatus.ToString().ToLowerInvariant()}";
                         var integrationStatusLabel = order.Status switch
                         {
                             OrderStatus.Received or OrderStatus.UnderReview => "Aguardando aprovação",
@@ -99,7 +99,7 @@
                             <td><span class="erp-customer" title="@order.Customer?.TradeName">@order.Customer?.TradeName</span></td>
                             <td>
                                 <span class="erp-status-badge erp-status-badge--order">@order.Status.ToDisplayName()</span>
-                                <span class="erp-status-badge erp-status-badge--@integrationStatusClass">@integrationStatusDisplay</span>
+                                <span class="erp-status-badge @integrationStatusClass">@integrationStatusDisplay</span>
                                 @if (integrationStatusLabel is not null)
                                 {
                                     <small class="erp-status-context">@integrationStatusLabel</small>

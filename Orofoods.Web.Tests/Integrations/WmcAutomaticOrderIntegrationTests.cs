@@ -103,6 +103,7 @@ public class WmcAutomaticOrderIntegrationTests
         {
             Enabled = true,
             AutomaticWorkerEnabled = true,
+            AutomaticWorkerStartAfterOrderId = 0,
             HomologationOrderIdConfirmedUnique = true,
             HomologationOrderId = order.Id,
             BaseUrl = "https://wmc.example.invalid/",

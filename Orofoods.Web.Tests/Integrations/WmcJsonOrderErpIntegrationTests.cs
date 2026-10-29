@@ -46,6 +46,37 @@ public class WmcJsonOrderErpIntegrationTests
         Assert.Equal("operator-user", audit.ExportedByUserId);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Automatic_worker_rejects_missing_or_reached_cutoff_before_creating_an_audit(bool cutoffIsReached)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateOrder();
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        var handler = new RecordingHandler(
+            (HttpStatusCode.OK, "importado com sucesso"),
+            (HttpStatusCode.OK, "[{\"NROPEDIDO\":776655}]"));
+        using var client = new HttpClient(handler);
+        var options = CreateOptions(order.Id);
+        options.AutomaticWorkerEnabled = true;
+        options.AutomaticWorkerStartAfterOrderId = cutoffIsReached ? order.Id : null;
+        var integration = new WmcJsonOrderErpIntegration(
+            client,
+            Options.Create(options),
+            new WmcMobileOrderPayloadBuilder(),
+            new WmcExportAuditService(db),
+            new FixedWmcTransmissionIdAllocator(9001));
+
+        var result = await integration.SendAutomaticWorkerOrderAsync(order);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, handler.CallCount);
+        Assert.Empty(db.WmcExportAudits);
+    }
+
     [Fact]
     public async Task Selected_manual_send_records_the_actor_reconciles_the_order_number_and_marks_wmc_imported()
     {
