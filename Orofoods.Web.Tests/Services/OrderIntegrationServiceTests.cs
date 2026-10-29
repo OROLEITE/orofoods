@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -358,6 +359,27 @@ public class OrderIntegrationServiceTests
         Assert.Empty(db.WmcExportAudits);
     }
 
+    [Fact]
+    public async Task Automatic_json_service_logs_a_safe_reason_when_atomic_reservation_matches_no_row()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var order = CreateApprovedJsonOrder("ORO-2026-000791");
+        order.WmcOrderExportState = new WmcOrderExportState { Status = WmcOrderExportStatus.Processing };
+        db.Add(order);
+        await db.SaveChangesAsync();
+        var logger = new CapturingLogger<OrderIntegrationService>();
+        var (service, jsonIntegration) = CreateAutomaticJsonService(db, new AutomaticJsonHandler(), logger);
+
+        var result = await service.SendAutomaticJsonAsync(order.Id, jsonIntegration);
+
+        Assert.Null(result);
+        Assert.Equal(IntegrationStatus.Pending, (await db.Orders.SingleAsync(candidate => candidate.Id == order.Id)).IntegrationStatus);
+        Assert.Empty(db.WmcExportAudits);
+        Assert.Contains(logger.Messages, message => message.Contains("atomic reservation", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(logger.Messages, message => message.Contains("EligibilityPredicatesMatchedNoRows", StringComparison.Ordinal));
+        Assert.DoesNotContain(logger.Messages, message => message.Contains("private", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData(-1)]
@@ -623,6 +645,7 @@ public class OrderIntegrationServiceTests
     private static (OrderIntegrationService Service, WmcJsonOrderErpIntegration JsonIntegration) CreateAutomaticJsonService(
         ApplicationDbContext db,
         HttpMessageHandler handler,
+        ILogger<OrderIntegrationService>? logger = null,
         int? serviceCutoff = 0,
         int? transmitterCutoff = null)
     {
@@ -639,6 +662,7 @@ public class OrderIntegrationServiceTests
         return (new OrderIntegrationService(
             db,
             new UnusedAutomaticJsonIntegration(),
+            logger: logger,
             jsonOrderOptions: Options.Create(serviceOptions)), jsonIntegration);
     }
 
@@ -745,5 +769,17 @@ public class OrderIntegrationServiceTests
             order.WmcTransmissionId = 9001;
             return Task.FromResult(9001);
         }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 }

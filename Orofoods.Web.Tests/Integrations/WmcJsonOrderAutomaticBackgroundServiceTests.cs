@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -123,10 +124,13 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
         services.AddScoped<WmcAutomaticOrderIntegration>();
         services.AddScoped<IErpOrderIntegration>(provider => provider.GetRequiredService<WmcAutomaticOrderIntegration>());
         await using var provider = services.BuildServiceProvider();
+        var runtime = new WmcJsonOrderWorkerRuntime();
+        var workerLogger = new CapturingLogger<WmcJsonOrderAutomaticBackgroundService>();
         var worker = new WmcJsonOrderAutomaticBackgroundService(
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(options),
-            NullLogger<WmcJsonOrderAutomaticBackgroundService>.Instance);
+            workerLogger,
+            runtime);
 
         await worker.ProcessPendingOrdersAsync();
 
@@ -142,6 +146,30 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
         Assert.Equal(IntegrationStatus.Succeeded, (await setupDb.Orders.SingleAsync(order => order.Id == approvedPending.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Failed, (await setupDb.Orders.SingleAsync(order => order.Id == approvedFailed.Id)).IntegrationStatus);
         Assert.Equal(IntegrationStatus.Pending, (await setupDb.Orders.SingleAsync(order => order.Id == unapprovedPending.Id)).IntegrationStatus);
+
+        var lastCycle = Assert.IsType<WmcJsonOrderWorkerCycleSummary>(runtime.Snapshot.LastCycle);
+        Assert.Equal(1, lastCycle.EligibleCount);
+        Assert.Equal(1, lastCycle.CandidateCount);
+        Assert.Equal(1, lastCycle.ProcessedCount);
+        Assert.Equal(1, lastCycle.SucceededCount);
+        Assert.Equal(5, lastCycle.ExcludedManualReviewCount);
+        Assert.Equal(10, lastCycle.ExcludedExportStateCount);
+        Assert.Equal(5, lastCycle.ExcludedAuditCount);
+        Assert.Equal(0, lastCycle.ExcludedBatchLimitCount);
+        Assert.NotEqual(default, lastCycle.StartedAtUtc);
+        Assert.NotEqual(default, lastCycle.FinishedAtUtc);
+        Assert.Contains(workerLogger.Messages, message => message.Contains("cycle started", StringComparison.Ordinal));
+        Assert.Contains(workerLogger.Messages, message => message.Contains("cycle finished", StringComparison.Ordinal));
+        var completion = Assert.Single(workerLogger.Messages, message => message.Contains("cycle finished", StringComparison.Ordinal));
+        Assert.Contains("Candidates=1", completion, StringComparison.Ordinal);
+        Assert.Contains("Processed=1", completion, StringComparison.Ordinal);
+        Assert.Contains("Succeeded=1", completion, StringComparison.Ordinal);
+        Assert.Contains("ExcludedManualReview=5", completion, StringComparison.Ordinal);
+        Assert.Contains("ExcludedExportState=10", completion, StringComparison.Ordinal);
+        Assert.Contains("ExcludedAudit=5", completion, StringComparison.Ordinal);
+        Assert.Contains("Errors=0", completion, StringComparison.Ordinal);
+        Assert.DoesNotContain(workerLogger.Messages, message => message.Contains("Cliente teste", StringComparison.Ordinal));
+        Assert.DoesNotContain(workerLogger.Messages, message => message.Contains("serial-test", StringComparison.Ordinal));
     }
 
     private static WmcJsonOrderOptions CreateEnabledOptions() => new()
@@ -218,5 +246,17 @@ public sealed class WmcJsonOrderAutomaticBackgroundServiceTests
             order.WmcTransmissionId = 9001;
             return Task.FromResult(9001);
         }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 }

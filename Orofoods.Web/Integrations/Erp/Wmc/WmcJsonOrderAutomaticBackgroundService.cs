@@ -1,8 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Integrations;
-using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Orders;
 
 namespace Orofoods.Web.Integrations.Erp.Wmc;
@@ -10,67 +8,115 @@ namespace Orofoods.Web.Integrations.Erp.Wmc;
 public sealed class WmcJsonOrderAutomaticBackgroundService(
     IServiceScopeFactory scopeFactory,
     IOptions<WmcJsonOrderOptions> options,
-    ILogger<WmcJsonOrderAutomaticBackgroundService> logger) : BackgroundService
+    ILogger<WmcJsonOrderAutomaticBackgroundService> logger,
+    WmcJsonOrderWorkerRuntime? workerRuntime = null) : BackgroundService
 {
+    private readonly WmcJsonOrderWorkerRuntime runtime = workerRuntime ?? new WmcJsonOrderWorkerRuntime();
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        var startedAtUtc = DateTime.UtcNow;
+        runtime.MarkServiceStarted(startedAtUtc);
+        logger.LogInformation("WMC JSON automatic worker service started at {ServiceStartedAtUtc}.", startedAtUtc);
+
+        try
         {
-            await ProcessPendingOrdersAsync(stoppingToken);
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                await ProcessPendingOrdersAsync(stoppingToken);
+            }
+        }
+        finally
+        {
+            var stoppedAtUtc = DateTime.UtcNow;
+            runtime.MarkServiceStopped(stoppedAtUtc);
+            logger.LogInformation("WMC JSON automatic worker service stopped at {ServiceStoppedAtUtc}.", stoppedAtUtc);
         }
     }
 
     public async Task ProcessPendingOrdersAsync(CancellationToken cancellationToken = default)
     {
-        var settings = options.Value;
-        if (!settings.Enabled || !settings.AutomaticWorkerEnabled)
-        {
-            logger.LogDebug("Worker automÃ¡tico HTTP/JSON do WMC desativado.");
-            return;
-        }
+        var cycleStartedAtUtc = DateTime.UtcNow;
+        runtime.BeginCycle(cycleStartedAtUtc);
+        logger.LogInformation("WMC JSON automatic worker cycle started at {CycleStartedAtUtc}.", cycleStartedAtUtc);
 
-        if (settings.AutomaticWorkerStartAfterOrderId is not int startAfterOrderId || startAfterOrderId < 0)
+        try
         {
-            logger.LogError("Automatic WMC JSON worker is blocked because AutomaticWorkerStartAfterOrderId is missing or invalid.");
-            return;
-        }
-
-        using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var integrationService = scope.ServiceProvider.GetRequiredService<OrderIntegrationService>();
-        var jsonIntegration = scope.ServiceProvider.GetRequiredService<WmcJsonOrderErpIntegration>();
-        var candidates = await db.Orders
-            .Where(order => order.Id > startAfterOrderId
-                && order.Status == OrderStatus.Approved
-                && order.IntegrationStatus == IntegrationStatus.Pending)
-            .Where(order => !db.WmcOrderExportStates.Any(state => state.OrderId == order.Id
-                && (state.RequiresManualReview
-                    || state.Status == WmcOrderExportStatus.Processing
-                    || state.Status == WmcOrderExportStatus.Imported
-                    || state.Status == WmcOrderExportStatus.Exported)))
-            .Where(order => !db.WmcExportAudits.Any(audit => audit.OrderId == order.Id
-                && (audit.Outcome == WmcExportOutcome.Started
-                    || audit.Outcome == WmcExportOutcome.Unknown
-                    || audit.Outcome == WmcExportOutcome.Succeeded
-                    || audit.Outcome == WmcExportOutcome.Imported
-                    || audit.Outcome == WmcExportOutcome.Generated
-                    || audit.Outcome == WmcExportOutcome.Available
-                    || audit.Outcome == WmcExportOutcome.Regenerated)))
-            .OrderBy(order => order.LastIntegrationAttempt ?? order.CreatedAt)
-            .Select(order => order.Id)
-            .Take(20)
-            .ToListAsync(cancellationToken);
-
-        foreach (var orderId in candidates)
-        {
-            try
+            var settings = options.Value;
+            if (!settings.Enabled || !settings.AutomaticWorkerEnabled)
             {
-                await integrationService.SendAutomaticJsonAsync(orderId, jsonIntegration, cancellationToken);
+                logger.LogDebug("Worker automático HTTP/JSON do WMC desativado pela configuração.");
+                return;
             }
-            catch (Exception exception) when (exception is not OperationCanceledException)
+
+            if (settings.AutomaticWorkerStartAfterOrderId is not int startAfterOrderId || startAfterOrderId < 0)
             {
-                logger.LogError(exception, "Falha ao processar pedido {OrderId} pelo WMC HTTP/JSON.", orderId);
+                runtime.RecordCycleError("InvalidActivationCutoff");
+                logger.LogError("Automatic WMC JSON worker cycle blocked because AutomaticWorkerStartAfterOrderId is missing or invalid.");
+                return;
+            }
+
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var integrationService = scope.ServiceProvider.GetRequiredService<OrderIntegrationService>();
+            var jsonIntegration = scope.ServiceProvider.GetRequiredService<WmcJsonOrderErpIntegration>();
+            var (candidateIds, selection) = await WmcJsonOrderCandidateQuery.ReadBatchAsync(db, startAfterOrderId, cancellationToken);
+            runtime.SetCandidateSelection(selection);
+
+            foreach (var orderId in candidateIds)
+            {
+                try
+                {
+                    var result = await integrationService.SendAutomaticJsonAsync(orderId, jsonIntegration, cancellationToken);
+                    if (result is null)
+                    {
+                        runtime.RecordReservationRejected();
+                        continue;
+                    }
+
+                    runtime.RecordAttempt(result.Succeeded);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    runtime.RecordAttempt(succeeded: false);
+                    runtime.RecordCycleError(exception.GetType().Name);
+                    logger.LogError(
+                        "WMC JSON worker failed while processing OrderId={OrderId}; ErrorType={ErrorType}.",
+                        orderId,
+                        exception.GetType().Name);
+                }
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            runtime.RecordCycleError(exception.GetType().Name);
+            logger.LogError("WMC JSON automatic worker cycle failed; ErrorType={ErrorType}.", exception.GetType().Name);
+        }
+        finally
+        {
+            if (cancellationToken.IsCancellationRequested)
+                runtime.RecordCycleError("OperationCanceledException");
+
+            var summary = runtime.FinishCycle(DateTime.UtcNow);
+            if (summary is not null)
+            {
+                logger.LogInformation(
+                    "WMC JSON automatic worker cycle finished at {CycleFinishedAtUtc}; CycleStartedAtUtc={CycleStartedAtUtc}; Eligible={EligibleCount}; Candidates={CandidateCount}; Processed={ProcessedCount}; Succeeded={SucceededCount}; Failed={FailedCount}; ReservationRejected={ReservationRejectedCount}; ExcludedManualReview={ExcludedManualReviewCount}; ExcludedExportState={ExcludedExportStateCount}; ExcludedAudit={ExcludedAuditCount}; ExcludedBatchLimit={ExcludedBatchLimitCount}; Errors={CycleErrorCount}; LastErrorType={LastSafeErrorType}.",
+                    summary.FinishedAtUtc,
+                    summary.StartedAtUtc,
+                    summary.EligibleCount,
+                    summary.CandidateCount,
+                    summary.ProcessedCount,
+                    summary.SucceededCount,
+                    summary.FailedCount,
+                    summary.ReservationRejectedCount,
+                    summary.ExcludedManualReviewCount,
+                    summary.ExcludedExportStateCount,
+                    summary.ExcludedAuditCount,
+                    summary.ExcludedBatchLimitCount,
+                    summary.CycleErrorCount,
+                    summary.LastSafeErrorType ?? "none");
             }
         }
     }

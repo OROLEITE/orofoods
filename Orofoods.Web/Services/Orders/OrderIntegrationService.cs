@@ -146,24 +146,8 @@ public sealed class OrderIntegrationService(
 
         await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
         {
-            var claim = db.Orders
-                .Where(order => order.Id == orderId
-                    && order.Id > startAfterOrderId
-                    && order.Status == OrderStatus.Approved
-                    && order.IntegrationStatus == IntegrationStatus.Pending)
-                .Where(order => !db.WmcOrderExportStates.Any(state => state.OrderId == order.Id
-                    && (state.RequiresManualReview
-                        || state.Status == WmcOrderExportStatus.Processing
-                        || state.Status == WmcOrderExportStatus.Imported
-                        || state.Status == WmcOrderExportStatus.Exported)))
-                .Where(order => !db.WmcExportAudits.Any(audit => audit.OrderId == order.Id
-                    && (audit.Outcome == WmcExportOutcome.Started
-                        || audit.Outcome == WmcExportOutcome.Unknown
-                        || audit.Outcome == WmcExportOutcome.Succeeded
-                        || audit.Outcome == WmcExportOutcome.Imported
-                        || audit.Outcome == WmcExportOutcome.Generated
-                        || audit.Outcome == WmcExportOutcome.Available
-                        || audit.Outcome == WmcExportOutcome.Regenerated)));
+            var claim = WmcJsonOrderCandidateQuery.Build(db, startAfterOrderId)
+                .Where(order => order.Id == orderId);
 
             var claimed = await claim.ExecuteUpdateAsync(setters => setters
                 .SetProperty(order => order.IntegrationStatus, IntegrationStatus.Processing)
@@ -172,6 +156,9 @@ public sealed class OrderIntegrationService(
             if (claimed == 0)
             {
                 await transaction.RollbackAsync(cancellationToken);
+                logger?.LogWarning(
+                    "Automatic WMC JSON atomic reservation rejected OrderId={OrderId}; reason=EligibilityPredicatesMatchedNoRows.",
+                    orderId);
                 return null;
             }
 
