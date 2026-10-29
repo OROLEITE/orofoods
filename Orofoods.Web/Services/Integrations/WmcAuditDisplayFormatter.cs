@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Orofoods.Web.Services.Integrations;
 
@@ -26,8 +27,8 @@ public static class WmcAuditDisplayFormatter
 
     private static readonly TimeZoneInfo BrasiliaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
-    private static readonly Regex AuthorizationCredentialsRegex = new(
-        @"(?<prefix>\b(?:authorization|proxy-authorization)\s*[:=]\s*)(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+",
+    private static readonly Regex AuthorizationHeaderRegex = new(
+        @"(?<prefix>\b(?:authorization|proxy-authorization)\s*[:=]\s*)[^\r\n]*",
         SafeOptions);
 
     private static readonly Regex SchemeCredentialsRegex = new(
@@ -35,12 +36,8 @@ public static class WmcAuditDisplayFormatter
         SafeOptions);
 
     private static readonly Regex SensitiveAssignmentRegex = new(
-        @"(?<prefix>[""']?(?:" + SensitiveKeyPattern + @")[""']?\s*(?:=|:)\s*)(?:""(?:\\.|[^""\\])*""|'(?:\\.|[^'\\])*'|[^,\s;&}\]]+)",
+        @"(?<prefix>[""']?(?:" + SensitiveKeyPattern + @")[""']?\s*(?:=|:)\s*)(?:""(?:\\.|[^""\\])*""|'(?:\\.|[^'\\])*'|[^,\r\n;&}\]>]+)",
         SafeOptions);
-
-    private static readonly Regex SensitiveXmlElementRegex = new(
-        @"(?<opening><(?<tag>(?:" + SensitiveKeyPattern + @"))\b[^>]*>).*?(?<closing></\k<tag>\s*>)",
-        SafeOptions | RegexOptions.Singleline);
 
     private static readonly Regex UrlCredentialsRegex = new(
         @"(?<scheme>https?://)[^\s/@:]+:[^\s/@]+@",
@@ -78,6 +75,53 @@ public static class WmcAuditDisplayFormatter
         catch (JsonException)
         {
             return value;
+        }
+    }
+
+    private static string SanitizeXmlFields(string value)
+    {
+        if (!value.AsSpan().TrimStart().StartsWith("<", StringComparison.Ordinal))
+        {
+            return value;
+        }
+
+        try
+        {
+            var document = XDocument.Parse(value, LoadOptions.PreserveWhitespace);
+            if (document.Root is null)
+            {
+                return value;
+            }
+
+            RedactXmlElement(document.Root);
+            return document.ToString(SaveOptions.DisableFormatting);
+        }
+        catch (System.Xml.XmlException)
+        {
+            return value;
+        }
+    }
+
+    private static void RedactXmlElement(XElement element)
+    {
+        var sensitiveElement = IsSensitiveJsonKey(element.Name.LocalName);
+        foreach (var attribute in element.Attributes())
+        {
+            if (sensitiveElement || IsSensitiveJsonKey(attribute.Name.LocalName))
+            {
+                attribute.Value = "[REDACTED]";
+            }
+        }
+
+        if (sensitiveElement)
+        {
+            element.ReplaceNodes(new XText("[REDACTED]"));
+            return;
+        }
+
+        foreach (var child in element.Elements())
+        {
+            RedactXmlElement(child);
         }
     }
 
@@ -123,10 +167,10 @@ public static class WmcAuditDisplayFormatter
         }
 
         var sanitized = SanitizeJsonFields(value);
-        sanitized = AuthorizationCredentialsRegex.Replace(sanitized, "${prefix}[REDACTED]");
+        sanitized = SanitizeXmlFields(sanitized);
+        sanitized = AuthorizationHeaderRegex.Replace(sanitized, "${prefix}[REDACTED]");
         sanitized = SchemeCredentialsRegex.Replace(sanitized, "${scheme}[REDACTED]");
         sanitized = SensitiveAssignmentRegex.Replace(sanitized, "${prefix}\"[REDACTED]\"");
-        sanitized = SensitiveXmlElementRegex.Replace(sanitized, "${opening}[REDACTED]${closing}");
         sanitized = UrlCredentialsRegex.Replace(sanitized, "${scheme}[REDACTED]@");
         sanitized = EmailRegex.Replace(sanitized, "[REDACTED]");
         sanitized = CnpjRegex.Replace(sanitized, "[REDACTED]");

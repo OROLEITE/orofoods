@@ -51,6 +51,42 @@ public class WmcAuditDisplayFormatterTests
     }
 
     [Fact]
+    public void Sanitize_redacts_xml_sensitive_elements_by_local_name_and_all_attributes()
+    {
+        const string response = "<root xmlns:ns=\"urn:test\"><ns:password>xml-secret</ns:password><password value=\"attribute-secret\" /></root>";
+
+        var sanitized = WmcAuditDisplayFormatter.Sanitize(response);
+
+        Assert.DoesNotContain("xml-secret", sanitized);
+        Assert.DoesNotContain("attribute-secret", sanitized);
+        Assert.Contains("[REDACTED]", sanitized);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_whole_unquoted_assignment_until_a_safe_delimiter()
+    {
+        const string assignment = "password=correct horse battery staple, status=failed";
+
+        var sanitizedAssignment = WmcAuditDisplayFormatter.Sanitize(assignment);
+
+        Assert.DoesNotContain("correct", sanitizedAssignment);
+        Assert.DoesNotContain("horse", sanitizedAssignment);
+        Assert.DoesNotContain("battery", sanitizedAssignment);
+        Assert.Contains("status=failed", sanitizedAssignment);
+    }
+
+    [Fact]
+    public void Sanitize_redacts_entire_unsupported_authorization_header_value()
+    {
+        const string authorization = "Authorization: Digest realm=\"wmc\", nonce=\"nonce-secret\", response=\"response-secret\"";
+
+        var sanitizedAuthorization = WmcAuditDisplayFormatter.Sanitize(authorization);
+
+        Assert.DoesNotContain("nonce-secret", sanitizedAuthorization);
+        Assert.DoesNotContain("response-secret", sanitizedAuthorization);
+    }
+
+    [Fact]
     public void Sanitize_returns_null_for_missing_response()
     {
         Assert.Null(WmcAuditDisplayFormatter.Sanitize(null));
