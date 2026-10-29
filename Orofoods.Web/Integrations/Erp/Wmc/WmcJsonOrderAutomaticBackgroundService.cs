@@ -71,6 +71,15 @@ public sealed class WmcJsonOrderAutomaticBackgroundService(
                     var result = await integrationService.SendAutomaticJsonAsync(orderId, jsonIntegration, cancellationToken);
                     if (result is null)
                     {
+                        runtime.RecordSkippedBeforeReservation();
+                        logger.LogWarning(
+                            "WMC JSON automatic worker skipped OrderId={OrderId} before atomic reservation; reason=SendReturnedNoResult.",
+                            orderId);
+                        continue;
+                    }
+
+                    if (result.AtomicReservationRejected)
+                    {
                         runtime.RecordReservationRejected();
                         continue;
                     }
@@ -79,8 +88,7 @@ public sealed class WmcJsonOrderAutomaticBackgroundService(
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
-                    runtime.RecordAttempt(succeeded: false);
-                    runtime.RecordCycleError(exception.GetType().Name);
+                    runtime.RecordAttempt(succeeded: false, safeErrorType: exception.GetType().Name);
                     logger.LogError(
                         "WMC JSON worker failed while processing OrderId={OrderId}; ErrorType={ErrorType}.",
                         orderId,
@@ -102,7 +110,7 @@ public sealed class WmcJsonOrderAutomaticBackgroundService(
             if (summary is not null)
             {
                 logger.LogInformation(
-                    "WMC JSON automatic worker cycle finished at {CycleFinishedAtUtc}; CycleStartedAtUtc={CycleStartedAtUtc}; Eligible={EligibleCount}; Candidates={CandidateCount}; Processed={ProcessedCount}; Succeeded={SucceededCount}; Failed={FailedCount}; ReservationRejected={ReservationRejectedCount}; ExcludedManualReview={ExcludedManualReviewCount}; ExcludedExportState={ExcludedExportStateCount}; ExcludedAudit={ExcludedAuditCount}; ExcludedBatchLimit={ExcludedBatchLimitCount}; Errors={CycleErrorCount}; LastErrorType={LastSafeErrorType}.",
+                    "WMC JSON automatic worker cycle finished at {CycleFinishedAtUtc}; CycleStartedAtUtc={CycleStartedAtUtc}; Eligible={EligibleCount}; Candidates={CandidateCount}; Processed={ProcessedCount}; Succeeded={SucceededCount}; Failed={FailedCount}; ReservationRejected={ReservationRejectedCount}; SkippedBeforeReservation={SkippedBeforeReservationCount}; ExcludedManualReview={ExcludedManualReviewCount}; ExcludedExportState={ExcludedExportStateCount}; ExcludedAudit={ExcludedAuditCount}; ExcludedBatchLimit={ExcludedBatchLimitCount}; Errors={CycleErrorCount}; LastErrorType={LastSafeErrorType}.",
                     summary.FinishedAtUtc,
                     summary.StartedAtUtc,
                     summary.EligibleCount,
@@ -111,6 +119,7 @@ public sealed class WmcJsonOrderAutomaticBackgroundService(
                     summary.SucceededCount,
                     summary.FailedCount,
                     summary.ReservationRejectedCount,
+                    summary.SkippedBeforeReservationCount,
                     summary.ExcludedManualReviewCount,
                     summary.ExcludedExportStateCount,
                     summary.ExcludedAuditCount,

@@ -17,6 +17,7 @@ public sealed record WmcJsonOrderWorkerCycleSummary(
     int SucceededCount,
     int FailedCount,
     int ReservationRejectedCount,
+    int SkippedBeforeReservationCount,
     int ExcludedManualReviewCount,
     int ExcludedExportStateCount,
     int ExcludedAuditCount,

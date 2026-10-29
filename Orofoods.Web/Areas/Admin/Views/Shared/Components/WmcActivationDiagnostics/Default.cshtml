@@ -55,10 +55,14 @@
                 <dd class="col-sm-6" data-wmc-processed-count>@lastCycle.ProcessedCount</dd>
                 <dt class="col-sm-6">Resultados com sucesso</dt>
                 <dd class="col-sm-6">@lastCycle.SucceededCount</dd>
-                <dt class="col-sm-6">Falhas</dt>
-                <dd class="col-sm-6" data-wmc-error-count>@(lastCycle.FailedCount + lastCycle.CycleErrorCount)</dd>
+                <dt class="col-sm-6">Falhas em pedidos</dt>
+                <dd class="col-sm-6" data-wmc-failed-count>@lastCycle.FailedCount</dd>
+                <dt class="col-sm-6">Erros do ciclo</dt>
+                <dd class="col-sm-6" data-wmc-error-count>@lastCycle.CycleErrorCount</dd>
                 <dt class="col-sm-6">Reservas atômicas sem correspondência</dt>
                 <dd class="col-sm-6">@lastCycle.ReservationRejectedCount</dd>
+                <dt class="col-sm-6">Ignorados antes da reserva</dt>
+                <dd class="col-sm-6">@lastCycle.SkippedBeforeReservationCount</dd>
                 <dt class="col-sm-6">Excluídos por revisão manual</dt>
                 <dd class="col-sm-6">@lastCycle.ExcludedManualReviewCount</dd>
                 <dt class="col-sm-6">Excluídos por estado WMC</dt>

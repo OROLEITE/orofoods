@@ -29,6 +29,7 @@ public sealed class WmcJsonOrderWorkerRuntimeTests
         Invoke(runtime, "RecordAttempt", true);
         Invoke(runtime, "RecordAttempt", false);
         Invoke(runtime, "RecordReservationRejected");
+        Invoke(runtime, "RecordSkippedBeforeReservation");
         Invoke(runtime, "RecordCycleError", "NpgsqlException");
 
         Invoke(runtime, "FinishCycle", startedAt.AddMinutes(5).AddSeconds(20));
@@ -36,10 +37,11 @@ public sealed class WmcJsonOrderWorkerRuntimeTests
         var summary = Get(completedSnapshot, "LastCycle");
         Assert.Equal(23, Get(summary, "EligibleCount"));
         Assert.Equal(20, Get(summary, "CandidateCount"));
-        Assert.Equal(3, Get(summary, "ProcessedCount"));
+        Assert.Equal(4, Get(summary, "ProcessedCount"));
         Assert.Equal(1, Get(summary, "SucceededCount"));
         Assert.Equal(1, Get(summary, "FailedCount"));
         Assert.Equal(1, Get(summary, "ReservationRejectedCount"));
+        Assert.Equal(1, Get(summary, "SkippedBeforeReservationCount"));
         Assert.Equal(1, Get(summary, "CycleErrorCount"));
         Assert.Equal("NpgsqlException", Get(summary, "LastSafeErrorType"));
 
@@ -48,6 +50,26 @@ public sealed class WmcJsonOrderWorkerRuntimeTests
         var stoppedSnapshot = Get(runtime, "Snapshot");
         Assert.False((bool)Get(stoppedSnapshot, "IsServiceRunning"));
         Assert.Null(Get(stoppedSnapshot, "CurrentCycleStartedAtUtc"));
+    }
+
+    [Fact]
+    public void Per_order_exception_counts_as_one_failed_attempt_without_double_counting_cycle_errors()
+    {
+        var runtimeType = typeof(WmcActivationDiagnostics).Assembly.GetType("Orofoods.Web.Integrations.Erp.Wmc.WmcJsonOrderWorkerRuntime");
+        Assert.NotNull(runtimeType);
+        var runtime = Activator.CreateInstance(runtimeType)!;
+        var startedAt = DateTime.UtcNow;
+
+        Invoke(runtime, "BeginCycle", startedAt);
+        Invoke(runtime, "RecordAttempt", false, "SqliteException");
+        Invoke(runtime, "FinishCycle", startedAt.AddSeconds(1));
+
+        var snapshot = Get(runtime, "Snapshot");
+        var summary = Get(snapshot, "LastCycle");
+        Assert.Equal(1, Get(summary, "ProcessedCount"));
+        Assert.Equal(1, Get(summary, "FailedCount"));
+        Assert.Equal(0, Get(summary, "CycleErrorCount"));
+        Assert.Equal("SqliteException", Get(summary, "LastSafeErrorType"));
     }
 
     private static void Invoke(object instance, string method, params object?[] args)

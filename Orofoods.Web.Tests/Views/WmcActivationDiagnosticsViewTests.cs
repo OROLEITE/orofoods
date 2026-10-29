@@ -37,6 +37,10 @@ public sealed class WmcActivationDiagnosticsViewTests
         Assert.Contains("diagnosticOrderId", view, StringComparison.Ordinal);
         Assert.Contains("motivos", view, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("processados", view, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("@lastCycle.FailedCount", view, StringComparison.Ordinal);
+        Assert.Contains("@lastCycle.CycleErrorCount", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("lastCycle.FailedCount + lastCycle.CycleErrorCount", view, StringComparison.Ordinal);
+        Assert.Contains("Ignorados antes da reserva", view, StringComparison.Ordinal);
     }
 
     [Fact]

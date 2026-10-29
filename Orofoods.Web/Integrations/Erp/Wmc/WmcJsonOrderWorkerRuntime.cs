@@ -78,6 +78,9 @@ public sealed class WmcJsonOrderWorkerRuntime
     }
 
     public void RecordAttempt(bool succeeded)
+        => RecordAttempt(succeeded, safeErrorType: null);
+
+    public void RecordAttempt(bool succeeded, string? safeErrorType)
     {
         lock (sync)
         {
@@ -89,6 +92,9 @@ public sealed class WmcJsonOrderWorkerRuntime
                 currentCycle.SucceededCount++;
             else
                 currentCycle.FailedCount++;
+
+            if (safeErrorType is not null)
+                currentCycle.LastSafeErrorType = safeErrorType;
         }
     }
 
@@ -101,6 +107,18 @@ public sealed class WmcJsonOrderWorkerRuntime
 
             currentCycle.ProcessedCount++;
             currentCycle.ReservationRejectedCount++;
+        }
+    }
+
+    public void RecordSkippedBeforeReservation()
+    {
+        lock (sync)
+        {
+            if (currentCycle is null)
+                return;
+
+            currentCycle.ProcessedCount++;
+            currentCycle.SkippedBeforeReservationCount++;
         }
     }
 
@@ -138,6 +156,7 @@ public sealed class WmcJsonOrderWorkerRuntime
         public int SucceededCount { get; set; }
         public int FailedCount { get; set; }
         public int ReservationRejectedCount { get; set; }
+        public int SkippedBeforeReservationCount { get; set; }
         public int ExcludedManualReviewCount { get; set; }
         public int ExcludedExportStateCount { get; set; }
         public int ExcludedAuditCount { get; set; }
@@ -154,6 +173,7 @@ public sealed class WmcJsonOrderWorkerRuntime
             SucceededCount,
             FailedCount,
             ReservationRejectedCount,
+            SkippedBeforeReservationCount,
             ExcludedManualReviewCount,
             ExcludedExportStateCount,
             ExcludedAuditCount,
