@@ -115,7 +115,9 @@ public sealed class AdminWmcManualEligibilityTests
             Options.Create(new PaymentEligibilityOptions()),
             hostEnvironment: null!);
 
-        var result = await controller.Index(null, null);
+        var result = await controller.Index(
+            fromDate: new DateOnly(2026, 10, 1),
+            toDate: new DateOnly(2026, 10, 31));
         var eligibleIds = Assert.IsAssignableFrom<IReadOnlySet<int>>(controller.ViewData["WmcManualExportEligibleOrderIds"]);
 
         Assert.IsType<ViewResult>(result);
