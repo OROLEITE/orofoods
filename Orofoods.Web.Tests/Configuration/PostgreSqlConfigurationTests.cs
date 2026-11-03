@@ -48,4 +48,42 @@ public class PostgreSqlConfigurationTests
 
         Assert.Equal("configured-externally", connectionString);
     }
+
+    [Fact]
+    public void Production_startup_does_not_migrate_or_seed_roles_automatically()
+    {
+        var program = ReadProgram();
+        var startupDatabaseBlock = program[program.LastIndexOf("using (var scope = app.Services.CreateScope()", StringComparison.Ordinal)..];
+
+        Assert.Contains("else if (!app.Environment.IsProduction())", startupDatabaseBlock);
+        Assert.Contains("await db.Database.MigrateAsync();", startupDatabaseBlock);
+        Assert.Contains("await SeedData.EnsureSellerRoleAsync(roleManager);", startupDatabaseBlock);
+    }
+
+    [Fact]
+    public void Production_does_not_register_automatic_wmc_workers()
+    {
+        var program = ReadProgram();
+
+        AssertWorkerRegistrationIsOutsideProduction(program, "WmcJsonOrderHomologationBackgroundService");
+        AssertWorkerRegistrationIsOutsideProduction(program, "WmcJsonOrderAutomaticBackgroundService");
+        AssertWorkerRegistrationIsOutsideProduction(program, "WmcSyncWorker");
+    }
+
+    private static string ReadProgram()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        return File.ReadAllText(Path.Combine(projectPath, "Program.cs"));
+    }
+
+    private static void AssertWorkerRegistrationIsOutsideProduction(string program, string workerType)
+    {
+        var registration = $"builder.Services.AddHostedService<{workerType}>();";
+        var registrationIndex = program.IndexOf(registration, StringComparison.Ordinal);
+        var lastEnvironmentGuard = program.LastIndexOf("if (!builder.Environment.IsProduction())", registrationIndex, StringComparison.Ordinal);
+
+        Assert.True(registrationIndex >= 0, $"Registration not found for {workerType}.");
+        Assert.True(lastEnvironmentGuard >= 0, $"{workerType} must be registered only outside Production.");
+        Assert.DoesNotContain("}", program[lastEnvironmentGuard..registrationIndex]);
+    }
 }

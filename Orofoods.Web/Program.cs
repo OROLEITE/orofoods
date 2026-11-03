@@ -332,10 +332,13 @@ builder.Services.AddHttpClient<WmcJsonOrderErpIntegration>();
 builder.Services.AddScoped<WmcAutomaticOrderIntegration>();
 builder.Services.AddScoped<IErpOrderIntegration>(services => services.GetRequiredService<WmcAutomaticOrderIntegration>());
 builder.Services.AddSingleton<WmcJsonOrderWorkerRuntime>();
-// WMC FileDrop is available only through the explicit manual TXT export action.
-// Approved orders use the guarded HTTP/JSON worker below when its flag is enabled.
-builder.Services.AddHostedService<WmcJsonOrderHomologationBackgroundService>();
-builder.Services.AddHostedService<WmcJsonOrderAutomaticBackgroundService>();
+// WMC FileDrop remains available through the explicit manual TXT export action.
+// Automatic WMC workers are hosted only outside Production.
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddHostedService<WmcJsonOrderHomologationBackgroundService>();
+    builder.Services.AddHostedService<WmcJsonOrderAutomaticBackgroundService>();
+}
 builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
 builder.Services.Configure<WmcCustomerImportOptions>(builder.Configuration.GetSection(WmcCustomerImportOptions.SectionName));
 builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
@@ -356,7 +359,10 @@ builder.Services.AddScoped<WmcProductPreviewService>();
 builder.Services.AddScoped<WmcProductImportService>();
 builder.Services.AddScoped<WmcBimboStagingImportService>();
 builder.Services.AddSingleton<WmcSyncCoordinator>();
-builder.Services.AddHostedService<WmcSyncWorker>();
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddHostedService<WmcSyncWorker>();
+}
 builder.Services.AddHealthChecks().AddCheck<WmcFirebirdHealthCheck>("wmc-firebird");
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedCustomerHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, LinkedSalesRepresentativeHandler>();
@@ -465,7 +471,7 @@ using (var scope = app.Services.CreateScope())
         db.Database.EnsureCreated();
         await SeedData.InitializeAsync(scope.ServiceProvider);
     }
-    else
+    else if (!app.Environment.IsProduction())
     {
         await db.Database.MigrateAsync();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
