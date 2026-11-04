@@ -148,6 +148,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     .AddEntityFrameworkStores<PostgreSqlApplicationDbContext>()
     .AddSignInManager<ActiveUserSignInManager>();
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Defina Jwt:Key por variável de ambiente ou User Secrets.");
+jwtKey = KeyVaultReferenceGuard.EnsureResolved("Jwt:Key", jwtKey);
 builder.Services.AddAuthentication().AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"], ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"], ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), ValidateLifetime = true };
