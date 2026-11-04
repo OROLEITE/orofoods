@@ -50,6 +50,22 @@ public class PostgreSqlConfigurationTests
     }
 
     [Fact]
+    public void Required_default_connection_rejects_an_unresolved_key_vault_reference()
+    {
+        const string unresolvedReference = "@Microsoft.KeyVault(SecretUri=https://kv-orofoods-prd-01.vault.azure.net/secrets/orofoods-prd-connection)";
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                [new KeyValuePair<string, string?>("ConnectionStrings:DefaultConnection", unresolvedReference)])
+            .Build();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => DatabaseConfiguration.GetRequiredDefaultConnectionString(configuration));
+
+        Assert.Contains("unresolved Azure Key Vault reference", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(unresolvedReference, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Production_startup_does_not_migrate_or_seed_roles_automatically()
     {
         var program = ReadProgram();
@@ -58,6 +74,7 @@ public class PostgreSqlConfigurationTests
         Assert.Contains("else if (!app.Environment.IsProduction())", startupDatabaseBlock);
         Assert.Contains("await db.Database.MigrateAsync();", startupDatabaseBlock);
         Assert.Contains("await SeedData.EnsureSellerRoleAsync(roleManager);", startupDatabaseBlock);
+        Assert.Contains("KeyVaultReferenceGuard.EnsureResolved(\"Jwt:Key\", jwtKey)", program);
     }
 
     [Fact]
