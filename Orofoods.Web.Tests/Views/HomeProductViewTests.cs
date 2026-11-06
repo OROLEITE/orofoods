@@ -25,7 +25,32 @@ public class HomeProductViewTests
         Assert.Contains("Criar minha conta", markup);
         Assert.DoesNotContain("Comprar produtos", markup);
         Assert.DoesNotContain("public-home-bimbo-banner-placeholder", markup);
-        Assert.DoesNotContain("BIMBO", markup);
+        var heroStart = markup.IndexOf("<section class=\"public-home-hero\"", StringComparison.Ordinal);
+        var featuredStart = markup.IndexOf("<section class=\"public-home-featured", StringComparison.Ordinal);
+        Assert.True(heroStart >= 0 && featuredStart > heroStart);
+        Assert.DoesNotContain("BIMBO", markup[heroStart..featuredStart]);
+    }
+
+    [Fact]
+    public void Home_and_public_catalog_cards_use_the_presented_name_and_keep_brand_above_it()
+    {
+        var home = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
+        var card = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
+        var catalog = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Products.cshtml"));
+
+        Assert.Contains("CatalogProductNamePresentation.DisplayName(product.Name)", home);
+        Assert.Contains("new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)", home);
+        Assert.Contains("[\"ProductDisplayName\"] =", home);
+        Assert.Contains("var displayName = ViewData[\"ProductDisplayName\"] as string ?? product.Name;", card);
+        Assert.Contains("<span class=\"quick-buy-brand\">@product.Brand</span>", card);
+        Assert.Contains("<h2>@displayName</h2>", card);
+        Assert.Contains("CatalogProductNamePresentation.DisplayName(product.Name)", catalog);
+        Assert.Contains("new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)", catalog);
+        Assert.Contains("[\"ProductDisplayName\"] =", catalog);
+        Assert.Contains("partial name=\"_PublicProductCard\" model=\"product\" view-data=\"catalogCardViewData\" />", catalog);
+        var brandIndex = card.IndexOf("<span class=\"quick-buy-brand\">@product.Brand</span>", StringComparison.Ordinal);
+        var nameIndex = card.IndexOf("<h2>@displayName</h2>", StringComparison.Ordinal);
+        Assert.True(brandIndex >= 0 && nameIndex > brandIndex);
     }
 
     [Fact]
