@@ -72,6 +72,42 @@ public class PortalControllerCatalogTests
     }
 
     [Fact]
+    public async Task Catalog_search_by_visible_name_keeps_original_name_and_bimbo_brand()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var customer = new Customer
+        {
+            LegalName = "Cliente Ltda", TradeName = "Cliente", Cnpj = "12.345.678/0001-99",
+            Status = CustomerStatus.Approved, IsActive = true
+        };
+        var category = new ProductCategory { Name = "Mercearia", Slug = "mercearia", IsActive = true };
+        var product = CreateProduct("SKU-BIMBO-001", "bImBo   Produto Alvo", category);
+        product.Brand = "BIMBO";
+        product.WmcCode = "WMC-TEST-001";
+        product.Ean = "7891234567890";
+        var user = new ApplicationUser
+        {
+            Id = "customer-user", UserName = "customer@orofoods.local", NormalizedUserName = "CUSTOMER@OROFOODS.LOCAL",
+            Email = "customer@orofoods.local", NormalizedEmail = "CUSTOMER@OROFOODS.LOCAL", Customer = customer, IsActive = true
+        };
+        db.AddRange(customer, category, product, user);
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 20 });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new TestSession());
+        var visibleNameResult = Assert.IsType<ViewResult>(await controller.Catalog("Produto Alvo", null, null, null));
+        var originalNameResult = Assert.IsType<ViewResult>(await controller.Catalog("bImBo   Produto Alvo", null, null, null));
+        var visibleNameMatch = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<Product>>(visibleNameResult.Model));
+        var originalNameMatch = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<Product>>(originalNameResult.Model));
+
+        Assert.Equal(product.Id, visibleNameMatch.Id);
+        Assert.Equal(product.Id, originalNameMatch.Id);
+        Assert.Equal("bImBo   Produto Alvo", visibleNameMatch.Name);
+        Assert.Equal("BIMBO", visibleNameMatch.Brand);
+    }
+
+    [Fact]
     public async Task Administrator_customer_selection_is_scoped_and_audited()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

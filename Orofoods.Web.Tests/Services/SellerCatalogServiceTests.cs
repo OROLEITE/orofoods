@@ -60,6 +60,47 @@ public class SellerCatalogServiceTests
     }
 
     [Fact]
+    public async Task Catalog_presents_name_without_prefix_while_selectable_product_keeps_original_name()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var representative = new SalesRepresentative { Name = "Vendedor", IsActive = true };
+        var seller = new ApplicationUser { Id = "seller", UserName = "seller", IsActive = true, SalesRepresentative = representative };
+        var customer = new Customer { LegalName = "Cliente", TradeName = "Cliente", Cnpj = "12.123.123/0001-12", Status = CustomerStatus.Approved, IsActive = true, SalesRepresentative = representative };
+        var product = Product("SKU-BIMBO-001", "bImBo   Produto Alvo", true);
+        product.Brand = "BIMBO";
+        product.WmcCode = "WMC-TEST-001";
+        product.Ean = "7891234567890";
+        product.Ean13 = "07891234567890";
+        product.Dun14 = "107891234567897";
+        product.Description = "Descri\u00e7\u00e3o original";
+        product.BasePrice = 29.95m;
+        db.AddRange(representative, seller, customer, product);
+        await db.SaveChangesAsync();
+        db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 7 });
+        await db.SaveChangesAsync();
+
+        var service = new SellerCatalogService(db, new SalesRepresentativeAccessService(db), new PriceService(db));
+        var catalog = Assert.IsType<SellerCatalogViewModel>(await service.GetCatalogAsync(
+            SellerPrincipal(seller.Id), customer.Id, "Produto Alvo"));
+        var catalogRow = Assert.Single(catalog.Products);
+        var selectableRow = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<SellerCatalogProductRow>>(
+            await service.GetSelectableProductsByIdsAsync(SellerPrincipal(seller.Id), customer.Id, [product.Id])));
+
+        Assert.Equal("Produto Alvo", catalogRow.Name);
+        Assert.Equal("BIMBO", catalogRow.Brand);
+        Assert.Equal("SKU-BIMBO-001", catalogRow.Sku);
+        Assert.Equal("WMC-TEST-001", catalogRow.WmcCode);
+        Assert.Equal("7891234567890", catalogRow.Ean);
+        Assert.Equal("07891234567890", catalogRow.Ean13);
+        Assert.Equal("107891234567897", catalogRow.Dun14);
+        Assert.Equal("Descri\u00e7\u00e3o original", catalogRow.Description);
+        Assert.Equal(29.95m, catalogRow.UnitPrice);
+        Assert.Equal(7, catalogRow.AvailableQuantity);
+        Assert.Equal("bImBo   Produto Alvo", selectableRow.Name);
+        Assert.Equal("bImBo   Produto Alvo", (await db.Products.SingleAsync(x => x.Id == product.Id)).Name);
+    }
+
+    [Fact]
     public async Task Catalog_rejects_a_customer_outside_the_sellers_portfolio()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

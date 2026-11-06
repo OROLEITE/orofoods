@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Orofoods.Web.Data;
+using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Services.Pricing;
 
@@ -99,6 +100,8 @@ public sealed class SellerCatalogService(
             TotalPages = !isPagedSearch ? (totalCount == 0 ? 0 : 1)
                 : totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize),
             Products = ToRows(products, prices, availableQuantities)
+                .Select(product => product with { Name = CatalogProductNamePresentation.DisplayName(product.Name) })
+                .ToArray()
         };
     }
 
