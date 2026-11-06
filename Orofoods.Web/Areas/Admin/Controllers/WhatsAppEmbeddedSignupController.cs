@@ -17,6 +17,9 @@ public sealed class WhatsAppEmbeddedSignupController(
     public IActionResult Connect()
     {
         var settings = options.Value;
+        if (!settings.EmbeddedSignupEnabled)
+            return NotFound();
+
         var message = TempData["WhatsAppEmbeddedSignupMessage"] as string;
         return View("~/Areas/Admin/Views/WhatsApp/EmbeddedSignup.cshtml", new WhatsAppEmbeddedSignupViewModel(
             settings.IsEmbeddedSignupReady,
@@ -33,6 +36,9 @@ public sealed class WhatsAppEmbeddedSignupController(
         [FromForm] WhatsAppEmbeddedSignupCompletionRequest request,
         CancellationToken cancellationToken)
     {
+        if (!options.Value.EmbeddedSignupEnabled)
+            return NotFound();
+
         if (request.EventType is null || request.EventType.Length > 100 ||
             request.AuthorizationCode is null || request.AuthorizationCode.Length > 4096 ||
             request.BusinessAccountId is null || request.BusinessAccountId.Length > 128)

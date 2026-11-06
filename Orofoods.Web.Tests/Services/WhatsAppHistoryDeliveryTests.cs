@@ -210,6 +210,7 @@ public sealed class WhatsAppHistoryDeliveryTests
     private static WhatsAppBusinessOptions ConnectedOptions() => new()
     {
         Enabled = true,
+        EmbeddedSignupEnabled = true,
         PhoneNumberId = "phone-test",
         BusinessAccountId = "waba-test",
         AppSecret = "local-test-secret"

@@ -10,15 +10,16 @@ public static class StartupEnvironmentPolicy
         !environment.IsProduction() &&
         !environment.IsStaging();
 
-    public static bool IsAzureDataProtectionReadyForWhatsApp(
+    public static bool IsAzureDataProtectionReadyForEmbeddedSignup(
         IHostEnvironment environment,
         bool whatsAppEnabled,
+        bool embeddedSignupEnabled,
         DataProtectionOptions settings)
     {
         ArgumentNullException.ThrowIfNull(environment);
         ArgumentNullException.ThrowIfNull(settings);
 
-        if (!environment.IsStaging() || !whatsAppEnabled)
+        if (!environment.IsStaging() || !whatsAppEnabled || !embeddedSignupEnabled)
             return true;
 
         return !string.IsNullOrWhiteSpace(settings.ApplicationName) &&

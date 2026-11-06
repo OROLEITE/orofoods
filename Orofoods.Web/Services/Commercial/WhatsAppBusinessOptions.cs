@@ -9,6 +9,7 @@ public sealed class WhatsAppBusinessOptions
     public string BusinessAccountId { get; set; } = "";
     public string AccessToken { get; set; } = "";
     public string AppSecret { get; set; } = "";
+    public bool EmbeddedSignupEnabled { get; set; }
     public string EmbeddedSignupAppId { get; set; } = "";
     public string EmbeddedSignupConfigId { get; set; } = "";
     public string EmbeddedSignupPhoneNumberId { get; set; } = "";
@@ -20,6 +21,7 @@ public sealed class WhatsAppBusinessOptions
 
     public bool IsEmbeddedSignupReady =>
         Enabled &&
+        EmbeddedSignupEnabled &&
         IsGraphApiVersionValid(GraphApiVersion) &&
         !string.IsNullOrWhiteSpace(EmbeddedSignupAppId) &&
         !string.IsNullOrWhiteSpace(EmbeddedSignupConfigId) &&

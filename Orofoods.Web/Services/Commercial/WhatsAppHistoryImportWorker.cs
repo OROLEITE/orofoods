@@ -11,7 +11,7 @@ public sealed class WhatsAppHistoryImportWorker(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (!options.Value.Enabled)
+            if (!options.Value.Enabled || !options.Value.EmbeddedSignupEnabled)
             {
                 await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
                 continue;

@@ -67,12 +67,13 @@ if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(applicatio
 {
     throw new InvalidOperationException("DataProtection:ApplicationName deve estar configurado fora de Development.");
 }
-if (!StartupEnvironmentPolicy.IsAzureDataProtectionReadyForWhatsApp(
+if (!StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
         builder.Environment,
         builder.Configuration.GetValue<bool>("WhatsAppBusiness:Enabled"),
+        builder.Configuration.GetValue<bool>("WhatsAppBusiness:EmbeddedSignupEnabled"),
         dataProtectionSettings))
 {
-    throw new InvalidOperationException("WhatsApp em Staging exige Data Protection persistente no Blob do Azure e protegida por chave do Key Vault.");
+    throw new InvalidOperationException("Embedded Signup em Staging exige Data Protection persistente no Blob do Azure e protegida por chave do Key Vault.");
 }
 
 var dataProtection = builder.Services.AddDataProtection()

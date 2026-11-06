@@ -2,6 +2,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Orofoods.Web.Configuration;
 using Orofoods.Web.Models.Configuration;
+using Orofoods.Web.Services.Commercial;
 
 namespace Orofoods.Web.Tests.Infrastructure;
 
@@ -19,7 +20,7 @@ public sealed class StartupEnvironmentPolicyTests
     }
 
     [Fact]
-    public void Staging_requires_azure_persistent_data_protection_only_when_whatsapp_is_enabled()
+    public void Staging_requires_azure_persistent_data_protection_only_when_embedded_signup_is_enabled()
     {
         var environment = new TestHostEnvironment("Staging");
         var missingAzureConfiguration = new DataProtectionOptions
@@ -38,9 +39,16 @@ public sealed class StartupEnvironmentPolicyTests
             }
         };
 
-        Assert.True(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForWhatsApp(environment, false, missingAzureConfiguration));
-        Assert.False(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForWhatsApp(environment, true, missingAzureConfiguration));
-        Assert.True(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForWhatsApp(environment, true, readyConfiguration));
+        var legacyCloudApiOptions = new WhatsAppBusinessOptions { Enabled = true };
+        Assert.False(legacyCloudApiOptions.EmbeddedSignupEnabled);
+        Assert.True(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
+            environment, legacyCloudApiOptions.Enabled, legacyCloudApiOptions.EmbeddedSignupEnabled, missingAzureConfiguration));
+        Assert.True(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
+            environment, whatsAppEnabled: false, embeddedSignupEnabled: true, settings: missingAzureConfiguration));
+        Assert.False(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
+            environment, true, true, missingAzureConfiguration));
+        Assert.True(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
+            environment, true, true, readyConfiguration));
     }
 
     [Theory]
@@ -60,8 +68,8 @@ public sealed class StartupEnvironmentPolicyTests
             }
         };
 
-        Assert.False(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForWhatsApp(
-            new TestHostEnvironment("Staging"), true, configuration));
+        Assert.False(StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
+            new TestHostEnvironment("Staging"), true, true, configuration));
     }
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment

@@ -57,7 +57,11 @@ public class WhatsAppBusinessTests
             ConnectedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-        var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions { AccessToken = "legacy-token" }));
+        var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions
+        {
+            EmbeddedSignupEnabled = true,
+            AccessToken = "legacy-token"
+        }));
 
         var token = await provider.GetAsync();
 
@@ -66,11 +70,63 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Legacy_cloud_api_options_take_precedence_over_a_persisted_connection_when_coexistence_is_not_opted_in()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
+        db.WhatsAppBusinessConnections.Add(new WhatsAppBusinessConnection
+        {
+            Id = WhatsAppBusinessConnection.SingletonId,
+            BusinessAccountId = "waba-connected",
+            PhoneNumberId = "coexistence-phone-id",
+            DisplayPhoneNumber = "+5548920077785",
+            ProtectedAccessToken = protector.Protect("coexistence-token")
+        });
+        await db.SaveChangesAsync();
+        var options = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            PhoneNumberId = "legacy-phone-id",
+            AccessToken = "legacy-access-token"
+        });
+        var tokenProvider = new WhatsAppAccessTokenProvider(db, protector, options);
+        var phoneProvider = new WhatsAppPhoneNumberIdProvider(db, options);
+
+        Assert.Equal("legacy-access-token", await tokenProvider.GetAsync());
+        Assert.Equal("legacy-phone-id", await phoneProvider.GetAsync());
+    }
+
+    [Fact]
+    public async Task Legacy_cloud_api_providers_do_not_query_coexistence_tables_when_the_feature_is_disabled()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+        await using var db = new ApplicationDbContext(dbOptions);
+        var settings = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            AccessToken = "legacy-access-token",
+            PhoneNumberId = "legacy-phone-id"
+        });
+        var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
+        var tokenProvider = new WhatsAppAccessTokenProvider(db, protector, settings);
+        var phoneProvider = new WhatsAppPhoneNumberIdProvider(db, settings);
+
+        Assert.Equal("legacy-access-token", await tokenProvider.GetAsync());
+        Assert.Equal("legacy-phone-id", await phoneProvider.GetAsync());
+    }
+
+    [Fact]
     public async Task WhatsApp_access_token_provider_uses_existing_configured_token_when_unconnected()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
-        var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions { AccessToken = "legacy-token" }));
+        var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions
+        {
+            EmbeddedSignupEnabled = true,
+            AccessToken = "legacy-token"
+        }));
 
         Assert.Equal("legacy-token", await provider.GetAsync());
     }
@@ -92,7 +148,7 @@ public class WhatsAppBusinessTests
         var provider = new WhatsAppAccessTokenProvider(
             db,
             new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()),
-            Options.Create(new WhatsAppBusinessOptions { AccessToken = "legacy-token" }));
+            Options.Create(new WhatsAppBusinessOptions { EmbeddedSignupEnabled = true, AccessToken = "legacy-token" }));
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetAsync());
 
@@ -283,6 +339,74 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Coexistence_history_is_ignored_by_the_legacy_webhook_path_when_not_opted_in()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = BuildCoexistenceWebhookJson("history", new
+        {
+            history = new[] { new { messages = new[] { new { id = "wamid.disabled-history", from = "5548999999999", type = "text", text = new { body = "Não importar" } } } } }
+        });
+        var options = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            PhoneNumberId = "phone-test",
+            BusinessAccountId = "waba-test",
+            AppSecret = "test-only-app-secret"
+        });
+        var controller = CreateWebhookController(db, options, body);
+        SignWebhookRequest(controller, body);
+
+        Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
+        Assert.Empty(await db.WhatsAppWebhookDeliveries.ToListAsync());
+        Assert.Empty(await db.WhatsAppMessages.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Legacy_webhook_acknowledges_non_message_events_without_coexistence_tables()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+        await using var db = new ApplicationDbContext(dbOptions);
+        var body = "{\"object\":\"whatsapp_business_account\",\"entry\":[{\"id\":\"waba-test\",\"changes\":[{\"field\":\"account_update\",\"value\":{}}]}]}";
+        var options = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            BusinessAccountId = "waba-test",
+            PhoneNumberId = "phone-test",
+            AppSecret = "test-only-app-secret"
+        });
+        var controller = CreateWebhookController(db, options, body);
+        SignWebhookRequest(controller, body);
+
+        Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Coexistence_echo_uses_the_legacy_inbound_interpretation_when_not_opted_in()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = BuildCoexistenceWebhookJson("smb_message_echoes", new
+        {
+            messages = new[] { new { id = "wamid.echo.legacy", from = "5548920077785", to = "5548999999999", type = "text", text = new { body = "Eco ignorado como recurso novo" } } }
+        });
+        var options = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            PhoneNumberId = "phone-test",
+            BusinessAccountId = "waba-test",
+            AppSecret = "test-only-app-secret"
+        });
+        var controller = CreateWebhookController(db, options, body);
+        SignWebhookRequest(controller, body);
+
+        Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
+        var message = await db.WhatsAppMessages.AsNoTracking().SingleAsync();
+        Assert.Equal(WhatsAppMessageDirection.Inbound, message.Direction);
+        Assert.Equal("5548920077785", (await db.WhatsAppConversations.AsNoTracking().SingleAsync()).PhoneNumber);
+    }
+
+    [Fact]
     public async Task History_event_imports_message_using_customer_phone_and_message_id_deduplication()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -355,6 +479,7 @@ public class WhatsAppBusinessTests
         var controller = CreateWebhookController(db, Options.Create(new WhatsAppBusinessOptions
         {
             Enabled = true,
+            EmbeddedSignupEnabled = true,
             PhoneNumberId = "phone-test",
             AppSecret = "test-only-app-secret"
         }), body);
@@ -914,6 +1039,7 @@ public class WhatsAppBusinessTests
     private static WhatsAppBusinessOptions TestWebhookOptions() => new()
     {
         Enabled = true,
+        EmbeddedSignupEnabled = true,
         PhoneNumberId = "phone-test",
         BusinessAccountId = "waba-test",
         AppSecret = "test-only-app-secret",

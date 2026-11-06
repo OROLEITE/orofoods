@@ -62,10 +62,14 @@ public sealed class WhatsAppConversationService(
     }
 
     public Task<bool> IsHistoryDeliveryAsync(JsonDocument document, CancellationToken cancellationToken = default) =>
-        ContainsFieldAsync(document, "history", cancellationToken);
+        options.Value.EmbeddedSignupEnabled
+            ? ContainsFieldAsync(document, "history", cancellationToken)
+            : Task.FromResult(false);
 
     public Task<bool> IsDisabledStateSyncDeliveryAsync(JsonDocument document, CancellationToken cancellationToken = default) =>
-        ContainsFieldAsync(document, "smb_app_state_sync", cancellationToken);
+        options.Value.EmbeddedSignupEnabled
+            ? ContainsFieldAsync(document, "smb_app_state_sync", cancellationToken)
+            : Task.FromResult(false);
 
     public void LogDisabledStateSync() =>
         logger?.LogWarning(MetaStateSyncDisabledEvent, "WhatsApp smb_app_state_sync processing is disabled because the official Meta payload reference could not be retrieved (HTTP 429). The signed event was encrypted and deferred; no contact state was changed.");
@@ -111,6 +115,9 @@ public sealed class WhatsAppConversationService(
 
     private async Task<(string? BusinessAccountId, string? PhoneNumberId, string? DisplayPhoneNumber)> GetExpectedWebhookSourceAsync(CancellationToken cancellationToken)
     {
+        if (!options.Value.EmbeddedSignupEnabled)
+            return (options.Value.BusinessAccountId, options.Value.PhoneNumberId, null);
+
         var connection = await db.WhatsAppBusinessConnections.AsNoTracking()
             .Where(x => x.Id == WhatsAppBusinessConnection.SingletonId)
             .Select(x => new { x.BusinessAccountId, x.PhoneNumberId, x.DisplayPhoneNumber })
@@ -153,14 +160,14 @@ public sealed class WhatsAppConversationService(
                 var hasMessages = value.TryGetProperty("messages", out var messageNodes);
                 var hasStatuses = value.TryGetProperty("statuses", out var statusNodes);
                 var field = ReadOptionalString(change, "field");
-                if (field == "smb_app_state_sync")
+                if (options.Value.EmbeddedSignupEnabled && field == "smb_app_state_sync")
                 {
                     ValidateSource(entryId, value, configuredBusinessAccountId, configuredPhoneNumberId);
                     if (!SmbAppStateSyncProcessingEnabled)
                         LogDisabledStateSync();
                     continue;
                 }
-                if (field == "history")
+                if (options.Value.EmbeddedSignupEnabled && field == "history")
                 {
                     ValidateSource(entryId, value, configuredBusinessAccountId, configuredPhoneNumberId);
                     if (!value.TryGetProperty("history", out var history) || history.ValueKind != JsonValueKind.Array)
@@ -185,7 +192,7 @@ public sealed class WhatsAppConversationService(
                     if (messageNodes.ValueKind != JsonValueKind.Array)
                         throw new WhatsAppWebhookPayloadException();
                     foreach (var node in messageNodes.EnumerateArray())
-                        messages.Add(ParseMessage(node, isEcho: field == "smb_message_echoes"));
+                        messages.Add(ParseMessage(node, isEcho: options.Value.EmbeddedSignupEnabled && field == "smb_message_echoes"));
                 }
 
                 if (hasStatuses)

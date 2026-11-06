@@ -1,5 +1,6 @@
 @using Orofoods.Web.Models.Commercial
 @using Orofoods.Web.Models.Identity
+@inject Microsoft.Extensions.Options.IOptions<Orofoods.Web.Services.Commercial.WhatsAppBusinessOptions> WhatsAppOptions
 @model Orofoods.Web.Areas.Admin.Controllers.WhatsAppInboxViewModel
 @{
     ViewData["Title"] = "WhatsApp";
@@ -53,7 +54,7 @@
                 <p>Atendimento das conversas recebidas.</p>
             </div>
             <div class="whatsapp-header-actions">
-                @if (User.IsInRole(ApplicationRoles.Administrator))
+                @if (User.IsInRole(ApplicationRoles.Administrator) && WhatsAppOptions.Value.EmbeddedSignupEnabled)
                 {
                     <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="WhatsAppEmbeddedSignup" asp-action="Connect">Conectar número</a>
                 }

@@ -14,11 +14,56 @@ namespace Orofoods.Web.Tests.Services;
 public class WhatsAppEmbeddedSignupTests
 {
     [Fact]
+    public void Embedded_signup_is_not_ready_when_only_the_existing_cloud_api_switch_is_enabled()
+    {
+        var options = new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            GraphApiVersion = "v23.0",
+            EmbeddedSignupAppId = "public-app-id",
+            EmbeddedSignupConfigId = "public-config-id",
+            EmbeddedSignupPhoneNumberId = "phone-id",
+            EmbeddedSignupDisplayPhoneNumber = "+5548920077785",
+            AppSecret = "test-app-secret",
+            VerifyToken = "test-verify-token"
+        };
+
+        Assert.True(options.Enabled);
+        Assert.False(options.IsEmbeddedSignupReady);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_admin_routes_are_not_found_when_its_flag_is_disabled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var meta = new FakeMetaSignupClient();
+        var options = Options.Create(new WhatsAppBusinessOptions { Enabled = true });
+        var service = new WhatsAppBusinessConnectionService(
+            db,
+            meta,
+            new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()),
+            options);
+        var controller = new Orofoods.Web.Areas.Admin.Controllers.WhatsAppEmbeddedSignupController(service, options);
+
+        Assert.IsType<Microsoft.AspNetCore.Mvc.NotFoundResult>(controller.Connect());
+        Assert.IsType<Microsoft.AspNetCore.Mvc.NotFoundResult>(await controller.Complete(
+            new Orofoods.Web.Areas.Admin.Models.WhatsAppEmbeddedSignupCompletionRequest
+            {
+                EventType = WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding,
+                AuthorizationCode = "one-time-code",
+                BusinessAccountId = "123456789"
+            },
+            CancellationToken.None));
+        Assert.Equal(0, meta.ExchangeCount);
+    }
+
+    [Fact]
     public void Embedded_signup_readiness_requires_all_runtime_and_webhook_configuration()
     {
         var mutations = new Action<WhatsAppBusinessOptions>[]
         {
             options => options.Enabled = false,
+            options => options.EmbeddedSignupEnabled = false,
             options => options.GraphApiVersion = "",
             options => options.EmbeddedSignupAppId = "",
             options => options.EmbeddedSignupConfigId = "",
@@ -58,10 +103,35 @@ public class WhatsAppEmbeddedSignupTests
     }
 
     [Fact]
+    public async Task Embedded_signup_completion_is_blocked_when_its_independent_flag_is_disabled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var meta = new FakeMetaSignupClient();
+        var settings = ConfiguredOptions();
+        settings.EmbeddedSignupEnabled = false;
+        var service = new WhatsAppBusinessConnectionService(
+            db,
+            meta,
+            new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()),
+            Options.Create(settings));
+
+        await Assert.ThrowsAsync<WhatsAppEmbeddedSignupValidationException>(() =>
+            service.CompleteAsync(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, "code", "123456789"));
+
+        Assert.Equal(0, meta.ExchangeCount);
+        Assert.Empty(db.WhatsAppBusinessConnections);
+    }
+
+    [Fact]
     public async Task Connected_phone_number_overrides_runtime_while_legacy_phone_number_is_preserved_as_fallback()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var settings = Options.Create(new WhatsAppBusinessOptions { PhoneNumberId = "legacy-phone-number" });
+        var settings = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            EmbeddedSignupEnabled = true,
+            PhoneNumberId = "legacy-phone-number"
+        });
         var provider = new WhatsAppPhoneNumberIdProvider(db, settings);
 
         Assert.Equal("legacy-phone-number", await provider.GetAsync());
@@ -245,6 +315,7 @@ public class WhatsAppEmbeddedSignupTests
     private static WhatsAppBusinessOptions ConfiguredOptions() => new()
     {
         Enabled = true,
+        EmbeddedSignupEnabled = true,
         GraphApiVersion = "v23.0",
         PhoneNumberId = "legacy-phone-id",
         EmbeddedSignupPhoneNumberId = "1392450397288350",
