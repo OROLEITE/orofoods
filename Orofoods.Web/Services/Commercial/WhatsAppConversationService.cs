@@ -22,6 +22,8 @@ public sealed class WhatsAppConversationService(
     private static readonly SemaphoreSlim[] MessageProcessingLocks =
         Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
     private static readonly EventId MetaDeliveryFailureEvent = new(4301, "WhatsApp.MetaDeliveryFailure");
+    private static readonly EventId MetaStateSyncDisabledEvent = new(4302, "WhatsApp.MetaStateSyncDisabled");
+    private const bool SmbAppStateSyncProcessingEnabled = false;
 
     public bool Enabled => options.Value.Enabled;
 
@@ -37,7 +39,8 @@ public sealed class WhatsAppConversationService(
 
     public async Task ProcessAsync(JsonDocument document, CancellationToken cancellationToken = default)
     {
-        var batch = ValidateAndReadEvents(document.RootElement);
+        var source = await GetExpectedWebhookSourceAsync(cancellationToken);
+        var batch = ValidateAndReadEvents(document.RootElement, source.BusinessAccountId, source.PhoneNumberId, source.DisplayPhoneNumber);
 
         foreach (var message in batch.Messages)
         {
@@ -58,7 +61,67 @@ public sealed class WhatsAppConversationService(
             await ProcessStatusAsync(status, cancellationToken);
     }
 
-    private WebhookBatch ValidateAndReadEvents(JsonElement root)
+    public Task<bool> IsHistoryDeliveryAsync(JsonDocument document, CancellationToken cancellationToken = default) =>
+        ContainsFieldAsync(document, "history", cancellationToken);
+
+    public Task<bool> IsDisabledStateSyncDeliveryAsync(JsonDocument document, CancellationToken cancellationToken = default) =>
+        ContainsFieldAsync(document, "smb_app_state_sync", cancellationToken);
+
+    public void LogDisabledStateSync() =>
+        logger?.LogWarning(MetaStateSyncDisabledEvent, "WhatsApp smb_app_state_sync processing is disabled because the official Meta payload reference could not be retrieved (HTTP 429). The signed event was encrypted and deferred; no contact state was changed.");
+
+    private async Task<bool> ContainsFieldAsync(JsonDocument document, string targetField, CancellationToken cancellationToken)
+    {
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+            throw new WhatsAppWebhookPayloadException();
+        if (root.TryGetProperty("object", out var objectNode) &&
+            (objectNode.ValueKind != JsonValueKind.String || objectNode.GetString() != "whatsapp_business_account"))
+            return false;
+        if (!root.TryGetProperty("entry", out var entries) || entries.ValueKind != JsonValueKind.Array)
+            throw new WhatsAppWebhookPayloadException();
+
+        string? configuredBusinessAccountId = null;
+        string? configuredPhoneNumberId = null;
+        var sourceLoaded = false;
+        var containsField = false;
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.Object || !entry.TryGetProperty("changes", out var changes) || changes.ValueKind != JsonValueKind.Array)
+                throw new WhatsAppWebhookPayloadException();
+            var entryId = ReadOptionalString(entry, "id");
+            foreach (var change in changes.EnumerateArray())
+            {
+                if (change.ValueKind != JsonValueKind.Object || !change.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Object)
+                    throw new WhatsAppWebhookPayloadException();
+                if (ReadOptionalString(change, "field") != targetField) continue;
+                if (!sourceLoaded)
+                {
+                    var source = await GetExpectedWebhookSourceAsync(cancellationToken);
+                    configuredBusinessAccountId = source.BusinessAccountId;
+                    configuredPhoneNumberId = source.PhoneNumberId;
+                    sourceLoaded = true;
+                }
+                ValidateSource(entryId, value, configuredBusinessAccountId, configuredPhoneNumberId);
+                containsField = true;
+            }
+        }
+        return containsField;
+    }
+
+    private async Task<(string? BusinessAccountId, string? PhoneNumberId, string? DisplayPhoneNumber)> GetExpectedWebhookSourceAsync(CancellationToken cancellationToken)
+    {
+        var connection = await db.WhatsAppBusinessConnections.AsNoTracking()
+            .Where(x => x.Id == WhatsAppBusinessConnection.SingletonId)
+            .Select(x => new { x.BusinessAccountId, x.PhoneNumberId, x.DisplayPhoneNumber })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return connection is null
+            ? (options.Value.BusinessAccountId, options.Value.PhoneNumberId, options.Value.EmbeddedSignupDisplayPhoneNumber)
+            : (connection.BusinessAccountId, connection.PhoneNumberId, connection.DisplayPhoneNumber);
+    }
+
+    private WebhookBatch ValidateAndReadEvents(JsonElement root, string? configuredBusinessAccountId, string? configuredPhoneNumberId, string? businessDisplayPhoneNumber)
     {
         if (root.ValueKind != JsonValueKind.Object)
             throw new WhatsAppWebhookPayloadException();
@@ -89,16 +152,40 @@ public sealed class WhatsAppConversationService(
 
                 var hasMessages = value.TryGetProperty("messages", out var messageNodes);
                 var hasStatuses = value.TryGetProperty("statuses", out var statusNodes);
+                var field = ReadOptionalString(change, "field");
+                if (field == "smb_app_state_sync")
+                {
+                    ValidateSource(entryId, value, configuredBusinessAccountId, configuredPhoneNumberId);
+                    if (!SmbAppStateSyncProcessingEnabled)
+                        LogDisabledStateSync();
+                    continue;
+                }
+                if (field == "history")
+                {
+                    ValidateSource(entryId, value, configuredBusinessAccountId, configuredPhoneNumberId);
+                    if (!value.TryGetProperty("history", out var history) || history.ValueKind != JsonValueKind.Array)
+                        throw new WhatsAppWebhookPayloadException();
+                    foreach (var historyBatch in history.EnumerateArray())
+                    {
+                        if (historyBatch.ValueKind != JsonValueKind.Object ||
+                            !historyBatch.TryGetProperty("messages", out var historyMessages) ||
+                            historyMessages.ValueKind != JsonValueKind.Array)
+                            throw new WhatsAppWebhookPayloadException();
+                        foreach (var node in historyMessages.EnumerateArray())
+                            messages.Add(ParseMessage(node, isHistory: true, businessDisplayPhoneNumber: businessDisplayPhoneNumber));
+                    }
+                    continue;
+                }
                 if (!hasMessages && !hasStatuses) continue;
 
-                ValidateSource(entryId, value);
+                ValidateSource(entryId, value, configuredBusinessAccountId, configuredPhoneNumberId);
 
                 if (hasMessages)
                 {
                     if (messageNodes.ValueKind != JsonValueKind.Array)
                         throw new WhatsAppWebhookPayloadException();
                     foreach (var node in messageNodes.EnumerateArray())
-                        messages.Add(ParseMessage(node));
+                        messages.Add(ParseMessage(node, isEcho: field == "smb_message_echoes"));
                 }
 
                 if (hasStatuses)
@@ -117,9 +204,8 @@ public sealed class WhatsAppConversationService(
         return new WebhookBatch(messages, statuses);
     }
 
-    private void ValidateSource(string? entryId, JsonElement value)
+    private static void ValidateSource(string? entryId, JsonElement value, string? configuredBusinessAccountId, string? configuredPhoneNumberId)
     {
-        var configuredPhoneNumberId = options.Value.PhoneNumberId;
         if (!string.IsNullOrWhiteSpace(configuredPhoneNumberId))
         {
             var metadataPhoneNumberId = value.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object
@@ -129,19 +215,24 @@ public sealed class WhatsAppConversationService(
                 throw new WhatsAppWebhookSourceMismatchException();
         }
 
-        var configuredBusinessAccountId = options.Value.BusinessAccountId;
         if (!string.IsNullOrWhiteSpace(configuredBusinessAccountId) &&
             !string.Equals(entryId, configuredBusinessAccountId, StringComparison.Ordinal))
             throw new WhatsAppWebhookSourceMismatchException();
     }
 
-    private static InboundMessage ParseMessage(JsonElement message)
+    private InboundMessage ParseMessage(JsonElement message, bool isEcho = false, bool isHistory = false, string? businessDisplayPhoneNumber = null)
     {
         if (message.ValueKind != JsonValueKind.Object)
             throw new WhatsAppWebhookPayloadException();
 
         var id = ReadRequiredString(message, "id");
-        var from = ReadRequiredString(message, "from");
+        var from = ReadOptionalString(message, "from");
+        var to = ReadOptionalString(message, "to");
+        if (string.IsNullOrWhiteSpace(from)) throw new WhatsAppWebhookPayloadException();
+        var businessNumber = TryNormalizePhone(businessDisplayPhoneNumber ?? options.Value.EmbeddedSignupDisplayPhoneNumber);
+        var isOutbound = isEcho || (isHistory && to is not null && TryNormalizePhone(from) == businessNumber);
+        var peer = isOutbound ? to : from;
+        if (string.IsNullOrWhiteSpace(peer)) throw new WhatsAppWebhookPayloadException();
         var type = ReadRequiredString(message, "type");
         string? text = null;
         InboundMedia? media = null;
@@ -166,7 +257,17 @@ public sealed class WhatsAppConversationService(
             media = new InboundMedia(mediaId, mimeType, fileName, caption, isVoice);
         }
 
-        return new InboundMessage(id, from, type, text, media);
+        DateTime occurredAt = DateTime.UtcNow;
+        if (message.TryGetProperty("timestamp", out var timestampNode) && timestampNode.ValueKind == JsonValueKind.String &&
+            long.TryParse(timestampNode.GetString(), out var seconds))
+        {
+            try { occurredAt = DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime; }
+            catch (ArgumentOutOfRangeException) { throw new WhatsAppWebhookPayloadException(); }
+        }
+
+        return new InboundMessage(id, peer, type, text, media,
+            isOutbound ? WhatsAppMessageDirection.Outbound : WhatsAppMessageDirection.Inbound,
+            occurredAt, isHistory);
     }
 
     private static InboundStatus? ParseStatus(JsonElement status)
@@ -311,21 +412,30 @@ public sealed class WhatsAppConversationService(
                     CustomerId = customer?.Id,
                     AssignedUserId = customer?.InternalSalesUserId,
                     Status = WhatsAppConversationStatus.Pending,
-                    LastMessageAt = DateTime.UtcNow,
-                    LastInboundAt = DateTime.UtcNow,
-                    UnreadCount = 1
+                    LastMessageAt = message.OccurredAt,
+                    LastInboundAt = message.Direction == WhatsAppMessageDirection.Inbound ? message.OccurredAt : null,
+                    LastOutboundAt = message.Direction == WhatsAppMessageDirection.Outbound ? message.OccurredAt : null,
+                    UnreadCount = message.Direction == WhatsAppMessageDirection.Inbound && !message.IsHistory ? 1 : 0
                 };
                 db.WhatsAppConversations.Add(conversation);
             }
             else
             {
-                if (conversation.Status == WhatsAppConversationStatus.Closed)
+                if (conversation.Status == WhatsAppConversationStatus.Closed &&
+                    message.Direction == WhatsAppMessageDirection.Inbound && !message.IsHistory)
                     conversation.Status = WhatsAppConversationStatus.Pending;
                 conversation.CustomerId ??= customer?.Id;
                 conversation.AssignedUserId ??= customer?.InternalSalesUserId;
-                conversation.LastMessageAt = DateTime.UtcNow;
-                conversation.LastInboundAt = DateTime.UtcNow;
-                conversation.UnreadCount++;
+                if (conversation.LastMessageAt is null || conversation.LastMessageAt < message.OccurredAt)
+                    conversation.LastMessageAt = message.OccurredAt;
+                if (message.Direction == WhatsAppMessageDirection.Inbound)
+                {
+                    if (conversation.LastInboundAt is null || conversation.LastInboundAt < message.OccurredAt)
+                        conversation.LastInboundAt = message.OccurredAt;
+                    if (!message.IsHistory) conversation.UnreadCount++;
+                }
+                else if (conversation.LastOutboundAt is null || conversation.LastOutboundAt < message.OccurredAt)
+                    conversation.LastOutboundAt = message.OccurredAt;
             }
 
             var messageType = Enum.TryParse<WhatsAppMessageType>(message.Type, true, out var parsed)
@@ -340,7 +450,7 @@ public sealed class WhatsAppConversationService(
             {
                 Conversation = conversation,
                 ExternalMessageId = message.ExternalId,
-                Direction = WhatsAppMessageDirection.Inbound,
+                Direction = message.Direction,
                 Type = messageType,
                 TextBody = messageType == WhatsAppMessageType.Text ? message.Text : "Tipo de mensagem ainda não suportado.",
                 MediaId = message.Media?.MediaId,
@@ -350,7 +460,8 @@ public sealed class WhatsAppConversationService(
                 IsVoiceMessage = message.Media?.IsVoice ?? false,
                 MediaState = mediaState,
                 Status = WhatsAppMessageStatus.Sent,
-                CreatedAt = DateTime.UtcNow
+                SentAt = message.Direction == WhatsAppMessageDirection.Outbound ? message.OccurredAt : null,
+                CreatedAt = message.OccurredAt
             };
             if (message.Media is not null)
                 persistedMessage.TextBody = mediaState == WhatsAppMediaState.Rejected
@@ -359,7 +470,7 @@ public sealed class WhatsAppConversationService(
             db.WhatsAppMessages.Add(persistedMessage);
             await db.SaveChangesAsync(cancellationToken);
 
-            if (conversation.AssignedUserId is not null)
+            if (message.Direction == WhatsAppMessageDirection.Inbound && !message.IsHistory && conversation.AssignedUserId is not null)
                 await notifications.CreateOnceAsync(new UserNotification
                 {
                     UserId = conversation.AssignedUserId,
@@ -518,7 +629,8 @@ public sealed class WhatsAppConversationService(
     private static string ExtractAsciiDigits(string value) => new(value.Where(char.IsAsciiDigit).ToArray());
 
     private sealed record CustomerPhoneCandidate(int Id, string WhatsApp, string Phone, string? InternalSalesUserId);
-    private sealed record InboundMessage(string ExternalId, string From, string Type, string? Text, InboundMedia? Media);
+    private sealed record InboundMessage(string ExternalId, string From, string Type, string? Text, InboundMedia? Media,
+        WhatsAppMessageDirection Direction, DateTime OccurredAt, bool IsHistory);
     private sealed record InboundMedia(string MediaId, string MimeType, string? FileName, string? Caption, bool IsVoice);
     private sealed record InboundStatus(string ExternalId, WhatsAppMessageStatus Status, DateTime OccurredAt, string? ErrorCode, string? ErrorMessage);
     private sealed record InboundFailure(string? Code, string? Message);

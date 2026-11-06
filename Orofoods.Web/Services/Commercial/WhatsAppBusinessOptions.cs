@@ -9,10 +9,28 @@ public sealed class WhatsAppBusinessOptions
     public string BusinessAccountId { get; set; } = "";
     public string AccessToken { get; set; } = "";
     public string AppSecret { get; set; } = "";
+    public string EmbeddedSignupAppId { get; set; } = "";
+    public string EmbeddedSignupConfigId { get; set; } = "";
+    public string EmbeddedSignupPhoneNumberId { get; set; } = "";
+    public string EmbeddedSignupDisplayPhoneNumber { get; set; } = "";
     public string VerifyToken { get; set; } = "";
     public string WebhookPath { get; set; } = "/api/webhooks/whatsapp";
     public int RequestTimeoutSeconds { get; set; } = 15;
     public long MaxInboundMediaBytes { get; set; } = 25 * 1024 * 1024;
+
+    public bool IsEmbeddedSignupReady =>
+        Enabled &&
+        IsGraphApiVersionValid(GraphApiVersion) &&
+        !string.IsNullOrWhiteSpace(EmbeddedSignupAppId) &&
+        !string.IsNullOrWhiteSpace(EmbeddedSignupConfigId) &&
+        !string.IsNullOrWhiteSpace(AppSecret) &&
+        !string.IsNullOrWhiteSpace(VerifyToken) &&
+        !string.IsNullOrWhiteSpace(EmbeddedSignupPhoneNumberId) &&
+        !string.IsNullOrWhiteSpace(EmbeddedSignupDisplayPhoneNumber);
+
+    private static bool IsGraphApiVersionValid(string value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.All(character => char.IsAsciiLetterOrDigit(character) || character == '.');
 }
 
 public interface IWhatsAppBusinessGateway

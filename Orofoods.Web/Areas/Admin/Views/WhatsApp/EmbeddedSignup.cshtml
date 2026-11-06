@@ -1,0 +1,35 @@
+@model Orofoods.Web.Areas.Admin.Models.WhatsAppEmbeddedSignupViewModel
+@{
+    ViewData["Title"] = "Conectar WhatsApp Business";
+}
+
+<section class="section">
+    <div class="container">
+        <p><a asp-area="Admin" asp-controller="WhatsApp" asp-action="Index">Voltar ao CRM WhatsApp</a></p>
+        <h1>Conectar WhatsApp Business</h1>
+        <p>O número @Model.DisplayPhoneNumber será conectado ao CRM mantendo o WhatsApp Business do celular.</p>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Message))
+        {
+            <div class="alert alert-info" role="status">@Model.Message</div>
+        }
+
+        @if (!Model.IsReady)
+        {
+            <div class="alert alert-warning" role="status">O Embedded Signup ainda não está habilitado neste ambiente. Configure os valores de runtime da aplicação Meta para iniciar.</div>
+        }
+        else
+        {
+            <form id="whatsappEmbeddedSignupForm" asp-area="Admin" asp-controller="WhatsAppEmbeddedSignup" asp-action="Complete" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="EventType" id="whatsappSignupEventType" />
+                <input type="hidden" name="AuthorizationCode" id="whatsappSignupCode" />
+                <input type="hidden" name="BusinessAccountId" id="whatsappSignupWabaId" />
+                <button type="button" id="whatsappEmbeddedSignupStart" class="btn btn-primary">Conectar com a Meta</button>
+            </form>
+            <p id="whatsappEmbeddedSignupStatus" role="status" aria-live="polite"></p>
+            <script id="whatsappEmbeddedSignupConfig" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { appId = Model.AppId, configurationId = Model.ConfigurationId, graphApiVersion = Model.GraphApiVersion }))</script>
+            <script src="~/js/whatsapp-embedded-signup.js" asp-append-version="true" defer></script>
+        }
+    </div>
+</section>

@@ -63,6 +63,15 @@ public sealed class ApplicationSecurityConfigurationTests
         Assert.DoesNotContain("new ClientSecretCredential", source);
         Assert.Contains("PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)", source);
         Assert.Contains("ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential)", source);
+        Assert.Contains("StartupEnvironmentPolicy.IsAzureDataProtectionReadyForWhatsApp", source);
+    }
+
+    [Fact]
+    public void Startup_uses_the_staging_migration_policy()
+    {
+        var source = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Program.cs"));
+
+        Assert.Contains("StartupEnvironmentPolicy.ShouldApplyMigrations(app.Environment)", source);
     }
 
     [Fact]

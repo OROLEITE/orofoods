@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Data.Sqlite;
@@ -29,6 +30,76 @@ namespace Orofoods.Web.Tests.Services;
 
 public class WhatsAppBusinessTests
 {
+    [Fact]
+    public void WhatsApp_access_token_protector_round_trips_without_persisting_plaintext()
+    {
+        const string accessToken = "coexistence-access-token-test-value";
+        var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
+
+        var protectedToken = protector.Protect(accessToken);
+
+        Assert.NotEqual(accessToken, protectedToken);
+        Assert.Equal(accessToken, protector.Unprotect(protectedToken));
+    }
+
+    [Fact]
+    public async Task WhatsApp_access_token_provider_prefers_decrypted_connected_account_token()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
+        db.WhatsAppBusinessConnections.Add(new WhatsAppBusinessConnection
+        {
+            Id = 1,
+            BusinessAccountId = "waba-test",
+            PhoneNumberId = "phone-test",
+            DisplayPhoneNumber = "+5548920077785",
+            ProtectedAccessToken = protector.Protect("connected-token-private"),
+            ConnectedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions { AccessToken = "legacy-token" }));
+
+        var token = await provider.GetAsync();
+
+        Assert.Equal("connected-token-private", token);
+        Assert.DoesNotContain("connected-token-private", db.ChangeTracker.Entries<WhatsAppBusinessConnection>().Single().Entity.ProtectedAccessToken);
+    }
+
+    [Fact]
+    public async Task WhatsApp_access_token_provider_uses_existing_configured_token_when_unconnected()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
+        var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions { AccessToken = "legacy-token" }));
+
+        Assert.Equal("legacy-token", await provider.GetAsync());
+    }
+
+    [Fact]
+    public async Task WhatsApp_access_token_provider_fails_closed_for_unreadable_connected_token()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.WhatsAppBusinessConnections.Add(new WhatsAppBusinessConnection
+        {
+            Id = 1,
+            BusinessAccountId = "waba-test",
+            PhoneNumberId = "phone-test",
+            DisplayPhoneNumber = "+5548920077785",
+            ProtectedAccessToken = "not-a-valid-protected-token",
+            ConnectedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var provider = new WhatsAppAccessTokenProvider(
+            db,
+            new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()),
+            Options.Create(new WhatsAppBusinessOptions { AccessToken = "legacy-token" }));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetAsync());
+
+        Assert.DoesNotContain("not-a-valid-protected-token", exception.Message);
+        Assert.DoesNotContain("legacy-token", exception.Message);
+    }
+
     [Fact]
     public async Task Webhook_get_verification_returns_challenge_for_matching_token()
     {
@@ -103,6 +174,7 @@ public class WhatsAppBusinessTests
         Assert.IsType<UnauthorizedResult>(result);
         Assert.Empty(db.WhatsAppConversations);
         Assert.Empty(db.WhatsAppMessages);
+        Assert.Empty(db.WhatsAppWebhookDeliveries);
     }
 
     [Fact]
@@ -123,6 +195,7 @@ public class WhatsAppBusinessTests
 
         Assert.Empty(db.WhatsAppConversations);
         Assert.Empty(db.WhatsAppMessages);
+        Assert.Empty(db.WhatsAppWebhookDeliveries);
     }
 
     [Fact]
@@ -143,6 +216,7 @@ public class WhatsAppBusinessTests
 
         Assert.Empty(db.WhatsAppConversations);
         Assert.Empty(db.WhatsAppMessages);
+        Assert.Empty(db.WhatsAppWebhookDeliveries);
     }
 
     [Fact]
@@ -182,6 +256,112 @@ public class WhatsAppBusinessTests
         Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
         Assert.Empty(db.WhatsAppConversations);
         Assert.Empty(db.WhatsAppMessages);
+    }
+
+    [Fact]
+    public async Task Smb_message_echo_is_saved_as_outbound_in_the_recipient_conversation_and_deduplicated()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = BuildCoexistenceWebhookJson("smb_message_echoes", new
+        {
+            messages = new[] { new { id = "wamid.echo.1", from = "5548920077785", to = "5548999999999", timestamp = "1730000000", type = "text", text = new { body = "Resposta pelo celular" } } }
+        });
+
+        foreach (var _ in Enumerable.Range(0, 2))
+        {
+            var controller = CreateWebhookController(db, Options.Create(TestWebhookOptions()), body);
+            SignWebhookRequest(controller, body);
+            Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
+        }
+
+        var conversation = Assert.Single(await db.WhatsAppConversations.AsNoTracking().ToListAsync());
+        var message = Assert.Single(await db.WhatsAppMessages.AsNoTracking().ToListAsync());
+        Assert.Equal("5548999999999", conversation.PhoneNumber);
+        Assert.Equal(WhatsAppMessageDirection.Outbound, message.Direction);
+        Assert.Equal("Resposta pelo celular", message.TextBody);
+        Assert.Equal(0, conversation.UnreadCount);
+    }
+
+    [Fact]
+    public async Task History_event_imports_message_using_customer_phone_and_message_id_deduplication()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = BuildCoexistenceWebhookJson("history", new
+        {
+            history = new[] { new { messages = new[] { new { id = "wamid.history.1", from = "5548999999999", timestamp = "1730000000", type = "text", text = new { body = "Histórico sincronizado" } } } } }
+        });
+
+        var protection = new EphemeralDataProtectionProvider();
+        var options = Options.Create(TestWebhookOptions());
+        var service = new WhatsAppConversationService(db, options, new UserNotificationService(db));
+        var queue = new WhatsAppWebhookDeliveryQueue(db, protection);
+        var controller = CreateWebhookController(service, options, queue, body);
+        SignWebhookRequest(controller, body);
+        Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
+        var replay = CreateWebhookController(service, options, queue, body);
+        SignWebhookRequest(replay, body);
+        Assert.IsType<OkResult>(await replay.Receive(CancellationToken.None));
+        Assert.Single(await db.WhatsAppWebhookDeliveries.ToListAsync());
+        Assert.True(await new WhatsAppWebhookDeliveryProcessor(db, service, protection).ProcessNextAsync());
+
+        var message = Assert.Single(await db.WhatsAppMessages.AsNoTracking().ToListAsync());
+        Assert.Equal(WhatsAppMessageDirection.Inbound, message.Direction);
+        var conversation = await db.WhatsAppConversations.AsNoTracking().SingleAsync();
+        Assert.Equal("5548999999999", conversation.PhoneNumber);
+        Assert.Equal(0, conversation.UnreadCount);
+        Assert.Equal("Histórico sincronizado", message.TextBody);
+    }
+
+    [Fact]
+    public async Task Smb_app_state_sync_event_is_acknowledged_without_creating_a_customer_message()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var body = BuildCoexistenceWebhookJson("smb_app_state_sync", new { });
+        var options = Options.Create(TestWebhookOptions());
+        var logger = new CapturingLogger<WhatsAppConversationService>();
+        var service = new WhatsAppConversationService(db, options, new UserNotificationService(db), logger: logger);
+        var protection = new EphemeralDataProtectionProvider();
+        var queue = new WhatsAppWebhookDeliveryQueue(db, protection);
+        var controller = new WhatsAppWebhookController(service, options, queue)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+        SignWebhookRequest(controller, body);
+
+        Assert.IsType<OkResult>(await controller.Receive(CancellationToken.None));
+        Assert.Empty(await db.WhatsAppConversations.ToListAsync());
+        Assert.Empty(await db.WhatsAppMessages.ToListAsync());
+        Assert.Contains(logger.Entries, entry => entry.EventId.Name == "WhatsApp.MetaStateSyncDisabled" && entry.Message.Contains("HTTP 429", StringComparison.Ordinal));
+        var deferred = await db.WhatsAppWebhookDeliveries.SingleAsync();
+        Assert.Equal(WhatsAppWebhookDeliveryStatus.Blocked, deferred.Status);
+        Assert.Equal("SMB_STATE_SYNC_DOCS_UNAVAILABLE", deferred.LastErrorCode);
+        Assert.Equal(body, Encoding.UTF8.GetString(protection.CreateProtector("Orofoods.WhatsAppBusiness.HistoryPayload.v1").Unprotect(deferred.ProtectedPayload!)));
+        Assert.False(await new WhatsAppWebhookDeliveryProcessor(db, service, protection).ProcessNextAsync());
+    }
+
+    [Fact]
+    public async Task Coexistence_webhook_must_match_business_account_saved_by_embedded_signup()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.WhatsAppBusinessConnections.Add(new WhatsAppBusinessConnection
+        {
+            BusinessAccountId = "connected-waba",
+            PhoneNumberId = "phone-test",
+            DisplayPhoneNumber = "+5548920077785",
+            ProtectedAccessToken = "protected"
+        });
+        await db.SaveChangesAsync();
+        var body = BuildWebhookMessageJson("wrong-connected-waba", wabaId: "waba-test");
+        var controller = CreateWebhookController(db, Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            PhoneNumberId = "phone-test",
+            AppSecret = "test-only-app-secret"
+        }), body);
+        SignWebhookRequest(controller, body);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await controller.Receive(CancellationToken.None)).StatusCode);
+        Assert.Empty(await db.WhatsAppMessages.ToListAsync());
     }
 
     [Theory]
@@ -705,7 +885,27 @@ public class WhatsAppBusinessTests
         }
 
         var service = new WhatsAppConversationService(db, options, new UserNotificationService(db));
-        return new WhatsAppWebhookController(service, options)
+        return new WhatsAppWebhookController(service, options, new WhatsAppWebhookDeliveryQueue(db, new EphemeralDataProtectionProvider()))
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+    }
+
+    private static WhatsAppWebhookController CreateWebhookController(
+        WhatsAppConversationService service,
+        IOptions<WhatsAppBusinessOptions> options,
+        IWhatsAppWebhookDeliveryQueue queue,
+        string? body = null)
+    {
+        var httpContext = new DefaultHttpContext();
+        if (body is not null)
+        {
+            var bytes = Encoding.UTF8.GetBytes(body);
+            httpContext.Request.Body = new MemoryStream(bytes);
+            httpContext.Request.ContentLength = bytes.Length;
+        }
+
+        return new WhatsAppWebhookController(service, options, queue)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
@@ -774,6 +974,17 @@ public class WhatsAppBusinessTests
             }
         }
     });
+
+    private static string BuildCoexistenceWebhookJson(string field, object value)
+    {
+        var eventValue = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(value))!.AsObject();
+        eventValue["metadata"] = new System.Text.Json.Nodes.JsonObject { ["phone_number_id"] = "phone-test" };
+        return JsonSerializer.Serialize(new
+        {
+            @object = "whatsapp_business_account",
+            entry = new[] { new { id = "waba-test", changes = new[] { new { field, value = eventValue } } } }
+        });
+    }
 
     private static void SignWebhookRequest(WhatsAppWebhookController controller, string body)
     {

@@ -8,9 +8,13 @@ namespace Orofoods.Web.Controllers.Api.V1;
 
 [ApiController]
 [AllowAnonymous]
-public class WhatsAppWebhookController(WhatsAppConversationService service, IOptions<WhatsAppBusinessOptions> options) : ControllerBase
+public class WhatsAppWebhookController(
+    WhatsAppConversationService service,
+    IOptions<WhatsAppBusinessOptions> options,
+    IWhatsAppWebhookDeliveryQueue deliveryQueue) : ControllerBase
 {
-    public const int MaxPayloadBytes = 1_048_576;
+    // Accept larger history batches while keeping request buffering bounded.
+    public const int MaxPayloadBytes = 3 * 1_048_576;
 
     [HttpGet("/api/webhooks/whatsapp")]
     public IActionResult Verify([FromQuery(Name = "hub.mode")] string? mode, [FromQuery(Name = "hub.verify_token")] string? verifyToken, [FromQuery(Name = "hub.challenge")] string? challenge)
@@ -34,7 +38,15 @@ public class WhatsAppWebhookController(WhatsAppConversationService service, IOpt
         try
         {
             using var document = JsonDocument.Parse(body);
-            await service.ProcessAsync(document, cancellationToken);
+            if (await service.IsDisabledStateSyncDeliveryAsync(document, cancellationToken))
+            {
+                await deliveryQueue.EnqueueDisabledStateSyncAsync(body, cancellationToken);
+                service.LogDisabledStateSync();
+            }
+            else if (await service.IsHistoryDeliveryAsync(document, cancellationToken))
+                await deliveryQueue.EnqueueHistoryAsync(body, cancellationToken);
+            else
+                await service.ProcessAsync(document, cancellationToken);
             return Ok();
         }
         catch (JsonException) { return BadRequest(); }

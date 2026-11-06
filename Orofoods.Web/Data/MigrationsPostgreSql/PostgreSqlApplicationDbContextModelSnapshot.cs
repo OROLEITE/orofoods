@@ -710,6 +710,45 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.ToTable("UserNotifications");
                 });
 
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppBusinessConnection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BusinessAccountId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("ConnectedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DisplayPhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("PhoneNumberId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ProtectedAccessToken")
+                        .IsRequired()
+                        .HasMaxLength(8192)
+                        .HasColumnType("character varying(8192)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PhoneNumberId")
+                        .IsUnique();
+
+                    b.ToTable("WhatsAppBusinessConnections");
+                });
+
             modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppConversation", b =>
                 {
                     b.Property<long>("Id")
@@ -855,6 +894,54 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.HasIndex("ConversationId", "CreatedAt");
 
                     b.ToTable("WhatsAppMessages");
+                });
+
+            modelBuilder.Entity("Orofoods.Web.Models.Commercial.WhatsAppWebhookDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<byte[]>("ProtectedPayload")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PayloadHash")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "NextAttemptAt", "LeaseExpiresAt", "ReceivedAt");
+
+                    b.ToTable("WhatsAppWebhookDeliveries");
                 });
 
             modelBuilder.Entity("Orofoods.Web.Models.Contact.ContactMessage", b =>
