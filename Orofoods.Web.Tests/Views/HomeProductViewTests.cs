@@ -32,7 +32,7 @@ public class HomeProductViewTests
     }
 
     [Fact]
-    public void Home_featured_cards_use_the_presented_name_and_keep_brand_above_it()
+    public void Home_and_public_catalog_cards_use_the_presented_name_and_keep_brand_above_it()
     {
         var home = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Home", "Index.cshtml"));
         var card = File.ReadAllText(Path.Combine(ProjectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
@@ -44,8 +44,10 @@ public class HomeProductViewTests
         Assert.Contains("var displayName = ViewData[\"ProductDisplayName\"] as string ?? product.Name;", card);
         Assert.Contains("<span class=\"quick-buy-brand\">@product.Brand</span>", card);
         Assert.Contains("<h2>@displayName</h2>", card);
-        Assert.Contains("partial name=\"_PublicProductCard\" model=\"product\" />", catalog);
-        Assert.DoesNotContain("ProductDisplayName", catalog);
+        Assert.Contains("CatalogProductNamePresentation.DisplayName(product.Name)", catalog);
+        Assert.Contains("new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)", catalog);
+        Assert.Contains("[\"ProductDisplayName\"] =", catalog);
+        Assert.Contains("partial name=\"_PublicProductCard\" model=\"product\" view-data=\"catalogCardViewData\" />", catalog);
         var brandIndex = card.IndexOf("<span class=\"quick-buy-brand\">@product.Brand</span>", StringComparison.Ordinal);
         var nameIndex = card.IndexOf("<h2>@displayName</h2>", StringComparison.Ordinal);
         Assert.True(brandIndex >= 0 && nameIndex > brandIndex);

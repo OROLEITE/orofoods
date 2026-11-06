@@ -49,7 +49,7 @@ public class InstitutionalViewTests
 
         Assert.Contains("Produtos em destaque", markup);
         Assert.Contains("<partial name=\"_PublicProductCard\" model=\"product\" view-data=\"cardViewData\" />", markup);
-        Assert.Contains("<partial name=\"_PublicProductCard\" model=\"product\" />", catalog);
+        Assert.Contains("<partial name=\"_PublicProductCard\" model=\"product\" view-data=\"catalogCardViewData\" />", catalog);
         Assert.Contains("Model.Products.Count == 0", markup);
         Assert.DoesNotContain("carousel", markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("orofoods-hero.png", markup);
