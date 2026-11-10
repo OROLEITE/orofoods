@@ -29,7 +29,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\tools\OrofoodsProductionDbReadOnlyCrm\OrofoodsProductionDbReadOnlyCrm.csproj"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 
   <Target Name="PublishProductionReadOnlyDiagnostic" AfterTargets="Publish">
