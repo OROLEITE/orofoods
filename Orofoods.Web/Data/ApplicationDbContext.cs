@@ -296,13 +296,14 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<UserNotification>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<UserNotification>().HasOne(x => x.Opportunity).WithMany().HasForeignKey(x => x.OpportunityId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<UserNotification>().HasOne(x => x.Activity).WithMany().HasForeignKey(x => x.ActivityId).OnDelete(DeleteBehavior.SetNull);
-        builder.Entity<WhatsAppConversation>().HasIndex(x => x.PhoneNumber);
+        builder.Entity<WhatsAppConversation>().HasIndex(x => x.PhoneNumber).IsUnique();
         builder.Entity<WhatsAppConversation>().HasIndex(x => x.CustomerId);
         builder.Entity<WhatsAppConversation>().HasIndex(x => x.AssignedUserId);
         builder.Entity<WhatsAppConversation>().HasIndex(x => x.LastMessageAt);
         builder.Entity<WhatsAppConversation>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<WhatsAppConversation>().HasOne(x => x.AssignedUser).WithMany().HasForeignKey(x => x.AssignedUserId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.ExternalMessageId).IsUnique();
+        builder.Entity<WhatsAppMessage>().HasIndex(x => x.ClientRequestId).IsUnique().HasFilter("\"ClientRequestId\" IS NOT NULL");
         builder.Entity<WhatsAppMessage>().HasIndex(x => new { x.ConversationId, x.CreatedAt });
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.Status);
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.MediaId);

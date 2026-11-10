@@ -1,6 +1,14 @@
 (() => {
     const textarea = document.getElementById('whatsappText');
-    const form = document.querySelector('.whatsapp-compose');
+    const form = document.querySelector('.whatsapp-compose') ?? {
+        dataset: {},
+        addEventListener() {},
+        querySelector() { return null; },
+        requestSubmit() {}
+    };
+    const templateForm = form.classList?.contains('whatsapp-template-compose') ? form : null;
+    const pollingContext = form.dataset.conversationId ? form : document.querySelector('.whatsapp-polling-context');
+    const inboxPage = document.querySelector('.whatsapp-inbox-page');
     const messageList = document.querySelector('.whatsapp-messages');
     const conversationList = document.querySelector('.whatsapp-conversation-list');
     const conversationSearch = document.querySelector('.whatsapp-search-input');
@@ -13,6 +21,23 @@
     let audioContext;
     let initialState = true;
     const notificationSeenInboundIds = new Set();
+
+    const rotateClientRequestId = input => {
+        if (!input) return;
+        const requestId = window.crypto?.randomUUID?.() ?? 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, character => {
+            const random = Math.floor(Math.random() * 16);
+            return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16);
+        });
+        input.value = requestId.replaceAll('-', '');
+    };
+
+    const renewClientRequestIdAfterConfirmedFailure = (responseDocument, input) => {
+        if (!responseDocument.querySelector('.whatsapp-message-status--failed')) return false;
+        const retryRequestId = responseDocument.querySelector('[name="clientRequestId"]')?.value;
+        if (!retryRequestId || !input) return false;
+        input.value = retryRequestId;
+        return true;
+    };
 
     const updateSoundToggle = () => {
         if (!soundToggle) return;
@@ -72,7 +97,15 @@
     const customerIdInput = document.getElementById('whatsappCustomerId');
     const customerConversationId = document.getElementById('whatsappCustomerConversationId');
     const customerSubmit = document.getElementById('whatsappCustomerSubmit');
+    const customerForm = document.querySelector('.whatsapp-customer-search-form');
+    const customerPhoneField = document.getElementById('whatsappCustomerPhoneField');
+    const customerPhone = document.getElementById('whatsappCustomerPhone');
+    const customerDialogTitle = document.getElementById('whatsappCustomerDialogTitle');
+    const customerDialogDescription = document.querySelector('.whatsapp-customer-dialog > p');
     const customerTrigger = document.querySelector('.whatsapp-link-customer-trigger');
+    const newConversationTrigger = document.getElementById('whatsappNewConversationTrigger');
+    let activeCustomerTrigger = customerTrigger;
+    let customerDialogMode = 'link';
     let customerSearchController;
     let customerSearchTimer;
 
@@ -98,6 +131,8 @@
             if (details) appendText(option, 'small', details);
             option.addEventListener('click', () => {
                 customerIdInput.value = customer.id;
+                if (customerDialogMode === 'start' && customerPhone && customer.phone)
+                    customerPhone.value = customer.phone;
                 customerSubmit.disabled = false;
                 customerResults.querySelectorAll('.whatsapp-customer-result').forEach(item => item.classList.remove('is-selected'));
                 option.classList.add('is-selected');
@@ -111,7 +146,7 @@
         if (term.length < 2) { renderCustomerResults([]); return; }
         customerSearchController = new AbortController();
         try {
-            const url = new URL(customerTrigger.dataset.customerSearchUrl, window.location.origin);
+            const url = new URL(activeCustomerTrigger.dataset.customerSearchUrl, window.location.origin);
             url.searchParams.set('q', term);
             const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: customerSearchController.signal });
             if (!response.ok) throw new Error('customer search failed');
@@ -120,15 +155,34 @@
             if (error?.name !== 'AbortError') renderCustomerResults([]);
         }
     };
-    customerTrigger?.addEventListener('click', () => {
-        customerConversationId.value = customerTrigger.dataset.conversationId;
+    const openCustomerDialog = (mode, trigger) => {
+        customerDialogMode = mode;
+        activeCustomerTrigger = trigger;
+        customerForm.action = mode === 'start' ? customerForm.dataset.startUrl : customerForm.dataset.linkUrl;
+        customerDialogTitle.textContent = mode === 'start' ? 'Nova conversa' : 'Vincular cliente';
+        customerDialogDescription.textContent = mode === 'start'
+            ? 'Busque um cadastro por nome, telefone ou CNPJ, ou informe um número avulso.'
+            : 'Busque o cliente por nome, telefone, CNPJ ou código.';
+        customerPhoneField.hidden = mode !== 'start';
+        customerConversationId.value = trigger?.dataset.conversationId || '';
         customerIdInput.value = '';
-        customerSubmit.disabled = true;
+        customerPhone.value = '';
+        customerSubmit.disabled = mode === 'link';
+        customerSubmit.textContent = mode === 'start' ? 'Criar ou abrir conversa' : 'Vincular cliente';
         customerSearch.value = '';
         renderCustomerResults([]);
         if (typeof customerDialog?.showModal === 'function') customerDialog.showModal();
         else customerDialog?.setAttribute('open', '');
         customerSearch?.focus();
+    };
+    customerTrigger?.addEventListener('click', () => openCustomerDialog('link', customerTrigger));
+    [newConversationTrigger, ...document.querySelectorAll('.whatsapp-empty-new-conversation-trigger')]
+        .filter(Boolean)
+        .forEach(trigger => trigger.addEventListener('click', () => openCustomerDialog('start', newConversationTrigger)));
+    customerPhone?.addEventListener('input', () => {
+        customerIdInput.value = '';
+        const digits = customerPhone.value.replace(/\D/g, '');
+        customerSubmit.disabled = digits.length < 10;
     });
     customerSearch?.addEventListener('input', () => {
         window.clearTimeout(customerSearchTimer);
@@ -136,17 +190,17 @@
     });
     document.querySelector('.whatsapp-dialog-cancel')?.addEventListener('click', closeCustomerDialog);
 
-    if (!form || !messageList || !conversationList) return;
+    if (!pollingContext || !messageList || !conversationList) return;
 
-    const selectedConversationId = Number(form.dataset.conversationId);
-    const updatesUrl = form.dataset.updatesUrl;
+    const selectedConversationId = Number(pollingContext.dataset.conversationId);
+    const updatesUrl = pollingContext.dataset.updatesUrl;
     const renderedMessageElements = new Map(
         [...messageList.querySelectorAll('[data-message-id]')]
             .map(element => [String(element.dataset.messageId), element]));
     let requestInFlight = false;
     let sendInFlight = false;
     let timerId = null;
-    const sendButton = form.querySelector('button[type="submit"]');
+    const sendButton = form?.querySelector('button[type="submit"]');
     const sendFeedback = document.getElementById('whatsappSendFeedback');
 
     const showSendFeedback = (message, isError = false) => {
@@ -437,6 +491,16 @@
             if (!response.ok) return;
             syncStage = 'parse';
             const payload = await response.json();
+            const nextSelectedConversation = (payload.conversations || [])
+                .find(conversation => String(conversation.id) === String(selectedConversationId));
+            const serviceWindowChanged = Boolean(inboxPage && typeof payload.serviceWindowOpen === 'boolean' &&
+                String(payload.serviceWindowOpen) !== inboxPage.dataset.serviceWindowOpen);
+            const conversationStatusChanged = Boolean(inboxPage && nextSelectedConversation?.status &&
+                nextSelectedConversation.status !== inboxPage.dataset.conversationStatus);
+            if (serviceWindowChanged || conversationStatusChanged) {
+                window.location.reload();
+                return;
+            }
             const before = notificationSeenInboundIds.size;
             syncStage = 'update-conversations';
             updateConversations(payload.conversations || []);
@@ -464,6 +528,7 @@
     };
 
     form.addEventListener('submit', async event => {
+        if (templateForm) return;
         if (sendInFlight) {
             event.preventDefault();
             return;
@@ -502,6 +567,7 @@
 
             if (serverError) {
                 showSendFeedback(serverError, true);
+                renewClientRequestIdAfterConfirmedFailure(responseDocument, form.querySelector('[name="clientRequestId"]'));
                 return;
             }
             if (!response.ok || responseUrl.origin !== window.location.origin ||
@@ -511,6 +577,7 @@
             }
 
             await synchronize();
+            rotateClientRequestId(form.querySelector('[name="clientRequestId"]'));
             if (textarea && textarea.value === submittedText) {
                 textarea.value = '';
                 resizeComposer();
@@ -528,6 +595,155 @@
                 sendButton.removeAttribute('aria-busy');
             }
             if (buttonLabel && previousButtonLabel !== undefined) buttonLabel.textContent = previousButtonLabel;
+        }
+    });
+
+    const templateLoadButton = document.getElementById('whatsappLoadTemplates');
+    const templateFeedback = document.getElementById('whatsappTemplateFeedback');
+    const templateSelect = document.getElementById('whatsappTemplateSelect');
+    const templateControls = document.getElementById('whatsappTemplateControls');
+    const templateParameters = document.getElementById('whatsappTemplateParameters');
+    const templateNameInput = document.getElementById('whatsappTemplateName');
+    const templateLanguageInput = document.getElementById('whatsappTemplateLanguage');
+    const templateRequestId = document.getElementById('whatsappTemplateRequestId');
+    const templateSendButton = document.getElementById('whatsappTemplateSend');
+    const approvedTemplates = new Map();
+
+    const updateTemplateSendButton = () => {
+        if (!templateSendButton || !templateSelect) return;
+        const selected = approvedTemplates.get(templateSelect.value);
+        const missingParameter = [...(templateParameters?.querySelectorAll('input') ?? [])]
+            .some(input => !input.value.trim());
+        templateSendButton.disabled = !selected || missingParameter;
+    };
+
+    const addTemplateParameters = (component, count, namePrefix, parameterNames) => {
+        for (let index = 0; index < count; index++) {
+            const field = document.createElement('div');
+            field.className = 'whatsapp-template-parameter';
+            const label = document.createElement('label');
+            const input = document.createElement('input');
+            const fieldId = `whatsappTemplate${namePrefix}${index + 1}`;
+            label.htmlFor = fieldId;
+            label.textContent = `${component} ${parameterNames?.[index] || index + 1}`;
+            input.id = fieldId;
+            input.name = namePrefix === 'Header' ? 'headerParameters' : 'bodyParameters';
+            input.type = 'text';
+            input.required = true;
+            input.maxLength = 1024;
+            input.autocomplete = 'off';
+            input.addEventListener('input', updateTemplateSendButton);
+            field.append(label, input);
+            templateParameters.append(field);
+        }
+    };
+
+    templateLoadButton?.addEventListener('click', async () => {
+        templateLoadButton.disabled = true;
+        templateFeedback.textContent = 'Consultando modelos aprovados…';
+        try {
+            const response = await fetch(templateForm.dataset.templatesUrl, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload?.error || 'Não foi possível consultar os modelos aprovados.');
+
+            approvedTemplates.clear();
+            templateSelect.replaceChildren();
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Escolha um modelo';
+            templateSelect.append(placeholder);
+            (payload.results || []).forEach((template, index) => {
+                const headerCount = Number(template.headerParameterCount);
+                const bodyCount = Number(template.bodyParameterCount);
+                if (!template.name || !template.language || !Number.isInteger(headerCount) || !Number.isInteger(bodyCount) ||
+                    headerCount < 0 || bodyCount < 0 || headerCount > 20 || bodyCount > 20) return;
+                const key = String(index);
+                approvedTemplates.set(key, template);
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = `${template.name} · ${template.language} · ${template.category || 'APROVADO'}`;
+                templateSelect.append(option);
+            });
+            templateControls.hidden = approvedTemplates.size === 0;
+            templateSelect.disabled = approvedTemplates.size === 0;
+            templateFeedback.textContent = approvedTemplates.size > 0
+                ? `${approvedTemplates.size} modelo(s) aprovado(s) disponível(is).`
+                : 'Nenhum modelo de texto aprovado disponível. Revise a conexão ou os modelos no WhatsApp Manager.';
+        } catch (error) {
+            templateControls.hidden = true;
+            templateFeedback.textContent = error?.message || 'Não foi possível consultar os modelos aprovados.';
+        } finally {
+            templateLoadButton.disabled = false;
+        }
+    });
+
+    templateSelect?.addEventListener('change', () => {
+        const template = approvedTemplates.get(templateSelect.value);
+        templateNameInput.value = template?.name || '';
+        templateLanguageInput.value = template?.language || '';
+        templateParameters.replaceChildren();
+        if (template) {
+            addTemplateParameters('Cabeçalho', Number(template.headerParameterCount), 'Header', template.headerParameterNames);
+            addTemplateParameters('Mensagem', Number(template.bodyParameterCount), 'Body', template.bodyParameterNames);
+        }
+        updateTemplateSendButton();
+    });
+
+    templateForm?.addEventListener('submit', async event => {
+        if (sendInFlight) {
+            event.preventDefault();
+            return;
+        }
+        event.preventDefault();
+        if (templateSendButton?.disabled) return;
+
+        sendInFlight = true;
+        templateForm.querySelector('.whatsapp-send-feedback--error')?.remove();
+        showSendFeedback('');
+        const buttonLabel = templateSendButton.querySelector('span');
+        const previousButtonLabel = buttonLabel?.textContent;
+        templateSendButton.disabled = true;
+        templateSendButton.setAttribute('aria-busy', 'true');
+        if (buttonLabel) buttonLabel.textContent = 'Enviando…';
+        templateForm.setAttribute('aria-busy', 'true');
+
+        try {
+            const response = await fetch(templateForm.action, {
+                method: templateForm.method || 'POST',
+                body: new FormData(templateForm),
+                credentials: 'same-origin',
+                headers: { Accept: 'text/html' },
+                redirect: 'follow'
+            });
+            const responseUrl = new URL(response.url || templateForm.action, window.location.href);
+            const responseDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const serverError = responseDocument.querySelector('.whatsapp-send-feedback--error')?.textContent.trim();
+            if (serverError) {
+                showSendFeedback(serverError, true);
+                renewClientRequestIdAfterConfirmedFailure(responseDocument, templateRequestId);
+                return;
+            }
+            if (!response.ok || responseUrl.origin !== window.location.origin ||
+                !/\/Admin\/WhatsApp(?:\/|$)/i.test(responseUrl.pathname) ||
+                !responseDocument.querySelector('.whatsapp-template-compose'))
+                throw new Error('Não foi possível confirmar o envio. Confira o histórico antes de tentar novamente.');
+
+            await synchronize();
+            rotateClientRequestId(templateRequestId);
+            templateParameters.querySelectorAll('input').forEach(input => { input.value = ''; });
+            updateTemplateSendButton();
+        } catch {
+            showSendFeedback('Não foi possível confirmar o envio. Confira o histórico antes de tentar novamente.', true);
+        } finally {
+            sendInFlight = false;
+            templateForm.removeAttribute('aria-busy');
+            templateSendButton.removeAttribute('aria-busy');
+            if (buttonLabel && previousButtonLabel !== undefined) buttonLabel.textContent = previousButtonLabel;
+            updateTemplateSendButton();
         }
     });
 

@@ -269,6 +269,7 @@ builder.Services.Configure<WhatsAppBusinessOptions>(builder.Configuration.GetSec
 builder.Services.AddSingleton<WhatsAppAccessTokenProtector>();
 builder.Services.AddScoped<IWhatsAppAccessTokenProvider, WhatsAppAccessTokenProvider>();
 builder.Services.AddScoped<IWhatsAppPhoneNumberIdProvider, WhatsAppPhoneNumberIdProvider>();
+builder.Services.AddScoped<IWhatsAppBusinessAccountIdProvider, WhatsAppBusinessAccountIdProvider>();
 builder.Services.AddScoped<WhatsAppBusinessConnectionService>();
 builder.Services.AddScoped<IWhatsAppWebhookDeliveryQueue, WhatsAppWebhookDeliveryQueue>();
 builder.Services.AddScoped<WhatsAppWebhookDeliveryProcessor>();

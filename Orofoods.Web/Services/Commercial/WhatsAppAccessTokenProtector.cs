@@ -37,6 +37,11 @@ public interface IWhatsAppPhoneNumberIdProvider
     Task<string> GetAsync(CancellationToken cancellationToken = default);
 }
 
+public interface IWhatsAppBusinessAccountIdProvider
+{
+    Task<string> GetAsync(CancellationToken cancellationToken = default);
+}
+
 public sealed class WhatsAppAccessTokenProvider(
     ApplicationDbContext db,
     WhatsAppAccessTokenProtector protector,
@@ -81,6 +86,24 @@ public sealed class WhatsAppPhoneNumberIdProvider(
 
         var connection = await WhatsAppBusinessConnectionResolver.GetValidAsync(db, options.Value, cancellationToken);
         return connection.PhoneNumberId;
+    }
+}
+
+public sealed class WhatsAppBusinessAccountIdProvider(
+    ApplicationDbContext db,
+    IOptions<WhatsAppBusinessOptions> options) : IWhatsAppBusinessAccountIdProvider
+{
+    public async Task<string> GetAsync(CancellationToken cancellationToken = default)
+    {
+        if (!options.Value.EmbeddedSignupEnabled)
+        {
+            if (!string.IsNullOrWhiteSpace(options.Value.BusinessAccountId))
+                return options.Value.BusinessAccountId;
+            throw new InvalidOperationException("WhatsApp Business não está configurado.");
+        }
+
+        var connection = await WhatsAppBusinessConnectionResolver.GetValidAsync(db, options.Value, cancellationToken);
+        return connection.BusinessAccountId;
     }
 }
 

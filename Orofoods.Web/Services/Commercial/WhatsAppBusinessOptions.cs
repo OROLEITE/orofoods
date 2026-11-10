@@ -38,9 +38,34 @@ public sealed class WhatsAppBusinessOptions
 public interface IWhatsAppBusinessGateway
 {
     Task<WhatsAppSendResult> SendTextAsync(string phoneNumber, string text, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<WhatsAppApprovedTemplate>> GetApprovedTemplatesAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<WhatsAppApprovedTemplate>>([]);
+
+    Task<WhatsAppSendResult> SendTemplateAsync(
+        string phoneNumber,
+        string templateName,
+        string language,
+        IReadOnlyList<string> bodyParameters,
+        IReadOnlyList<string> headerParameters,
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<string>? bodyParameterNames = null,
+        IReadOnlyList<string>? headerParameterNames = null) =>
+        Task.FromResult(new WhatsAppSendResult(false, null, "UNSUPPORTED", "Envio de modelos não está disponível."));
 }
 
 public sealed record WhatsAppSendResult(bool Succeeded, string? ExternalMessageId, string? ErrorCode, string? ErrorMessage);
+
+public sealed record WhatsAppApprovedTemplate(
+    string Name,
+    string Language,
+    string Category,
+    string? HeaderText,
+    string BodyText,
+    int HeaderParameterCount,
+    int BodyParameterCount,
+    IReadOnlyList<string>? HeaderParameterNames = null,
+    IReadOnlyList<string>? BodyParameterNames = null);
 
 public interface IWhatsAppMediaClient
 {
