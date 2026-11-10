@@ -47,23 +47,19 @@ public sealed class WhatsAppAccessTokenProvider(
         if (!options.Value.EmbeddedSignupEnabled)
             return GetConfiguredToken();
 
-        var connection = await db.WhatsAppBusinessConnections
-            .AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == WhatsAppBusinessConnection.SingletonId, cancellationToken);
+        var connection = await WhatsAppBusinessConnectionResolver.GetValidAsync(db, options.Value, cancellationToken);
 
-        if (connection is not null)
+        try
         {
-            try
-            {
-                return protector.Unprotect(connection.ProtectedAccessToken);
-            }
-            catch (CryptographicException exception)
-            {
-                throw new InvalidOperationException("O token da conexão WhatsApp não pôde ser recuperado com segurança.", exception);
-            }
+            var accessToken = protector.Unprotect(connection.ProtectedAccessToken);
+            if (!string.IsNullOrWhiteSpace(accessToken)) return accessToken;
+        }
+        catch (CryptographicException exception)
+        {
+            throw new InvalidOperationException("WhatsApp Business não está configurado.", exception);
         }
 
-        return GetConfiguredToken();
+        throw new InvalidOperationException("WhatsApp Business não está configurado.");
     }
 
     private string GetConfiguredToken()
@@ -83,14 +79,37 @@ public sealed class WhatsAppPhoneNumberIdProvider(
         if (!options.Value.EmbeddedSignupEnabled)
             return options.Value.PhoneNumberId;
 
-        var connectedPhoneNumberId = await db.WhatsAppBusinessConnections
-            .AsNoTracking()
-            .Where(x => x.Id == WhatsAppBusinessConnection.SingletonId)
-            .Select(x => x.PhoneNumberId)
-            .SingleOrDefaultAsync(cancellationToken);
-
-        return !string.IsNullOrWhiteSpace(connectedPhoneNumberId)
-            ? connectedPhoneNumberId
-            : options.Value.PhoneNumberId;
+        var connection = await WhatsAppBusinessConnectionResolver.GetValidAsync(db, options.Value, cancellationToken);
+        return connection.PhoneNumberId;
     }
+}
+
+internal static class WhatsAppBusinessConnectionResolver
+{
+    public static async Task<WhatsAppBusinessConnection> GetValidAsync(
+        ApplicationDbContext db,
+        WhatsAppBusinessOptions options,
+        CancellationToken cancellationToken)
+    {
+        var connection = await db.WhatsAppBusinessConnections
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == WhatsAppBusinessConnection.SingletonId, cancellationToken);
+        if (connection is null)
+            throw new InvalidOperationException("WhatsApp Business não está configurado.");
+
+        var connectedDisplayPhoneNumber = NormalizePhone(connection.DisplayPhoneNumber);
+        var configuredDisplayPhoneNumber = NormalizePhone(options.EmbeddedSignupDisplayPhoneNumber);
+
+        if (string.IsNullOrWhiteSpace(connection.PhoneNumberId) ||
+            !string.Equals(connection.PhoneNumberId, options.EmbeddedSignupPhoneNumberId, StringComparison.Ordinal) ||
+            connectedDisplayPhoneNumber.Length == 0 ||
+            configuredDisplayPhoneNumber.Length == 0 ||
+            connectedDisplayPhoneNumber != configuredDisplayPhoneNumber ||
+            string.IsNullOrWhiteSpace(connection.ProtectedAccessToken))
+            throw new InvalidOperationException("WhatsApp Business não está configurado.");
+
+        return connection;
+    }
+
+    private static string NormalizePhone(string? value) => new((value ?? string.Empty).Where(char.IsAsciiDigit).ToArray());
 }

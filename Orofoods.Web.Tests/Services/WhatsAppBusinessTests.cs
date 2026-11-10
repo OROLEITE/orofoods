@@ -60,12 +60,22 @@ public class WhatsAppBusinessTests
         var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions
         {
             EmbeddedSignupEnabled = true,
-            AccessToken = "legacy-token"
+            AccessToken = "legacy-token",
+            EmbeddedSignupPhoneNumberId = "phone-test",
+            EmbeddedSignupDisplayPhoneNumber = "+55 (48) 92007-7785"
+        }));
+        var phoneProvider = new WhatsAppPhoneNumberIdProvider(db, Options.Create(new WhatsAppBusinessOptions
+        {
+            EmbeddedSignupEnabled = true,
+            PhoneNumberId = "legacy-phone-id",
+            EmbeddedSignupPhoneNumberId = "phone-test",
+            EmbeddedSignupDisplayPhoneNumber = "+55 (48) 92007-7785"
         }));
 
         var token = await provider.GetAsync();
 
         Assert.Equal("connected-token-private", token);
+        Assert.Equal("phone-test", await phoneProvider.GetAsync());
         Assert.DoesNotContain("connected-token-private", db.ChangeTracker.Entries<WhatsAppBusinessConnection>().Single().Entity.ProtectedAccessToken);
     }
 
@@ -118,17 +128,86 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
-    public async Task WhatsApp_access_token_provider_uses_existing_configured_token_when_unconnected()
+    public async Task Embedded_signup_providers_reject_missing_connection_without_legacy_fallback()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
-        var provider = new WhatsAppAccessTokenProvider(db, protector, Options.Create(new WhatsAppBusinessOptions
+        var settings = Options.Create(new WhatsAppBusinessOptions
         {
+            Enabled = true,
+            GraphApiVersion = "v23.0",
             EmbeddedSignupEnabled = true,
-            AccessToken = "legacy-token"
-        }));
+            AccessToken = "legacy-token",
+            PhoneNumberId = "legacy-phone-id",
+            EmbeddedSignupPhoneNumberId = "configured-phone-id",
+            EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
+        });
+        var tokenProvider = new WhatsAppAccessTokenProvider(db, protector, settings);
+        var phoneProvider = new WhatsAppPhoneNumberIdProvider(db, settings);
 
-        Assert.Equal("legacy-token", await provider.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => tokenProvider.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => phoneProvider.GetAsync());
+
+        var handler = new FakeHandler();
+        var gateway = new MetaWhatsAppBusinessGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            settings,
+            NullLogger<MetaWhatsAppBusinessGateway>.Instance,
+            tokenProvider,
+            phoneProvider);
+        var sendResult = await gateway.SendTextAsync("5511999990000", "Teste");
+
+        Assert.False(sendResult.Succeeded);
+        Assert.Equal("NOT_CONFIGURED", sendResult.ErrorCode);
+        Assert.Null(handler.Method);
+    }
+
+    [Theory]
+    [InlineData("different-phone-id", "+5548920077785")]
+    [InlineData("phone-test", "+5548999999999")]
+    public async Task Embedded_signup_providers_reject_connection_for_a_different_configured_number(
+        string connectedPhoneNumberId,
+        string connectedDisplayPhoneNumber)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
+        db.WhatsAppBusinessConnections.Add(new WhatsAppBusinessConnection
+        {
+            Id = WhatsAppBusinessConnection.SingletonId,
+            BusinessAccountId = "waba-test",
+            PhoneNumberId = connectedPhoneNumberId,
+            DisplayPhoneNumber = connectedDisplayPhoneNumber,
+            ProtectedAccessToken = protector.Protect("connected-token-private")
+        });
+        await db.SaveChangesAsync();
+        var settings = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            GraphApiVersion = "v23.0",
+            EmbeddedSignupEnabled = true,
+            AccessToken = "legacy-token",
+            PhoneNumberId = "legacy-phone-id",
+            EmbeddedSignupPhoneNumberId = "phone-test",
+            EmbeddedSignupDisplayPhoneNumber = "+55 (48) 92007-7785"
+        });
+        var tokenProvider = new WhatsAppAccessTokenProvider(db, protector, settings);
+        var phoneProvider = new WhatsAppPhoneNumberIdProvider(db, settings);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => tokenProvider.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => phoneProvider.GetAsync());
+
+        var handler = new FakeHandler();
+        var gateway = new MetaWhatsAppBusinessGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            settings,
+            NullLogger<MetaWhatsAppBusinessGateway>.Instance,
+            tokenProvider,
+            phoneProvider);
+        var sendResult = await gateway.SendTextAsync("5511999990000", "Teste");
+
+        Assert.False(sendResult.Succeeded);
+        Assert.Equal("NOT_CONFIGURED", sendResult.ErrorCode);
+        Assert.Null(handler.Method);
     }
 
     [Fact]
@@ -145,15 +224,36 @@ public class WhatsAppBusinessTests
             ConnectedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-        var provider = new WhatsAppAccessTokenProvider(
-            db,
-            new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()),
-            Options.Create(new WhatsAppBusinessOptions { EmbeddedSignupEnabled = true, AccessToken = "legacy-token" }));
+        var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
+        var settings = Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = true,
+            GraphApiVersion = "v23.0",
+            EmbeddedSignupEnabled = true,
+            AccessToken = "legacy-token",
+            PhoneNumberId = "legacy-phone-id",
+            EmbeddedSignupPhoneNumberId = "phone-test",
+            EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
+        });
+        var provider = new WhatsAppAccessTokenProvider(db, protector, settings);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetAsync());
 
         Assert.DoesNotContain("not-a-valid-protected-token", exception.Message);
         Assert.DoesNotContain("legacy-token", exception.Message);
+
+        var handler = new FakeHandler();
+        var gateway = new MetaWhatsAppBusinessGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            settings,
+            NullLogger<MetaWhatsAppBusinessGateway>.Instance,
+            provider,
+            new WhatsAppPhoneNumberIdProvider(db, settings));
+        var sendResult = await gateway.SendTextAsync("5511999990000", "Teste");
+
+        Assert.False(sendResult.Succeeded);
+        Assert.Equal("NOT_CONFIGURED", sendResult.ErrorCode);
+        Assert.Null(handler.Method);
     }
 
     [Fact]

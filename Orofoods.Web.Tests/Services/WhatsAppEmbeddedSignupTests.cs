@@ -123,18 +123,20 @@ public class WhatsAppEmbeddedSignupTests
     }
 
     [Fact]
-    public async Task Connected_phone_number_overrides_runtime_while_legacy_phone_number_is_preserved_as_fallback()
+    public async Task Embedded_signup_phone_provider_requires_the_configured_connection_and_preserves_legacy_options()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var settings = Options.Create(new WhatsAppBusinessOptions
         {
             Enabled = true,
             EmbeddedSignupEnabled = true,
-            PhoneNumberId = "legacy-phone-number"
+            PhoneNumberId = "legacy-phone-number",
+            EmbeddedSignupPhoneNumberId = "coexistence-phone-number",
+            EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
         });
         var provider = new WhatsAppPhoneNumberIdProvider(db, settings);
 
-        Assert.Equal("legacy-phone-number", await provider.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetAsync());
         db.WhatsAppBusinessConnections.Add(new WhatsAppBusinessConnection
         {
             BusinessAccountId = "waba-connected",

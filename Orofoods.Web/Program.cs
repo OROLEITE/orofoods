@@ -67,6 +67,13 @@ if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(applicatio
 {
     throw new InvalidOperationException("DataProtection:ApplicationName deve estar configurado fora de Development.");
 }
+if (!StartupEnvironmentPolicy.IsProductionDataProtectionConfigured(
+        builder.Environment,
+        dataProtectionSettings,
+        OperatingSystem.IsWindows()))
+{
+    throw new InvalidOperationException("Produção exige chaves persistentes do Data Protection em Blob protegido por Key Vault ou diretório externo protegido por DPAPI.");
+}
 if (!StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
         builder.Environment,
         builder.Configuration.GetValue<bool>("WhatsAppBusiness:Enabled"),
@@ -86,6 +93,7 @@ else
 {
     var azureSettings = dataProtectionSettings.Azure;
     var azureEnabled = azureSettings is not null && azureSettings.Enabled;
+    var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
     if (azureEnabled)
     {
         var blobUri = azureSettings!.BlobUri;
@@ -101,8 +109,7 @@ else
             .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
     }
 
-    var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
-    if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
+    else if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
     {
         if (!OperatingSystem.IsWindows())
         {
