@@ -88,6 +88,26 @@ public class WhatsAppThemeSurfaceTests
         Assert.Contains("soundPreferenceKey", script);
     }
 
+    [Fact]
+    public void New_conversation_and_service_window_controls_have_compact_cyan_theme_styles()
+    {
+        var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
+        var css = Read("Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css");
+
+        Assert.Contains("+ Nova conversa", markup);
+        Assert.Contains("data-start-url=", markup);
+        Assert.Contains("type=\"tel\"", markup);
+        Assert.Contains("Model.ServiceWindowOpen", markup);
+        Assert.Contains("asp-action=\"SendTemplate\"", markup);
+        Assert.Contains("Model.TransferCandidates", markup);
+        Assert.Contains("#0E7490", css);
+
+        var primary = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-primary-action");
+        Assert.Contains("background-color: #0E7490;", primary);
+        Assert.Contains("color: #fff;", primary);
+        Assert.Contains("@media (max-width: 767.98px)", css);
+    }
+
     private static string GetRule(string css, string selector)
     {
         var escapedSelector = Regex.Escape(selector);

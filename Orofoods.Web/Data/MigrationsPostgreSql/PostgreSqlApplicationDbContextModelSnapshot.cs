@@ -797,7 +797,8 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
 
                     b.HasIndex("LastMessageAt");
 
-                    b.HasIndex("PhoneNumber");
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique();
 
                     b.ToTable("WhatsAppConversations");
                 });
@@ -813,6 +814,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                     b.Property<string>("Caption")
                         .HasMaxLength(4096)
                         .HasColumnType("character varying(4096)");
+
+                    b.Property<string>("ClientRequestId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<long>("ConversationId")
                         .HasColumnType("bigint");
@@ -883,6 +888,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClientRequestId")
+                        .IsUnique()
+                        .HasFilter("\"ClientRequestId\" IS NOT NULL");
 
                     b.HasIndex("ExternalMessageId")
                         .IsUnique();

@@ -27,7 +27,7 @@ public class WhatsAppSendButtonVisualContractTests
         Assert.Contains("min-height: var(--whatsapp-composer-control-height)", textareaRule);
         Assert.Contains("height: var(--whatsapp-composer-control-height)", buttonRule);
         Assert.Contains("min-height: var(--whatsapp-composer-control-height)", buttonRule);
-        Assert.Contains("--whatsapp-send-blue: #2563EB", composerRule);
+        Assert.Contains("--whatsapp-send-blue: #0E7490", composerRule);
         Assert.Contains("background: var(--whatsapp-send-blue)", buttonRule);
         Assert.Contains("color: #fff", buttonRule);
         Assert.Contains("background: var(--whatsapp-send-blue-hover)", hoverRule);
