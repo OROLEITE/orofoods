@@ -24,7 +24,7 @@ public static class StatusDisplayExtensions
     {
         IntegrationStatus.Pending => "Pendente",
         IntegrationStatus.Processing => "Processando",
-        IntegrationStatus.Succeeded => "Integrado",
+        IntegrationStatus.Succeeded => "Arquivo disponibilizado",
         IntegrationStatus.Failed => "Falhou",
         _ => status.ToString()
     };

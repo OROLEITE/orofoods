@@ -11,13 +11,16 @@ public class AdminCustomerContextServiceTests
         var session = new TestSession();
         var sut = new AdminCustomerContextService();
 
-        Assert.Null(sut.GetSelectedCustomerId(session));
+        Assert.Null(sut.GetSelectedCustomerId(session, "admin-a"));
 
-        sut.SetSelectedCustomerId(session, 42);
+        sut.SetSelectedCustomerId(session, "admin-a", 42);
 
-        Assert.Equal(42, sut.GetSelectedCustomerId(session));
-        sut.Clear(session);
-        Assert.Null(sut.GetSelectedCustomerId(session));
+        Assert.Null(sut.GetSelectedCustomerId(session, "admin-b"));
+        Assert.Equal(42, sut.GetSelectedCustomerId(session, "admin-a"));
+        sut.Clear(session, "admin-b");
+        Assert.Equal(42, sut.GetSelectedCustomerId(session, "admin-a"));
+        sut.Clear(session, "admin-a");
+        Assert.Null(sut.GetSelectedCustomerId(session, "admin-a"));
     }
 
     private sealed class TestSession : ISession

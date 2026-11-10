@@ -21,4 +21,21 @@ public class AdminProductsLightScopeTests
         Assert.All(selectors, selector => Assert.StartsWith("html:not([data-theme=\"dark\"])", selector));
         Assert.DoesNotContain("!important", styles, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Mobile_product_light_overrides_are_inert_when_the_dark_theme_is_active()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-products-mobile.css"));
+        var selectorRules = Regex.Matches(styles, @"(?<prelude>[^{}]+)\{");
+        var selectors = selectorRules
+            .Select(match => match.Groups["prelude"].Value.Trim())
+            .Where(prelude => !prelude.StartsWith('@'))
+            .SelectMany(prelude => prelude.Split(','))
+            .Select(selector => selector.Trim())
+            .ToArray();
+
+        Assert.NotEmpty(selectors);
+        Assert.All(selectors, selector => Assert.StartsWith("html:not([data-theme=\"dark\"])", selector));
+    }
 }

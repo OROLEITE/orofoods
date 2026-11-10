@@ -2,28 +2,175 @@
 @using Orofoods.Web.Models.Integrations
 @model WmcPreviewPageModel
 @{
-    ViewData["Title"] = "Sincroniza\u00e7\u00e3o WMC";
+    ViewData["Title"] = "Importa\u00e7\u00e3o WMC";
     var isRunning = (bool)ViewBag.IsRunning;
     var lastRun = ViewBag.LastRun as WmcSyncRunResult;
+    var customerPreview = ViewBag.WmcCustomerPreview as WmcCustomerImportPreview;
+    var regularizationPreview = ViewBag.WmcCustomerRegularizationPreview as WmcCustomerRegularizationPreview;
 }
 
 <section class="section admin-wmc-page">
     <div class="container">
-        <div class="portal-top wmc-page-header">
-            <div>
-                <div class="eyebrow"><span></span> Opera&ccedil;&atilde;o</div>
-                <h1>Sincroniza&ccedil;&atilde;o WMC</h1>
-                <p>Espelho Firebird somente leitura. Clientes, produtos e estoque s&atilde;o refletidos aqui; nada &eacute; escrito de volta na WMC.</p>
+        <header class="wmc-page-header wmc-hero-card">
+            <div class="wmc-hero-main">
+                <span class="wmc-hero-icon" aria-hidden="true">
+                    <svg data-icon="refresh-cw" viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 0 0-15.3-6.4L3 8m0-5v5h5M3 12a9 9 0 0 0 15.3 6.4L21 16m0 5v-5h-5" /></svg>
+                </span>
+                <div>
+                    <h1>Importa&ccedil;&atilde;o WMC</h1>
+                </div>
             </div>
-            <a class="btn btn-outline-dark" asp-action="Index">Voltar &agrave;s integra&ccedil;&otilde;es</a>
-        </div>
+            <div class="wmc-hero-meta wmc-header-actions">
+                <span class="wmc-status-badge @(isRunning ? "wmc-status-badge--running" : "wmc-status-badge--idle")">@(isRunning ? "Sincronizando..." : "Ocioso")</span>
+                @if (lastRun is not null)
+                {
+                    <span class="wmc-last-sync">&Uacute;ltima sincroniza&ccedil;&atilde;o: @lastRun.FinishedAt.ToString("u") UTC</span>
+                }
+                <a class="btn btn-outline-dark wmc-header-back" asp-action="Index">Voltar</a>
+            </div>
+        </header>
+
+        @await Component.InvokeAsync("WmcActivationDiagnostics")
 
         @if (TempData["WmcSyncMessage"] is string message)
         {
             <div class="alert alert-info mt-4" role="alert">@message</div>
         }
+        @if (TempData["WmcCustomerImportMessage"] is string customerMessage)
+        {
+            <div class="alert alert-success mt-4" role="status">@customerMessage</div>
+        }
+        @if (TempData["WmcCustomerImportError"] is string customerError)
+        {
+            <div class="alert alert-warning mt-4" role="alert">@customerError</div>
+        }
 
-        <p class="mt-4">Status atual: <strong>@(isRunning ? "Sincronizando..." : "Ocioso")</strong></p>
+        <section class="mt-4" aria-labelledby="wmc-customer-import-title">
+            <h2 id="wmc-customer-import-title">Importação manual de clientes</h2>
+            <p>Informe o código do vendedor WMC. Somente clientes com situação <code>A</code> e restrição <code>F</code> serão considerados.</p>
+            <form method="post" asp-action="WmcCustomerPreview" class="wmc-customer-import-form">
+                @Html.AntiForgeryToken()
+                <div class="wmc-customer-seller-field customer-search">
+                    <label class="form-label" for="wmcSellerCode">CODVENDEDOR</label>
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <input class="form-control" id="wmcSellerCode" name="sellerCode" required maxlength="30" placeholder="Código do vendedor WMC" autocomplete="off" />
+                    <small class="wmc-customer-filter-help">Somente clientes ativos e sem restrição</small>
+                </div>
+                <button type="submit" class="btn admin-primary-action customer-filter-submit wmc-customer-preview-button">Gerar pr&eacute;via</button>
+            </form>
+
+            @if (customerPreview is not null)
+            {
+                @if (customerPreview.ErrorMessage is not null)
+                {
+                    <div class="alert alert-warning mt-3" role="alert">@customerPreview.ErrorMessage</div>
+                }
+                <div class="wmc-customer-preview-summary" aria-label="Resumo da prévia">
+                    <article><span>Consultados</span><strong>@customerPreview.RecordsRead</strong></article>
+                    <article class="wmc-customer-preview-summary--normal"><span>Novos</span><strong>@customerPreview.NewCustomers</strong></article>
+                    <article class="wmc-customer-preview-summary--normal"><span>Existentes</span><strong>@customerPreview.ExistingCustomers</strong></article>
+                    <article class="wmc-customer-preview-summary--warning"><span>Ignorados</span><strong>@customerPreview.Ignored</strong></article>
+                    <article class="wmc-customer-preview-summary--critical"><span>Conflitos</span><strong>@customerPreview.Conflicts</strong></article>
+                </div>
+                <dl class="row mt-3 wmc-customer-preview-legacy-summary">
+                    <dt class="col-sm-3">Vendedor WMC</dt><dd class="col-sm-9">@customerPreview.SellerCode</dd>
+                    <dt class="col-sm-3">Clientes consultados</dt><dd class="col-sm-9">@customerPreview.RecordsRead</dd>
+                    <dt class="col-sm-3">Novos</dt><dd class="col-sm-9">@customerPreview.NewCustomers</dd>
+                    <dt class="col-sm-3">Existentes</dt><dd class="col-sm-9">@customerPreview.ExistingCustomers</dd>
+                    <dt class="col-sm-3">Ignorados</dt><dd class="col-sm-9">@customerPreview.Ignored</dd>
+                    <dt class="col-sm-3">Conflitos</dt><dd class="col-sm-9">@customerPreview.Conflicts</dd>
+                </dl>
+                @if (customerPreview.Rows.Count > 0)
+                {
+            <div class="wmc-customer-preview-controls mt-3">
+                <button type="button" class="btn admin-secondary-action wmc-customer-preview-toggle" data-wmc-customer-preview-toggle aria-expanded="false" aria-controls="wmcCustomerPreviewTable">Exibir clientes (@customerPreview.Rows.Count)</button>
+                <label class="wmc-customer-preview-filter" for="wmcCustomerPreviewFilter">Filtrar lista</label>
+                <select class="form-select wmc-customer-preview-filter-select" id="wmcCustomerPreviewFilter" data-wmc-customer-preview-filter>
+                    <option value="all">Todos (@customerPreview.Rows.Count)</option>
+                    <option value="create">Novos (@customerPreview.NewCustomers)</option>
+                    <option value="existing">Existentes (@customerPreview.ExistingCustomers)</option>
+                    <option value="ignore">Ignorados (@customerPreview.Ignored)</option>
+                    <option value="conflict">Conflitos (@customerPreview.Conflicts)</option>
+                </select>
+            </div>
+            <div class="table-responsive mt-2 wmc-customer-preview-table-wrap" id="wmcCustomerPreviewTable" data-wmc-customer-preview-table hidden>
+                        <table class="table align-middle wmc-customer-preview-table">
+                            <thead><tr><th>Código WMC</th><th>Razão social</th><th>Fantasia</th><th>CNPJ</th><th>Resultado</th><th>Motivo</th></tr></thead>
+                            <tbody>
+                            @foreach (var row in customerPreview.Rows)
+                            {
+                                var dispositionLabel = row.Disposition switch
+                                {
+                                    WmcCustomerImportDisposition.Create => "Novo",
+                                    WmcCustomerImportDisposition.Update => "Atualizar",
+                                    WmcCustomerImportDisposition.Existing => "Existente",
+                                    WmcCustomerImportDisposition.Ignore => "Ignorado",
+                                    WmcCustomerImportDisposition.Conflict => "Conflito",
+                                    _ => row.Disposition.ToString()
+                                };
+                        <tr data-wmc-customer-preview-row data-disposition="@row.Disposition.ToString().ToLowerInvariant()">
+                                    <td>@row.WmcCode</td>
+                                    <td>@row.LegalName</td>
+                                    <td>@row.TradeName</td>
+                                    <td>@row.Cnpj</td>
+                                    <td><span class="wmc-customer-preview-status wmc-customer-preview-status--@row.Disposition.ToString().ToLowerInvariant()">@dispositionLabel</span></td>
+                                    <td>@(row.Reason ?? "—")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                @if (customerPreview.Conflicts == 0 && customerPreview.NewCustomers + customerPreview.ExistingCustomers > 0)
+                {
+                    <form method="post" asp-action="WmcCustomerImport" class="mt-3" data-wmc-customer-confirmation>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="sellerCode" value="@customerPreview.SellerCode" />
+                        <input type="hidden" name="confirm" value="true" />
+                        <button type="submit" class="btn admin-primary-action">Confirmar importação</button>
+                    </form>
+                }
+            }
+        </section>
+
+        <section class="mt-4" aria-labelledby="wmc-customer-regularization-title">
+            <h2 id="wmc-customer-regularization-title">Regularização manual de clientes pendentes</h2>
+            <p>Revise os clientes WMC já importados que ainda estão pendentes antes de liberá-los.</p>
+            <form method="post" asp-action="WmcCustomerRegularizationPreview">
+                @Html.AntiForgeryToken()
+            <button type="submit" class="btn admin-primary-action wmc-customer-regularization-preview-button"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Gerar prévia de regularização</button>
+            </form>
+            @if (regularizationPreview is not null)
+            {
+                <div class="wmc-customer-regularization-summary" aria-label="Resumo da regularização">
+                    <article><span>Pendentes</span><strong>@regularizationPreview.PendingCustomers</strong></article>
+                    <article class="wmc-customer-regularization-summary--normal"><span>Elegíveis</span><strong>@regularizationPreview.EligibleCustomers</strong></article>
+                    <article class="wmc-customer-regularization-summary--warning"><span>Bloqueados</span><strong>@regularizationPreview.BlockedCustomers</strong></article>
+                </div>
+                @if (regularizationPreview.BlockedCustomers == 0 && regularizationPreview.EligibleCustomers > 0)
+                {
+                    <form method="post" asp-action="WmcCustomerRegularization" class="mt-3" data-wmc-customer-confirmation>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="confirm" value="true" />
+                        <button type="submit" class="btn admin-primary-action">Confirmar regularização</button>
+                    </form>
+                }
+                @if (regularizationPreview.Rows.Any(row => !row.Eligible))
+                {
+                    <details class="wmc-customer-regularization-blocked mt-3">
+                        <summary>Exibir motivos dos bloqueios (@regularizationPreview.BlockedCustomers)</summary>
+                        <div class="wmc-customer-regularization-blocked-list">
+                            <ul>
+                    @foreach (var row in regularizationPreview.Rows.Where(row => !row.Eligible))
+                    {
+                        <li><strong>@row.WmcCode</strong>: @row.Reason</li>
+                    }
+                            </ul>
+                        </div>
+                    </details>
+                }
+            }
+        </section>
 
         @if (lastRun is not null)
         {
@@ -45,125 +192,345 @@
                     <tr><td>Estoque</td><td>@lastRun.Stock.RecordsRead</td><td>@lastRun.Stock.RecordsCreated</td><td>@lastRun.Stock.RecordsUpdated</td><td>@lastRun.Stock.RecordsSkipped</td><td>@lastRun.Stock.ErrorMessage</td></tr>
                 </tbody>
             </table>
-            <p>&Uacute;ltima execu&ccedil;&atilde;o: @lastRun.StartedAt.ToString("u") &rarr; @lastRun.FinishedAt.ToString("u") (UTC)</p>
-        }
-        else
-        {
-            <p class="mt-3">Nenhuma sincroniza&ccedil;&atilde;o executada ainda nesta inst&acirc;ncia.</p>
         }
 
-        <section class="mt-5" aria-labelledby="wmc-preview-title">
-            <h2 id="wmc-preview-title">Pr&eacute;via de produtos por marca</h2>
-            <p>Consulta somente leitura. Nenhum produto, estoque, categoria ou execu&ccedil;&atilde;o ser&aacute; gravado.</p>
-            @if (TempData["WmcPreviewError"] is string previewError)
-            {
-                <div class="alert alert-warning" role="alert">@previewError</div>
-            }
-            <form method="post" asp-action="WmcPreview" class="wmc-preview-form">
-                @Html.AntiForgeryToken()
-                <div class="wmc-brand-toolbar">
-                    <label class="form-label" for="wmcBrandSearch">Pesquisar marca</label>
-                    <input class="form-control" id="wmcBrandSearch" type="search" placeholder="C&oacute;digo ou descri&ccedil;&atilde;o" autocomplete="off" />
-                    <button class="btn btn-outline-secondary wmc-selection-action" type="button" id="wmcSelectFiltered"><span aria-hidden="true">&#10003;</span> Selecionar filtradas</button>
-                    <button class="btn btn-outline-secondary wmc-selection-action" type="button" id="wmcClearSelection"><span aria-hidden="true">&times;</span> Limpar sele&ccedil;&atilde;o</button>
-                </div>
-                <div class="wmc-brand-grid" id="wmcBrandGrid" role="group" aria-label="Marcas WMC">
-                    @foreach (var brand in Model.Brands)
-                    {
-                        var isSelected = Model.SelectedBrandCodes.Contains((short)brand.Code);
-                        <label class="wmc-brand-row" data-brand-search="@brand.Code @brand.Description">
-                            <input type="checkbox" name="brandCodes" value="@brand.Code" checked="@(isSelected ? "checked" : null)" />
-                            <span class="wmc-brand-code">@brand.Code</span>
-                            <span class="wmc-brand-description">@brand.Description</span>
-                            <span class="wmc-brand-count">@brand.ActiveProductCount ativos de @brand.ProductCount</span>
-                        </label>
-                    }
-                </div>
-                <div class="wmc-preview-submit"><span id="wmcSelectionCount" aria-live="polite">0 marcas selecionadas</span><button type="submit" class="btn btn-primary">Simular importa&ccedil;&atilde;o</button></div>
-            </form>
+        <section class="wmc-import-section" aria-labelledby="wmc-import-title">
 
-            @if (Model.Preview is not null)
-            {
-                @if (Model.Preview.ErrorMessage is not null)
-                {
-                    <div class="alert alert-warning" role="alert">@Model.Preview.ErrorMessage</div>
-                }
-                <div class="wmc-preview-cards" aria-label="Resumo da simula&ccedil;&atilde;o">
-                    <article class="wmc-preview-card"><span>Novos ativos</span><strong>@Model.Preview.NewActiveProducts</strong></article>
-                    <article class="wmc-preview-card"><span>Existentes</span><strong>@Model.Preview.ExistingActiveProducts</strong></article>
-                    <article class="wmc-preview-card"><span>Ignorados</span><strong>@Model.Preview.InactiveIgnoredProducts</strong></article>
-                    <article class="wmc-preview-card"><span>Conflitos</span><strong>@(Model.Preview.DuplicateCodes + Model.Preview.InvalidCodes + Model.Preview.InvalidSituations + Model.Preview.StockProblems)</strong></article>
-                </div>
-                <details class="wmc-preview-details">
-                    <summary>Detalhes da simula&ccedil;&atilde;o</summary>
-                    <dl>
-                        <div><dt>Produtos lidos</dt><dd>@Model.Preview.ProductsRead</dd></div>
-                        <div><dt>Ativos eleg&iacute;veis</dt><dd>@Model.Preview.ActiveEligibleProducts</dd></div>
-                        <div><dt>Ativos</dt><dd>@Model.Preview.ActiveProducts</dd></div>
-                        <div><dt>Inativos</dt><dd>@Model.Preview.InactiveProducts</dd></div>
-                        <div><dt>Situa&ccedil;&otilde;es desconhecidas</dt><dd>@Model.Preview.UnknownSituations</dd></div>
-                        <div><dt>C&oacute;digos inv&aacute;lidos</dt><dd>@Model.Preview.InvalidCodes</dd></div>
-                        <div><dt>C&oacute;digos duplicados</dt><dd>@Model.Preview.DuplicateCodes</dd></div>
-                        <div><dt>Problemas de estoque</dt><dd>@Model.Preview.StockProblems</dd></div>
-                        <div><dt>Dispon&iacute;veis projetados</dt><dd>@Model.Preview.ProjectedAvailableProducts</dd></div>
-                        <div><dt>Bloqueados projetados</dt><dd>@Model.Preview.ProjectedBlockedProducts</dd></div>
-                    </dl>
-                </details>
-                <p class="text-muted">A pr&eacute;via preserva pre&ccedil;os, fotos, categorias comerciais, publica&ccedil;&atilde;o e reservas locais.</p>
-                @if (Model.BrandPreviews.Count > 0)
-                {
-                    <h3 class="mt-4">Resultado por marca</h3>
-                    <div class="wmc-brand-results">
-                        @foreach (var brandPreview in Model.BrandPreviews)
-                        {
-                            <article class="wmc-brand-result">
-                                <h4>@brandPreview.Code - @brandPreview.Description</h4>
-                                <span>@brandPreview.Preview.NewProducts novos</span>
-                                <span>@brandPreview.Preview.ExistingProducts existentes</span>
-                                <span>@brandPreview.Preview.InactiveIgnoredProducts ignorados</span>
-                                <div class="wmc-product-filter" role="toolbar" aria-label="Filtrar produtos da marca">
-                                    <button type="button" class="wmc-product-filter-button is-active" data-product-filter="Todos">Todos</button>
-                                    <button type="button" class="wmc-product-filter-button" data-product-filter="Novo">Novos</button>
-                                    <button type="button" class="wmc-product-filter-button" data-product-filter="Existente">Existentes</button>
-                                    <button type="button" class="wmc-product-filter-button" data-product-filter="Conflito">Conflitos</button>
-                                </div>
-                                <div class="wmc-product-grid table-responsive">
-                                    <table class="wmc-product-table">
-                                        <thead><tr><th>C&oacute;digo WMC</th><th>Descri&ccedil;&atilde;o</th><th>Estoque</th><th>Situa&ccedil;&atilde;o</th></tr></thead>
-                                        <tbody>
-                                            @foreach (var product in brandPreview.Products)
-                                            {
-                                                <tr data-product-status="@product.Status">
-                                                    <td>@product.WmcCode</td>
-                                                    <td>@product.Description</td>
-                                                    <td>@(product.Stock?.ToString("0.###") ?? "N/D")</td>
-                                                    <td><span class="wmc-product-status wmc-product-status--@product.Status.ToLowerInvariant()">@product.Status</span></td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </article>
-                        }
+            <section class="wmc-import-wizard" aria-labelledby="wmc-import-title">
+                <header class="wmc-wizard-header">
+                    <div>
+                        <h2 id="wmc-import-title">Produtos e unidades oficiais</h2>
+                        <p>Consulte o espelho WMC, confira os dados e confirme somente depois da simulação.</p>
                     </div>
+                    <span class="wmc-readonly-badge">Somente leitura na WMC</span>
+                </header>
+
+                <ol class="wmc-stepper" aria-label="Etapas da importação">
+                    <li class="@(Model.Step == "Brands" ? "is-active" : "is-complete")"><span>1</span><strong>Selecionar marcas</strong></li>
+                    <li class="@(Model.Step == "Products" ? "is-active" : Model.Step is "Confirmation" or "Result" ? "is-complete" : null)"><span>2</span><strong>Conferir produtos</strong></li>
+                    <li class="@(Model.Step is "Confirmation" or "Result" ? "is-active" : null)"><span>3</span><strong>Confirmar importação</strong></li>
+                </ol>
+
+                @if (Model.LastProductSyncAt is DateTime lastProductSync)
+                {
+                    <small class="wmc-last-import">Última importação: @lastProductSync.ToLocalTime().ToString("g")</small>
                 }
-            }
+
+                @if (TempData["WmcPreviewError"] is string previewError)
+                {
+                    <div class="alert alert-warning" role="alert">@previewError</div>
+                }
+
+                @if (Model.Step == "Brands")
+                {
+                    <form method="post" asp-action="WmcProducts" class="wmc-brand-picker">
+                        @Html.AntiForgeryToken()
+                        <div class="wmc-brand-toolbar">
+                            <label class="form-label" for="wmcBrandSearch">Pesquisar marca</label>
+                            <input class="form-control" id="wmcBrandSearch" type="search" placeholder="Código ou descrição" autocomplete="off" />
+                            <span class="wmc-brand-selection-count" id="wmcBrandSelectionCount" aria-live="polite">0 marcas selecionadas</span>
+                        </div>
+                        <div class="wmc-brand-grid wmc-brand-picker-grid" id="wmcBrandGrid" role="radiogroup" aria-label="Marcas WMC">
+                            @foreach (var brand in Model.Brands.OrderBy(item => item.Description))
+                            {
+                                <label class="wmc-brand-row" data-brand-search="@brand.Code @brand.Description">
+                                    <input type="radio" name="brandCode" value="@brand.Code" required />
+                                    <span class="wmc-brand-code">@brand.Code</span>
+                                    <span class="wmc-brand-description">@brand.Description</span>
+                                    <span class="wmc-brand-count">@brand.ActiveProductCount ativos de @brand.ProductCount</span>
+                                </label>
+                            }
+                        </div>
+                        <div class="wmc-wizard-actions">
+                            <span class="wmc-action-hint">Escolha uma marca para carregar seus produtos.</span>
+                            <button type="submit" class="btn btn-primary">Carregar produtos</button>
+                        </div>
+                    </form>
+                }
+                else if (Model.Step == "Products" && Model.Candidates is not null)
+                {
+                    <header class="wmc-stage-heading">
+                        <div><span class="wmc-step-kicker">Etapa 2</span><h4>Confira @Model.SelectedBrandDescription</h4></div>
+                        <a asp-action="Wmc" class="btn btn-outline-secondary btn-sm">Trocar marca</a>
+                    </header>
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <form method="post" asp-action="WmcConfirmSelection" id="wmcImportSelectionForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
+                        <div class="small text-muted mb-2" aria-label="Origem dos dados">
+                            <span class="me-3">Dados WMC · Firebird, somente leitura</span>
+                            <span>Cadastro Orofoods · local, somente leitura</span>
+                        </div>
+                        <div class="wmc-product-selection-toolbar" id="wmcProductSelectionToolbar">
+                            <div class="wmc-product-search-field">
+                                <label for="wmcProductSearch">Pesquisar produtos</label>
+                                <input class="form-control" id="wmcProductSearch" type="search" placeholder="Código ou descrição" autocomplete="off" />
+                            </div>
+                            <div class="wmc-product-status-field">
+                                <label for="wmcProductStatusFilter">Filtrar situação</label>
+                                <select class="form-select" id="wmcProductStatusFilter">
+                                    <option value="all">Todos</option>
+                                    <option value="new">Novos</option>
+                                    <option value="existing">Existentes</option>
+                                    <option value="blocked">Bloqueados</option>
+                                </select>
+                            </div>
+                            <div class="wmc-product-selection-actions" role="group" aria-label="Seleção de produtos">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcSelectAll">Selecionar todos</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcDeselectAll">Desmarcar todos</button>
+                            </div>
+                            <span class="wmc-product-selection-count" id="wmcProductSelectionCount" aria-live="polite">0 de 0 produtos selecionados</span>
+                        </div>
+                        <div class="wmc-product-table-scroll">
+                            <table class="wmc-import-table">
+                                <caption class="visually-hidden">Produtos da marca selecionada</caption>
+                                <thead><tr><th>Sel.</th><th>Código</th><th>Descrição</th><th>EAN</th><th>DUN</th><th>Preço WMC</th><th>Preço local</th><th>Preço proposto</th><th>Unidade / fator</th><th>Estoque</th><th>Situação</th></tr></thead>
+                                <tbody id="wmcProductRows">
+                                @foreach (var item in Model.Candidates)
+                                {
+                                    var masterUnit = item.Units.FirstOrDefault(unit => unit.IsMaster);
+                                    var primaryUnit = item.Units.FirstOrDefault(unit => !unit.IsMaster) ?? item.Units.FirstOrDefault();
+                                    var statusKind = item.Selectable ? (item.ProductId is null ? "new" : "existing") : "blocked";
+                                    var statusLabel = statusKind switch { "new" => "Novo", "existing" => "Existente", _ => "Bloqueado" };
+                                    <tr class="wmc-import-row wmc-import-row--@statusKind" data-wmc-product-row data-status-kind="@statusKind" data-product-search="@item.WmcCode @item.Name">
+                                        <td><input type="checkbox" name="selectedProductCodes" value="@item.WmcCode" data-wmc-product-checkbox @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
+                                        <td class="wmc-code-cell"><strong>@item.WmcCode</strong></td>
+                                        <td class="wmc-description-cell" title="@item.Name">@item.Name</td>
+                                        <td class="wmc-code-cell">@(item.Ean ?? "—")</td>
+                                        <td class="wmc-code-cell">@(masterUnit?.Barcode ?? "—")</td>
+                                        <td class="wmc-price-cell">
+                                            @if (item.PrecoVenda is decimal precoVenda)
+                                            {
+                                                <strong>@precoVenda.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                                                <small class="text-muted d-block">PRODUTOS.PRECOVENDA</small>
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                            }
+                                        </td>
+                                        <td class="wmc-price-cell">
+                                            @if (item.LocalBasePrice is decimal localBasePrice)
+                                            {
+                                                <strong>@localBasePrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) / @(item.LocalCommercialUnit ?? "unidade não definida")</strong>
+                                                <small class="text-muted d-block">Cadastro Orofoods; não é preço WMC.</small>
+                                                @if (item.PriceProposal?.CurrentTargetPrice is decimal currentTargetPrice)
+                                                {
+                                                    <small class="text-muted d-block">@item.PriceProposal.TargetPriceTableName: @currentTargetPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</small>
+                                                }
+                                                @if (localBasePrice == 1.00m && string.Equals(item.LocalCommercialUnit, "PCT", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <small class="text-warning d-block">R$ 1,00/PCT é placeholder local de homologação.</small>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                            }
+                                        </td>
+                                        <td class="wmc-price-cell">
+                                            @if (item.PriceProposal?.ProposedPrice is decimal proposedPrice)
+                                            {
+                                                <strong>@proposedPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                                                @if (item.PriceProposal.SafeToApply)
+                                                {
+                                                    <small class="text-success d-block">Será gravado no preço base</small>
+                                                }
+                                                else
+                                                {
+                                                    <small class="text-warning d-block">Bloqueado: @item.PriceProposal.BlockReason</small>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                                <small class="text-warning d-block">Bloqueado: @item.PriceProposal?.BlockReason</small>
+                                            }
+                                        </td>
+                                        <td class="wmc-unit-cell">@(primaryUnit is null ? "—" : $"{primaryUnit.UnitCode} / {primaryUnit.Factor?.ToString() ?? "—"}")</td>
+                                        <td class="wmc-stock-cell">@(item.Stock?.ToString("0.###") ?? "—")</td>
+                                        <td>
+                                            <span class="wmc-product-status wmc-product-status--@statusKind">@statusLabel</span>
+                                            <details class="wmc-row-details">
+                                                <summary>Detalhes</summary>
+                                                <div class="wmc-row-details-content">
+                                                    <span class="wmc-detail-status">@item.Status</span>
+                                                    @if (item.UnitProposal is { } proposal)
+                                                    {
+                                                        <dl class="wmc-unit-proposal">
+                                                            <dt>EAN atual</dt>
+                                                            <dd>@(proposal.CurrentEan13 ?? "—") &rarr; @(proposal.ProposedEan13 ?? "—")</dd>
+                                                            <dt>DUN atual</dt>
+                                                            <dd>@(proposal.CurrentDun14 ?? "—")</dd>
+                                                            <dt>DUN proposto</dt>
+                                                            <dd>@(proposal.ProposedDun14 ?? "—")</dd>
+                                                            <dt>Fator PC atual</dt>
+                                                            <dd>@(proposal.CurrentPcFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator PC proposto</dt>
+                                                            <dd>@(proposal.ProposedPcFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator CX atual</dt>
+                                                            <dd>@(proposal.CurrentCxFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator CX proposto</dt>
+                                                            <dd>@(proposal.ProposedCxFactor?.ToString() ?? "—")</dd>
+                                                        </dl>
+                                                        @if (!proposal.SafeToApply)
+                                                        {
+                                                            <small class="text-warning">Bloqueado: @proposal.BlockReason</small>
+                                                        }
+                                                    }
+                                                    @if (item.Units.Count > 0)
+                                                    {
+                                                        <ul class="wmc-unit-list">
+                                                            @foreach (var unit in item.Units)
+                                                            {
+                                                                var unitCode = unit.UnitCode.Trim().ToUpperInvariant();
+                                                                var barcodeLabel = unitCode switch { "PC" => "EAN da PC", "CX" => "DUN da CX", _ => "CODBARRAS" };
+                                                                <li><strong>@unitCode</strong> · FATOR @(unit.Factor?.ToString() ?? "—") · @barcodeLabel: @(unit.Barcode ?? "—") · UNMASTER=@(unit.IsMaster ? "true" : "false")</li>
+                                                            }
+                                                        </ul>
+                                                    }
+                                                    @if (item.Changes.Count > 0)
+                                                    {
+                                                        <ul class="wmc-change-list">
+                                                            @foreach (var change in item.Changes)
+                                                            {
+                                                                <li><strong>@change.Field:</strong> @change.CurrentValue &rarr; @change.WmcValue</li>
+                                                            }
+                                                        </ul>
+                                                    }
+                                                </div>
+                                            </details>
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="wmc-product-pagination" id="wmcProductPagination" aria-label="Paginação de produtos">
+                            <span id="wmcProductPageStatus" aria-live="polite"></span>
+                            <div class="wmc-product-pagination-actions">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcProductPreviousPage">Anterior</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="wmcProductNextPage">Próxima</button>
+                            </div>
+                        </div>
+                        <div class="wmc-wizard-actions">
+                            <a asp-action="Wmc" class="btn btn-outline-secondary">Voltar</a>
+                            <span class="wmc-action-hint">Selecione apenas produtos liberados para continuar.</span>
+                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection">Confirmar alterações</button>
+                        </div>
+                    </form>
+                }
+                else if (Model.Step == "Confirmation" && Model.Confirmation is not null)
+                {
+                    var blockedCount = Model.Candidates?.Count(item => !item.Selectable) ?? 0;
+                    <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Etapa 3</span><h4>Confirmar importação · @Model.SelectedBrandDescription</h4></div></header>
+                    <p class="wmc-stage-copy">Revise o resumo antes de gravar os produtos selecionados no catálogo local.</p>
+                    <div class="wmc-import-summary" aria-label="Resumo da seleção">
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Selecionados</span><strong>@Model.Confirmation.Selected</strong></article>
+                        <article class="wmc-summary-new admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Novos</span><strong>@Model.Confirmation.NewProducts</strong></article>
+                        <article class="wmc-summary-existing admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Existentes</span><strong>@Model.Confirmation.ExistingProducts</strong></article>
+                        <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--warning"><span>Bloqueados</span><strong>@blockedCount</strong></article>
+                    </div>
+                    <details class="wmc-confirmation-details">
+                        <summary>Ver alterações, preços e unidades oficiais</summary>
+                        <ul>
+                            @foreach (var item in (Model.Candidates ?? []).Where(item => (Model.SelectedProductCodes ?? []).Contains(item.WmcCode, StringComparer.Ordinal)))
+                            {
+                                <li>
+                                    <strong>@item.WmcCode</strong> · @item.Status
+                                    @if (item.PriceProposal is { } pricePreview)
+                                    {
+                                        <ul class="wmc-change-list">
+                                            <li><strong>Preço anterior:</strong> @(pricePreview.CurrentBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
+                                            <li><strong>Novo preço WMC:</strong> @(pricePreview.ProposedPrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
+                                        </ul>
+                                    }
+                                    @if (item.Changes.Count > 0)
+                                    {
+                                        <ul class="wmc-change-list">@foreach (var change in item.Changes) { <li><strong>@change.Field:</strong> @change.CurrentValue &rarr; @change.WmcValue</li> }</ul>
+                                    }
+                                    @if (item.UnitProposal is { SafeToApply: false } unitProposal) { <small class="text-warning d-block">Unidades bloqueadas: @unitProposal.BlockReason</small> }
+                                    @if (item.PriceProposal is { SafeToApply: false } priceProposal) { <small class="text-warning d-block">Preço bloqueado: @priceProposal.BlockReason</small> }
+                                </li>
+                            }
+                        </ul>
+                    </details>
+                    <form method="post" asp-action="WmcImportProducts" id="wmcImportConfirmationForm" class="wmc-wizard-actions wmc-confirmation-actions">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
+                        @foreach (var code in Model.SelectedProductCodes ?? []) { <input type="hidden" name="selectedProductCodes" value="@code" /> }
+                        <input type="hidden" name="simulationValidated" value="true" />
+                        <a asp-action="Wmc" class="btn btn-outline-secondary">Cancelar</a>
+                        <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="false" checked /> Importar somente novos</label>
+                        <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="true" /> Atualizar existentes</label>
+                        <button class="btn btn-primary" type="submit" data-wmc-confirm-submit>Confirmar importação</button>
+                    </form>
+                }
+                else if (Model.Step == "Result" && Model.ImportResult is not null)
+                {
+                    <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Resultado</span><h4>Importação @(Model.ImportResult.Status == "Succeeded" ? "concluída" : "não concluída")</h4></div></header>
+                    <div class="wmc-import-summary">
+                        <article class="wmc-summary-new admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Criados</span><strong>@Model.ImportResult.Created</strong></article>
+                        <article class="wmc-summary-existing admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Atualizados</span><strong>@Model.ImportResult.Updated</strong></article>
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Inalterados</span><strong>@Model.ImportResult.Unchanged</strong></article>
+                        <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--warning"><span>Bloqueados</span><strong>@Model.ImportResult.Blocked</strong></article>
+                        <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--critical"><span>Erros</span><strong>@Model.ImportResult.Errors</strong></article>
+                    </div>
+                    @if (Model.ImportResult.ErrorMessage is not null)
+                    {
+                        <div class="alert alert-warning" role="alert">@Model.ImportResult.ErrorMessage</div>
+                    }
+                    @if (Model.ImportResult.Items.Any(item => item.Detail is not null))
+                    {
+                        <details class="wmc-confirmation-details"><summary>Ver detalhes do resultado</summary><ul>@foreach (var item in Model.ImportResult.Items.Where(item => item.Detail is not null)) { <li><strong>@item.WmcCode</strong> · @item.Status · @item.Detail</li> }</ul></details>
+                    }
+                    @if (Model.Candidates is { Count: > 0 })
+                    {
+                        <details class="wmc-confirmation-details"><summary>Ver preços recarregados após a gravação</summary><ul>
+                            @foreach (var item in Model.Candidates.Where(item => (Model.SelectedProductCodes ?? []).Contains(item.WmcCode, StringComparer.Ordinal)))
+                            {
+                                <li><strong>@item.WmcCode</strong> · WMC: @(item.PrecoVenda?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—") · BasePrice persistido: @(item.LocalBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
+                            }
+                        </ul></details>
+                    }
+                    <div class="wmc-wizard-actions"><a asp-action="Wmc" class="btn btn-primary">Nova importação</a></div>
+                }
+            </section>
+
         </section>
+        <p class="text-muted mt-4">A sincronização automática/global de clientes está desativada. As demais integrações permanecem separadas.</p>
     </div>
 </section>
 
 <script>
     (() => {
+        const toggle = document.querySelector('[data-wmc-customer-preview-toggle]');
+        const table = document.querySelector('[data-wmc-customer-preview-table]');
+        const filter = document.querySelector('[data-wmc-customer-preview-filter]');
+        const rows = [...document.querySelectorAll('[data-wmc-customer-preview-row]')];
+        if (!toggle || !table) return;
+        const updateFilter = () => {
+            const selected = filter?.value ?? 'all';
+            const accepted = selected === 'existing' ? ['existing', 'update'] : [selected];
+            rows.forEach(row => row.hidden = selected !== 'all' && !accepted.includes(row.dataset.disposition ?? ''));
+        };
+        toggle.addEventListener('click', () => {
+            const expanded = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', (!expanded).toString());
+            table.hidden = expanded;
+            toggle.textContent = expanded ? `Exibir clientes (${rows.length})` : 'Recolher clientes';
+            if (!expanded) updateFilter();
+        });
+        filter?.addEventListener('change', updateFilter);
+    })();
+
+    (() => {
         const search = document.getElementById('wmcBrandSearch');
         const rows = [...document.querySelectorAll('.wmc-brand-row')];
-        const visibleRows = () => rows.filter(row => row.hidden !== true);
-        const checkboxes = () => rows.map(row => row.querySelector('input'));
         const updateCount = () => {
-            const count = checkboxes().filter(input => input.checked).length;
-            const label = document.getElementById('wmcSelectionCount');
+            const count = rows.filter(row => row.querySelector('input')?.checked).length;
+            const label = document.getElementById('wmcBrandSelectionCount');
             if (label) label.textContent = `${count} marca${count === 1 ? '' : 's'} selecionada${count === 1 ? '' : 's'}`;
-            const clear = document.getElementById('wmcClearSelection');
-            if (clear) clear.disabled = count === 0;
         };
         const updateRows = () => {
             const term = (search?.value ?? '').trim().toLocaleLowerCase();
@@ -171,15 +538,86 @@
         };
         search?.addEventListener('input', updateRows);
         rows.forEach(row => row.querySelector('input')?.addEventListener('change', updateCount));
-        document.getElementById('wmcSelectFiltered')?.addEventListener('click', () => { visibleRows().forEach(row => row.querySelector('input').checked = true); updateCount(); });
-        document.getElementById('wmcClearSelection')?.addEventListener('click', () => { rows.forEach(row => row.querySelector('input').checked = false); updateCount(); });
-        document.querySelectorAll('.wmc-product-filter').forEach(toolbar => toolbar.addEventListener('click', event => {
-            const button = event.target.closest('[data-product-filter]');
-            if (!button) return;
-            toolbar.querySelectorAll('.wmc-product-filter-button').forEach(item => item.classList.toggle('is-active', item === button));
-            const filter = button.dataset.productFilter;
-            toolbar.closest('.wmc-brand-result').querySelectorAll('tbody tr').forEach(row => row.hidden = filter !== 'Todos' && row.dataset.productStatus !== filter);
-        }));
         updateCount();
+    })();
+
+    (() => {
+        const form = document.getElementById('wmcImportSelectionForm');
+        if (!form) return;
+
+        const rows = [...form.querySelectorAll('[data-wmc-product-row]')];
+        const checkboxes = [...form.querySelectorAll('[data-wmc-product-checkbox]')];
+        const search = document.getElementById('wmcProductSearch');
+        const statusFilter = document.getElementById('wmcProductStatusFilter');
+        const count = document.getElementById('wmcProductSelectionCount');
+        const pageStatus = document.getElementById('wmcProductPageStatus');
+        const previousPage = document.getElementById('wmcProductPreviousPage');
+        const nextPage = document.getElementById('wmcProductNextPage');
+        const selectAll = document.getElementById('wmcSelectAll');
+        const deselectAll = document.getElementById('wmcDeselectAll');
+        const pageSize = 25;
+        let page = 1;
+
+        const filteredRows = () => {
+            const term = (search?.value ?? '').trim().toLocaleLowerCase();
+            const selectedStatus = statusFilter?.value ?? 'all';
+            return rows.filter(row => {
+                const matchesText = term.length === 0 || (row.dataset.productSearch ?? '').toLocaleLowerCase().includes(term);
+                const matchesStatus = selectedStatus === 'all' || row.dataset.statusKind === selectedStatus;
+                return matchesText && matchesStatus;
+            });
+        };
+
+        const update = () => {
+            const filtered = filteredRows();
+            const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+            page = Math.min(page, pageCount);
+            const first = (page - 1) * pageSize;
+            const visible = new Set(filtered.slice(first, first + pageSize));
+            rows.forEach(row => { row.hidden = !visible.has(row); });
+
+            const selectedCount = checkboxes.filter(input => input.checked).length;
+            const eligibleCount = checkboxes.filter(input => !input.disabled).length;
+            if (count) count.textContent = `${selectedCount} de ${eligibleCount} produtos selecionados`;
+            if (pageStatus) pageStatus.textContent = `${filtered.length === 0 ? 0 : first + 1}–${Math.min(first + pageSize, filtered.length)} de ${filtered.length} produtos`;
+            if (previousPage) previousPage.disabled = page <= 1;
+            if (nextPage) nextPage.disabled = page >= pageCount;
+            if (selectAll) selectAll.disabled = eligibleCount === 0;
+            if (deselectAll) deselectAll.disabled = selectedCount === 0;
+        };
+
+        checkboxes.forEach(input => input.addEventListener('change', update));
+        selectAll?.addEventListener('click', () => {
+            checkboxes.filter(input => !input.disabled).forEach(input => { input.checked = true; });
+            update();
+        });
+        deselectAll?.addEventListener('click', () => {
+            checkboxes.forEach(input => { input.checked = false; });
+            update();
+        });
+        search?.addEventListener('input', () => { page = 1; update(); });
+        statusFilter?.addEventListener('change', () => { page = 1; update(); });
+        previousPage?.addEventListener('click', () => { page = Math.max(1, page - 1); update(); });
+        nextPage?.addEventListener('click', () => { page += 1; update(); });
+        update();
+    })();
+
+    (() => {
+        const form = document.getElementById('wmcImportConfirmationForm');
+        if (!form) return;
+        let submitted = false;
+        form.addEventListener('submit', event => {
+            if (submitted) {
+                event.preventDefault();
+                return;
+            }
+            submitted = true;
+            const button = form.querySelector('[data-wmc-confirm-submit]');
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Importando...';
+                button.setAttribute('aria-busy', 'true');
+            }
+        });
     })();
 </script>

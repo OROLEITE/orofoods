@@ -77,9 +77,39 @@ public class AuthenticatedNavigationTests
         Assert.Contains("Url.Action(\"Index\", \"Dashboard\", new { area = \"Admin\" })", header);
         Assert.Contains("Url.Action(\"Index\", \"Commercial\", new { area = \"Admin\" })", header);
         Assert.Contains("Url.Action(\"Dashboard\", \"Portal\", new { area = \"\" })", header);
-        Assert.Contains("if (isAdministrator)", header);
-        Assert.Contains("asp-action=\"SelectCustomer\"", header);
-        Assert.Contains("Acessar portal de cliente", header);
+        Assert.Contains("<li><a class=\"dropdown-item\" href=\"@panelUrl\"", header);
+        Assert.Contains("@(isAdministrator ? \"Painel administrativo\" : \"Meu painel\")", header);
+        Assert.DoesNotContain("Acessar portal de cliente", header);
+    }
+
+    [Fact]
+    public void Authenticated_header_styles_preserve_public_theme_and_transparent_branding()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_SiteHeader.cshtml"));
+        var headerStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "header.css"));
+        var portalNavigationStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "portal-navigation.css"));
+        var adminNavigationStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
+
+        Assert.Contains("src=\"~/images/logo-orofoods-transparent.png\"", header);
+        Assert.Contains("asp-area=\"\" asp-controller=\"Home\" asp-action=\"Products\"", header);
+        Assert.Contains("asp-area=\"\" asp-controller=\"Home\" asp-action=\"About\"", header);
+        Assert.Contains("asp-area=\"\" asp-controller=\"Home\" asp-action=\"HowItWorks\"", header);
+        Assert.Contains("asp-area=\"\" asp-controller=\"Home\" asp-action=\"Contact\"", header);
+        Assert.Contains("aria-current=\"@(isProductsActive ? \"page\" : null)\"", header);
+
+        Assert.Contains("body.portal-authenticated .site-header-modern .site-logo", portalNavigationStyles);
+        Assert.Contains("body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo", headerStyles);
+        Assert.Contains(".admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active", headerStyles);
+        Assert.Contains("--authenticated-nav-active: #0E7490;", headerStyles);
+        Assert.Contains("html[data-theme=\"dark\"] body.portal-authenticated", portalNavigationStyles);
+        Assert.Contains("html[data-theme=\"dark\"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))", headerStyles);
+        Assert.Contains(".site-header-modern .main-nav .nav-link:hover", headerStyles);
+        Assert.Contains(".site-header-modern .main-nav .nav-link:focus-visible", headerStyles);
+        Assert.Contains("outline: 2px solid var(--nav-focus)", headerStyles);
+        Assert.Contains("--authenticated-nav-active: #38BDF8;", headerStyles);
+        Assert.Contains("background: #38BDF8;", portalNavigationStyles);
+        Assert.Contains("--admin-sidebar-accent: #38BDF8;", adminNavigationStyles);
     }
 
     [Fact]
@@ -89,10 +119,11 @@ public class AuthenticatedNavigationTests
         var home = File.ReadAllText(Path.Combine(projectPath, "Views", "Home", "Index.cshtml"));
 
         Assert.Contains("""User.Identity?.IsAuthenticated == true""", home);
-        Assert.Contains("""Url.Action("Catalog", "Portal", new { area = "" })""", home);
-        Assert.Contains("""Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerCatalogUrl })""", home);
-        Assert.Contains("""?? "/Identity/Account/Login?returnUrl=%2FPortal%2FCatalog""", home);
-        Assert.Contains("""Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = customerDashboardUrl })""", home);
+        Assert.Contains("""Url.Action("Dashboard", "Portal", new { area = "" })""", home);
+        Assert.Contains("""var loginCatalogUrl = Url.Page("/Account/Login", values: new { area = "Identity", returnUrl = publicCatalogUrl })""", home);
+        Assert.Contains("""var publicCatalogUrl = Url.Action("Products", "Home", new { area = "" }) ?? "/produtos""", home);
+        Assert.Contains("""var customerCatalogUrl = Url.Action("Catalog", "Portal", new { area = "" }) ?? "/Portal/Catalog""", home);
+        Assert.Contains("""Url.Action("New", "OrderDrafts", new { area = "Vendedor", customerId = selectedCustomerId })""", home);
         Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Admin" })""", home);
         Assert.Contains("""Url.Action("Index", "Dashboard", new { area = "Vendedor" })""", home);
         Assert.Contains("""Url.Action("Index", "Commercial", new { area = "Admin" })""", home);
@@ -186,7 +217,7 @@ public class AuthenticatedNavigationTests
         Assert.DoesNotContain("--portal-sidebar-width", density);
         Assert.DoesNotContain("245px", density);
         Assert.DoesNotContain("264px", navigation);
-        Assert.DoesNotContain("80px", navigation);
+        Assert.DoesNotContain("--portal-sidebar-width: 80px", navigation);
         Assert.DoesNotContain("--portal-sidebar-width", catalog);
         Assert.DoesNotContain("grid-template-columns:var(--portal-sidebar-width)", density);
         Assert.DoesNotContain(".portal-app-sidebar{", shell);

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Foto indisponível">
+  <rect width="800" height="600" fill="#f5f3ed"/>
+  <rect x="280" y="190" width="240" height="180" rx="18" fill="#e5e0d5"/>
+  <path d="M325 325l55-58 38 39 32-31 35 50H325z" fill="#bdb6a8"/>
+  <circle cx="465" cy="240" r="16" fill="#bdb6a8"/>
+</svg>

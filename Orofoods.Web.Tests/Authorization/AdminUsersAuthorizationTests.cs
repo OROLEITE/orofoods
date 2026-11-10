@@ -9,11 +9,27 @@ using Orofoods.Web.Data;
 using Orofoods.Web.Models.Identity;
 using Orofoods.Web.Services.Identity;
 using Orofoods.Web.Tests.Infrastructure;
+using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Tests.Authorization;
 
 public class AdminUsersAuthorizationTests
 {
+    [Fact]
+    public async Task Create_user_form_lists_seller_role_after_bootstrap()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var userManager = TestIdentityFactory.CreateUserManager(db);
+        var roleManager = TestIdentityFactory.CreateRoleManager(db);
+        await SeedData.EnsureSellerRoleAsync(roleManager);
+
+        var controller = new UsersController(db, userManager, roleManager, new AdminUserService(db, userManager, roleManager));
+        var view = Assert.IsType<ViewResult>(await controller.Create());
+        var model = Assert.IsType<AdminUserCreateViewModel>(view.Model);
+
+        Assert.Contains(model.Roles, role => role.Value == ApplicationRoles.Seller);
+    }
+
     [Fact]
     public void User_management_controller_is_administrator_only()
     {
@@ -54,8 +70,40 @@ public class AdminUsersAuthorizationTests
         var rows = ((IEnumerable)model.GetType().GetProperty("Users")!.GetValue(model)!).Cast<object>().ToList();
 
         var row = Assert.Single(rows);
-        Assert.Equal("Operador do SAC", ((ApplicationUser)row.GetType().GetProperty("User")!.GetValue(row)!).UserName);
+        Assert.Equal("Operador do SAC", row.GetType().GetProperty("UserName")!.GetValue(row));
         Assert.Equal("Operador", row.GetType().GetProperty("Role")!.GetValue(row));
+    }
+
+    [Fact]
+    public async Task Index_searches_name_email_and_login_for_the_homologation_account()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var userManager = TestIdentityFactory.CreateUserManager(db);
+        var roleManager = TestIdentityFactory.CreateRoleManager(db);
+        await roleManager.CreateAsync(new IdentityRole("Cliente"));
+        var user = new ApplicationUser
+        {
+            FullName = "Conta de homologação",
+            UserName = "staging-customer-test",
+            Email = "staging-customer@test.local",
+            IsActive = true
+        };
+        Assert.True((await userManager.CreateAsync(user, "Valid!Pass123")).Succeeded);
+        Assert.True((await userManager.AddToRoleAsync(user, "Cliente")).Succeeded);
+        var controller = new UsersController(db, userManager, roleManager, new AdminUserService(db, userManager, roleManager));
+
+        foreach (var term in new[] { "Conta de homologação", "staging-customer@test.local", "staging-customer-test" })
+        {
+            var view = Assert.IsType<ViewResult>(await controller.Index(term, null, null));
+            var model = Assert.IsType<AdminUserListViewModel>(view.Model);
+            var row = Assert.Single(model.Users);
+            Assert.Equal("staging-customer@test.local", row.Email);
+        }
+
+        var resetView = Assert.IsType<ViewResult>(await controller.ResetPassword(user.Id));
+        var resetModel = Assert.IsType<AdminUserResetPasswordViewModel>(resetView.Model);
+        Assert.Equal("staging-customer@test.local", resetModel.Email);
+        Assert.Equal("Conta de homologação", resetModel.Name);
     }
 
     [Fact]
@@ -70,6 +118,17 @@ public class AdminUsersAuthorizationTests
             Assert.NotNull(postAction);
             Assert.NotNull(postAction!.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
         }
+
+        var history = typeof(UsersController).GetMethod(nameof(UsersController.History));
+        Assert.NotNull(history);
+        Assert.Null(history!.GetCustomAttribute<AllowAnonymousAttribute>());
+
+        var accountController = typeof(Orofoods.Web.Areas.Identity.Controllers.AccountController);
+        Assert.Equal(string.Empty, accountController.GetCustomAttribute<AuthorizeAttribute>()?.Roles ?? string.Empty);
+        var changePassword = accountController.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Single(method => method.Name == "ChangeTemporaryPassword"
+                && method.GetCustomAttribute<HttpPostAttribute>() is not null);
+        Assert.NotNull(changePassword.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
     }
 
     private static async Task CreateUserAsync(UserManager<ApplicationUser> userManager, string name, string email, string role, bool active)

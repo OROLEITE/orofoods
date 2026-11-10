@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -79,11 +80,12 @@ public class PaymentsController(
     {
         if (User.IsInRole("Administrador"))
         {
-            var customerId = adminCustomerContextService.GetSelectedCustomerId(HttpContext.Session);
-            if (customerId is not null)
-            {
-                return await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value);
-            }
+            var customerId = adminCustomerContextService.GetSelectedCustomerId(
+                HttpContext.Session,
+                User.FindFirstValue(ClaimTypes.NameIdentifier));
+            return customerId is not null
+                ? await customerAccessService.GetApprovedCustomerByIdAsync(customerId.Value)
+                : null;
         }
 
         var userId = userManager.GetUserId(User);

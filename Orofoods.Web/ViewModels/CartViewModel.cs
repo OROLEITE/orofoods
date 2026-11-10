@@ -11,5 +11,6 @@ public sealed class CartViewModel
 
 public sealed record CartLineViewModel(int ProductId, string Sku, string Name, string UnitDescription, int Quantity, int MinimumCases, decimal UnitPrice, bool IsAvailable)
 {
+    public string PriceUnitLabel { get; init; } = "caixa";
     public decimal Subtotal => Quantity * UnitPrice;
 }

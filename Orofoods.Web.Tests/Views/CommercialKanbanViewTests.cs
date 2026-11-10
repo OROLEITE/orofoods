@@ -111,6 +111,37 @@ public class CommercialKanbanViewTests
         }
     }
 
+    [Fact]
+    public void Commercial_overview_uses_status_colors_compact_routine_header_and_balanced_daily_metrics()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Commercial", "Index.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard-indicators.css"));
+        var routineHeaderStart = view.IndexOf("<header class=\"commercial-panel-heading commercial-routine-heading\"", StringComparison.Ordinal);
+        var routineHeaderEnd = routineHeaderStart < 0 ? -1 : view.IndexOf("</header>", routineHeaderStart, StringComparison.Ordinal);
+
+        Assert.Contains("Model.Attention.OverdueReturns == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--warning\"", view);
+        Assert.Contains("Model.Attention.CustomersWithoutPurchase == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--warning\"", view);
+        Assert.DoesNotContain("admin-dashboard-indicator--critical", view);
+        Assert.Contains("@Model.OrdersToday", view);
+        Assert.Contains("@Model.TodayRevenue.ToString(\"C\")", view);
+        Assert.Contains("asp-route-id=\"@item.CustomerId\"", view);
+        Assert.True(routineHeaderStart >= 0 && routineHeaderEnd > routineHeaderStart);
+        var routineHeader = view[routineHeaderStart..routineHeaderEnd];
+        Assert.Contains("commercial-priority-legend", routineHeader);
+        Assert.Equal(1, view.Split("commercial-priority-legend", StringSplitOptions.None).Length - 1);
+        Assert.Contains("grid-template-columns: repeat(2, minmax(0, 1fr));", styles);
+        Assert.Contains("commercial-routine-list--overview", styles);
+        Assert.Contains("commercial-routine-heading-meta", styles);
+        AssertRuleHas(styles, ".admin-authenticated .admin-shell .commercial-dashboard-page .commercial-routine-panel .commercial-panel-heading", "padding", "12px 18px");
+        AssertRuleHas(styles, ".admin-authenticated .admin-shell .commercial-dashboard-page .commercial-routine-list--overview .commercial-routine-item", "padding", "10px 0");
+        AssertRuleHas(styles, ".admin-authenticated .admin-shell .commercial-dashboard-page .commercial-metric-grid--secondary", "grid-template-columns", "repeat(2, minmax(0, 1fr))");
+        Assert.Contains("priority-dot--urgent", styles);
+        Assert.Contains("color: #F59E0B;", styles);
+        Assert.Contains("color: #38BDF8;", styles);
+        Assert.Contains("@media (max-width: 520px)", styles);
+    }
+
     private static void AssertRuleHas(string css, string selector, string property, string value)
     {
         var declarations = RuleDeclarations(css, selector);

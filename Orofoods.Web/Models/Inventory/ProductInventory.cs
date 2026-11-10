@@ -7,6 +7,7 @@ public class ProductInventory
     public Product? Product { get; set; }
     public int QuantityOnHand { get; set; }
     public int QuantityReserved { get; set; }
+    public bool IsManuallyAdjusted { get; set; }
     public List<InventoryAdjustment> Adjustments { get; set; } = [];
 
     public int AvailableQuantity => Math.Max(0, QuantityOnHand - QuantityReserved);

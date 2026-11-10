@@ -26,10 +26,6 @@ public sealed class PaymentService(
             return;
         }
 
-        if (order.PaymentTerm.DaysUntilDue > eligibilityOptions.Value.AbsoluteMaximumTermDays)
-        {
-            throw new InvalidOperationException("O prazo do boleto ultrapassa o máximo permitido.");
-        }
 
         var existing = await db.Payments.SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
         if (existing is not null)

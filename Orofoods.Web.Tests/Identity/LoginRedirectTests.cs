@@ -20,11 +20,11 @@ namespace Orofoods.Web.Tests.Identity;
 public class LoginRedirectTests
 {
     [Fact]
-    public async Task Admin_without_return_url_redirects_to_admin_dashboard()
+    public async Task Admin_without_return_url_redirects_to_access_center()
     {
         var result = await LoginAsAsync("Administrador", returnUrl: null);
 
-        Assert.Equal("/Admin/Dashboard", RedirectUrl(result));
+        Assert.Equal("/Admin/Portais", RedirectUrl(result));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class LoginRedirectTests
     {
         var result = await LoginAsAsync("Administrador", "/Portal/Dashboard");
 
-        Assert.Equal("/Admin/Dashboard", RedirectUrl(result));
+        Assert.Equal("/Admin/Portais", RedirectUrl(result));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class LoginRedirectTests
     }
 
     [Theory]
-    [InlineData("staging-admin-test", "staging-admin-test@orofoods.test", "Administrador", "/Admin/Dashboard")]
+    [InlineData("staging-admin-test", "staging-admin-test@orofoods.test", "Administrador", "/Admin/Portais")]
     [InlineData("staging-customer-test", "staging-customer-test@orofoods.test", "Cliente", "/Portal/Dashboard")]
     public async Task Login_by_email_authenticates_accounts_whose_user_name_is_different(
         string userName,
@@ -194,7 +194,7 @@ public class LoginRedirectTests
     {
         var attempt = await AttemptLoginAsync("admin-login", "admin@orofoods.test", "Administrador", returnUrl: "https://evil.example/");
 
-        Assert.Equal("/Admin/Dashboard", RedirectUrl(attempt.Result));
+        Assert.Equal("/Admin/Portais", RedirectUrl(attempt.Result));
     }
 
     private static async Task<IActionResult> LoginAsAsync(string role, string? returnUrl)

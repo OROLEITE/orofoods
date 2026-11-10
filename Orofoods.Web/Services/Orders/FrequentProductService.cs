@@ -35,7 +35,7 @@ public class FrequentProductService(ApplicationDbContext db, PriceService priceS
             .Select(x => new FrequentProduct(
                 products[x.ProductId],
                 x.Quantity,
-                prices.GetValueOrDefault(x.ProductId, products[x.ProductId].PromotionalPrice ?? products[x.ProductId].BasePrice)))
+                prices.GetValueOrDefault(x.ProductId, products[x.ProductId].BasePrice)))
             .ToList();
     }
 }

@@ -9,6 +9,7 @@ public class OrderItem
     public Product? Product { get; set; }
     public string ProductNameSnapshot { get; set; } = "";
     public string SkuSnapshot { get; set; } = "";
+    [System.ComponentModel.DataAnnotations.MaxLength(20)] public string? SalesUnitCodeSnapshot { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal Subtotal { get; set; }

@@ -1,0 +1,6 @@
+@model int
+<a class="catalog-header-cart" asp-area="" asp-controller="Portal" asp-action="Cart" data-cart-quantity="@Model" aria-label="Carrinho com @Model unidades">
+    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+    <span class="catalog-header-cart-label">Carrinho</span>
+    <span class="catalog-cart-count" data-cart-count aria-live="polite">@Model</span>
+</a>

@@ -63,11 +63,11 @@
 	</form>
 
 	<div class="reports-kpi-grid" aria-label="Indicadores do per&iacute;odo">
-		<article><small>PEDIDOS</small><strong>@Model.Report.OrderCount</strong><span>Pedidos n&atilde;o cancelados</span></article>
-		<article><small>FATURAMENTO</small><strong>@Model.Report.Revenue.ToString("C")</strong><span>Receita no per&iacute;odo</span></article>
-		<article><small>TICKET M&Eacute;DIO</small><strong>@Model.Report.AverageTicket.ToString("C")</strong><span>Valor m&eacute;dio por pedido</span></article>
-		<article><small>CLIENTES COMPRADORES</small><strong>@Model.Report.BuyerCount</strong><span>Clientes &uacute;nicos no per&iacute;odo</span></article>
-		<article><small>ITENS VENDIDOS</small><strong>@Model.Report.SoldItemCount</strong><span>Unidades em pedidos n&atilde;o cancelados</span></article>
+		<article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><small>PEDIDOS</small><strong>@Model.Report.OrderCount</strong><span>Pedidos n&atilde;o cancelados</span></article>
+		<article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><small>FATURAMENTO</small><strong>@Model.Report.Revenue.ToString("C")</strong><span>Receita no per&iacute;odo</span></article>
+		<article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><small>TICKET M&Eacute;DIO</small><strong>@Model.Report.AverageTicket.ToString("C")</strong><span>Valor m&eacute;dio por pedido</span></article>
+		<article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><small>CLIENTES COMPRADORES</small><strong>@Model.Report.BuyerCount</strong><span>Clientes &uacute;nicos no per&iacute;odo</span></article>
+		<article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><small>ITENS VENDIDOS</small><strong>@Model.Report.SoldItemCount</strong><span>Unidades em pedidos n&atilde;o cancelados</span></article>
 	</div>
 
 	<div class="reports-chart-grid">

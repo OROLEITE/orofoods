@@ -16,6 +16,30 @@ public class CheckoutViewLayoutTests
     }
 
     [Fact]
+    public void Customer_checkout_has_no_delivery_address_field_or_step()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Checkout.cshtml"));
+
+        Assert.DoesNotContain("asp-for=\"AddressId\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Endere&ccedil;o de entrega", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Quando e onde entregar?", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("RequestedDeliveryDate", markup, StringComparison.Ordinal);
+        Assert.Contains("PaymentTermId", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Repeat_order_has_no_delivery_address_field()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Repeat.cshtml"));
+
+        Assert.DoesNotContain("AddressId", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Endereco de entrega", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("name=\"PaymentTermId\"", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Checkout_never_posts_raw_card_data_and_uses_the_browser_tokenization_boundary()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
@@ -43,5 +67,16 @@ public class CheckoutViewLayoutTests
         Assert.Contains("setSubmittingState();", script);
         Assert.Contains("aria-busy", script);
         Assert.Contains("event.preventDefault();", script);
+    }
+
+    [Fact]
+    public void Checkout_only_describes_the_current_payment_options_and_has_no_local_credit_rules()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Portal", "Checkout.cshtml"));
+
+        Assert.DoesNotContain("tr&ecirc;s primeiras compras", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("14 dias", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("foreach (var term in Model.PaymentTerms)", markup, StringComparison.Ordinal);
     }
 }

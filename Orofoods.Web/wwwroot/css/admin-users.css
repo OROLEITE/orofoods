@@ -111,10 +111,13 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-users-filter-actions { display: flex; gap: .5rem; }
 .admin-users-page .form-control, .admin-users-page .form-select { background-color: var(--users-surface); border-color: var(--users-border); color: var(--users-text); }
 .admin-users-table-wrap { overflow-x: auto; background: var(--users-surface); border: 1px solid var(--users-border); border-radius: .8rem; }
+.admin-users-table-wrap:has(.admin-users-actions[open]),
+.admin-table-card:has(.admin-users-actions[open]) { overflow: visible; }
 .admin-users-table { color: var(--users-text); margin: 0; }
 .admin-users-table > :not(caption) > * > * { background: var(--users-surface); border-color: var(--users-border); color: var(--users-text); padding: .85rem .9rem; }
 .admin-users-table thead th { color: var(--users-muted); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
 .admin-users-table td { vertical-align: middle; }
+.admin-users-table td:has(.admin-users-actions[open]) { position: relative; z-index: 6; }
 .admin-users-status { display: inline-flex; border-radius: 999px; padding: .25rem .65rem; font-size: .78rem; font-weight: 700; }
 .admin-users-status.is-active { background: #DCFCE7; color: #166534; }
 .admin-users-status.is-inactive { background: #F1F5F9; color: #475569; }
@@ -122,6 +125,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-users-limit { text-align: left; padding: .7rem 0 !important; }
 .admin-users-actions { position: relative; min-width: 90px; }
 .admin-users-actions summary { color: var(--users-primary); cursor: pointer; font-weight: 650; list-style: none; }
+.admin-users-actions summary:focus-visible { outline: 2px solid var(--users-primary); outline-offset: 3px; border-radius: .25rem; }
 .admin-users-actions summary::-webkit-details-marker { display: none; }
 .admin-users-actions summary::after { content: " ▾"; }
 .admin-users-action-menu { position: absolute; z-index: 5; right: 0; top: 1.8rem; display: grid; min-width: 160px; padding: .35rem; background: var(--users-surface); border: 1px solid var(--users-border); border-radius: .6rem; box-shadow: 0 12px 30px #0f172a22; }

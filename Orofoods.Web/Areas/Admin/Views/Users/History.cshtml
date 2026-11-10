@@ -1,0 +1,43 @@
+@model Orofoods.Web.ViewModels.AdminUserHistoryViewModel
+@{ ViewData["Title"] = "Histórico de alterações"; }
+<section class="admin-users-page admin-registration-page">
+    <nav class="admin-users-breadcrumb"><a asp-action="Index">Usuários e Acessos</a><span aria-hidden="true">/</span> Histórico</nav>
+    <header class="admin-users-header">
+        <div>
+            <p class="admin-users-eyebrow">Auditoria de acesso</p>
+            <h1>Histórico de alterações</h1>
+            <p><strong>@Model.Name</strong> · @Model.UserName · @Model.Email</p>
+        </div>
+    </header>
+    <div class="admin-users-table-wrap admin-table-card">
+        <table class="table admin-users-table admin-table align-middle">
+            <thead><tr><th>Data e hora</th><th>Administrador</th><th>Ação</th><th>Alterações registradas</th></tr></thead>
+            <tbody>
+            @if (Model.Events.Count == 0)
+            {
+                <tr><td colspan="4" class="admin-users-empty">Nenhuma alteração registrada para esta conta.</td></tr>
+            }
+            @foreach (var entry in Model.Events)
+            {
+                var actionLabel = entry.Action switch
+                {
+                    "Created" => "Conta criada",
+                    "Updated" => "Dados, perfil ou vínculos atualizados",
+                    "StatusChanged" => "Status alterado",
+                    "PasswordReset" => "Senha redefinida",
+                    "PasswordChanged" => "Senha trocada",
+                    _ => "Alteração de acesso"
+                };
+                <tr>
+                    <td data-label="Data e hora"><time datetime="@entry.ChangedAt.ToString("O")">@entry.ChangedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time></td>
+                    <td data-label="Administrador">@entry.ActorName</td>
+                    <td data-label="Ação">@actionLabel</td>
+                    <td data-label="Alterações registradas">@entry.Summary</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <footer class="admin-users-form-actions"><a asp-action="Index" class="btn admin-users-secondary">Voltar a Usuários e Acessos</a></footer>
+</section>
+@section Head { <link rel="stylesheet" href="~/css/admin-users.css" asp-append-version="true" /> }

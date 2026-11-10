@@ -1,142 +1,326 @@
-/* Compact Home showcase without changing carousel content or imagery. */
-.home-catalog {
-    padding-top: 0;
+/* Public Home showcase. The header is the shared white _SiteHeader (header.css); product cards reuse catalog.css. */
+.public-home {
+    --home-page: #F1F5FB;
+    --home-surface: #FFFFFF;
+    --home-navy: #0F172A;
+    --home-muted: #475569;
+    --home-border: #E2E8F0;
+    --home-cyan: #0E7490;
+    --home-cyan-hover: #0B5D75;
+    color: var(--home-navy);
+    background: var(--home-page);
 }
 
-@media (min-width: 901px) {
-    .showcase-slide--renewed {
-        height: 350px;
-        min-height: 350px;
-        grid-template-columns: 57% 43%;
-    }
+.public-home-shell {
+    display: grid;
+    max-width: 1440px;
+    gap: 12px;
+    padding-block: 20px 8px;
+}
 
-    .showcase-slide--renewed .showcase-copy {
-        min-height: 0;
-        padding-top: 26px;
-        padding-bottom: 28px;
-    }
+.public-home-hero {
+    min-width: 0;
+    padding: clamp(16px, 2.4vw, 24px);
+    border: 1px solid var(--home-border);
+    border-radius: 12px;
+    background: var(--home-surface);
+    box-shadow: 0 3px 12px rgb(15 23 42 / 4%);
+}
 
-    .showcase-slide--renewed .eyebrow {
-        margin-bottom: 7px;
-        font-size: 10px;
-    }
+.public-home-hero {
+    display: grid;
+    min-height: 286px;
+    grid-template-columns: 55fr 45fr;
+    align-items: center;
+    gap: clamp(18px, 3vw, 34px);
+}
 
-    .showcase-slide--renewed .showcase-overline {
-        margin: 7px 0 6px;
-        font-size: 9px;
-    }
+.public-home-hero-copy {
+    min-width: 0;
+}
 
-    #productShowcase .showcase-slide--renewed .showcase-copy h1 {
-        font-size: 46px;
-        line-height: 1;
-        letter-spacing: 0;
-    }
+.public-home-hero-media {
+    width: 100%;
+    height: clamp(220px, 25vw, 330px);
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #E8EDF5;
+}
 
-    .showcase-slide--renewed .showcase-description {
-        margin: 12px 0;
-        font-size: 14px;
-        line-height: 1.45;
-    }
+.public-home-hero-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 52%;
+}
 
-    .showcase-slide--renewed .showcase-actions {
-        gap: 16px;
-    }
+.public-home-eyebrow {
+    margin: 0 0 8px;
+    color: var(--home-cyan);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .09em;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
 
-    .showcase-slide--renewed .showcase-actions .btn {
-        min-height: 48px;
-        padding: 10px 16px;
-        font-size: 13px;
-    }
+.public-home-hero h1 {
+    max-width: 760px;
+    margin: 0;
+    color: var(--home-navy);
+    font-family: Manrope, "DM Sans", sans-serif;
+    font-size: clamp(24px, 3.2vw, 36px);
+    font-weight: 800;
+    letter-spacing: -.035em;
+    line-height: 1.12;
+}
 
-    .showcase-slide--renewed .showcase-note {
-        margin-top: 8px;
-        font-size: 10px;
-    }
+.public-home-hero-description {
+    max-width: 620px;
+    margin: 8px 0 16px;
+    color: var(--home-muted);
+    font-size: 15px;
+    line-height: 1.5;
+}
 
-    .showcase-slide--renewed .showcase-media {
-        min-height: 0;
-    }
+.public-home-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
 
-    #productShowcase .showcase-slide--renewed .showcase-media img {
-        width: 100%;
-        max-height: 350px;
-    }
+.public-home .public-home-primary-action,
+.public-home .public-home-secondary-action {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 18px;
+    border: 1px solid var(--home-cyan);
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 750;
+    line-height: 1.25;
+    text-decoration: none;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+}
 
-    #productShowcase .carousel-indicators {
-        margin-bottom: 12px;
-    }
+.public-home .public-home-primary-action {
+    background: var(--home-cyan);
+    color: #FFFFFF;
+}
 
-    .home-command-bar .container {
-        min-height: 54px;
+.public-home .public-home-primary-action:hover {
+    border-color: var(--home-cyan-hover);
+    background: var(--home-cyan-hover);
+    color: #FFFFFF;
+}
+
+.public-home .public-home-secondary-action {
+    background: #FFFFFF;
+    color: var(--home-cyan-hover);
+}
+
+.public-home .public-home-secondary-action:hover {
+    background: #E9F5F8;
+    color: var(--home-navy);
+}
+
+.public-home :is(a, button, input):focus-visible {
+    outline: 3px solid rgb(14 116 144 / 35%);
+    outline-offset: 2px;
+}
+
+/* Section shell only: grid and cards come from catalog.css / customer-experience.css. */
+.public-home .public-home-featured.public-products-section {
+    padding: 0 0 36px;
+    background: transparent;
+}
+
+.public-home-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.public-home-section-heading h2 {
+    margin: 0;
+    color: var(--home-navy);
+    font-family: Manrope, "DM Sans", sans-serif;
+    font-size: clamp(20px, 2.2vw, 26px);
+    font-weight: 800;
+    letter-spacing: -.02em;
+}
+
+.public-home-text-link {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    gap: 8px;
+    color: var(--home-cyan-hover) !important;
+    font-size: 14px;
+    font-weight: 750;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.public-home-text-link:hover {
+    color: var(--home-navy) !important;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.public-home-empty {
+    display: grid;
+    justify-items: center;
+    gap: 9px;
+    padding: 32px 18px;
+    border: 1px dashed #B9C8D6;
+    border-radius: 12px;
+    background: #FFFFFF;
+    color: var(--home-muted);
+    text-align: center;
+}
+
+.public-home-empty > i {
+    color: var(--home-cyan);
+    font-size: 24px;
+}
+
+.public-home-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .public-home .public-home-primary-action,
+    .public-home .public-home-secondary-action {
+        transition: none;
     }
 }
 
-@media (max-width: 900px) {
-    .showcase-slide--renewed {
+@media (max-width: 575.98px) {
+    .public-home-shell {
+        gap: 12px;
+        padding-block: 12px 4px;
+    }
+
+    .public-home-hero-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .public-home-hero {
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    .public-home-hero-media {
+        height: clamp(190px, 57vw, 280px);
+    }
+
+    .public-home-hero-media img {
+        object-position: center;
+    }
+
+    .public-home-search {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+}
+
+/* Warm, integrated home hero with the bread photo fading into the copy surface. */
+.public-home-hero {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: 260px;
+    min-height: 260px;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(105deg, #F8F4EA 0%, #F7F2E6 58%, #EFE7D5 100%);
+    box-shadow: none;
+}
+
+.public-home-hero-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-height: 260px;
+    align-items: center;
+    padding-block: 24px;
+}
+
+.public-home-hero-copy {
+    position: relative;
+    z-index: 1;
+    width: min(58%, 680px);
+}
+
+.public-home-hero-media {
+    position: absolute;
+    z-index: 0;
+    inset: 0 0 0 auto;
+    width: 52%;
+    height: 100%;
+    border-radius: 0;
+    background: transparent;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 28%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 28%);
+}
+
+.public-home-hero-media img {
+    object-position: right center;
+}
+
+@media (max-width: 767.98px) {
+    .public-home-hero {
         height: auto;
         min-height: 0;
     }
 
-    .showcase-slide--renewed .showcase-copy {
+    .public-home-hero-inner {
         min-height: 0;
-        padding-top: 34px;
-        padding-bottom: 46px;
+        padding-block: 24px 12px;
     }
 
-    .showcase-slide--renewed .showcase-media {
-        min-height: 210px;
-    }
-
-    #productShowcase .showcase-slide--renewed .showcase-media img {
+    .public-home-hero-copy {
         width: 100%;
-        max-height: 250px;
+        max-width: 620px;
     }
+
+    .public-home-hero-media {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: clamp(120px, 34vw, 180px);
+        max-width: 100%;
+        margin: 0;
+        -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 16%);
+        mask-image: linear-gradient(180deg, transparent 0%, #000 16%);
+    }
+
+    .public-home-hero-media img {
+        object-position: center 58%;
+    }
+
 }
 
-@media (max-width: 600px) {
-    .home-catalog {
-        padding-top: 0;
+@media (max-width: 420px) {
+    .public-home-hero-inner {
+        padding-inline: 16px;
     }
 
-    .showcase-slide--renewed .showcase-copy {
-        padding: 20px 20px 24px;
-    }
-
-    #productShowcase .showcase-slide--renewed .showcase-copy h1 {
-        font-size: 34px;
-        line-height: 1.02;
-        letter-spacing: 0;
-    }
-
-    .showcase-slide--renewed .showcase-overline {
-        margin: 10px 0 7px;
-    }
-
-    .showcase-slide--renewed .showcase-description {
-        margin: 10px 0;
-        font-size: 13px;
-        line-height: 1.4;
-    }
-
-    .showcase-slide--renewed .showcase-actions {
-        gap: 8px;
-    }
-
-    .showcase-slide--renewed .showcase-actions .btn {
-        min-height: 44px;
-        padding: 8px 14px;
-    }
-
-    .showcase-slide--renewed .showcase-note {
-        margin-top: 8px;
-    }
-
-    .showcase-slide--renewed .showcase-media {
-        height: 150px;
-        min-height: 150px;
-    }
-
-    #productShowcase .showcase-slide--renewed .showcase-media img {
-        max-height: 150px;
+    .public-home-hero h1 {
+        font-size: clamp(25px, 7vw, 30px);
     }
 }

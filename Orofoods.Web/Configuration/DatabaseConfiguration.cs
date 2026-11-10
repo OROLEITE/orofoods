@@ -10,6 +10,6 @@ internal static class DatabaseConfiguration
 
         return string.IsNullOrWhiteSpace(connectionString)
             ? throw new InvalidOperationException("Connection string 'DefaultConnection' is required.")
-            : connectionString;
+            : KeyVaultReferenceGuard.EnsureResolved("ConnectionStrings:DefaultConnection", connectionString);
     }
 }

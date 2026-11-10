@@ -51,9 +51,9 @@ public class SavedOrderService(ApplicationDbContext db)
     private async Task<List<SavedOrderLine>> GetLoadableLinesAsync(IEnumerable<SavedOrderLine> lines, CancellationToken cancellationToken)
     {
         var requested = lines.Where(x => x.Quantity > 0).GroupBy(x => x.ProductId).Select(x => new SavedOrderLine(x.Key, x.Sum(item => item.Quantity))).ToList();
-        var products = await db.Products.Where(x => requested.Select(item => item.ProductId).Contains(x.Id) && x.IsActive && x.IsAvailable && (x.WmcCode == null || (x.IsWmcActive && x.WmcStockAvailable && x.WmcInitialLoadReady)))
+        var products = await db.Products.Where(x => requested.Select(item => item.ProductId).Contains(x.Id) && x.IsActive)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         return requested.Where(x => products.ContainsKey(x.ProductId))
-            .Select(x => new SavedOrderLine(x.ProductId, Math.Max(x.Quantity, products[x.ProductId].MinimumCases))).ToList();
+            .Select(x => new SavedOrderLine(x.ProductId, Math.Max(x.Quantity, products[x.ProductId].MinimumSalesQuantity))).ToList();
     }
 }

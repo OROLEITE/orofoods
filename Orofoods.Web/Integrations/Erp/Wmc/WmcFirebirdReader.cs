@@ -1,3 +1,4 @@
+using System.Data;
 using System.Data.Common;
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Extensions.Options;
@@ -29,7 +30,11 @@ public sealed class WmcFirebirdReader(IWmcConnectionFactory connectionFactory, I
         CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
-        await using var command = new FbCommand(sql, connection) { CommandTimeout = options.Value.CommandTimeoutSeconds };
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Snapshot, cancellationToken);
+        await using var command = new FbCommand(sql, connection, (FbTransaction)transaction)
+        {
+            CommandTimeout = options.Value.CommandTimeoutSeconds
+        };
         if (parameters is not null)
         {
             foreach (var (name, value) in parameters)
@@ -45,6 +50,7 @@ public sealed class WmcFirebirdReader(IWmcConnectionFactory connectionFactory, I
             results.Add(map(reader));
         }
 
+        await transaction.CommitAsync(cancellationToken);
         return results;
     }
 

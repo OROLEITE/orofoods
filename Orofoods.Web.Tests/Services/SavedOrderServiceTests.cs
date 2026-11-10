@@ -17,18 +17,21 @@ public class SavedOrderServiceTests
         var customer = new Customer { LegalName = "Burger House Ltda", TradeName = "Burger House", Cnpj = "12.345.678/0001-99", Status = CustomerStatus.Approved, IsActive = true };
         var otherCustomer = new Customer { LegalName = "Other Ltda", TradeName = "Other", Cnpj = "98.765.432/0001-99", Status = CustomerStatus.Approved, IsActive = true };
         var available = new Product { Sku = "PAO-001", Name = "Brioche", ProductCategory = category, Brand = "Orofoods", Unit = "caixa", MinimumCases = 2, BasePrice = 90m, IsActive = true, IsAvailable = true };
-        var unavailable = new Product { Sku = "PAO-002", Name = "Indisponivel", ProductCategory = category, Brand = "Orofoods", Unit = "caixa", BasePrice = 70m, IsActive = true, IsAvailable = false };
-        db.AddRange(category, customer, otherCustomer, available, unavailable, new ApplicationUser { Id = "buyer-1", UserName = "buyer@test", Email = "buyer@test" });
+        var unavailable = new Product { Sku = "PAO-002", Name = "Sem flag de disponibilidade", ProductCategory = category, Brand = "Orofoods", Unit = "caixa", BasePrice = 70m, IsActive = true, IsAvailable = false };
+        var inactive = new Product { Sku = "PAO-003", Name = "Inativo", ProductCategory = category, Brand = "Orofoods", Unit = "caixa", BasePrice = 70m, IsActive = false, IsAvailable = true };
+        db.AddRange(category, customer, otherCustomer, available, unavailable, inactive, new ApplicationUser { Id = "buyer-1", UserName = "buyer@test", Email = "buyer@test" });
         await db.SaveChangesAsync();
         var sut = new SavedOrderService(db);
 
-        var saved = await sut.SaveAsync(customer.Id, "Pedido semanal", [new SavedOrderLine(available.Id, 1), new SavedOrderLine(unavailable.Id, 5)]);
+        var saved = await sut.SaveAsync(customer.Id, "Pedido semanal", [new SavedOrderLine(available.Id, 1), new SavedOrderLine(unavailable.Id, 5), new SavedOrderLine(inactive.Id, 5)]);
         var loadable = await sut.GetLoadableAsync(customer.Id, saved.Id);
         var otherCustomerResult = await sut.GetLoadableAsync(otherCustomer.Id, saved.Id);
 
         Assert.Equal("Pedido semanal", saved.Name);
         Assert.True(saved.IsActive);
-        Assert.Collection(loadable, item => { Assert.Equal(available.Id, item.ProductId); Assert.Equal(2, item.Quantity); });
+        Assert.Collection(loadable.OrderBy(item => item.ProductId),
+            item => { Assert.Equal(available.Id, item.ProductId); Assert.Equal(2, item.Quantity); },
+            item => { Assert.Equal(unavailable.Id, item.ProductId); Assert.Equal(5, item.Quantity); });
         Assert.Empty(otherCustomerResult);
         await sut.DeactivateAsync(customer.Id, saved.Id);
         Assert.Empty(await sut.GetLoadableAsync(customer.Id, saved.Id));

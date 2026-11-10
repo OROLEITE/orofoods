@@ -7,8 +7,8 @@ body.portal-customer-select {
     --portal-dark-text-primary: #F8FAFC;
     --portal-dark-text-secondary: #CBD5E1;
     --portal-dark-text-muted: #94A3B8;
-    --portal-dark-primary: #2563EB;
-    --portal-dark-primary-hover: #1D4ED8;
+    --portal-dark-primary: #0E7490;
+    --portal-dark-primary-hover: #155E75;
     color-scheme: dark;
     min-height: 100vh;
     background: var(--portal-dark-canvas);
@@ -71,7 +71,7 @@ body.portal-customer-select .site-header-modern .main-nav .nav-link.active::befo
     left: 0;
     width: 3px;
     border-radius: 0 2px 2px 0;
-    background: var(--gold);
+    background: var(--authenticated-nav-active, #38BDF8);
     content: '';
 }
 
@@ -130,6 +130,11 @@ body.portal-authenticated .portal-app-main .empty-state {
 
 body.portal-authenticated .portal-app-main .empty-state h2 {
     color: var(--portal-dark-text-primary);
+}
+
+body.portal-authenticated .portal-app-main .customer-cart-empty__icon {
+    background: #164E63;
+    color: #BAE6FD;
 }
 
 body.portal-authenticated .portal-app-main .order-items {
@@ -397,6 +402,18 @@ body.portal-authenticated .portal-app-main .product-visual img {
     mix-blend-mode: normal;
 }
 
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-card.unavailable {
+    opacity: 1;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-visual img {
+    object-fit: contain;
+    object-position: center;
+    mix-blend-mode: normal;
+    filter: none;
+    opacity: 1;
+}
+
 body.portal-authenticated .portal-app-main .product-detail-media {
     border-color: var(--portal-dark-border);
     background: var(--portal-dark-surface-secondary);
@@ -548,6 +565,12 @@ body.portal-customer-select .site-main :is(a, button, input, select, textarea):f
     outline-offset: 2px;
 }
 
+body.portal-authenticated .portal-app-main .btn-gold:focus-visible,
+body.portal-authenticated .portal-app-main .btn-dark:focus-visible {
+    outline: 3px solid var(--portal-action-focus);
+    outline-offset: 2px;
+}
+
 body.portal-authenticated .portal-app-main .text-muted,
 body.portal-customer-select .site-main .text-muted {
     color: var(--portal-dark-text-muted) !important;
@@ -558,4 +581,39 @@ body.portal-customer-select .site-main .text-muted {
     body.portal-customer-select .site-main .customer-selector-card {
         border-radius: 12px;
     }
+}
+
+/* Keep the customer catalog compact and aligned with the dark portal palette. */
+body.portal-authenticated .portal-app-main .portal-catalog-hero {
+    min-height: 0;
+    padding: 16px 0 14px;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-hero h1 {
+    margin: 2px 0 4px;
+    font-size: clamp(26px, 2.2vw, 34px);
+    line-height: 1.12;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page {
+    padding-top: 12px;
+    background: #0B132B;
+    color: #E5E7EB;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .catalog-tools {
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-grid {
+    gap: 14px;
+}
+
+body.portal-authenticated .portal-app-main .portal-catalog-page .product-visual > img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center;
+    transform: none;
 }

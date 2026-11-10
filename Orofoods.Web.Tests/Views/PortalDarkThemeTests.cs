@@ -27,8 +27,8 @@ public class PortalDarkThemeTests
         Assert.Contains("--portal-dark-text-primary: #F8FAFC", styles);
         Assert.Contains("--portal-dark-text-secondary: #CBD5E1", styles);
         Assert.Contains("--portal-dark-text-muted: #94A3B8", styles);
-        Assert.Contains("--portal-dark-primary: #2563EB", styles);
-        Assert.Contains("--portal-dark-primary-hover: #1D4ED8", styles);
+        Assert.Contains("--portal-dark-primary: #0E7490", styles);
+        Assert.Contains("--portal-dark-primary-hover: #155E75", styles);
         Assert.Contains("body.portal-authenticated", styles);
         Assert.Contains("body.portal-customer-select", styles);
         Assert.DoesNotContain(".admin-authenticated", styles);

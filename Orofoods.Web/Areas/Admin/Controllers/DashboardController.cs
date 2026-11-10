@@ -9,6 +9,7 @@ using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Payments;
 using Orofoods.Web.Services;
+using Orofoods.Web.Services.Orders;
 using Orofoods.Web.ViewModels;
 
 namespace Orofoods.Web.Areas.Admin.Controllers;
@@ -52,7 +53,7 @@ public class DashboardController(ApplicationDbContext db, TimeProvider timeProvi
                 .Select(x => x.OrderId)
                 .Distinct()
                 .CountAsync(),
-            PendingOrders = await db.Orders.CountAsync(x => x.Status == OrderStatus.Received || x.Status == OrderStatus.UnderReview),
+            PendingOrders = await db.Orders.CountAsync(AdminOrderMonitorQueries.AwaitingAction),
             ActiveCustomers = await db.Customers.CountAsync(x => x.IsActive && x.Status == CustomerStatus.Approved),
             PendingCustomers = await db.Customers.CountAsync(x => x.Status == CustomerStatus.Pending),
             MonthRevenue = monthRevenue,

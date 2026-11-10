@@ -9,6 +9,10 @@ public class PostgreSqlApplicationDbContext(DbContextOptions<PostgreSqlApplicati
     {
         base.OnModelCreating(builder);
 
+        builder.Entity<Orofoods.Web.Models.Integrations.WmcProductImportAudit>()
+            .Property(x => x.ResultsJson)
+            .HasColumnType("text");
+
         builder.Entity<Order>()
             .Property(x => x.RequestedDeliveryDate)
             .HasColumnType("timestamp without time zone");

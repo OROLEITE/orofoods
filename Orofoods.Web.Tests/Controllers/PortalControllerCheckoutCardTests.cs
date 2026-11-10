@@ -27,6 +27,30 @@ namespace Orofoods.Web.Tests.Controllers;
 public class PortalControllerCheckoutCardTests
 {
     [Fact]
+    public async Task Customer_checkout_creates_order_without_a_delivery_address()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (customer, _, product, _) = await SeedCheckoutContextAsync(db);
+        var cashTerm = await db.PaymentTerms.SingleAsync(term => term.Code == "CASH");
+        var session = new TestSession();
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
+        var controller = CreateController(db, session, new ConfigurableCardGateway());
+
+        var result = await controller.Checkout(new CheckoutViewModel
+        {
+            PaymentTermId = cashTerm.Id,
+            RequestedDeliveryDate = DateTime.Today.AddDays(1),
+            AttemptKey = "customer-checkout-without-address"
+        });
+
+        Assert.Equal("Success", Assert.IsType<RedirectToActionResult>(result).ActionName);
+        var order = await db.Orders.SingleAsync(order => order.CustomerId == customer.Id);
+        Assert.Null(order.DeliveryAddressId);
+        Assert.Single(await db.CustomerAddresses.Where(address => address.CustomerId == customer.Id).ToListAsync());
+        Assert.True(controller.ModelState.IsValid);
+    }
+
+    [Fact]
     public async Task Card_on_delivery_creates_pending_local_payment_without_calling_gateway_or_redirecting()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -35,13 +59,12 @@ public class PortalControllerCheckoutCardTests
         db.PaymentTerms.Add(term);
         await db.SaveChangesAsync();
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         var gateway = new ConfigurableCardGateway();
         var controller = CreateController(db, session, gateway, cardOnDeliveryEnabled: true);
 
         var result = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = term.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-card-on-delivery"
@@ -69,13 +92,12 @@ public class PortalControllerCheckoutCardTests
         db.PaymentTerms.Add(term);
         await db.SaveChangesAsync();
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         var gateway = new ConfigurableCardGateway();
         var controller = CreateController(db, session, gateway);
 
         var result = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = term.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-card-on-delivery-disabled"
@@ -93,7 +115,7 @@ public class PortalControllerCheckoutCardTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var (customer, address, product, creditCardTerm) = await SeedCheckoutContextAsync(db);
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         var gateway = new ConfigurableCardGateway
         {
             Next = new PaymentGatewayOrder("MP-ORD-REJ-1", "MP-PAY-REJ-1", null, product.BasePrice, PaymentStatus.Rejected, null, null, null, "visa", 1)
@@ -102,7 +124,6 @@ public class PortalControllerCheckoutCardTests
 
         var result = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-rejected-1",
@@ -144,7 +165,7 @@ public class PortalControllerCheckoutCardTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var (customer, address, product, creditCardTerm) = await SeedCheckoutContextAsync(db);
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         var gateway = new ConfigurableCardGateway
         {
             Next = new PaymentGatewayOrder("MP-ORD-REJ-2", "MP-PAY-REJ-2", null, product.BasePrice, PaymentStatus.Rejected, null, null, null, "visa", 1)
@@ -153,7 +174,6 @@ public class PortalControllerCheckoutCardTests
 
         await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-rejected-2",
@@ -168,7 +188,6 @@ public class PortalControllerCheckoutCardTests
 
         var secondResult = await controller.Checkout(new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-approved-2",
@@ -198,7 +217,7 @@ public class PortalControllerCheckoutCardTests
         await using var db = await TestDbContextFactory.CreateAsync();
         var (customer, address, product, creditCardTerm) = await SeedCheckoutContextAsync(db);
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         var gateway = new ConfigurableCardGateway
         {
             Next = new PaymentGatewayOrder("MP-ORD-DUP-CARD", "MP-PAY-DUP-CARD", null, product.BasePrice, PaymentStatus.Approved, null, null, null, "visa", 1)
@@ -206,7 +225,6 @@ public class PortalControllerCheckoutCardTests
         var controller = CreateController(db, session, gateway);
         var input = new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = creditCardTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-duplicate-card",
@@ -217,7 +235,7 @@ public class PortalControllerCheckoutCardTests
 
         var firstResult = await controller.Checkout(input);
         var retrySession = new TestSession();
-        retrySession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        retrySession.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         controller = CreateController(db, retrySession, gateway);
         var secondResult = await controller.Checkout(input);
 
@@ -231,7 +249,7 @@ public class PortalControllerCheckoutCardTests
         Assert.Equal((await db.Orders.SingleAsync()).Id, (await db.Payments.SingleAsync()).OrderId);
         Assert.Equal(1, await db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
         Assert.Equal(1, await db.ProductInventories.Where(x => x.ProductId == product.Id).Select(x => x.QuantityReserved).SingleAsync());
-        Assert.True(retrySession.TryGetValue("orofoods-cart-product-ids", out _));
+        Assert.True(retrySession.TryGetValue("orofoods-cart-v2-product-ids", out _));
     }
 
     [Fact]
@@ -241,7 +259,7 @@ public class PortalControllerCheckoutCardTests
         var (customer, address, product, _) = await SeedCheckoutContextAsync(db);
         var pixTerm = await db.PaymentTerms.SingleAsync(x => x.Code == "PIX");
         var session = new TestSession();
-        session.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        session.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         var gateway = new ConfigurableCardGateway
         {
             PixNext = new PaymentGatewayOrder("MP-ORD-DUP-PIX", "MP-PAY-DUP-PIX", null, product.BasePrice, PaymentStatus.Pending, "pix-copy-paste", "pix-qr", DateTime.UtcNow.AddMinutes(30), null, null)
@@ -249,7 +267,6 @@ public class PortalControllerCheckoutCardTests
         var controller = CreateController(db, session, gateway);
         var input = new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = pixTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-duplicate-pix"
@@ -257,7 +274,7 @@ public class PortalControllerCheckoutCardTests
 
         var firstResult = await controller.Checkout(input);
         var retrySession = new TestSession();
-        retrySession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        retrySession.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         controller = CreateController(db, retrySession, gateway);
         var secondResult = await controller.Checkout(input);
 
@@ -271,7 +288,7 @@ public class PortalControllerCheckoutCardTests
         Assert.Equal((await db.Orders.SingleAsync()).Id, (await db.Payments.SingleAsync()).OrderId);
         Assert.Equal(1, await db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
         Assert.Equal(1, await db.ProductInventories.Where(x => x.ProductId == product.Id).Select(x => x.QuantityReserved).SingleAsync());
-        Assert.True(retrySession.TryGetValue("orofoods-cart-product-ids", out _));
+        Assert.True(retrySession.TryGetValue("orofoods-cart-v2-product-ids", out _));
     }
 
     [Fact]
@@ -281,12 +298,11 @@ public class PortalControllerCheckoutCardTests
         var (customer, address, product, _) = await SeedCheckoutContextAsync(db);
         var cashTerm = await db.PaymentTerms.SingleAsync(x => x.Code == "CASH");
         var firstSession = new TestSession();
-        firstSession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        firstSession.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         var gateway = new ConfigurableCardGateway();
         var controller = CreateController(db, firstSession, gateway);
         var input = new CheckoutViewModel
         {
-            AddressId = address.Id,
             PaymentTermId = cashTerm.Id,
             RequestedDeliveryDate = DateTime.Today.AddDays(1),
             AttemptKey = "attempt-duplicate-cash"
@@ -294,7 +310,7 @@ public class PortalControllerCheckoutCardTests
 
         var firstResult = await controller.Checkout(input);
         var retrySession = new TestSession();
-        retrySession.SetString("orofoods-cart-product-ids", $"{{\"{product.Id}\":1}}");
+        retrySession.SetString("orofoods-cart-v2-product-ids", $"{{\"{product.Id}\":1}}");
         controller = CreateController(db, retrySession, gateway);
         var secondResult = await controller.Checkout(input);
 
@@ -306,7 +322,7 @@ public class PortalControllerCheckoutCardTests
         Assert.Empty(await db.Payments.ToListAsync());
         Assert.Equal(1, await db.InventoryReservations.CountAsync(x => x.Status == InventoryReservationStatus.Active));
         Assert.Equal(1, await db.ProductInventories.Where(x => x.ProductId == product.Id).Select(x => x.QuantityReserved).SingleAsync());
-        Assert.True(retrySession.TryGetValue("orofoods-cart-product-ids", out _));
+        Assert.True(retrySession.TryGetValue("orofoods-cart-v2-product-ids", out _));
     }
 
     private static async Task<(Customer Customer, CustomerAddress Address, Product Product, PaymentTerm CreditCardTerm)> SeedCheckoutContextAsync(
@@ -360,7 +376,8 @@ public class PortalControllerCheckoutCardTests
             Customer = customer,
             IsActive = true
         };
-        db.AddRange(customer, category, product, creditCardTerm, pixTerm, cashTerm, user);
+        db.AddRange(customer, category, product, creditCardTerm, pixTerm, cashTerm, user,
+            new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
         await db.SaveChangesAsync();
         db.ProductInventories.Add(new ProductInventory { ProductId = product.Id, QuantityOnHand = 50 });
         await db.SaveChangesAsync();

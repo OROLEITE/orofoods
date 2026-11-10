@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Jint;
 
 namespace Orofoods.Web.Tests.Services;
@@ -20,7 +21,8 @@ public class WhatsAppPollingUiTests
         Assert.Contains("article.dataset.messageId", script);
         Assert.Contains("textarea.value === submittedText", script);
         Assert.Contains("textarea.value = ''", script);
-        Assert.DoesNotContain("location.reload", script);
+        Assert.Contains("window.location.reload()", script);
+        Assert.Contains("payload.serviceWindowOpen", script);
     }
 
     [Fact]
@@ -38,7 +40,10 @@ public class WhatsAppPollingUiTests
         Assert.Contains("if (sendInFlight)", script);
         Assert.Contains("await synchronize()", script);
         Assert.Contains("whatsapp-send-feedback", view);
-        Assert.Contains("data-theme=\"@(isAdminArea ? \"dark\" : null)\"", layout);
+        var rootElement = Regex.Match(layout, @"<html\b[^>]*>").Value;
+        Assert.Contains("data-theme", rootElement);
+        Assert.Contains("isAdminExperience", rootElement);
+        Assert.Matches(@"var\s+isAdminExperience\s*=\s*isAdminArea\s*\|\|\s*isAdminShell\s*;", layout);
         Assert.DoesNotContain("orofoods.crm.theme", layout);
         Assert.DoesNotContain("orofoods.crm.theme", script);
         Assert.DoesNotContain("whatsapp-theme-toggle", view);
@@ -174,7 +179,7 @@ public class WhatsAppPollingUiTests
         Assert.Contains("if (!submittedText.trim()) return;", submitHandler);
         Assert.Contains("if (sendInFlight)", submitHandler);
         Assert.Contains("sendInFlight = true;", submitHandler);
-        Assert.DoesNotContain("location.reload", script);
+        Assert.Contains("window.location.reload()", script);
         Assert.Contains("setInterval(synchronize, 4000)", script);
         Assert.Contains("WhatsApp sync failed.", script);
     }
@@ -223,6 +228,69 @@ public class WhatsAppPollingUiTests
         Assert.True(state.GetProperty("frameRequested").GetBoolean());
         Assert.Equal(state.GetProperty("scrollHeight").GetInt32(), state.GetProperty("scrollTop").GetInt32());
         Assert.True(state.GetProperty("indicatorHidden").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Client_request_key_rotates_after_a_confirmed_send_and_uses_a_fresh_value()
+    {
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var helper = ExtractBetween(script, "const rotateClientRequestId = input => {", "\n    };");
+        var submitHandler = ExtractBetween(script, "form.addEventListener('submit', async event =>", "    const schedule =");
+        var synchronizeEnd = submitHandler.IndexOf("rotateClientRequestId", StringComparison.Ordinal);
+        Assert.True(synchronizeEnd > submitHandler.IndexOf("await synchronize();", StringComparison.Ordinal),
+            "A request key should rotate only after the successful response is synchronized.");
+
+        const string harness = """
+            const window = { crypto: { randomUUID() { return '12345678-1234-1234-1234-123456789abc'; } } };
+            const input = { value: 'old-request-id' };
+            __HELPER__
+            };
+            rotateClientRequestId(input);
+            JSON.stringify({ value: input.value });
+            """;
+        var result = await new Engine().EvaluateAsync(harness.Replace("__HELPER__", helper, StringComparison.Ordinal));
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+
+        Assert.Equal("12345678123412341234123456789abc", diagnostic.RootElement.GetProperty("value").GetString());
+    }
+
+    [Theory]
+    [InlineData(true, "fresh-id", "fresh-id", true)]
+    [InlineData(false, "fresh-id", "old-id", false)]
+    public async Task A_confirmed_failure_renews_the_request_key_but_an_ambiguous_result_keeps_it(
+        bool hasFailedMessage,
+        string responseRequestId,
+        string expectedRequestId,
+        bool expectedRenewal)
+    {
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var helperStart = script.IndexOf("const renewClientRequestIdAfterConfirmedFailure =", StringComparison.Ordinal);
+        Assert.True(helperStart >= 0, "The UI should renew a request key only after a confirmed failed message.");
+        var helper = ExtractBetween(script[helperStart..], "const renewClientRequestIdAfterConfirmedFailure =", "\n    };");
+        var scenario = JsonSerializer.Serialize(new { hasFailedMessage, responseRequestId });
+        const string harness = """
+            const scenario = __SCENARIO__;
+            const input = { value: 'old-id' };
+            const responseDocument = {
+                querySelector(selector) {
+                    if (selector === '.whatsapp-message-status--failed') return scenario.hasFailedMessage ? {} : null;
+                    if (selector === '[name=\"clientRequestId\"]') return { value: scenario.responseRequestId };
+                    return null;
+                }
+            };
+            __HELPER__
+            };
+            const renewed = renewClientRequestIdAfterConfirmedFailure(responseDocument, input);
+            JSON.stringify({ value: input.value, renewed });
+            """;
+        var executable = harness
+            .Replace("__SCENARIO__", scenario, StringComparison.Ordinal)
+            .Replace("__HELPER__", helper, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(executable);
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+
+        Assert.Equal(expectedRequestId, diagnostic.RootElement.GetProperty("value").GetString());
+        Assert.Equal(expectedRenewal, diagnostic.RootElement.GetProperty("renewed").GetBoolean());
     }
 
     [Theory]
@@ -371,6 +439,7 @@ public class WhatsAppPollingUiTests
             const scenario = __SCENARIO__;
             const selectedConversationId = 42;
             const updatesUrl = '/Admin/WhatsApp/Updates';
+            const inboxPage = null;
             let requestInFlight = false;
             let initialState = false;
             const notificationSeenInboundIds = new Set();

@@ -1,0 +1,28 @@
+@model IReadOnlyList<Orofoods.Web.Models.Customers.SalesRepresentative>
+@{
+    ViewData["Title"] = "Selecionar vendedor";
+    Layout = "_AdminLayout";
+    var returnUrl = ViewBag.ReturnUrl as string;
+    var selectedRepresentativeId = ViewBag.SelectedRepresentativeId as int?;
+}
+
+<section class="admin-page admin-portal-access-page">
+    <a class="back-link" href="/Admin/Portais"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Central de Acesso</a>
+    <header class="admin-page-header mt-3">
+        <div><span class="eyebrow">CONTEXTO DE VENDAS</span><h1>Escolha o vendedor</h1><p>A sessão administrativa continuará ativa. O acesso e o vendedor selecionado serão registrados.</p></div>
+    </header>
+    <form method="post" class="card p-3 admin-portal-access__seller-form" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <label class="form-label" for="representativeId">Vendedor ativo</label>
+        <select id="representativeId" name="representativeId" class="form-select form-select-lg" required>
+            <option value="">Selecione um vendedor</option>
+            @foreach (var representative in Model)
+            {
+                <option value="@representative.Id" selected="@(selectedRepresentativeId == representative.Id)">@representative.Name</option>
+            }
+        </select>
+        <p class="form-text">A carteira respeita os clientes ativos e aprovados vinculados ao vendedor.</p>
+        <button class="btn btn-gold admin-portal-access__submit" type="submit">Abrir portal</button>
+    </form>
+</section>

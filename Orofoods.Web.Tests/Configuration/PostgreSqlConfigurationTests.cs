@@ -48,4 +48,59 @@ public class PostgreSqlConfigurationTests
 
         Assert.Equal("configured-externally", connectionString);
     }
+
+    [Fact]
+    public void Required_default_connection_rejects_an_unresolved_key_vault_reference()
+    {
+        const string unresolvedReference = "@Microsoft.KeyVault(SecretUri=https://kv-orofoods-prd-01.vault.azure.net/secrets/orofoods-prd-connection)";
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                [new KeyValuePair<string, string?>("ConnectionStrings:DefaultConnection", unresolvedReference)])
+            .Build();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => DatabaseConfiguration.GetRequiredDefaultConnectionString(configuration));
+
+        Assert.Contains("unresolved Azure Key Vault reference", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(unresolvedReference, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Production_startup_does_not_migrate_or_seed_roles_automatically()
+    {
+        var program = ReadProgram();
+        var startupDatabaseBlock = program[program.LastIndexOf("using (var scope = app.Services.CreateScope()", StringComparison.Ordinal)..];
+
+        Assert.Contains("else if (!app.Environment.IsProduction())", startupDatabaseBlock);
+        Assert.Contains("await db.Database.MigrateAsync();", startupDatabaseBlock);
+        Assert.Contains("await SeedData.EnsureSellerRoleAsync(roleManager);", startupDatabaseBlock);
+        Assert.Contains("KeyVaultReferenceGuard.EnsureResolved(\"Jwt:Key\", jwtKey)", program);
+    }
+
+    [Fact]
+    public void Production_does_not_register_automatic_wmc_workers()
+    {
+        var program = ReadProgram();
+
+        AssertWorkerRegistrationIsOutsideProduction(program, "WmcJsonOrderHomologationBackgroundService");
+        AssertWorkerRegistrationIsOutsideProduction(program, "WmcJsonOrderAutomaticBackgroundService");
+        AssertWorkerRegistrationIsOutsideProduction(program, "WmcSyncWorker");
+    }
+
+    private static string ReadProgram()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        return File.ReadAllText(Path.Combine(projectPath, "Program.cs"));
+    }
+
+    private static void AssertWorkerRegistrationIsOutsideProduction(string program, string workerType)
+    {
+        var registration = $"builder.Services.AddHostedService<{workerType}>();";
+        var registrationIndex = program.IndexOf(registration, StringComparison.Ordinal);
+        var lastEnvironmentGuard = program.LastIndexOf("if (!builder.Environment.IsProduction())", registrationIndex, StringComparison.Ordinal);
+
+        Assert.True(registrationIndex >= 0, $"Registration not found for {workerType}.");
+        Assert.True(lastEnvironmentGuard >= 0, $"{workerType} must be registered only outside Production.");
+        Assert.DoesNotContain("}", program[lastEnvironmentGuard..registrationIndex]);
+    }
 }

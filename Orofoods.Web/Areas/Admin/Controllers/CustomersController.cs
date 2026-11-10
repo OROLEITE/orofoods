@@ -2,11 +2,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Security.Claims;
+using System.Text;
 using Orofoods.Web.Models;
 using Orofoods.Web.Api;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
+using Orofoods.Web.Models.Customers;
 using Orofoods.Web.Models.Orders;
 using Orofoods.Web.Services.Customers;
 using Orofoods.Web.Services.Commercial;
@@ -21,6 +26,26 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Authorize(Roles = "Administrador,Vendedor,GerenteComercial")]
 public class CustomersController(ApplicationDbContext db, CustomerApprovalService customerApprovalService, SalesRepresentativeAccessService accessService, IPaymentEligibilityService paymentEligibilityService, PriceService priceService, AssistedOrderService assistedOrderService, CommercialAttentionService attentionService) : Controller
 {
+    private const int AssistedOrderCustomerSearchPageSize = 10;
+    private const int AssistedOrderCustomerSearchMaxLength = 80;
+    private static readonly MethodInfo StringContainsMethod = typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!;
+    private static readonly MethodInfo StringReplaceMethod = typeof(string).GetMethod(nameof(string.Replace), [typeof(string), typeof(string)])!;
+    private static readonly MethodInfo StringToLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)!;
+    private static readonly MethodInfo TranslateSearchTextMethod = typeof(ApplicationDbContext).GetMethod(nameof(ApplicationDbContext.TranslateSearchText))!;
+    private static readonly (string Characters, char Replacement)[] SearchCharacterReplacements =
+    [
+        ("àáâãäåÀÁÂÃÄÅ", 'a'),
+        ("èéêëÈÉÊË", 'e'),
+        ("ìíîïÌÍÎÏ", 'i'),
+        ("òóôõöøÒÓÔÕÖØ", 'o'),
+        ("ùúûüÙÚÛÜ", 'u'),
+        ("çÇ", 'c'),
+        ("ñÑ", 'n'),
+        ("ýÿÝŸ", 'y')
+    ];
+    private static readonly string SearchFromCharacters = string.Concat(SearchCharacterReplacements.Select(group => group.Characters));
+    private static readonly string SearchToCharacters = string.Concat(SearchCharacterReplacements.SelectMany(group => group.Characters.Select(_ => group.Replacement)));
+
     public async Task<IActionResult> Index(string? q, string? status, string sort = "status", string direction = "asc", int page = 1)
     {
         var scope = await accessService.GetScopeAsync(User);
@@ -65,7 +90,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
     public async Task<IActionResult> Edit(int id)
     {
         var customer = await db.Customers
-            .Include(x => x.CustomerPaymentTerms)
             .SingleAsync(x => x.Id == id);
 
         return View(await BuildViewModelAsync(customer));
@@ -80,8 +104,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             .Include(x => x.SalesRepresentative)
             .Include(x => x.InternalSalesUser)
             .Include(x => x.Addresses)
-            .Include(x => x.CustomerPaymentTerms)
-            .ThenInclude(x => x.PaymentTerm)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (customer is null)
         {
@@ -207,6 +229,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
                 .ToListAsync();
 
         var completedOrders = orders.Where(order => order.Status != OrderStatus.Cancelled).ToList();
+        var paymentEligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id);
         var timeline = activities.Select(activity => new CustomerTimelineItemViewModel(
                 activity.CompletedAt ?? activity.ScheduledAt,
                 activity.Title,
@@ -241,35 +264,64 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             ,Attention = (await attentionService.GetAsync(User, DateTime.Now)).Customers.SingleOrDefault(x => x.CustomerId == id)
             ,Opportunities = opportunities
             ,WhatsAppConversationId = conversationId
+            ,WmcPaymentCondition = paymentEligibility.WmcPaymentCondition
+            ,WmcPaymentConditionEligible = paymentEligibility.InvoiceCreditEnabled
         });
     }
 
     [HttpGet]
-    public async Task<IActionResult> NewOrder(int id, string? q)
+    public async Task<IActionResult> SearchOrderCustomers(string? q, int page = 1, CancellationToken cancellationToken = default)
     {
-        var scope = await accessService.GetScopeAsync(User);
-        var customer = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
-            .Include(x => x.Addresses)
-            .Include(x => x.SalesRepresentative)
-            .SingleOrDefaultAsync(x => x.Id == id && x.IsActive && x.Status == CustomerStatus.Approved);
-        if (customer is null) return Forbid();
-
-        var productsQuery = db.Products.AsNoTracking().Where(x => x.IsActive && x.IsAvailable);
-        if (!string.IsNullOrWhiteSpace(q)) productsQuery = productsQuery.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || x.Brand.Contains(q));
-        var products = await productsQuery.OrderBy(x => x.Name).Take(30).ToListAsync();
-        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id);
-        var prices = await priceService.GetPricesAsync(id, products.Select(x => x.Id));
-        return View(new AssistedOrderViewModel
+        q = q?.Trim();
+        if (q?.Length > AssistedOrderCustomerSearchMaxLength)
         {
-            CustomerId = id,
-            CustomerName = customer.TradeName,
-            SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Não atribuído",
-            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
-            PaymentTerms = eligibility.PaymentMethods,
-            PaymentEligibility = eligibility,
-            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.PromotionalPrice ?? x.BasePrice), x.MinimumCases, true)).ToList(),
-            Query = q
-        });
+            q = q[..AssistedOrderCustomerSearchMaxLength];
+        }
+
+        var normalizedQuery = NormalizeCustomerSearchTerm(q);
+        if (normalizedQuery.Length < 2)
+        {
+            return Json(new AssistedOrderCustomerSearchPage([], false, 1));
+        }
+
+        var searchSource = q ?? string.Empty;
+        var digitsQuery = searchSource.All(character => char.IsDigit(character) || char.IsWhiteSpace(character) || character is '.' or '/' or '-')
+            ? new string(searchSource.Where(char.IsDigit).ToArray())
+            : string.Empty;
+        var scope = await accessService.GetScopeAsync(User, cancellationToken);
+        var query = accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+            .Where(customer => customer.IsActive && customer.Status == CustomerStatus.Approved)
+            .Where(CreateCustomerSearchPredicate(normalizedQuery, digitsQuery));
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AssistedOrderCustomerSearchPageSize));
+        var currentPage = Math.Clamp(page, 1, totalPages);
+        var customers = await query
+            .OrderBy(customer => customer.TradeName)
+            .ThenBy(customer => customer.Id)
+            .Skip((currentPage - 1) * AssistedOrderCustomerSearchPageSize)
+            .Take(AssistedOrderCustomerSearchPageSize)
+            .Select(customer => new AssistedOrderCustomerSuggestion(
+                customer.Id,
+                customer.TradeName,
+                customer.LegalName,
+                customer.Cnpj,
+                customer.WmcCode))
+            .ToListAsync(cancellationToken);
+
+        return Json(new AssistedOrderCustomerSearchPage(customers, currentPage < totalPages, currentPage));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> NewOrder(int? id, string? q)
+    {
+        if (id is null or <= 0)
+        {
+            return View(new AssistedOrderViewModel());
+        }
+
+        var model = await BuildAssistedOrderViewModelAsync(id.Value, q, HttpContext.RequestAborted);
+        return model is null ? Forbid() : View(model);
     }
 
     [HttpPost]
@@ -286,14 +338,114 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             return RedirectToAction("Details", "Orders", new { area = "Admin", id = parsedOrderId });
         }
         var lines = input.ProductIds.Zip(input.Quantities, (productId, quantity) => (ProductId: productId, Quantity: quantity)).ToList();
-        var result = await assistedOrderService.CreateAsync(input.CustomerId, userId, input.AddressId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, lines, cancellationToken);
+        var result = await assistedOrderService.CreateAsync(input.CustomerId, userId, input.PaymentTermId, input.RequestedDeliveryDate, input.Notes, lines, cancellationToken);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.ErrorMessage!);
-            return RedirectToAction(nameof(NewOrder), new { id = input.CustomerId });
+            var model = await BuildAssistedOrderViewModelAsync(input.CustomerId, input.Query, cancellationToken);
+            if (model is null) return Forbid();
+
+            model.PaymentTermId = input.PaymentTermId;
+            model.RequestedDeliveryDate = input.RequestedDeliveryDate;
+            model.Notes = input.Notes;
+            model.AttemptKey = input.AttemptKey;
+            model.ProductIds = input.ProductIds;
+            model.Quantities = input.Quantities;
+            return View(model);
         }
         HttpContext.Session.SetString(attemptKey, result.OrderId!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return RedirectToAction("Details", "Orders", new { area = "Admin", id = result.OrderId });
+    }
+
+    private async Task<AssistedOrderViewModel?> BuildAssistedOrderViewModelAsync(
+        int id,
+        string? q,
+        CancellationToken cancellationToken)
+    {
+        var scope = await accessService.GetScopeAsync(User);
+        var customer = await accessService.ApplyCustomerScope(db.Customers.AsNoTracking(), scope)
+            .Include(x => x.SalesRepresentative)
+            .Include(x => x.PriceTable)
+            .SingleOrDefaultAsync(x => x.Id == id && x.IsActive && x.Status == CustomerStatus.Approved, cancellationToken);
+        if (customer is null) return null;
+
+        var productsQuery = db.Products.AsNoTracking().Where(x => x.IsActive);
+        if (!string.IsNullOrWhiteSpace(q)) productsQuery = productsQuery.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || (x.WmcCode != null && x.WmcCode.Contains(q)) || x.Brand.Contains(q));
+        var products = await productsQuery.OrderBy(x => x.Name).Take(30).ToListAsync(cancellationToken);
+        var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(id, cancellationToken);
+        var prices = await priceService.GetPricesAsync(id, products.Select(x => x.Id), cancellationToken);
+
+        return new AssistedOrderViewModel
+        {
+            CustomerId = id,
+            CustomerName = customer.TradeName,
+            SalesRepresentativeName = customer.SalesRepresentative?.Name ?? "Não atribuído",
+            PriceTableName = customer.PriceTable?.Name ?? "Sem tabela",
+            PaymentTerms = eligibility.PaymentMethods,
+            PaymentEligibility = eligibility,
+            MinimumOrder = OrderMinimumPolicy.Resolve(
+                await db.OrderMinimumSettings.AsNoTracking().Select(x => (decimal?)x.MinimumAmount).SingleOrDefaultAsync(cancellationToken),
+                customer.MinimumOrder),
+            Products = products.Select(x => new AssistedOrderProductViewModel(x.Id, x.Sku, x.Name, x.UnitDescription, prices.GetValueOrDefault(x.Id, x.BasePrice), x.MinimumSalesQuantity, true, x.PriceUnitLabel)).ToList(),
+            Query = q
+        };
+    }
+
+    private static Expression<Func<Customer, bool>> CreateCustomerSearchPredicate(string searchTerm, string digitsTerm)
+    {
+        var customer = Expression.Parameter(typeof(Customer), "customer");
+        Expression? predicate = null;
+        foreach (var propertyName in new[] { nameof(Customer.TradeName), nameof(Customer.LegalName), nameof(Customer.Cnpj), nameof(Customer.WmcCode) })
+        {
+            var field = Expression.Property(customer, propertyName);
+            var normalizedField = NormalizeDatabaseSearchText(field);
+            Expression fieldMatches = Expression.Call(normalizedField, StringContainsMethod, Expression.Constant(searchTerm));
+            if (propertyName == nameof(Customer.WmcCode))
+            {
+                fieldMatches = Expression.AndAlso(
+                    Expression.NotEqual(field, Expression.Constant(null, typeof(string))),
+                    fieldMatches);
+            }
+
+            if (propertyName == nameof(Customer.Cnpj) && digitsTerm.Length >= 3)
+            {
+                var digitsOnlyCnpj = Expression.Call(
+                    Expression.Call(
+                        Expression.Call(field, StringReplaceMethod, Expression.Constant("."), Expression.Constant(string.Empty)),
+                        StringReplaceMethod,
+                        Expression.Constant("/"),
+                        Expression.Constant(string.Empty)),
+                    StringReplaceMethod,
+                    Expression.Constant("-"),
+                    Expression.Constant(string.Empty));
+                var digitsMatch = Expression.Call(digitsOnlyCnpj, StringContainsMethod, Expression.Constant(digitsTerm));
+                fieldMatches = Expression.OrElse(fieldMatches, digitsMatch);
+            }
+
+            predicate = predicate is null ? fieldMatches : Expression.OrElse(predicate, fieldMatches);
+        }
+
+        return Expression.Lambda<Func<Customer, bool>>(predicate!, customer);
+    }
+
+    private static Expression NormalizeDatabaseSearchText(Expression field) =>
+        Expression.Call(
+            Expression.Call(
+                TranslateSearchTextMethod,
+                field,
+                Expression.Constant(SearchFromCharacters),
+                Expression.Constant(SearchToCharacters)),
+            StringToLowerMethod);
+
+    private static string NormalizeCustomerSearchTerm(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+        var decomposed = value.Trim().Normalize(NormalizationForm.FormD);
+        var withoutDiacritics = new string(decomposed
+            .Where(character => CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        return withoutDiacritics.Normalize(NormalizationForm.FormC).ToLowerInvariant();
     }
 
     [HttpPost]
@@ -353,38 +505,51 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             var customer = await db.Customers.Include(x => x.CustomerPaymentTerms).SingleAsync(x => x.Id == input.Id);
             var viewModel = await BuildViewModelAsync(customer);
             viewModel.Status = input.Status;
+            viewModel.Cnpj = input.Cnpj;
+            viewModel.CnpjChangeReason = input.CnpjChangeReason;
             viewModel.MinimumOrder = input.MinimumOrder;
             viewModel.CreditLimit = input.CreditLimit;
-            viewModel.CreditOverrideEnabled = input.CreditOverrideEnabled;
-            viewModel.MaximumPaymentTermDays = input.MaximumPaymentTermDays;
-            viewModel.CreditBlocked = input.CreditBlocked;
-            viewModel.CreditNotes = input.CreditNotes;
             viewModel.WmcCode = input.WmcCode;
             viewModel.PriceTableId = input.PriceTableId;
             viewModel.SalesRepresentativeId = input.SalesRepresentativeId;
             viewModel.InternalSalesUserId = input.InternalSalesUserId;
-            viewModel.PaymentTermIds = input.PaymentTermIds;
             return View(viewModel);
         }
 
-        await customerApprovalService.ApplyAsync(new CustomerApprovalRequest
+        var approvalResult = await customerApprovalService.ApplyAsync(new CustomerApprovalRequest
         {
             CustomerId = input.Id,
+            Cnpj = input.Cnpj,
+            CnpjChangeReason = input.CnpjChangeReason,
+            ChangedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            ChangedByEmail = User.FindFirstValue(ClaimTypes.Email),
             Status = input.Status,
             MinimumOrder = input.MinimumOrder,
             CreditLimit = input.CreditLimit,
-            CreditOverrideEnabled = input.CreditOverrideEnabled,
-            MaximumPaymentTermDays = input.MaximumPaymentTermDays,
-            CreditBlocked = input.CreditBlocked,
-            CreditNotes = input.CreditNotes,
             WmcCode = input.WmcCode,
             PriceTableId = input.PriceTableId,
             SalesRepresentativeId = input.SalesRepresentativeId,
             InternalSalesUserId = input.InternalSalesUserId,
-            PaymentTermIds = input.PaymentTermIds
         });
 
-        TempData["CustomerApprovalSuccess"] = input.Status == CustomerStatus.Approved
+        if (!approvalResult.Succeeded)
+        {
+            ModelState.AddModelError(approvalResult.ErrorField ?? nameof(input.Cnpj), approvalResult.ErrorMessage ?? "Não foi possível salvar o CNPJ.");
+            var customer = await db.Customers.Include(x => x.CustomerPaymentTerms).SingleAsync(x => x.Id == input.Id);
+            var viewModel = await BuildViewModelAsync(customer);
+            viewModel.Status = input.Status;
+            viewModel.Cnpj = input.Cnpj;
+            viewModel.CnpjChangeReason = input.CnpjChangeReason;
+            viewModel.MinimumOrder = input.MinimumOrder;
+            viewModel.CreditLimit = input.CreditLimit;
+            viewModel.WmcCode = input.WmcCode;
+            viewModel.PriceTableId = input.PriceTableId;
+            viewModel.SalesRepresentativeId = input.SalesRepresentativeId;
+            viewModel.InternalSalesUserId = input.InternalSalesUserId;
+            return View(viewModel);
+        }
+
+        TempData["CustomerApprovalSuccess"] = approve
             ? "Cliente aprovado e acesso comercial liberado com sucesso."
             : "Configurações comerciais salvas com sucesso.";
         return RedirectToAction(nameof(Index));
@@ -393,6 +558,7 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
     private async Task<AdminCustomerApprovalViewModel> BuildViewModelAsync(Customer customer)
     {
         var eligibility = await paymentEligibilityService.GetAvailablePaymentOptionsAsync(customer.Id);
+        var wmcCondition = eligibility.WmcPaymentCondition;
         return new AdminCustomerApprovalViewModel
         {
             Id = customer.Id,
@@ -402,19 +568,25 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
             Status = customer.Status,
             MinimumOrder = customer.MinimumOrder,
             CreditLimit = customer.CreditLimit,
-            ValidPurchaseCount = eligibility.ValidPurchases,
-            InvoiceCreditEnabled = eligibility.InvoiceCreditEnabled,
-            EffectiveMaximumPaymentTermDays = eligibility.MaximumTermDays,
-            EffectiveCreditReleaseDate = customer.CreditReleaseDate,
-            CreditOverrideEnabled = customer.CreditOverrideEnabled,
-            MaximumPaymentTermDays = customer.MaximumPaymentTermDays,
-            CreditBlocked = customer.CreditBlocked,
-            CreditNotes = customer.CreditNotes,
+            WmcPaymentConditionDescription = wmcCondition is { } condition
+                ? $"{condition.Description ?? "Descrição não informada"} ({condition.FirstInstallmentDays?.ToString() ?? "?"} dias)"
+                : "Nenhuma condição encontrada no espelho WMC.",
+            WmcPaymentConditionStatus = eligibility.InvoiceCreditEnabled
+                ? "Encontrada no WMC e elegível para prazo."
+                : wmcCondition is null
+                    ? "Nenhuma condição encontrada no espelho WMC; prazo não liberado."
+                    : "Encontrada no WMC, mas não elegível para liberação de prazo.",
+            WmcPaymentConditionEligible = eligibility.InvoiceCreditEnabled,
+            WmcPaymentConditionCode = wmcCondition?.ConditionCode,
+            WmcPaymentConditionSituation = wmcCondition?.Situation,
+            WmcPaymentConditionInstallmentCount = wmcCondition?.InstallmentCount,
+            WmcPaymentConditionSource = wmcCondition?.Source,
+            WmcPaymentConditionReadAtUtc = wmcCondition?.ReadAtUtc,
+            WmcPaymentConditionSynchronizationAtUtc = wmcCondition?.SynchronizationAtUtc,
             WmcCode = customer.WmcCode,
             PriceTableId = customer.PriceTableId,
             SalesRepresentativeId = customer.SalesRepresentativeId,
             InternalSalesUserId = customer.InternalSalesUserId,
-            PaymentTermIds = customer.CustomerPaymentTerms.Select(x => x.PaymentTermId).ToList(),
             PriceTables = await db.PriceTables
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.Name)
@@ -430,11 +602,6 @@ public class CustomersController(ApplicationDbContext db, CustomerApprovalServic
                 .OrderBy(x => x.Email)
                 .Select(x => new SelectListItem(x.Email ?? x.UserName!, x.Id, x.Id == customer.InternalSalesUserId))
                 .ToListAsync(),
-            PaymentTerms = await db.PaymentTerms
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.SortOrder)
-                .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
-                .ToListAsync()
         };
     }
 }

@@ -2,12 +2,13 @@
 @{ ViewData["Title"] = "Editar usuário"; }
 <section class="admin-users-page admin-users-form-page">
     <nav class="admin-users-breadcrumb"><a asp-action="Index">Usuários</a><span aria-hidden="true">/</span> Editar</nav>
-    <header class="admin-users-header"><div><p class="admin-users-eyebrow">Equipe</p><h1>Editar usuário</h1><p>Atualize dados, perfil e vínculos de acesso.</p></div></header>
+    <header class="admin-users-header"><div><p class="admin-users-eyebrow">Configurações</p><h1>Editar usuário</h1><p>Atualize dados, perfil e vínculos de acesso.</p></div></header>
     <form asp-action="Edit" method="post" class="admin-users-form">
         @Html.AntiForgeryToken()<input asp-for="Id" type="hidden" /><input asp-for="ConcurrencyStamp" type="hidden" />
         <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
         <fieldset><legend>DADOS DO USUÁRIO</legend><div class="admin-users-form-grid">
-            <div><label asp-for="Name">Nome</label><input asp-for="Name" class="form-control" autocomplete="name" /><span asp-validation-for="Name" class="text-danger"></span></div>
+            <div><label asp-for="Name">Nome completo</label><input asp-for="Name" class="form-control" autocomplete="name" /><span asp-validation-for="Name" class="text-danger"></span></div>
+            <div><label asp-for="UserName">Login</label><input asp-for="UserName" class="form-control" autocomplete="username" /><span asp-validation-for="UserName" class="text-danger"></span></div>
             <div><label asp-for="Email">E-mail</label><input asp-for="Email" class="form-control" autocomplete="email" /><span asp-validation-for="Email" class="text-danger"></span></div>
         </div></fieldset>
         <fieldset><legend>ACESSO</legend><div class="admin-users-form-grid">

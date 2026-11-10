@@ -19,20 +19,9 @@ public class PriceService(ApplicationDbContext db)
             return null;
         }
 
-        var priceTableItem = customer.PriceTableId is null
-            ? null
-            : await db.PriceTableItems
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    x => x.PriceTableId == customer.PriceTableId.Value && x.ProductId == productId,
-                    cancellationToken);
+        var effectivePrice = product.BasePrice;
 
-        var effectivePrice = priceTableItem?.PromotionalPrice
-            ?? priceTableItem?.Price
-            ?? product.PromotionalPrice
-            ?? product.BasePrice;
-
-        return new ResolvedPrice(product.BasePrice, product.PromotionalPrice, effectivePrice);
+        return new ResolvedPrice(product.BasePrice, product.PromotionalPrice, effectivePrice, effectivePrice > 0m);
     }
 
     public async Task<Dictionary<int, decimal>> GetPricesAsync(
@@ -55,4 +44,4 @@ public class PriceService(ApplicationDbContext db)
     }
 }
 
-public sealed record ResolvedPrice(decimal BasePrice, decimal? PromotionalPrice, decimal EffectivePrice);
+public sealed record ResolvedPrice(decimal BasePrice, decimal? PromotionalPrice, decimal EffectivePrice, bool IsCommerciallyValid = true);

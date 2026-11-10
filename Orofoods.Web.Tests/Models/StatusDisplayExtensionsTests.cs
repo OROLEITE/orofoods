@@ -19,7 +19,7 @@ public class StatusDisplayExtensionsTests
     [Theory]
     [InlineData(IntegrationStatus.Pending, "Pendente")]
     [InlineData(IntegrationStatus.Processing, "Processando")]
-    [InlineData(IntegrationStatus.Succeeded, "Integrado")]
+    [InlineData(IntegrationStatus.Succeeded, "Arquivo disponibilizado")]
     [InlineData(IntegrationStatus.Failed, "Falhou")]
     public void Integration_status_has_portuguese_label(IntegrationStatus status, string expected)
     {

@@ -20,9 +20,11 @@ public class GlobalNavigationTests
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_Layout.cshtml"));
+        var adminLayout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_AdminLayout.cshtml"));
         var adminStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-shell.css"));
 
-        Assert.Contains("@if (!isCustomerExperience && !isPortalCustomerSelect && !isAdminArea)", layout);
+        Assert.Contains("ViewData[\"BodyClass\"] = \"admin-authenticated\"", adminLayout);
+        Assert.Contains("@if (!isCustomerExperience && !isPortalCustomerSelect && !isAdminExperience)", layout);
         Assert.DoesNotContain(".page-context-bar", adminStyles);
     }
 
@@ -86,5 +88,39 @@ public class GlobalNavigationTests
         Assert.Contains("--cream: var(--surface-muted);", globalStyles);
         Assert.Contains("html:not([data-theme=\"dark\"]) :is(.portal-shell, .order-page, .success-page, .registration-page)", globalStyles);
         Assert.Contains("html:not([data-theme=\"dark\"]) .customer-commercial-attention", globalStyles);
+    }
+
+    [Fact]
+    public void Public_header_links_keep_aa_contrast_in_normal_hover_focus_and_active_states()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var header = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "header.css"));
+        var compact = System.Text.RegularExpressions.Regex.Replace(header, @"\s+", string.Empty);
+
+        Assert.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page).site-header-modern.main-nav.nav-link", compact);
+        Assert.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page).site-header-modern.main-nav.nav-link:hover", compact);
+        Assert.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page).site-header-modern.main-nav.nav-link:focus-visible", compact);
+        Assert.Contains("body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page).site-header-modern.main-nav.nav-link.active", compact);
+        Assert.Contains("color:#1E293B!important", compact);
+        Assert.Contains("color:#0F172A!important", compact);
+        Assert.True(ContrastRatio("#1E293B", "#FFFFFF") >= 4.5);
+        Assert.True(ContrastRatio("#0F172A", "#FFFFFF") >= 4.5);
+        Assert.True(ContrastRatio("#F8FAFC", "#111827") >= 4.5);
+    }
+
+    private static double ContrastRatio(string foreground, string background)
+    {
+        static double Luminance(string color)
+        {
+            var channels = Enumerable.Range(0, 3)
+                .Select(index => Convert.ToInt32(color.Substring(1 + index * 2, 2), 16) / 255d)
+                .Select(channel => channel <= .04045 ? channel / 12.92 : Math.Pow((channel + .055) / 1.055, 2.4))
+                .ToArray();
+            return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+        }
+
+        var first = Luminance(foreground);
+        var second = Luminance(background);
+        return (Math.Max(first, second) + .05) / (Math.Min(first, second) + .05);
     }
 }

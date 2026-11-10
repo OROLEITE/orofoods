@@ -28,17 +28,22 @@ public sealed class WmcSyncCoordinator
 
     public async Task<WmcSyncRunResult?> RunExclusivelyAsync(Func<Task<WmcSyncRunResult>> run, CancellationToken cancellationToken = default)
     {
+        var result = await RunExclusivelyAsync<WmcSyncRunResult>(run, cancellationToken);
+        lastRun = result;
+        return result;
+    }
+
+    public async Task<T?> RunExclusivelyAsync<T>(Func<Task<T>> run, CancellationToken cancellationToken = default)
+    {
         if (!await gate.WaitAsync(0, cancellationToken))
         {
-            return null; // Another sync is already in progress.
+            return default; // Another sync is already in progress.
         }
 
         IsRunning = true;
         try
         {
-            var result = await run();
-            lastRun = result;
-            return result;
+            return await run();
         }
         finally
         {

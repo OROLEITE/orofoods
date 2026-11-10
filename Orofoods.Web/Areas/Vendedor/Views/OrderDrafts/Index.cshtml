@@ -1,0 +1,57 @@
+@model SellerOrderDraftListViewModel
+@{
+    ViewData["Title"] = "Rascunhos de pedidos";
+    ViewData["BodyClass"] = "seller-area-page seller-order-drafts-page";
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/seller-order-drafts.css" asp-append-version="true" />
+}
+
+<section class="section seller-order-drafts">
+    <div class="container">
+        <header class="seller-order-drafts__header">
+            <div>
+                <p class="seller-order-drafts__eyebrow">OPERAÇÃO COMERCIAL</p>
+                <h1>Rascunhos de pedidos</h1>
+                <p class="seller-order-drafts__muted mb-0">Continue uma digitação salva ou comece um pedido para um cliente da sua carteira.</p>
+            </div>
+            <a class="btn seller-order-drafts__primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Novo pedido
+            </a>
+        </header>
+
+        @if (Model.Drafts.Count == 0)
+        {
+            <section class="seller-order-drafts__empty" aria-live="polite">
+                <span class="seller-order-drafts__empty-icon" aria-hidden="true"><i class="fa-regular fa-file-lines"></i></span>
+                <h2>Nenhum rascunho salvo</h2>
+                <p>Os rascunhos ficam visíveis somente para você e não são enviados ao Monitor Administrativo.</p>
+                <a class="btn seller-order-drafts__primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New">Começar um pedido</a>
+            </section>
+        }
+        else
+        {
+            <div class="seller-order-drafts__list" aria-label="Seus rascunhos">
+                @foreach (var draft in Model.Drafts)
+                {
+                    var total = draft.Items.Sum(item => item.Quantity * item.ResolvedUnitPrice);
+                    <article class="seller-order-drafts__draft-card">
+                        <div class="seller-order-drafts__draft-main">
+                            <span class="seller-order-drafts__draft-status">@(draft.Status == Orofoods.Web.Models.Orders.SellerOrderDraftStatus.Draft ? "Rascunho" : "Pedido enviado")</span>
+                            <h2>@draft.CustomerName</h2>
+                            <p>@draft.Items.Count produto(s) <span aria-hidden="true">·</span> Atualizado em @draft.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                        </div>
+                        <div class="seller-order-drafts__draft-total">
+                            <span>Total atual</span>
+                            <strong>@total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                        </div>
+                        <a class="btn seller-order-drafts__outline" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="Edit" asp-route-id="@draft.Id" aria-label="Reabrir rascunho de @draft.CustomerName">
+                            Reabrir <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>

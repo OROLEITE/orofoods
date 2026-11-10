@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+ENV ASPNETCORE_ENVIRONMENT=Testing DOTNET_ENVIRONMENT=Testing
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgssapi-krb5-2 && \
+    rm -rf /var/lib/apt/lists/*

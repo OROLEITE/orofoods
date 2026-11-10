@@ -20,6 +20,8 @@ public sealed class WmcSyncService(
     TimeProvider timeProvider)
 {
     private const string PendingCategorySlug = "wmc-pendente-categorizacao";
+    private bool reuseProductRows;
+    private IReadOnlyList<WmcProductRecord>? currentProductRows;
 
     public async Task<WmcSyncEntityResult> SyncCustomersAsync(CancellationToken cancellationToken = default)
     {
@@ -79,7 +81,7 @@ public sealed class WmcSyncService(
         int read = 0, created = 0, updated = 0, skipped = 0;
         try
         {
-            var rows = await productReader.GetAllAsync(cancellationToken);
+            var rows = await GetProductRowsAsync(cancellationToken);
             read = rows.Count;
             var duplicateCodes = WmcProductRules.FindDuplicateCodes(rows);
             if (duplicateCodes.Count > 0)
@@ -142,6 +144,11 @@ public sealed class WmcSyncService(
                         WmcAlternateUnit = Clean(row.UnAltern),
                         WmcPackageQuantity = row.QtdeEmbalagem,
                         WmcConversionQuantity = row.QtdeConversao,
+                        Ean13 = Clean(row.Ean13),
+                        Dun14 = Clean(row.Dun14),
+                        CommercialUnitCode = Clean(row.CommercialUnitCode),
+                        LogisticsUnitCode = Clean(row.LogisticsUnitCode),
+                        PackagesPerCase = row.PackagesPerCase,
                         Sku = BuildPlaceholderSku(row.CodProduto),
                         Name = row.Produto,
                         Unit = string.IsNullOrWhiteSpace(row.Un) ? "caixa" : row.Un,
@@ -191,6 +198,15 @@ public sealed class WmcSyncService(
                         existing.WmcConversionQuantity = row.QtdeConversao;
                         changed = true;
                     }
+                    changed |= UpdateWhenProvided(row.Ean13, existing.Ean13, value => existing.Ean13 = value);
+                    changed |= UpdateWhenProvided(row.Dun14, existing.Dun14, value => existing.Dun14 = value);
+                    changed |= UpdateWhenProvided(row.CommercialUnitCode, existing.CommercialUnitCode, value => existing.CommercialUnitCode = value);
+                    changed |= UpdateWhenProvided(row.LogisticsUnitCode, existing.LogisticsUnitCode, value => existing.LogisticsUnitCode = value);
+                    if (row.PackagesPerCase is > 0 && existing.PackagesPerCase != row.PackagesPerCase)
+                    {
+                        existing.PackagesPerCase = row.PackagesPerCase;
+                        changed = true;
+                    }
                     var wmcActive = ReadWmcActive(row.Situacao, code);
                     if (existing.IsWmcActive != wmcActive)
                     {
@@ -221,7 +237,7 @@ public sealed class WmcSyncService(
         int read = 0, created = 0, updated = 0, skipped = 0;
         try
         {
-            var rows = await productReader.GetAllAsync(cancellationToken);
+            var rows = await GetProductRowsAsync(cancellationToken);
             read = rows.Count;
             var duplicateCodes = WmcProductRules.FindDuplicateCodes(rows);
             if (duplicateCodes.Count > 0)
@@ -259,6 +275,13 @@ public sealed class WmcSyncService(
                 }
 
                 var inventory = inventories.GetValueOrDefault(product.Id);
+                product.WmcStockAvailable = product.IsWmcActive && quantity > 0;
+                if (inventory?.IsManuallyAdjusted == true)
+                {
+                    skipped++;
+                    continue;
+                }
+
                 if (inventory is null)
                 {
                     inventory = new ProductInventory { ProductId = product.Id, QuantityOnHand = quantity };
@@ -271,7 +294,6 @@ public sealed class WmcSyncService(
                     inventory.QuantityOnHand = quantity;
                     updated++;
                 }
-                product.WmcStockAvailable = product.IsWmcActive && quantity > 0;
                 if (inventory.QuantityOnHand == quantity && quantity == 0)
                 {
                     skipped++;
@@ -296,35 +318,89 @@ public sealed class WmcSyncService(
 
     public async Task<WmcSyncRunResult> SyncAllAsync(CancellationToken cancellationToken = default)
     {
-        var startedAt = timeProvider.GetUtcNow().UtcDateTime;
-        var initialLoad = !await db.WmcSyncRuns.AnyAsync(run => run.Status == "Succeeded", cancellationToken);
-        var run = new Models.Integrations.WmcSyncRun { StartedAt = startedAt, InitialLoad = initialLoad, Status = "Running" };
-        db.WmcSyncRuns.Add(run);
-        await db.SaveChangesAsync(cancellationToken);
+        reuseProductRows = true;
+        currentProductRows = null;
+        try
+        {
+            var startedAt = timeProvider.GetUtcNow().UtcDateTime;
+            var initialLoad = !await db.WmcSyncRuns.AnyAsync(run => run.Status == "Succeeded", cancellationToken);
+            var run = new Models.Integrations.WmcSyncRun { StartedAt = startedAt, InitialLoad = initialLoad, Status = "Running" };
+            db.WmcSyncRuns.Add(run);
+            await db.SaveChangesAsync(cancellationToken);
 
-        var customers = await SyncCustomersAsync(cancellationToken);
-        run.CustomersRead = customers.RecordsRead;
-        if (customers.ErrorMessage is not null) return await FailRunAsync(run, "Customers", customers.ErrorMessage, startedAt, customers, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, cancellationToken);
-        var products = await SyncProductsAsync(cancellationToken);
-        run.ProductsRead = products.RecordsRead;
-        run.ProductsCreated = products.RecordsCreated;
-        run.ProductsUpdated = products.RecordsUpdated;
-        if (products.ErrorMessage is not null) return await FailRunAsync(run, "Products", products.ErrorMessage, startedAt, customers, products, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, cancellationToken);
-        var sellers = await SyncSellersAsync(cancellationToken);
-        run.SellersRead = sellers.RecordsRead;
-        if (sellers.ErrorMessage is not null) return await FailRunAsync(run, "Sellers", sellers.ErrorMessage, startedAt, customers, products, sellers, WmcSyncEntityResult.Empty, cancellationToken);
-        var stock = await SyncStockAsync(cancellationToken);
-        run.StockRead = stock.RecordsRead;
-        run.StockCreated = stock.RecordsCreated;
-        run.StockUpdated = stock.RecordsUpdated;
-        if (stock.ErrorMessage is not null) return await FailRunAsync(run, "Stock", stock.ErrorMessage, startedAt, customers, products, sellers, stock, cancellationToken);
+            // Customer imports are manual and scoped to an explicitly selected WMC seller.
+            // The background sync must never import every seller globally.
+            var customers = WmcSyncEntityResult.Empty;
+            var products = await SyncProductsAsync(cancellationToken);
+            run.ProductsRead = products.RecordsRead;
+            run.ProductsCreated = products.RecordsCreated;
+            run.ProductsUpdated = products.RecordsUpdated;
+            if (products.ErrorMessage is not null) return await FailRunAsync(run, "Products", products.ErrorMessage, startedAt, customers, products, WmcSyncEntityResult.Empty, WmcSyncEntityResult.Empty, cancellationToken);
+            var sellers = await SyncSellersAsync(cancellationToken);
+            run.SellersRead = sellers.RecordsRead;
+            if (sellers.ErrorMessage is not null) return await FailRunAsync(run, "Sellers", sellers.ErrorMessage, startedAt, customers, products, sellers, WmcSyncEntityResult.Empty, cancellationToken);
+            var stock = await SyncStockAsync(cancellationToken);
+            run.StockRead = stock.RecordsRead;
+            run.StockCreated = stock.RecordsCreated;
+            run.StockUpdated = stock.RecordsUpdated;
+            if (stock.ErrorMessage is not null) return await FailRunAsync(run, "Stock", stock.ErrorMessage, startedAt, customers, products, sellers, stock, cancellationToken);
 
-        var wmcProducts = await db.Products.Where(product => product.WmcCode != null).ToListAsync(cancellationToken);
-        foreach (var product in wmcProducts) product.WmcInitialLoadReady = true;
-        run.Status = "Succeeded";
-        run.FinishedAt = timeProvider.GetUtcNow().UtcDateTime;
-        await db.SaveChangesAsync(cancellationToken);
-        return new WmcSyncRunResult(startedAt, run.FinishedAt.Value, customers, products, sellers, stock, run.Status);
+            await ReleaseVerifiedProductsAsync(currentProductRows ?? [], cancellationToken);
+            run.Status = "Succeeded";
+            run.FinishedAt = timeProvider.GetUtcNow().UtcDateTime;
+            await db.SaveChangesAsync(cancellationToken);
+            return new WmcSyncRunResult(startedAt, run.FinishedAt.Value, customers, products, sellers, stock, run.Status);
+        }
+        finally
+        {
+            reuseProductRows = false;
+            currentProductRows = null;
+        }
+    }
+
+    private async Task<IReadOnlyList<WmcProductRecord>> GetProductRowsAsync(CancellationToken cancellationToken)
+    {
+        if (!reuseProductRows)
+            return await productReader.GetAllAsync(cancellationToken);
+
+        return currentProductRows ??= await productReader.GetAllAsync(cancellationToken);
+    }
+
+    private async Task ReleaseVerifiedProductsAsync(IReadOnlyList<WmcProductRecord> rows, CancellationToken cancellationToken)
+    {
+        var products = await db.Products
+            .Where(product => product.WmcCode != null)
+            .ToListAsync(cancellationToken);
+        var byCode = products
+            .GroupBy(product => WmcProductRules.NormalizeCode(product.WmcCode), StringComparer.Ordinal)
+            .Where(group => group.Count() == 1)
+            .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
+        var productIds = products.Select(product => product.Id).ToArray();
+        var unitsByProduct = await db.WmcProductUnits
+            .Where(unit => productIds.Contains(unit.ProductId))
+            .ToListAsync(cancellationToken);
+        var inventories = await db.ProductInventories
+            .Where(inventory => productIds.Contains(inventory.ProductId))
+            .ToDictionaryAsync(inventory => inventory.ProductId, cancellationToken);
+
+        foreach (var row in rows)
+        {
+            if (!byCode.TryGetValue(WmcProductRules.NormalizeCode(row.CodProduto), out var product))
+                continue;
+
+            var inventory = inventories.GetValueOrDefault(product.Id);
+            var units = unitsByProduct
+                .Where(unit => unit.ProductId == product.Id)
+                .Select(unit => new WmcProductUnitRecord(unit.UnitCode, unit.Description, unit.Factor, unit.Barcode, unit.IsMaster))
+                .ToArray();
+            var result = WmcInitialLoadReadinessEvaluator.Evaluate(
+                row,
+                product,
+                units,
+                inventory?.AvailableQuantity ?? 0,
+                inventory?.IsManuallyAdjusted == true);
+            product.WmcInitialLoadReady = result.IsReady;
+        }
     }
 
     private async Task<WmcSyncRunResult> FailRunAsync(WmcSyncRun run, string stage, string error, DateTime startedAt, WmcSyncEntityResult customers, WmcSyncEntityResult products, WmcSyncEntityResult sellers, WmcSyncEntityResult stock, CancellationToken cancellationToken)
@@ -364,6 +440,13 @@ public sealed class WmcSyncService(
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool UpdateWhenProvided(string? incoming, string? current, Action<string> update)
+    {
+        if (string.IsNullOrWhiteSpace(incoming) || string.Equals(incoming.Trim(), current, StringComparison.Ordinal)) return false;
+        update(incoming.Trim());
+        return true;
+    }
 
     private bool ReadWmcActive(string? situation, string code)
     {

@@ -32,6 +32,7 @@ public class WhatsAppMessage
     public long Id { get; set; }
     public long ConversationId { get; set; }
     public WhatsAppConversation Conversation { get; set; } = null!;
+    [MaxLength(64)] public string? ClientRequestId { get; set; }
     [MaxLength(255)] public string? ExternalMessageId { get; set; }
     public WhatsAppMessageDirection Direction { get; set; }
     public WhatsAppMessageType Type { get; set; }

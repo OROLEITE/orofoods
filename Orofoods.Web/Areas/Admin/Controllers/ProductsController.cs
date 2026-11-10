@@ -2,7 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
 using Orofoods.Web.Data;
+using Orofoods.Web.Models.Inventory;
 using Orofoods.Web.Services.Catalog;
 using Orofoods.Web.Services.Storage;
 
@@ -12,42 +17,139 @@ namespace Orofoods.Web.Areas.Admin.Controllers;
 [Authorize(Roles = "Administrador")]
 public class ProductsController(ApplicationDbContext db, AdminCatalogService catalogService, IProductImageStorage productImageStorage) : Controller
 {
-    public async Task<IActionResult> Index(string? q, bool includeInactive = false)
+    private const int ProductsPageSize = 25;
+    private static readonly MethodInfo StringReplaceMethod = typeof(string).GetMethod(nameof(string.Replace), [typeof(string), typeof(string)])!;
+    private static readonly MethodInfo StringContainsMethod = typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!;
+    private static readonly MethodInfo StringToLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)!;
+    private static readonly MethodInfo TranslateSearchTextMethod = typeof(ApplicationDbContext).GetMethod(nameof(ApplicationDbContext.TranslateSearchText))!;
+    private static readonly (string Characters, string Replacement)[] SearchCharacterReplacements =
+    [
+        ("àáâãäåÀÁÂÃÄÅ", "a"),
+        ("èéêëÈÉÊË", "e"),
+        ("ìíîïÌÍÎÏ", "i"),
+        ("òóôõöøÒÓÔÕÖØ", "o"),
+        ("ùúûüÙÚÛÜ", "u"),
+        ("çÇ", "c"),
+        ("ñÑ", "n"),
+        ("ýÿÝŸ", "y")
+    ];
+    private static readonly (string Character, string Replacement)[] SearchExpansionReplacements =
+    [
+        ("æ", "ae"), ("Æ", "ae"), ("œ", "oe"), ("Œ", "oe"), ("ß", "ss"), ("ẞ", "ss")
+    ];
+    private static readonly string SearchFromCharacters = string.Concat(SearchCharacterReplacements.Select(group => group.Characters));
+    private static readonly string SearchToCharacters = string.Concat(SearchCharacterReplacements.SelectMany(group => group.Characters.Select(_ => group.Replacement[0])));
+
+    public async Task<IActionResult> Index(string? q, bool includeInactive = false, int? page = null)
     {
-        var query = db.Products.AsNoTracking().Include(x => x.ProductCategory).Include(x => x.Images).AsQueryable();
+        var query = db.Products.AsNoTracking().AsQueryable();
         if (!includeInactive) query = query.Where(x => x.IsActive);
-        if (!string.IsNullOrWhiteSpace(q)) query = query.Where(x => x.Name.Contains(q) || x.Sku.Contains(q) || x.Brand.Contains(q));
-        ViewBag.Query = q;
-        ViewBag.IncludeInactive = includeInactive;
-        return View(await query.OrderBy(x => x.Name).ToListAsync());
+        var normalizedSearch = NormalizeSearchTerm(q);
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            if (normalizedSearch.Length == 0)
+                query = query.Where(_ => false);
+            else
+                query = query.Where(CreateProductSearchPredicate(normalizedSearch));
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)ProductsPageSize);
+        var currentPage = totalPages == 0 ? 1 : Math.Clamp(page.GetValueOrDefault(1), 1, totalPages);
+        var products = await query
+            .Include(x => x.ProductCategory)
+            .Include(x => x.Images)
+            .OrderBy(x => x.Name)
+            .ThenBy(x => x.Id)
+            .Skip((currentPage - 1) * ProductsPageSize)
+            .Take(ProductsPageSize)
+            .ToListAsync();
+        var productIds = products.Select(product => product.Id).ToArray();
+        ViewBag.StockByProductId = await db.ProductInventories
+            .AsNoTracking()
+            .Where(inventory => productIds.Contains(inventory.ProductId))
+            .ToDictionaryAsync(inventory => inventory.ProductId, inventory => inventory.QuantityOnHand);
+        ViewBag.TotalItems = totalItems;
+        ViewBag.TotalPages = totalPages;
+        SetListContext(q, includeInactive, currentPage);
+        return View(products);
     }
 
-    public async Task<IActionResult> Edit(int? id)
+    public async Task<IActionResult> Edit(int? id, string? q = null, bool includeInactive = false, int? page = null)
     {
         var product = id is null ? new Product() : await db.Products.AsNoTracking().Include(x => x.Images).SingleOrDefaultAsync(x => x.Id == id);
         if (product is null) return NotFound();
+        SetListContext(q, includeInactive, page);
         await PopulateSelectionsAsync(product);
         return View(product);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(Product input)
+    public async Task<IActionResult> Edit(Product input, string? q = null, bool includeInactive = false, int? page = null)
     {
-        if (string.IsNullOrWhiteSpace(input.Sku) || string.IsNullOrWhiteSpace(input.Name) || input.ProductCategoryId == 0)
-            ModelState.AddModelError(string.Empty, "SKU, nome e categoria sao obrigatorios.");
+        SetListContext(q, includeInactive, page);
+        Product? existingProduct = null;
+        if (input.Id != 0)
+        {
+            existingProduct = await db.Products.AsNoTracking().SingleOrDefaultAsync(product => product.Id == input.Id);
+            if (existingProduct is null) return NotFound();
+            RestoreNonEditableProductFields(input, existingProduct);
+        }
+
+        foreach (var field in NonEditableProductFieldNames)
+            ModelState.Remove(field);
+
+        if (string.IsNullOrWhiteSpace(input.Sku))
+            ModelState.AddModelError(nameof(input.Sku), "Informe o SKU do produto.");
+        if (string.IsNullOrWhiteSpace(input.Name))
+            ModelState.AddModelError(nameof(input.Name), "Informe o nome do produto.");
+        if (input.ProductCategoryId == 0)
+            ModelState.AddModelError(nameof(input.ProductCategoryId), "Selecione uma categoria para o produto.");
         if (!ModelState.IsValid) { await PopulateSelectionsAsync(input); return View(input); }
-        try { await catalogService.SaveProductAsync(input); }
+
+        var wasActive = existingProduct?.IsActive;
+        Product savedProduct;
+        try { savedProduct = await catalogService.SaveProductAsync(input); }
         catch (InvalidOperationException error) { ModelState.AddModelError(string.Empty, error.Message); await PopulateSelectionsAsync(input); return View(input); }
-        return RedirectToAction(nameof(Index));
+        catch (DbUpdateException)
+        {
+            ModelState.AddModelError(string.Empty, "Não foi possível salvar as alterações do produto. Tente novamente.");
+            await PopulateSelectionsAsync(input);
+            return View(input);
+        }
+
+        TempData["ProductSuccess"] = wasActive.HasValue && wasActive.Value != savedProduct.IsActive
+            ? $"Produto {(savedProduct.IsActive ? "ativado" : "desativado")} com sucesso."
+            : input.Id == 0 ? "Produto cadastrado com sucesso." : "Produto salvo com sucesso.";
+        return RedirectToAction(nameof(Index), new { q, includeInactive, page });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Deactivate(int id)
+    public async Task<IActionResult> Deactivate(int id, string? q = null, bool includeInactive = false, int? page = null)
     {
-        await catalogService.DeactivateProductAsync(id);
-        return RedirectToAction(nameof(Index));
+        if (!await db.Products.AnyAsync(product => product.Id == id))
+        {
+            TempData["ProductError"] = "Produto não encontrado; o status não foi alterado.";
+            return RedirectToAction(nameof(Index), new { q, includeInactive, page });
+        }
+
+        try
+        {
+            await catalogService.DeactivateProductAsync(id);
+            TempData["ProductSuccess"] = "Produto desativado com sucesso.";
+        }
+        catch (InvalidOperationException)
+        {
+            TempData["ProductError"] = "Não foi possível desativar o produto. O status não foi alterado.";
+        }
+        catch (DbUpdateException)
+        {
+            TempData["ProductError"] = "Não foi possível salvar a desativação do produto. Tente novamente.";
+        }
+
+        return RedirectToAction(nameof(Index), new { q, includeInactive, page });
     }
 
     [HttpPost]
@@ -110,5 +212,88 @@ public class ProductsController(ApplicationDbContext db, AdminCatalogService cat
     {
         ViewBag.Categories = new SelectList(await db.ProductCategories.Where(x => x.IsActive).OrderBy(x => x.Name).ToListAsync(), "Id", "Name", product.ProductCategoryId);
         ViewBag.Substitutes = new SelectList(await db.Products.Where(x => x.IsActive && x.Id != product.Id).OrderBy(x => x.Name).ToListAsync(), "Id", "Name", product.SubstituteProductId);
+    }
+
+    private void SetListContext(string? q, bool includeInactive, int? page)
+    {
+        ViewBag.Query = q;
+        ViewBag.IncludeInactive = includeInactive;
+        ViewBag.Page = page;
+    }
+
+    private static readonly string[] NonEditableProductFieldNames =
+    [
+        nameof(Product.Description),
+        nameof(Product.Weight),
+        nameof(Product.Unit),
+        nameof(Product.UnitsPerPackage),
+        nameof(Product.PromotionalPrice),
+        nameof(Product.IsFeatured),
+        nameof(Product.IsPromotional),
+        nameof(Product.Accent)
+    ];
+
+    private static void RestoreNonEditableProductFields(Product input, Product existingProduct)
+    {
+        input.Description = existingProduct.Description;
+        input.Weight = existingProduct.Weight;
+        input.Unit = existingProduct.Unit;
+        input.UnitsPerPackage = existingProduct.UnitsPerPackage;
+        input.PromotionalPrice = existingProduct.PromotionalPrice;
+        input.IsFeatured = existingProduct.IsFeatured;
+        input.IsPromotional = existingProduct.IsPromotional;
+        input.Accent = existingProduct.Accent;
+    }
+
+    private static Expression<Func<Product, bool>> CreateProductSearchPredicate(string searchTerm)
+    {
+        var product = Expression.Parameter(typeof(Product), "product");
+        Expression? predicate = null;
+        foreach (var propertyName in new[] { nameof(Product.Name), nameof(Product.Sku), nameof(Product.WmcCode), nameof(Product.Brand) })
+        {
+            var field = Expression.Property(product, propertyName);
+            var fieldIsNotNull = Expression.NotEqual(field, Expression.Constant(null, typeof(string)));
+            var normalizedField = NormalizeDatabaseSearchText(field);
+            var containsSearchTerm = Expression.Call(normalizedField, StringContainsMethod, Expression.Constant(searchTerm));
+            var fieldMatches = Expression.AndAlso(fieldIsNotNull, containsSearchTerm);
+            predicate = predicate is null ? fieldMatches : Expression.OrElse(predicate, fieldMatches);
+        }
+
+        return Expression.Lambda<Func<Product, bool>>(predicate!, product);
+    }
+
+    private static Expression NormalizeDatabaseSearchText(Expression field)
+    {
+        Expression normalized = field;
+        foreach (var (character, replacement) in SearchExpansionReplacements)
+        {
+            normalized = Expression.Call(
+                normalized,
+                StringReplaceMethod,
+                Expression.Constant(character),
+                Expression.Constant(replacement));
+        }
+
+        var translated = Expression.Call(
+            TranslateSearchTextMethod,
+            normalized,
+            Expression.Constant(SearchFromCharacters),
+            Expression.Constant(SearchToCharacters));
+        return Expression.Call(translated, StringToLowerMethod);
+    }
+
+    private static string NormalizeSearchTerm(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+        var decomposed = value.Trim().Normalize(NormalizationForm.FormD);
+        var withoutDiacritics = new string(decomposed
+            .Where(character => CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        return withoutDiacritics.Normalize(NormalizationForm.FormC)
+            .ToLowerInvariant()
+            .Replace("æ", "ae", StringComparison.Ordinal)
+            .Replace("œ", "oe", StringComparison.Ordinal)
+            .Replace("ß", "ss", StringComparison.Ordinal);
     }
 }

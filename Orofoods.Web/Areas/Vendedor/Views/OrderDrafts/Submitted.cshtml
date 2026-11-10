@@ -1,0 +1,22 @@
+@model SellerOrderDraftSubmittedViewModel
+@{
+    ViewData["Title"] = "Pedido enviado";
+    ViewData["BodyClass"] = "seller-area-page";
+}
+<section class="seller-order-confirmation" aria-labelledby="seller-order-confirmation-title">
+    <div class="seller-order-confirmation__card">
+        <span class="seller-order-confirmation__icon" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
+        <p class="seller-order-drafts__eyebrow">ENVIO CONCLUÍDO</p>
+        <h1 id="seller-order-confirmation-title">Pedido enviado</h1>
+        <p class="seller-order-confirmation__message">Seu pedido foi registrado.</p>
+        <dl class="seller-order-confirmation__summary">
+            <div><dt>Número do pedido</dt><dd>#@Model.OrderNumber</dd></div>
+            <div><dt>Valor total</dt><dd>@Model.Total.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</dd></div>
+        </dl>
+        <nav class="seller-order-confirmation__actions" aria-label="Próximas ações">
+            <a class="seller-button seller-button--secondary" asp-area="Vendedor" asp-controller="Dashboard" asp-action="Index">Voltar ao início</a>
+            <a class="seller-button seller-button--secondary" asp-area="Vendedor" asp-controller="Orders" asp-action="Details" asp-route-customerId="@Model.CustomerId" asp-route-orderId="@Model.OrderId">Ver pedido</a>
+            <a class="seller-button seller-button--primary" asp-area="Vendedor" asp-controller="OrderDrafts" asp-action="New" asp-route-customerId="@Model.CustomerId">Novo pedido</a>
+        </nav>
+    </div>
+</section>

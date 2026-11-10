@@ -39,11 +39,11 @@ public class AdminDashboardThemeTests
         var view = File.ReadAllText(Path.Combine(projectPath, "Areas", "Admin", "Views", "Dashboard", "Index.cshtml"));
         var dashboardStyles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-dashboard.css"));
 
-        Assert.Contains("Model.PendingCustomers == 0 ? \"\" : \"admin-priority-card--accent\"", view);
-        Assert.Contains("Model.PendingOrders == 0 ? \"\" : \"admin-priority-card--accent\"", view);
-        Assert.Contains("Model.LowStockProducts == 0 ? \"\" : \"admin-priority-card--accent\"", view);
-        Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"\" : \"admin-priority-card--danger\"", view);
-        Assert.DoesNotContain("admin-priority-card--critical", view + dashboardStyles);
+        Assert.Contains("Model.PendingCustomers == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--warning\"", view);
+        Assert.Contains("Model.PendingOrders == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--warning\"", view);
+        Assert.Contains("Model.LowStockProducts == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--warning\"", view);
+        Assert.Contains("Model.FailedIntegrations + Model.FailedWmcExports == 0 ? \"admin-dashboard-indicator--normal\" : \"admin-dashboard-indicator--critical\"", view);
+        Assert.Contains("admin-dashboard-indicator--critical", view);
     }
 
     [Fact]

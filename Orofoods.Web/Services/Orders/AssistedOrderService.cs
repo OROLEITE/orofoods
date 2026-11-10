@@ -22,7 +22,6 @@ public sealed class AssistedOrderService
     public async Task<AssistedOrderResult> CreateAsync(
         int customerId,
         string userId,
-        int addressId,
         int paymentTermId,
         DateTime requestedDeliveryDate,
         string? notes,
@@ -32,7 +31,7 @@ public sealed class AssistedOrderService
         var result = await orderPlacementService.PlaceLinesAsync(
             customerId,
             userId,
-            new OrderPlacementCommand(addressId, paymentTermId, requestedDeliveryDate, notes),
+            new OrderPlacementCommand(paymentTermId, requestedDeliveryDate, notes),
             requestedLines,
             cancellationToken: cancellationToken);
         return result.Succeeded
@@ -49,6 +48,14 @@ public sealed class AssistedOrderService
         bool clearCart = true,
         CancellationToken cancellationToken = default) =>
         orderPlacementService.PlaceAsync(customerId, userId, command, session, scope, clearCart, cancellationToken);
+
+    public Task<OrderPlacementResult> PlaceLinesAsync(
+        int customerId,
+        string userId,
+        OrderPlacementCommand command,
+        IReadOnlyList<(int ProductId, int Quantity)> requestedLines,
+        CancellationToken cancellationToken = default) =>
+        orderPlacementService.PlaceLinesAsync(customerId, userId, command, requestedLines, cancellationToken: cancellationToken);
 }
 
 public sealed record AssistedOrderResult(bool Succeeded, int? OrderId, string? ErrorMessage)

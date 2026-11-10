@@ -24,6 +24,21 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" PrivateAssets="all" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.11" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.5" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\tools\OrofoodsProductionDbReadOnlyCrm\OrofoodsProductionDbReadOnlyCrm.csproj"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Target Name="PublishProductionReadOnlyDiagnostic" AfterTargets="Publish">
+    <PropertyGroup>
+      <ProductionReadOnlyDiagnosticPublishDir>$(PublishDir)tools</ProductionReadOnlyDiagnosticPublishDir>
+      <ProductionReadOnlyDiagnosticProject>$(MSBuildProjectDirectory)\..\tools\OrofoodsProductionDbReadOnlyCrm\OrofoodsProductionDbReadOnlyCrm.csproj</ProductionReadOnlyDiagnosticProject>
+    </PropertyGroup>
+    <MakeDir Directories="$(ProductionReadOnlyDiagnosticPublishDir)" />
+    <Exec Command="dotnet publish &quot;$(ProductionReadOnlyDiagnosticProject)&quot; --configuration $(Configuration) --runtime linux-x64 --self-contained false --no-restore --output &quot;$(ProductionReadOnlyDiagnosticPublishDir)&quot; -p:UseAppHost=false -p:DebugType=None" />
+  </Target>
 
 </Project>

@@ -28,7 +28,6 @@ public sealed class SellerCheckoutService(
         if (scope is null) return null;
 
         var customer = await db.Customers.AsNoTracking()
-            .Include(x => x.Addresses)
             .SingleOrDefaultAsync(x => x.Id == customerId && x.IsActive && x.Status == Models.Customers.CustomerStatus.Approved, cancellationToken);
         if (customer is null) return null;
 
@@ -39,7 +38,6 @@ public sealed class SellerCheckoutService(
             CustomerCode = customer.WmcCode ?? customer.Cnpj,
             CustomerName = customer.TradeName,
             Cart = await cartService.GetAsync(customerId, session, scope),
-            Addresses = customer.Addresses.Where(x => x.IsActive).ToList(),
             PaymentTerms = eligibility.PaymentMethods,
             PaymentEligibility = eligibility,
             MercadoPagoPublicKey = mercadoPagoOptions?.Value.PublicKey ?? ""

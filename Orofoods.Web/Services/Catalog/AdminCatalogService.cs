@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using Orofoods.Web.Data;
 
 namespace Orofoods.Web.Services.Catalog;
@@ -7,21 +8,60 @@ public class AdminCatalogService(ApplicationDbContext db)
 {
     public async Task<Product> SaveProductAsync(Product input, CancellationToken cancellationToken = default)
     {
+        var validationErrors = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(input, new ValidationContext(input), validationErrors, validateAllProperties: true))
+        {
+            throw new InvalidOperationException(string.Join(" ", validationErrors.Select(error => error.ErrorMessage)));
+        }
+
         var sku = input.Sku.Trim().ToUpperInvariant();
         if (await db.Products.AnyAsync(x => x.Id != input.Id && x.Sku.ToUpper() == sku, cancellationToken))
         {
-            throw new InvalidOperationException("Ja existe um produto com esse SKU.");
+            throw new InvalidOperationException("Já existe um produto com esse SKU.");
+        }
+
+        var wmcCode = string.IsNullOrWhiteSpace(input.WmcCode) ? null : input.WmcCode.Trim();
+        if (wmcCode is not null && await db.Products.AnyAsync(
+                x => x.Id != input.Id && x.WmcCode != null && x.WmcCode.Trim().ToLower() == wmcCode.ToLowerInvariant(),
+                cancellationToken))
+        {
+            throw new InvalidOperationException("Já existe um produto com esse código WMC.");
+        }
+
+        var hasPackageConfiguration = !string.IsNullOrWhiteSpace(input.CommercialUnitCode)
+            || !string.IsNullOrWhiteSpace(input.LogisticsUnitCode)
+            || input.PackagesPerCase.HasValue;
+        if (hasPackageConfiguration && !input.HasPackageSalesConfiguration)
+        {
+            throw new InvalidOperationException("Para vender em pacotes, informe unidade comercial PCT, unidade logística CX e o fator de pacotes por caixa.");
         }
 
         var product = input.Id == 0
             ? new Product()
             : await db.Products.SingleAsync(x => x.Id == input.Id, cancellationToken);
+        var incomingSalesUnitCode = NormalizeCode(input.CommercialUnitCode) ?? input.Unit.Trim();
+        var salesUnitChanged = !string.Equals(product.EffectiveSalesUnitCode, incomingSalesUnitCode, StringComparison.OrdinalIgnoreCase);
+        if (salesUnitChanged && input.Id != 0)
+        {
+            var hasLegacyQuantityReferences = await db.SavedOrderItems.AnyAsync(x => x.ProductId == input.Id, cancellationToken)
+                || await db.SellerOrderDraftItems.AnyAsync(x => x.ProductId == input.Id, cancellationToken);
+            if (hasLegacyQuantityReferences)
+            {
+                throw new InvalidOperationException("Este produto possui pedidos modelo ou rascunhos com quantidades na unidade atual. Não altere a unidade deste cadastro; crie outro produto para evitar reinterpretar esses registros.");
+            }
+        }
+
         product.Sku = sku;
-        product.WmcCode = string.IsNullOrWhiteSpace(input.WmcCode) ? null : input.WmcCode.Trim();
+        product.WmcCode = wmcCode;
+        product.Ean13 = NormalizeBarcode(input.Ean13);
+        product.Dun14 = NormalizeBarcode(input.Dun14);
+        product.CommercialUnitCode = NormalizeCode(input.CommercialUnitCode);
+        product.LogisticsUnitCode = NormalizeCode(input.LogisticsUnitCode);
+        product.PackagesPerCase = input.PackagesPerCase;
         product.Name = input.Name.Trim();
         product.ProductCategoryId = input.ProductCategoryId;
         product.Brand = input.Brand.Trim();
-        product.Description = input.Description.Trim();
+        product.Description = (input.Description ?? string.Empty).Trim();
         product.Weight = input.Weight;
         product.Unit = input.Unit.Trim();
         product.UnitsPerPackage = input.UnitsPerPackage;
@@ -39,6 +79,9 @@ public class AdminCatalogService(ApplicationDbContext db)
         await db.SaveChangesAsync(cancellationToken);
         return product;
     }
+
+    private static string? NormalizeBarcode(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? NormalizeCode(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
 
     public async Task DeactivateProductAsync(int id, CancellationToken cancellationToken = default)
     {

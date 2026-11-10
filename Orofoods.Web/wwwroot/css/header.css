@@ -1,5 +1,104 @@
 body>.site-header,body>.auth-user-menu{display:none}.site-header-modern{position:relative;z-index:1030;background:#fff;border-bottom:1px solid #141f1814}.site-header-modern .navbar{min-height:72px;padding:.5rem 0}.site-header-container{width:100%;max-width:1680px;margin:0 auto;padding-inline:clamp(1rem,3vw,3rem)}.site-brand{margin:0}.site-logo{display:block;width:auto;height:46px;object-fit:contain}.main-nav{gap:clamp(.25rem,1vw,1rem)}.main-nav .nav-link{border-radius:.5rem;color:#1b241d;font-size:.95rem;font-weight:500;padding:.65rem .75rem!important;white-space:nowrap;transition:color .18s ease,background-color .18s ease}.main-nav .nav-link:hover,.main-nav .nav-link:focus-visible{background:#1b241d0e;color:#111812}.header-account{display:flex;align-items:center;flex:0 0 auto}.account-trigger{display:flex;align-items:center;gap:.65rem;min-width:0;padding:.4rem .65rem;border:1px solid #1b241d29;border-radius:.75rem;background:#fff;color:#172019;box-shadow:none}.account-trigger:hover,.account-trigger:focus-visible,.account-trigger.show{border-color:#1b241d47;background:#f7f6f1;color:#172019}.account-trigger:focus-visible{outline:3px solid #d9a22a66;outline-offset:2px}.account-avatar{display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;border-radius:50%;background:#efe3bf;color:#725719;font-size:.9rem;font-weight:700}.account-copy{display:flex;flex-direction:column;align-items:flex-start;min-width:0;line-height:1.15}.account-name,.account-context{display:block;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.account-name{font-size:.875rem;font-weight:700}.account-context{margin-top:.15rem;color:#6b716c;font-size:.7rem}.account-menu{min-width:220px;padding:.45rem;border:1px solid #1b241d1a;border-radius:.75rem;box-shadow:0 .75rem 2rem #141f1f1f}.account-menu .dropdown-item{padding:.65rem .75rem;border-radius:.5rem;color:#172019;font-size:.875rem}.account-menu .dropdown-item:hover,.account-menu .dropdown-item:focus{background:#f4f2eb}.account-menu i{width:20px;color:#8a6617}.account-logout{color:#8c342c!important}@media(min-width:1400px){.site-logo{height:52px}.main-nav .nav-link{padding-inline:.9rem!important}.account-name,.account-context{max-width:190px}}@media(min-width:992px) and (max-width:1399.98px){.site-header-container{padding-inline:1.25rem}.main-nav{gap:.15rem}.main-nav .nav-link{font-size:.875rem;padding-inline:.55rem!important}.account-name,.account-context{max-width:130px}}@media(max-width:991.98px){.site-header-modern .navbar{min-height:64px}.site-header-container{padding-inline:1rem}.site-logo{height:42px}.site-header-modern .navbar-collapse{padding:14px 0 4px}.main-nav{gap:2px;padding:8px 0}.main-nav .nav-link{padding:.7rem .75rem!important}.header-account{margin-top:10px;padding-top:12px;border-top:1px solid #141f1814}.header-account .account-dropdown{width:100%}.account-trigger{width:100%;justify-content:flex-start}.account-menu{width:100%;margin-top:6px}.site-header-modern .btn-outline-dark{width:100%}}@media(max-width:420px){.site-logo{height:38px}.account-name,.account-context{max-width:150px}}
 .header-account{gap:10px}.header-notifications{display:flex;align-items:center;flex:0 0 auto}
+/* Keep the shared cart button and keyboard ring inside the header layout. */
+.site-header-modern,
+.site-header-modern .navbar,
+.site-header-modern .navbar-collapse,
+.site-header-modern .header-account {
+    overflow: visible;
+}
+
+.site-header-modern .navbar-collapse {
+    min-width: 0;
+}
+
+.site-header-modern .header-account {
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.site-header-modern .catalog-header-cart,
+.site-header-modern .catalog-header-cart:visited,
+.site-header-modern .catalog-header-cart:hover,
+.site-header-modern .catalog-header-cart:focus,
+.site-header-modern .catalog-header-cart:active,
+.site-header-modern .catalog-header-cart:focus-visible {
+    box-sizing: border-box;
+    display: inline-flex;
+    position: relative;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 13px;
+    border: 1px solid #0E7490;
+    border-radius: 8px;
+    background: #0E7490;
+    flex-shrink: 0;
+    color: #FFFFFF;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.site-header-modern .catalog-header-cart:hover,
+.site-header-modern .catalog-header-cart:focus,
+.site-header-modern .catalog-header-cart:active {
+    border-color: #0B5D75;
+    background: #0B5D75;
+    color: #FFFFFF;
+}
+
+.site-header-modern .catalog-header-cart:focus-visible {
+    outline: 3px solid rgb(14 116 144 / 48%);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #FFFFFF;
+}
+
+.site-header-modern .catalog-header-cart > i {
+    flex: 0 0 auto;
+    color: #FFFFFF;
+    line-height: 1;
+}
+
+.site-header-modern .catalog-header-cart .catalog-header-cart-label {
+    display: inline-block;
+    flex: 0 0 auto;
+    color: #FFFFFF;
+}
+
+.site-header-modern .catalog-header-cart .catalog-cart-count {
+    box-sizing: border-box;
+    display: inline-grid;
+    position: static;
+    min-width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    place-items: center;
+    margin: 0;
+    padding: 0 5px;
+    border: 1px solid #FFFFFF;
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: #0E7490;
+    font-size: .72rem;
+    font-weight: 850;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+@media (max-width: 991.98px) {
+    .site-header-modern .header-account {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+
+    .site-header-modern .catalog-header-cart {
+        min-height: 44px;
+        margin: 2px 0;
+    }
+}
 
 /* Shared dark navigation frame. The logo and dropdown behavior remain unchanged. */
 .site-header-modern {
@@ -170,6 +269,26 @@ html[data-theme="dark"] body.admin-authenticated:has(.whatsapp-inbox-page) .site
     color: #F8FAFC !important;
 }
 
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link {
+    color: #1E293B !important;
+}
+
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:hover,
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:focus-visible,
+html:not([data-theme="dark"]) body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link.active {
+    color: #0F172A !important;
+}
+
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link {
+    color: #E5E7EB !important;
+}
+
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:hover,
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link:focus-visible,
+html[data-theme="dark"] body:not(.portal-authenticated):not(.portal-customer-select):not(.admin-authenticated):not(.seller-app-page) .site-header-modern .main-nav .nav-link.active {
+    color: #F8FAFC !important;
+}
+
 html:not([data-theme="dark"]) .site-header-modern :is(.navbar-toggler, .btn-outline-dark) {
     border-color: var(--border-subtle);
     color: #334155;
@@ -265,4 +384,33 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .account-menu .dropdown-divider {
     border-color: #334155;
+}
+
+/* Admin logo sizing and active navigation stay inside the authenticated shell. */
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern {
+    --authenticated-nav-active: #0E7490;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern {
+    --authenticated-nav-active: #38BDF8;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
+    width: auto;
+    height: 42px;
+    max-width: min(100%, 180px);
+    object-fit: contain;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .main-nav .nav-link.active {
+    box-shadow: inset 0 -2px 0 var(--authenticated-nav-active);
+}
+
+@media (max-width: 575.98px) {
+    html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo,
+    html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .site-header-modern .site-logo {
+        height: 38px;
+    }
 }

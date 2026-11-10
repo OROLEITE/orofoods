@@ -14,8 +14,15 @@
             <h1>Olá, @Model.Customer.TradeName!</h1>
             <p>Acompanhe suas compras e continue seu abastecimento.</p>
         </div>
-        <a class="btn btn-dark portal-primary-action" asp-action="Catalog"><i class="fa-solid fa-plus" aria-hidden="true"></i> Novo pedido</a>
+        <a class="btn btn-gold portal-primary-action" asp-action="Catalog"><i class="fa-solid fa-plus" aria-hidden="true"></i> Digitar pedido</a>
     </header>
+
+    <nav class="customer-dashboard-shortcuts" aria-label="Atalhos do portal">
+        <a class="btn btn-outline-dark customer-dashboard-shortcut" asp-action="SavedOrders"><i class="fa-regular fa-file-lines" aria-hidden="true"></i> Meus rascunhos</a>
+        <a class="btn btn-outline-dark customer-dashboard-shortcut" asp-action="Catalog"><i class="fa-solid fa-box-open" aria-hidden="true"></i> Ver cat&aacute;logo</a>
+        <a class="btn btn-outline-dark customer-dashboard-shortcut" asp-action="Cart"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Carrinho</a>
+        <a class="btn btn-outline-dark customer-dashboard-shortcut" asp-action="Orders"><i class="fa-solid fa-receipt" aria-hidden="true"></i> Pedidos</a>
+    </nav>
 
     <section class="customer-kpi-grid" aria-label="Resumo comercial">
         <article class="customer-kpi-card">
@@ -122,9 +129,9 @@
             <header class="customer-dashboard-section-heading"><div><span class="customer-section-kicker">CONDIÇÕES DA SUA CONTA</span><h2 id="commercialSummaryTitle">Resumo comercial</h2></div></header>
             <dl>
                 <div><dt>Sua tabela</dt><dd>@Model.Customer.PriceTableName</dd></div>
-                <div><dt>Pedido mínimo</dt><dd>@Model.Customer.MinimumOrder.ToString("C", ptBr)</dd></div>
+                <div><dt>Pedido mínimo</dt><dd>@Model.MinimumOrder.ToString("C", ptBr)</dd></div>
                 <div><dt>Crédito disponível</dt><dd>@((Model.Customer.CreditLimit - Model.Customer.CreditUsed).ToString("C", ptBr))</dd></div>
-                <div><dt>Condição de pagamento</dt><dd>@Model.Customer.PaymentTerms</dd></div>
+                <div><dt>Condição de pagamento</dt><dd>@Model.AuthorizedPaymentTerms</dd></div>
             </dl>
             <a class="customer-commercial-link" asp-action="Catalog">Iniciar novo pedido <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         </section>

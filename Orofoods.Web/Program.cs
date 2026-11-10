@@ -28,11 +28,13 @@ using Orofoods.Web.Services.Payments;
 using Orofoods.Web.Services.Reports;
 using Orofoods.Web.Services.Sellers;
 using Orofoods.Web.Services.Storage;
+using Orofoods.Web.Models.Validation;
 using Orofoods.Web.Services.Integrations;
 using Orofoods.Web.Integrations.Erp;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Infrastructure;
 using Orofoods.Web.Infrastructure.Logging;
+using Orofoods.Web.Identity;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -65,6 +67,21 @@ if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(applicatio
 {
     throw new InvalidOperationException("DataProtection:ApplicationName deve estar configurado fora de Development.");
 }
+if (!StartupEnvironmentPolicy.IsProductionDataProtectionConfigured(
+        builder.Environment,
+        dataProtectionSettings,
+        OperatingSystem.IsWindows()))
+{
+    throw new InvalidOperationException("Produção exige chaves persistentes do Data Protection em Blob protegido por Key Vault ou diretório externo protegido por DPAPI.");
+}
+if (!StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
+        builder.Environment,
+        builder.Configuration.GetValue<bool>("WhatsAppBusiness:Enabled"),
+        builder.Configuration.GetValue<bool>("WhatsAppBusiness:EmbeddedSignupEnabled"),
+        dataProtectionSettings))
+{
+    throw new InvalidOperationException("Embedded Signup em Staging exige Data Protection persistente no Blob do Azure e protegida por chave do Key Vault.");
+}
 
 var dataProtection = builder.Services.AddDataProtection()
     .SetApplicationName(string.IsNullOrWhiteSpace(applicationName) ? "Orofoods.Web" : applicationName);
@@ -76,6 +93,7 @@ else
 {
     var azureSettings = dataProtectionSettings.Azure;
     var azureEnabled = azureSettings is not null && azureSettings.Enabled;
+    var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
     if (azureEnabled)
     {
         var blobUri = azureSettings!.BlobUri;
@@ -91,8 +109,7 @@ else
             .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
     }
 
-    var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
-    if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
+    else if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -105,7 +122,16 @@ else
     }
 }
 
-var connectionString = DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
+var isWmcTestHost = builder.Environment.IsEnvironment("Testing");
+var connectionString = isWmcTestHost
+    ? WmcTestDatabaseGuard.GetRequiredConnectionString(builder.Configuration)
+    : DatabaseConfiguration.GetRequiredDefaultConnectionString(builder.Configuration);
+
+if (isWmcTestHost)
+{
+    // This read-only identity check must finish before EF can run migrations or seed data.
+    await WmcTestDatabaseGuard.AssertConnectedToDisposableDatabaseAsync(connectionString);
+}
 
 builder.Services.AddDbContext<PostgreSqlApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -137,10 +163,14 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     .AddEntityFrameworkStores<PostgreSqlApplicationDbContext>()
     .AddSignInManager<ActiveUserSignInManager>();
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Defina Jwt:Key por variável de ambiente ou User Secrets.");
+jwtKey = KeyVaultReferenceGuard.EnsureResolved("Jwt:Key", jwtKey);
 builder.Services.AddAuthentication().AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"], ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"], ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)), ValidateLifetime = true };
+    options.Events.OnTokenValidated = context => context.HttpContext.RequestServices
+        .GetRequiredService<ApiTokenSecurityStampValidator>().ValidateAsync(context);
 });
+builder.Services.AddScoped<ApiTokenSecurityStampValidator>();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("api", limiter =>
@@ -172,12 +202,19 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddScoped<CustomerAccessService>();
 builder.Services.AddScoped<SalesRepresentativeAccessService>();
+builder.Services.AddScoped<WmcOrderImportAccessService>();
 builder.Services.AddScoped<SellerWorkspaceService>();
 builder.Services.AddScoped<SellerCatalogService>();
+builder.Services.AddScoped<SellerOrderDraftService>();
+builder.Services.AddScoped<SellerOrderDraftSubmissionService>();
+builder.Services.AddSingleton<SellerOrderDraftQuoteProtector>();
 builder.Services.AddScoped<SellerCheckoutService>();
 builder.Services.AddScoped<SellerOrderHistoryService>();
 builder.Services.AddScoped<AdminCustomerContextService>();
+builder.Services.AddScoped<AdminSellerContextService>();
+builder.Services.AddScoped<AdminPortalAccessAuditService>();
 builder.Services.AddScoped<CustomerApprovalService>();
+builder.Services.AddScoped<CustomerCnpjSnapshotCorrectionService>();
 builder.Services.AddScoped<CustomerRegistrationService>();
 builder.Services.Configure<PaymentEligibilityOptions>(builder.Configuration.GetSection(PaymentEligibilityOptions.SectionName));
 var mercadoPagoPointEnabled = builder.Configuration.GetValue<bool>(MercadoPagoPointOptions.ConfigurationKey);
@@ -218,6 +255,7 @@ builder.Services.AddScoped<AdminCatalogService>();
 builder.Services.AddScoped<AdminOrderService>();
 builder.Services.AddScoped<AdminCommercialService>();
 builder.Services.AddScoped<AdminUserService>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ApiTokenService>();
 builder.Services.AddScoped<OrderIntegrationService>();
@@ -228,6 +266,19 @@ builder.Services.AddScoped<CrmOpportunityService>();
 builder.Services.AddScoped<UserNotificationService>();
 builder.Services.AddScoped<WhatsAppConversationService>();
 builder.Services.Configure<WhatsAppBusinessOptions>(builder.Configuration.GetSection(WhatsAppBusinessOptions.SectionName));
+builder.Services.AddSingleton<WhatsAppAccessTokenProtector>();
+builder.Services.AddScoped<IWhatsAppAccessTokenProvider, WhatsAppAccessTokenProvider>();
+builder.Services.AddScoped<IWhatsAppPhoneNumberIdProvider, WhatsAppPhoneNumberIdProvider>();
+builder.Services.AddScoped<IWhatsAppBusinessAccountIdProvider, WhatsAppBusinessAccountIdProvider>();
+builder.Services.AddScoped<WhatsAppBusinessConnectionService>();
+builder.Services.AddScoped<IWhatsAppWebhookDeliveryQueue, WhatsAppWebhookDeliveryQueue>();
+builder.Services.AddScoped<WhatsAppWebhookDeliveryProcessor>();
+builder.Services.AddHostedService<WhatsAppHistoryImportWorker>();
+builder.Services.AddHttpClient<IMetaWhatsAppEmbeddedSignupClient, MetaWhatsAppEmbeddedSignupClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri("https://graph.facebook.com/");
+    client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
+}).RemoveAllLoggers(); // The authorization code and App Secret are sent in the Graph API request URI.
 builder.Services.AddHttpClient<IWhatsAppBusinessGateway, MetaWhatsAppBusinessGateway>((sp, client) =>
 {
     client.BaseAddress = new Uri("https://graph.facebook.com/");
@@ -239,6 +290,8 @@ builder.Services.AddHttpClient<IWhatsAppMediaClient, MetaWhatsAppMediaClient>((s
     client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
 });
 builder.Services.AddScoped<WmcExportAuditService>();
+builder.Services.AddScoped<WmcManualExportService>();
+builder.Services.AddScoped<WmcActivationDiagnosticsQuery>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddSingleton<IBoletoProvider, PendingBoletoProvider>();
 builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
@@ -293,23 +346,52 @@ else
 builder.Services.AddSingleton<PointPaymentAttemptGate>();
 builder.Services.AddScoped<IPointPaymentOrderConcurrencyLock, PointPaymentOrderConcurrencyLock>();
 builder.Services.AddScoped<IPointPaymentOrchestrationService, PointPaymentOrchestrationService>();
+builder.Services.AddOptions<WmcOrderFileOptions>()
+    .Bind(builder.Configuration.GetSection(WmcOrderFileOptions.SectionName))
+    .Validate(WmcOrderFileOptions.HasValidSupplierCnpj,
+        "WmcOrderFile:SupplierCnpj deve conter exatamente 14 digitos.")
+    .ValidateOnStart();
 builder.Services.AddSingleton<WmcOrderFileGenerator>();
 builder.Services.Configure<WmcFileDropOptions>(builder.Configuration.GetSection(WmcFileDropOptions.SectionName));
-builder.Services.AddScoped<IErpOrderIntegration, WmcFileDropErpOrderIntegration>();
-builder.Services.AddHostedService<ErpRetryBackgroundService>();
+builder.Services.AddScoped<WmcFileDropErpOrderIntegration>();
+builder.Services.Configure<WmcJsonOrderOptions>(builder.Configuration.GetSection(WmcJsonOrderOptions.SectionName));
+builder.Services.AddSingleton<WmcMobileOrderPayloadBuilder>();
+builder.Services.AddScoped<IWmcTransmissionIdAllocator, WmcTransmissionIdAllocator>();
+builder.Services.AddHttpClient<WmcJsonOrderErpIntegration>();
+builder.Services.AddScoped<WmcAutomaticOrderIntegration>();
+builder.Services.AddScoped<IErpOrderIntegration>(services => services.GetRequiredService<WmcAutomaticOrderIntegration>());
+builder.Services.AddSingleton<WmcJsonOrderWorkerRuntime>();
+// WMC FileDrop remains available through the explicit manual TXT export action.
+// Automatic WMC workers are hosted only outside Production.
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddHostedService<WmcJsonOrderHomologationBackgroundService>();
+    builder.Services.AddHostedService<WmcJsonOrderAutomaticBackgroundService>();
+}
 builder.Services.Configure<WmcFirebirdOptions>(builder.Configuration.GetSection(WmcFirebirdOptions.SectionName));
+builder.Services.Configure<WmcCustomerImportOptions>(builder.Configuration.GetSection(WmcCustomerImportOptions.SectionName));
 builder.Services.Configure<WmcSyncOptions>(builder.Configuration.GetSection(WmcSyncOptions.SectionName));
+builder.Services.Configure<WmcPriceImportOptions>(builder.Configuration.GetSection(WmcPriceImportOptions.SectionName));
+builder.Services.Configure<WmcInitialLoadReleaseOptions>(builder.Configuration.GetSection(WmcInitialLoadReleaseOptions.SectionName));
+builder.Services.AddScoped<WmcInitialLoadReadinessReleaseService>();
 builder.Services.AddScoped<IWmcConnectionFactory, WmcFirebirdConnectionFactory>();
 builder.Services.AddScoped<IWmcFirebirdReader, WmcFirebirdReader>();
 builder.Services.AddScoped<IWmcSchemaInspector, WmcSchemaInspector>();
 builder.Services.AddScoped<IWmcCustomerReader, WmcCustomerReader>();
+builder.Services.AddScoped<IWmcCustomerPaymentConditionReader, WmcCustomerPaymentConditionReader>();
+builder.Services.AddScoped<WmcCustomerImportService>();
 builder.Services.AddScoped<IWmcProductReader, WmcProductReader>();
 builder.Services.AddScoped<IWmcBrandReader, WmcBrandReader>();
 builder.Services.AddScoped<IWmcSellerReader, UndiscoveredWmcSellerReader>();
 builder.Services.AddScoped<WmcSyncService>();
 builder.Services.AddScoped<WmcProductPreviewService>();
+builder.Services.AddScoped<WmcProductImportService>();
+builder.Services.AddScoped<WmcBimboStagingImportService>();
 builder.Services.AddSingleton<WmcSyncCoordinator>();
-builder.Services.AddHostedService<WmcSyncWorker>();
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddHostedService<WmcSyncWorker>();
+}
 builder.Services.AddHealthChecks().AddCheck<WmcFirebirdHealthCheck>("wmc-firebird");
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedCustomerHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, LinkedSalesRepresentativeHandler>();
@@ -320,9 +402,9 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireAuthenticatedUser().AddRequirements(new ApprovedCustomerRequirement()));
     options.AddPolicy(
         OrofoodsPolicies.LinkedSalesRepresentative,
-        policy => policy.RequireAuthenticatedUser().RequireRole("Vendedor").AddRequirements(new LinkedSalesRepresentativeRequirement()));
+        policy => policy.RequireAuthenticatedUser().AddRequirements(new LinkedSalesRepresentativeRequirement()));
 });
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options => AdminModelBindingMessages.Configure(options));
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     var brazilianPortuguese = new CultureInfo("pt-BR");
@@ -361,6 +443,8 @@ app.UseRouting();
 app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
+app.UseMiddleware<MustChangePasswordMiddleware>();
+app.UseMiddleware<AdminSellerContextMiddleware>();
 app.UseMiddleware<AuthenticatedResponseCacheMiddleware>();
 app.UseAuthorization();
 
@@ -416,9 +500,12 @@ using (var scope = app.Services.CreateScope())
         db.Database.EnsureCreated();
         await SeedData.InitializeAsync(scope.ServiceProvider);
     }
-    else
+    else if (!app.Environment.IsProduction())
     {
-        await db.Database.MigrateAsync();
+        if (StartupEnvironmentPolicy.ShouldApplyMigrations(app.Environment))
+            await db.Database.MigrateAsync();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        await SeedData.EnsureSellerRoleAsync(roleManager);
     }
 }
 

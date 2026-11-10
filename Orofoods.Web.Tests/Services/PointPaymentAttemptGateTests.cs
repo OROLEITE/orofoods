@@ -77,21 +77,36 @@ public sealed class PointPaymentAttemptGateTests
         gate.BeforeEntryRetirementForTests = () =>
         {
             retirementStarted.Set();
-            finishRetirement.Wait(TimeSpan.FromSeconds(5));
+            finishRetirement.Wait();
         };
         var first = await gate.AcquireAsync(100);
 
-        var releaseFirst = Task.Run(first.Dispose);
-        Assert.True(retirementStarted.Wait(TimeSpan.FromSeconds(5)));
-        var secondTask = Task.Run(async () => await gate.AcquireAsync(100));
-        var secondJoinedRetiringEntry = await Task.WhenAny(secondTask, Task.Delay(TimeSpan.FromMilliseconds(100))) == secondTask;
-        finishRetirement.Set();
+        var releaseFirst = Task.Factory.StartNew(first.Dispose, CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Task<IDisposable>? secondTask = null;
+        try
+        {
+            Assert.True(retirementStarted.Wait(TimeSpan.FromSeconds(5)));
+            using var secondAttemptStarted = new ManualResetEventSlim();
+            secondTask = Task.Factory.StartNew(async () =>
+            {
+                secondAttemptStarted.Set();
+                return await gate.AcquireAsync(100);
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).Unwrap();
+            Assert.True(secondAttemptStarted.Wait(TimeSpan.FromSeconds(5)));
+
+            var secondJoinedRetiringEntry = await Task.WhenAny(secondTask, Task.Delay(TimeSpan.FromMilliseconds(100))) == secondTask;
+            Assert.False(secondJoinedRetiringEntry);
+        }
+        finally
+        {
+            finishRetirement.Set();
+        }
+
         await releaseFirst.WaitAsync(TimeSpan.FromSeconds(5));
-        using var second = await secondTask.WaitAsync(TimeSpan.FromSeconds(5));
+        using var second = await secondTask!.WaitAsync(TimeSpan.FromSeconds(5));
 
         var thirdTask = gate.AcquireAsync(100).AsTask();
-        await Task.Delay(TimeSpan.FromMilliseconds(50));
-        Assert.False(secondJoinedRetiringEntry);
         Assert.False(thirdTask.IsCompleted);
         second.Dispose();
         using var third = await thirdTask.WaitAsync(TimeSpan.FromSeconds(5));

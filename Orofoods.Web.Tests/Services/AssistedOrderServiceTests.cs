@@ -27,7 +27,7 @@ public class AssistedOrderServiceTests
         await db.SaveChangesAsync();
 
         var service = CreateService(db);
-        var result = await service.CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 3)]);
+        var result = await service.CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 3)]);
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         var order = await db.Orders.Include(x => x.Items).SingleAsync();
@@ -46,20 +46,21 @@ public class AssistedOrderServiceTests
         var table = new PriceTable { Name = "Cliente", IsActive = true };
         var term = new PaymentTerm { Code = "PIX", Name = "PIX", DaysUntilDue = 0, IsActive = true };
         var product = CreateProduct("VIS-002", "Visconti Brioche", 100m);
-        db.AddRange(customer, table, term, product, new PriceTableItem { PriceTable = table, Product = product, Price = 42m }, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
+        product.PromotionalPrice = 35m;
+        db.AddRange(customer, table, term, product, new PriceTableItem { PriceTable = table, Product = product, Price = 42m, PromotionalPrice = 31m }, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
         customer.PriceTable = table;
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 2)]);
+        var result = await CreateService(db).CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 2)]);
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         var item = await db.OrderItems.SingleAsync();
-        Assert.Equal(42m, item.UnitPrice);
-        Assert.Equal(84m, item.Subtotal);
+        Assert.Equal(100m, item.UnitPrice);
+        Assert.Equal(200m, item.Subtotal);
     }
 
     [Fact]
-    public async Task CreateAsync_RejectsTermBeforeThreeValidPurchases()
+    public async Task CreateAsync_RejectsCreditTermWithoutWmcAuthorization()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var customer = CreateCustomer();
@@ -68,10 +69,10 @@ public class AssistedOrderServiceTests
         db.AddRange(customer, term, product, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
+        var result = await CreateService(db).CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
 
         Assert.False(result.Succeeded);
-        Assert.Contains("três primeiras", result.ErrorMessage);
+        Assert.Contains("WMC", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(db.Orders);
     }
 
@@ -86,7 +87,7 @@ public class AssistedOrderServiceTests
         db.AddRange(customer, term, product, new ProductInventory { Product = product, QuantityOnHand = 20 }, CreateUser("operator"));
         await db.SaveChangesAsync();
 
-        var result = await CreateService(db).CreateAsync(customer.Id, "operator", customer.Addresses.Single().Id, term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
+        var result = await CreateService(db).CreateAsync(customer.Id, "operator", term.Id, DateTime.Today.AddDays(1), null, [(product.Id, 1)]);
 
         Assert.False(result.Succeeded);
         Assert.Empty(db.Orders);
@@ -94,6 +95,12 @@ public class AssistedOrderServiceTests
 
     private static AssistedOrderService CreateService(Orofoods.Web.Data.ApplicationDbContext db)
     {
+        if (!db.OrderMinimumSettings.Any())
+        {
+            db.OrderMinimumSettings.Add(new Orofoods.Web.Models.Commercial.OrderMinimumSettings { MinimumAmount = 1m });
+            db.SaveChanges();
+        }
+
         var options = Options.Create(new PaymentEligibilityOptions());
         return new AssistedOrderService(db, new PriceService(db), new PaymentEligibilityService(db, options), new OrderReservationService(db));
     }
