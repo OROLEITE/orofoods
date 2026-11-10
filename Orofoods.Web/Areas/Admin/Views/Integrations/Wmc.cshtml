@@ -142,9 +142,9 @@
             </form>
             @if (regularizationPreview is not null)
             {
-                <div class="wmc-customer-regularization-summary" aria-label="Resumo da regularizaÃ§Ã£o">
+                <div class="wmc-customer-regularization-summary" aria-label="Resumo da regularização">
                     <article><span>Pendentes</span><strong>@regularizationPreview.PendingCustomers</strong></article>
-                    <article class="wmc-customer-regularization-summary--normal"><span>ElegÃ­veis</span><strong>@regularizationPreview.EligibleCustomers</strong></article>
+                    <article class="wmc-customer-regularization-summary--normal"><span>Elegíveis</span><strong>@regularizationPreview.EligibleCustomers</strong></article>
                     <article class="wmc-customer-regularization-summary--warning"><span>Bloqueados</span><strong>@regularizationPreview.BlockedCustomers</strong></article>
                 </div>
                 @if (regularizationPreview.BlockedCustomers == 0 && regularizationPreview.EligibleCustomers > 0)
