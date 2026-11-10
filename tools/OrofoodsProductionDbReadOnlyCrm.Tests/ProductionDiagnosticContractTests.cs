@@ -72,7 +72,7 @@ public sealed class ProductionDiagnosticContractTests
     {
         using var context = new PostgreSqlApplicationDbContext(
             new DbContextOptionsBuilder<PostgreSqlApplicationDbContext>()
-                .UseNpgsql("Host=127.0.0.1;Database=manifest_test;Username=manifest_test;Password=not-used")
+                .UseNpgsql("Host=127.0.0.1;Database=manifest_test;Username=manifest_test")
                 .Options);
         var projectMigrationIds = context.Database.GetMigrations().ToArray();
         var manifestIds = JsonSerializer.Deserialize<string[]>(File.ReadAllText(
