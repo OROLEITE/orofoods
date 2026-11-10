@@ -1,5 +1,7 @@
 using OrofoodsProductionDbReadOnly;
-using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
+using Orofoods.Web.Data;
+using System.Text.Json;
 
 namespace OrofoodsProductionDbReadOnlyCrm.Tests;
 
@@ -66,27 +68,22 @@ public sealed class ProductionDiagnosticContractTests
     }
 
     [Fact]
-    public void Migration_manifest_matches_the_postgresql_designer_files()
+    public void Migration_manifest_matches_migrations_registered_for_postgresql_application_context()
     {
-        var repositoryRoot = Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..", "..", "..", "..", ".."));
-        var migrationsDirectory = Path.Combine(
-            repositoryRoot,
-            "Orofoods.Web",
-            "Data",
-            "MigrationsPostgreSql");
-        var migrationPattern = new Regex(
-            "\\[Migration\\(\\\"([^\\\"]+)\\\"\\)\\]",
-            RegexOptions.Compiled | RegexOptions.CultureInvariant);
-        var designerIds = Directory.GetFiles(migrationsDirectory, "*.Designer.cs")
-            .SelectMany(path => migrationPattern.Matches(File.ReadAllText(path)))
-            .Select(match => match.Groups[1].Value)
-            .OrderBy(static id => id, StringComparer.Ordinal)
-            .ToArray();
-        var manifestIds = ProductionDiagnosticContract.LoadMigrationManifest(
-            Path.Combine(AppContext.BaseDirectory, "migrations.json"));
+        using var context = new PostgreSqlApplicationDbContext(
+            new DbContextOptionsBuilder<PostgreSqlApplicationDbContext>()
+                .UseNpgsql("Host=127.0.0.1;Database=manifest_test;Username=manifest_test;Password=not-used")
+                .Options);
+        var projectMigrationIds = context.Database.GetMigrations().ToArray();
+        var manifestIds = JsonSerializer.Deserialize<string[]>(File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "migrations.json")));
 
-        Assert.Equal(designerIds, manifestIds);
+        Assert.NotNull(manifestIds);
+        Assert.Equal(manifestIds!.Length, manifestIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.True(
+            projectMigrationIds.SequenceEqual(manifestIds, StringComparer.Ordinal),
+            $"Migration manifest must match PostgreSQLApplicationDbContext order. " +
+            $"Project migrations: {JsonSerializer.Serialize(projectMigrationIds)}. " +
+            $"Manifest migrations: {JsonSerializer.Serialize(manifestIds)}.");
     }
 }

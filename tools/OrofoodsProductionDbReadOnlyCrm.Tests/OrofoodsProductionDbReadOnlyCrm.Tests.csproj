@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OrofoodsProductionDbReadOnlyCrm\OrofoodsProductionDbReadOnlyCrm.csproj" />
+    <ProjectReference Include="..\..\Orofoods.Web\Orofoods.Web.csproj" />
   </ItemGroup>
 
 </Project>
