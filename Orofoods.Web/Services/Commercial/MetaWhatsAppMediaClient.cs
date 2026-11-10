@@ -5,7 +5,11 @@ using Microsoft.Extensions.Options;
 
 namespace Orofoods.Web.Services.Commercial;
 
-public sealed class MetaWhatsAppMediaClient(HttpClient httpClient, IOptions<WhatsAppBusinessOptions> options) : IWhatsAppMediaClient
+public sealed class MetaWhatsAppMediaClient(
+    HttpClient httpClient,
+    IOptions<WhatsAppBusinessOptions> options,
+    IWhatsAppAccessTokenProvider? accessTokenProvider = null,
+    IWhatsAppPhoneNumberIdProvider? phoneNumberIdProvider = null) : IWhatsAppMediaClient
 {
     public async Task<WhatsAppMediaDownloadResult> DownloadAsync(
         string mediaId,
@@ -15,12 +19,23 @@ public sealed class MetaWhatsAppMediaClient(HttpClient httpClient, IOptions<What
     {
         var settings = options.Value;
         if (!settings.Enabled || string.IsNullOrWhiteSpace(settings.GraphApiVersion) ||
-            string.IsNullOrWhiteSpace(settings.PhoneNumberId) || string.IsNullOrWhiteSpace(settings.AccessToken))
+            (phoneNumberIdProvider is null && string.IsNullOrWhiteSpace(settings.PhoneNumberId)) ||
+            (accessTokenProvider is null && string.IsNullOrWhiteSpace(settings.AccessToken)))
             return new(false, null, null, null, "NOT_CONFIGURED");
 
+        string accessToken;
+        try { accessToken = accessTokenProvider is null ? settings.AccessToken : await accessTokenProvider.GetAsync(cancellationToken); }
+        catch (InvalidOperationException) { return new(false, null, null, null, "NOT_CONFIGURED"); }
+        if (string.IsNullOrWhiteSpace(accessToken)) return new(false, null, null, null, "NOT_CONFIGURED");
+
+        string phoneNumberId;
+        try { phoneNumberId = phoneNumberIdProvider is null ? settings.PhoneNumberId : await phoneNumberIdProvider.GetAsync(cancellationToken); }
+        catch (InvalidOperationException) { return new(false, null, null, null, "NOT_CONFIGURED"); }
+        if (string.IsNullOrWhiteSpace(phoneNumberId)) return new(false, null, null, null, "NOT_CONFIGURED");
+
         using var metadataRequest = CreateRequest(HttpMethod.Get,
-            $"{settings.GraphApiVersion}/{Uri.EscapeDataString(mediaId)}?phone_number_id={Uri.EscapeDataString(settings.PhoneNumberId)}",
-            settings.AccessToken);
+            $"{settings.GraphApiVersion}/{Uri.EscapeDataString(mediaId)}?phone_number_id={Uri.EscapeDataString(phoneNumberId)}",
+            accessToken);
         using var metadataResponse = await httpClient.SendAsync(metadataRequest, cancellationToken);
         if (!metadataResponse.IsSuccessStatusCode)
             return new(false, null, null, null, $"META_{(int)metadataResponse.StatusCode}");
@@ -37,7 +52,7 @@ public sealed class MetaWhatsAppMediaClient(HttpClient httpClient, IOptions<What
             return new(false, null, normalizedMetadata, metadata.FileSize, "SIZE_REJECTED");
         var expectedSize = metadata.FileSize.Value;
 
-        using var downloadRequest = CreateRequest(HttpMethod.Get, downloadUri, settings.AccessToken);
+        using var downloadRequest = CreateRequest(HttpMethod.Get, downloadUri, accessToken);
         using var downloadResponse = await httpClient.SendAsync(downloadRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (!downloadResponse.IsSuccessStatusCode)
             return new(false, null, normalizedMetadata, metadata.FileSize, $"DOWNLOAD_{(int)downloadResponse.StatusCode}");

@@ -12,7 +12,9 @@ namespace Orofoods.Web.Services.Commercial;
 public sealed class MetaWhatsAppBusinessGateway(
     HttpClient httpClient,
     IOptions<WhatsAppBusinessOptions> options,
-    ILogger<MetaWhatsAppBusinessGateway> logger) : IWhatsAppBusinessGateway
+    ILogger<MetaWhatsAppBusinessGateway> logger,
+    IWhatsAppAccessTokenProvider? accessTokenProvider = null,
+    IWhatsAppPhoneNumberIdProvider? phoneNumberIdProvider = null) : IWhatsAppBusinessGateway
 {
     private static readonly EventId MetaSendRejectedEvent = new(4201, "WhatsApp.MetaSendRejected");
     private static readonly JsonSerializerOptions MetaErrorJsonOptions = new() { MaxDepth = 16 };
@@ -21,10 +23,20 @@ public sealed class MetaWhatsAppBusinessGateway(
     {
         var settings = options.Value;
         if (!settings.Enabled) return new(false, null, "DISABLED", "WhatsApp Business está desabilitado.");
-        if (string.IsNullOrWhiteSpace(settings.GraphApiVersion) || string.IsNullOrWhiteSpace(settings.PhoneNumberId) || string.IsNullOrWhiteSpace(settings.AccessToken))
+        if (string.IsNullOrWhiteSpace(settings.GraphApiVersion) ||
+            (phoneNumberIdProvider is null && string.IsNullOrWhiteSpace(settings.PhoneNumberId)) ||
+            (accessTokenProvider is null && string.IsNullOrWhiteSpace(settings.AccessToken)))
             return new(false, null, "NOT_CONFIGURED", "WhatsApp Business não está configurado.");
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{settings.GraphApiVersion}/{settings.PhoneNumberId}/messages");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.AccessToken);
+        string accessToken;
+        try { accessToken = accessTokenProvider is null ? settings.AccessToken : await accessTokenProvider.GetAsync(cancellationToken); }
+        catch (InvalidOperationException) { return new(false, null, "NOT_CONFIGURED", "WhatsApp Business não está configurado."); }
+        if (string.IsNullOrWhiteSpace(accessToken)) return new(false, null, "NOT_CONFIGURED", "WhatsApp Business não está configurado.");
+        string phoneNumberId;
+        try { phoneNumberId = phoneNumberIdProvider is null ? settings.PhoneNumberId : await phoneNumberIdProvider.GetAsync(cancellationToken); }
+        catch (InvalidOperationException) { return new(false, null, "NOT_CONFIGURED", "WhatsApp Business não está configurado."); }
+        if (string.IsNullOrWhiteSpace(phoneNumberId)) return new(false, null, "NOT_CONFIGURED", "WhatsApp Business não está configurado.");
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{settings.GraphApiVersion}/{phoneNumberId}/messages");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         request.Content = JsonContent.Create(new { messaging_product = "whatsapp", recipient_type = "individual", to = phoneNumber, type = "text", text = new { preview_url = false, body = text } });
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -39,7 +51,7 @@ public sealed class MetaWhatsAppBusinessGateway(
                 SanitizeMetaType(metaError?.Type),
                 SanitizeMetaMessage(metaError?.Message, settings, phoneNumber, text),
                 SanitizeFbtraceId(metaError?.FbtraceId),
-                MaskIdentifier(settings.PhoneNumberId),
+                MaskIdentifier(phoneNumberId),
                 MaskRecipient(phoneNumber));
 
             return new(false, null, ((int)response.StatusCode).ToString(CultureInfo.InvariantCulture), "Falha ao enviar mensagem WhatsApp.");

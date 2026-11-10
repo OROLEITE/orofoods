@@ -61,6 +61,8 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<WhatsAppConversation> WhatsAppConversations => Set<WhatsAppConversation>();
     public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
+    public DbSet<WhatsAppBusinessConnection> WhatsAppBusinessConnections => Set<WhatsAppBusinessConnection>();
+    public DbSet<WhatsAppWebhookDelivery> WhatsAppWebhookDeliveries => Set<WhatsAppWebhookDelivery>();
     public DbSet<OrderMinimumSettings> OrderMinimumSettings => Set<OrderMinimumSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -305,6 +307,9 @@ public class ApplicationDbContext(DbContextOptions options) : IdentityDbContext<
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.Status);
         builder.Entity<WhatsAppMessage>().HasIndex(x => x.MediaId);
         builder.Entity<WhatsAppMessage>().HasOne(x => x.Conversation).WithMany(x => x.Messages).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<WhatsAppBusinessConnection>().HasIndex(x => x.PhoneNumberId).IsUnique();
+        builder.Entity<WhatsAppWebhookDelivery>().HasIndex(x => x.PayloadHash).IsUnique();
+        builder.Entity<WhatsAppWebhookDelivery>().HasIndex(x => new { x.Status, x.NextAttemptAt, x.LeaseExpiresAt, x.ReceivedAt });
 
         builder.Entity<Driver>().HasIndex(x => x.Name);
         builder.Entity<PaymentTerminal>().HasIndex(x => new { x.Provider, x.DeviceId }).IsUnique().HasFilter("\"DeviceId\" IS NOT NULL");

@@ -67,6 +67,21 @@ if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(applicatio
 {
     throw new InvalidOperationException("DataProtection:ApplicationName deve estar configurado fora de Development.");
 }
+if (!StartupEnvironmentPolicy.IsProductionDataProtectionConfigured(
+        builder.Environment,
+        dataProtectionSettings,
+        OperatingSystem.IsWindows()))
+{
+    throw new InvalidOperationException("Produção exige chaves persistentes do Data Protection em Blob protegido por Key Vault ou diretório externo protegido por DPAPI.");
+}
+if (!StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup(
+        builder.Environment,
+        builder.Configuration.GetValue<bool>("WhatsAppBusiness:Enabled"),
+        builder.Configuration.GetValue<bool>("WhatsAppBusiness:EmbeddedSignupEnabled"),
+        dataProtectionSettings))
+{
+    throw new InvalidOperationException("Embedded Signup em Staging exige Data Protection persistente no Blob do Azure e protegida por chave do Key Vault.");
+}
 
 var dataProtection = builder.Services.AddDataProtection()
     .SetApplicationName(string.IsNullOrWhiteSpace(applicationName) ? "Orofoods.Web" : applicationName);
@@ -78,6 +93,7 @@ else
 {
     var azureSettings = dataProtectionSettings.Azure;
     var azureEnabled = azureSettings is not null && azureSettings.Enabled;
+    var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
     if (azureEnabled)
     {
         var blobUri = azureSettings!.BlobUri;
@@ -93,8 +109,7 @@ else
             .ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential);
     }
 
-    var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"];
-    if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
+    else if (!string.IsNullOrWhiteSpace(keyDirectory) && Path.IsPathFullyQualified(keyDirectory))
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -251,6 +266,18 @@ builder.Services.AddScoped<CrmOpportunityService>();
 builder.Services.AddScoped<UserNotificationService>();
 builder.Services.AddScoped<WhatsAppConversationService>();
 builder.Services.Configure<WhatsAppBusinessOptions>(builder.Configuration.GetSection(WhatsAppBusinessOptions.SectionName));
+builder.Services.AddSingleton<WhatsAppAccessTokenProtector>();
+builder.Services.AddScoped<IWhatsAppAccessTokenProvider, WhatsAppAccessTokenProvider>();
+builder.Services.AddScoped<IWhatsAppPhoneNumberIdProvider, WhatsAppPhoneNumberIdProvider>();
+builder.Services.AddScoped<WhatsAppBusinessConnectionService>();
+builder.Services.AddScoped<IWhatsAppWebhookDeliveryQueue, WhatsAppWebhookDeliveryQueue>();
+builder.Services.AddScoped<WhatsAppWebhookDeliveryProcessor>();
+builder.Services.AddHostedService<WhatsAppHistoryImportWorker>();
+builder.Services.AddHttpClient<IMetaWhatsAppEmbeddedSignupClient, MetaWhatsAppEmbeddedSignupClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri("https://graph.facebook.com/");
+    client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<WhatsAppBusinessOptions>>().Value.RequestTimeoutSeconds);
+}).RemoveAllLoggers(); // The authorization code and App Secret are sent in the Graph API request URI.
 builder.Services.AddHttpClient<IWhatsAppBusinessGateway, MetaWhatsAppBusinessGateway>((sp, client) =>
 {
     client.BaseAddress = new Uri("https://graph.facebook.com/");
@@ -474,7 +501,8 @@ using (var scope = app.Services.CreateScope())
     }
     else if (!app.Environment.IsProduction())
     {
-        await db.Database.MigrateAsync();
+        if (StartupEnvironmentPolicy.ShouldApplyMigrations(app.Environment))
+            await db.Database.MigrateAsync();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         await SeedData.EnsureSellerRoleAsync(roleManager);
     }

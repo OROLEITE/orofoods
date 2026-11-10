@@ -21,5 +21,10 @@ public sealed class SecurityHeadersMiddlewareTests
         Assert.Contains("object-src 'none'", context.Response.Headers["Content-Security-Policy"].ToString());
         Assert.Contains("script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com", context.Response.Headers["Content-Security-Policy"].ToString());
         Assert.Contains("connect-src 'self' https://api.mercadopago.com", context.Response.Headers["Content-Security-Policy"].ToString());
+        var contentSecurityPolicy = context.Response.Headers["Content-Security-Policy"].ToString();
+        Assert.Contains("script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://connect.facebook.net", contentSecurityPolicy);
+        Assert.Contains("frame-ancestors 'none'", contentSecurityPolicy);
+        Assert.Contains("form-action 'self'", contentSecurityPolicy);
+        Assert.DoesNotContain("*.facebook.com", contentSecurityPolicy, StringComparison.OrdinalIgnoreCase);
     }
 }

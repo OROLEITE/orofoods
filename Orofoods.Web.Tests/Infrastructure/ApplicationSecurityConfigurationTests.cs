@@ -47,7 +47,9 @@ public sealed class ApplicationSecurityConfigurationTests
         var source = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Program.cs"));
 
         Assert.Contains("DataProtection:KeyDirectory", source);
+        Assert.Contains("PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))", source);
         Assert.Contains("ProtectKeysWithDpapi", source);
+        Assert.Contains("StartupEnvironmentPolicy.IsProductionDataProtectionConfigured", source);
     }
 
     [Fact]
@@ -63,6 +65,17 @@ public sealed class ApplicationSecurityConfigurationTests
         Assert.DoesNotContain("new ClientSecretCredential", source);
         Assert.Contains("PersistKeysToAzureBlobStorage(new Uri(blobUri), azureCredential)", source);
         Assert.Contains("ProtectKeysWithAzureKeyVault(new Uri(keyVaultKeyIdentifier), azureCredential)", source);
+        Assert.Contains("StartupEnvironmentPolicy.IsAzureDataProtectionReadyForEmbeddedSignup", source);
+        Assert.Contains("StartupEnvironmentPolicy.IsProductionDataProtectionConfigured", source);
+        Assert.Contains("else if (!string.IsNullOrWhiteSpace(keyDirectory)", source);
+    }
+
+    [Fact]
+    public void Startup_uses_the_staging_migration_policy()
+    {
+        var source = File.ReadAllText(Path.Combine(ProjectRoot, "Orofoods.Web", "Program.cs"));
+
+        Assert.Contains("StartupEnvironmentPolicy.ShouldApplyMigrations(app.Environment)", source);
     }
 
     [Fact]
