@@ -61,9 +61,10 @@ jobs:
           set -euo pipefail
 
           publish_dir="./publish"
+          expected_runtimeconfig="$publish_dir/Orofoods.Web.runtimeconfig.json"
           test -f "$publish_dir/Orofoods.Web.dll"
           test -f "$publish_dir/Orofoods.Web.deps.json"
-          test -f "$publish_dir/Orofoods.Web.runtimeconfig.json"
+          test -f "$expected_runtimeconfig"
           test -d "$publish_dir/wwwroot"
 
           if find "$publish_dir" -type f \( -name 'Orofoods.Web.Tests.dll' -o -name 'Orofoods.Web.Tests.runtimeconfig.json' \) -print -quit | grep -q .; then
@@ -71,10 +72,10 @@ jobs:
             exit 1
           fi
 
-          runtimeconfig_count="$(find "$publish_dir" -type f -name '*.runtimeconfig.json' ! -path "$publish_dir/tools/*" | wc -l)"
-          if [ "$runtimeconfig_count" -ne 1 ]; then
-            echo "::error::Expected exactly one runtimeconfig.json, found $runtimeconfig_count."
-            find "$publish_dir" -type f -name '*.runtimeconfig.json' -print
+          unexpected_runtimeconfigs="$(find "$publish_dir" -type f -name '*.runtimeconfig.json' ! -path "$publish_dir/tools/*" ! -path "$expected_runtimeconfig" -print)"
+          if [ -n "$unexpected_runtimeconfigs" ]; then
+            echo "::error::Unexpected runtimeconfig.json outside publish/tools/."
+            printf '%s\n' "$unexpected_runtimeconfigs"
             exit 1
           fi
 
