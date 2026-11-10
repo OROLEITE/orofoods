@@ -79,7 +79,11 @@
                 <div class="product-grid public-quick-buy-grid">
                     @foreach (var product in Model.Products)
                     {
-                        <partial name="_PublicProductCard" model="product" />
+                        var cardViewData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+                        {
+                            ["ProductDisplayName"] = Orofoods.Web.Services.Catalog.CatalogProductNamePresentation.DisplayName(product.Name)
+                        };
+                        <partial name="_PublicProductCard" model="product" view-data="cardViewData" />
                     }
                 </div>
             }

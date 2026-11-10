@@ -178,7 +178,8 @@ public class ProductCatalogImagePresentationTests
         var markup = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_PublicProductCard.cshtml"));
         var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "customer-experience.css"));
 
-        Assert.Contains("<h2>@product.Name</h2>", markup, StringComparison.Ordinal);
+        Assert.Contains("var displayName = ViewData[\"ProductDisplayName\"] as string ?? product.Name;", markup, StringComparison.Ordinal);
+        Assert.Contains("<h2>@displayName</h2>", markup, StringComparison.Ordinal);
         Assert.Contains("<small class=\"quick-buy-code\">@(string.IsNullOrWhiteSpace(product.WmcCode) ? product.Sku : $\"WMC {product.WmcCode}\")</small>", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("quick-buy-wmc", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<h2>@(catalogImage?.ModelName ?? product.Name)</h2>", markup, StringComparison.Ordinal);
