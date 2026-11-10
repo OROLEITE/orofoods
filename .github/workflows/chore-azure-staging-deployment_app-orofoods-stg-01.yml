@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
 
-          runtimeconfig_count="$(find "$publish_dir" -type f -name '*.runtimeconfig.json' ! -path "$publish_dir/tools/*" | wc -l)
+          runtimeconfig_count="$(find "$publish_dir" -type f -name '*.runtimeconfig.json' ! -path "$publish_dir/tools/*" | wc -l)"
           if [ "$runtimeconfig_count" -ne 1 ]; then
             echo "::error::Expected exactly one runtimeconfig.json, found $runtimeconfig_count."
             find "$publish_dir" -type f -name '*.runtimeconfig.json' -print
