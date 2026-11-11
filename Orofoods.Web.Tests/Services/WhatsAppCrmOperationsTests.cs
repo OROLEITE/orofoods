@@ -6,11 +6,16 @@ using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -27,6 +32,64 @@ namespace Orofoods.Web.Tests.Services;
 
 public sealed class WhatsAppCrmOperationsTests
 {
+    [Theory]
+    [InlineData(nameof(WhatsAppController.Index))]
+    [InlineData(nameof(WhatsAppController.Updates))]
+    [InlineData(nameof(WhatsAppController.CustomerSearch))]
+    [InlineData(nameof(WhatsAppController.StartConversation))]
+    [InlineData(nameof(WhatsAppController.Templates))]
+    [InlineData(nameof(WhatsAppController.Media))]
+    [InlineData(nameof(WhatsAppController.Send))]
+    [InlineData(nameof(WhatsAppController.SendTemplate))]
+    [InlineData(nameof(WhatsAppController.Claim))]
+    [InlineData(nameof(WhatsAppController.Transfer))]
+    [InlineData(nameof(WhatsAppController.Close))]
+    [InlineData(nameof(WhatsAppController.Reopen))]
+    [InlineData(nameof(WhatsAppController.LinkCustomer))]
+    [InlineData(nameof(WhatsAppController.UnlinkCustomer))]
+    public async Task WhatsApp_actions_return_not_found_before_execution_when_feature_is_disabled(string actionName)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var gateway = new TrackingGateway();
+        var services = new ServiceCollection();
+        services.AddSingleton(db);
+        services.AddSingleton(new SalesRepresentativeAccessService(db));
+        services.AddSingleton<IWhatsAppBusinessGateway>(gateway);
+        services.AddSingleton<IOptions<WhatsAppBusinessOptions>>(Options.Create(new WhatsAppBusinessOptions
+        {
+            Enabled = false
+        }));
+        using var serviceProvider = services.BuildServiceProvider();
+        var controller = ActivatorUtilities.CreateInstance<WhatsAppController>(serviceProvider);
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "operator"), new Claim(ClaimTypes.Role, ApplicationRoles.Operator)],
+                "TestAuth"))
+        };
+        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        controller.TempData = new TempDataDictionary(httpContext, new Mock<ITempDataProvider>().Object);
+        var actionContext = new ActionContext(
+            httpContext,
+            new RouteData(),
+            new ControllerActionDescriptor { ActionName = actionName, ControllerName = "WhatsApp" },
+            new ModelStateDictionary());
+        var executingContext = new ActionExecutingContext(
+            actionContext,
+            [],
+            new Dictionary<string, object?>(),
+            controller);
+
+        controller.OnActionExecuting(executingContext);
+
+        Assert.IsType<NotFoundResult>(executingContext.Result);
+        Assert.Empty(db.WhatsAppConversations);
+        Assert.Empty(db.WhatsAppMessages);
+        Assert.Equal(0, gateway.TextCalls);
+        Assert.Equal(0, gateway.TemplateCalls);
+        Assert.Equal(0, gateway.TemplateCatalogCalls);
+    }
+
     [Fact]
     public void Service_window_is_open_until_but_not_including_24_hours_after_inbound()
     {
@@ -678,7 +741,8 @@ public sealed class WhatsAppCrmOperationsTests
             [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, role)], "TestAuth"))
         };
 
-        return new WhatsAppController(db, new SalesRepresentativeAccessService(db), gateway, timeProvider: timeProvider)
+        return new WhatsAppController(db, new SalesRepresentativeAccessService(db), gateway,
+            Options.Create(new WhatsAppBusinessOptions { Enabled = true }), timeProvider: timeProvider)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
             TempData = new TempDataDictionary(httpContext, new Mock<ITempDataProvider>().Object)

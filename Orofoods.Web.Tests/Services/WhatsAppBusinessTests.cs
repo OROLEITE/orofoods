@@ -1086,7 +1086,8 @@ public class WhatsAppBusinessTests
             [new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Role, "Vendedor")], "TestAuth"))
         };
 
-        return new WhatsAppController(db, new SalesRepresentativeAccessService(db), gateway, mediaStorage)
+        return new WhatsAppController(db, new SalesRepresentativeAccessService(db), gateway,
+            Options.Create(new WhatsAppBusinessOptions { Enabled = true }), mediaStorage)
         {
             ControllerContext = new ControllerContext
             {
