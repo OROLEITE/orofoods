@@ -161,7 +161,9 @@ public class OperatorCrmAuthorizationTests
     private static WhatsAppController CreateController(ApplicationDbContext db, string userId, string role, IWhatsAppMediaStorage? mediaStorage = null)
     {
         var controller = new WhatsAppController(db, new SalesRepresentativeAccessService(db),
-            Mock.Of<IWhatsAppBusinessGateway>(), mediaStorage)
+            Mock.Of<IWhatsAppBusinessGateway>(),
+            Microsoft.Extensions.Options.Options.Create(new Orofoods.Web.Services.Commercial.WhatsAppBusinessOptions { Enabled = true }),
+            mediaStorage)
         {
             ControllerContext = new ControllerContext
             {

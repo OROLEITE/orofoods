@@ -2,7 +2,11 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
@@ -55,6 +59,38 @@ public class WhatsAppEmbeddedSignupTests
             },
             CancellationToken.None));
         Assert.Equal(0, meta.ExchangeCount);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_admin_routes_are_not_found_when_global_whatsapp_feature_is_disabled()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var meta = new FakeMetaSignupClient();
+        var settings = ConfiguredOptions();
+        settings.Enabled = false;
+        settings.EmbeddedSignupEnabled = true;
+        var options = Options.Create(settings);
+        var service = new WhatsAppBusinessConnectionService(
+            db,
+            meta,
+            new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()),
+            options);
+        var controller = new Orofoods.Web.Areas.Admin.Controllers.WhatsAppEmbeddedSignupController(service, options)
+        {
+            TempData = new TempDataDictionary(new DefaultHttpContext(), Mock.Of<ITempDataProvider>())
+        };
+
+        Assert.IsType<NotFoundResult>(controller.Connect());
+        Assert.IsType<NotFoundResult>(await controller.Complete(
+            new Orofoods.Web.Areas.Admin.Models.WhatsAppEmbeddedSignupCompletionRequest
+            {
+                EventType = WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding,
+                AuthorizationCode = "one-time-code",
+                BusinessAccountId = "123456789"
+            },
+            CancellationToken.None));
+        Assert.Equal(0, meta.ExchangeCount);
+        Assert.Empty(db.WhatsAppBusinessConnections);
     }
 
     [Fact]

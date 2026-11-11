@@ -3,7 +3,9 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Models.Identity;
@@ -18,9 +20,21 @@ public class WhatsAppController(
     ApplicationDbContext db,
     SalesRepresentativeAccessService accessService,
     IWhatsAppBusinessGateway gateway,
+    IOptions<WhatsAppBusinessOptions> whatsAppOptions,
     IWhatsAppMediaStorage? mediaStorage = null,
     TimeProvider? timeProvider = null) : Controller
 {
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (!whatsAppOptions.Value.Enabled)
+        {
+            context.Result = NotFound();
+            return;
+        }
+
+        base.OnActionExecuting(context);
+    }
+
     public async Task<IActionResult> Index(
         long? id,
         CancellationToken cancellationToken,
