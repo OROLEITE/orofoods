@@ -26,7 +26,7 @@ public sealed class WhatsAppBusinessOptions
         IsMetaIdentifier(EmbeddedSignupConfigId) &&
         !string.IsNullOrWhiteSpace(AppSecret) &&
         !string.IsNullOrWhiteSpace(VerifyToken) &&
-        NormalizePhone(EmbeddedSignupDisplayPhoneNumber).Length > 0;
+        HasConfiguredDisplayPhoneNumber(EmbeddedSignupDisplayPhoneNumber);
 
     private static bool IsMetaIdentifier(string value) =>
         !string.IsNullOrWhiteSpace(value) &&
@@ -35,6 +35,9 @@ public sealed class WhatsAppBusinessOptions
     private static bool IsGraphApiVersionValid(string value) =>
         !string.IsNullOrWhiteSpace(value) &&
         value.All(character => char.IsAsciiLetterOrDigit(character) || character == '.');
+
+    private static bool HasConfiguredDisplayPhoneNumber(string value) =>
+        NormalizePhone(value).Length > 0;
 
     private static string NormalizePhone(string value) => new(value.Where(char.IsAsciiDigit).ToArray());
 }
