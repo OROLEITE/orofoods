@@ -139,7 +139,7 @@ public class WhatsAppEmbeddedSignupTests
     }
 
     [Fact]
-    public void Embedded_signup_v4_launch_preserves_coexistence_and_validates_meta_session_callback()
+    public void Embedded_signup_v4_launch_preserves_coexistence_configuration()
     {
         var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-embedded-signup.js"));
 
@@ -147,75 +147,18 @@ public class WhatsAppEmbeddedSignupTests
         Assert.Contains("featureType: 'whatsapp_business_app_onboarding'", script);
         Assert.DoesNotContain("sessionInfoVersion", script);
         Assert.Contains("FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING", script);
-        Assert.Contains("data.version !== 3", script);
         Assert.Contains("waba_id", script);
     }
 
     [Fact]
-    public async Task Embedded_signup_v4_submits_only_a_valid_facebook_coexistence_callback()
+    public async Task Embedded_signup_v4_accepts_json_string_finish_callback_without_requiring_version_three()
     {
-        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-embedded-signup.js"));
-        const string harness = """
-            const inputElements = {};
-            const form = {
-                submitted: false,
-                querySelector(selector) { return inputElements[selector] ??= { value: '' }; },
-                requestSubmit() { this.submitted = true; }
-            };
-            const startButton = {
-                disabled: false,
-                addEventListener(name, callback) { this.clickHandler = callback; }
-            };
-            const status = { textContent: '' };
-            const configNode = { textContent: '{"appId":"123456789","configurationId":"987654321","graphApiVersion":"v26.0"}' };
-            globalThis.window = globalThis;
-            globalThis.URL = class {
-                constructor(value) {
-                    const separator = value.indexOf('://');
-                    if (separator <= 0) throw new Error('Invalid URL');
-                    this.protocol = `${value.substring(0, separator)}:`;
-                    this.hostname = value.substring(separator + 3).split('/')[0].split(':')[0];
-                }
-            };
-            window.addEventListener = (name, callback) => { window.messageHandler = callback; };
-            globalThis.document = {
-                getElementById(id) {
-                    return ({ whatsappEmbeddedSignupConfig: configNode, whatsappEmbeddedSignupForm: form,
-                        whatsappEmbeddedSignupStart: startButton, whatsappEmbeddedSignupStatus: status })[id] ?? null;
-                },
-                createElement() { return {}; },
-                head: { appendChild() {} }
-            };
-            let loginCount = 0;
-            globalThis.FB = {
-                init() {},
-                login(callback, options) {
-                    loginCount++;
-                    window.loginOptions = options;
-                    const code = loginCount === 1 ? 'stale-code' : loginCount === 2 ? null : 'fresh-code';
-                    callback(code ? { authResponse: { code } } : { authResponse: {} });
-                }
-            };
-            __SCRIPT__
-            window.fbAsyncInit();
-            startButton.clickHandler();
+        const string scenario = """
             const session = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
-                version: 3, data: { waba_id: '1234567890' } };
-            window.messageHandler({ origin: 'https://facebook.com.attacker.example', data: session });
-            window.messageHandler({ origin: 'https://www.facebook.com', data: { ...session, version: 2 } });
-            window.messageHandler({ origin: 'https://www.facebook.com', data: { ...session, data: { waba_id: 'waba-test' } } });
-            const ignoredCallbacksDidNotSubmit = !form.submitted;
-            window.messageHandler({ origin: 'https://www.facebook.com', data: { type: 'WA_EMBEDDED_SIGNUP',
-                event: 'CANCEL', version: 3, data: {} } });
-            startButton.clickHandler();
-            window.messageHandler({ origin: 'https://www.facebook.com', data: session });
-            const cancelledCodeWasNotReused = !form.submitted;
-            startButton.clickHandler();
-            window.messageHandler({ origin: 'https://www.facebook.com', data: session });
+                version: 4, data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify(session) });
             JSON.stringify({
-                ignoredCallbacksDidNotSubmit,
-                cancelledCodeWasNotReused,
-                submitted: form.submitted,
+                submitCount: form.submitCount,
                 eventType: inputElements['#whatsappSignupEventType']?.value,
                 businessAccountId: inputElements['#whatsappSignupWabaId']?.value,
                 authorizationCode: inputElements['#whatsappSignupCode']?.value,
@@ -225,19 +168,139 @@ public class WhatsAppEmbeddedSignupTests
             });
             """;
 
-        var result = await new Engine().EvaluateAsync(harness.Replace("__SCRIPT__", script, StringComparison.Ordinal));
-        using var state = JsonDocument.Parse(result.AsString());
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
         var root = state.RootElement;
 
-        Assert.True(root.GetProperty("ignoredCallbacksDidNotSubmit").GetBoolean());
-        Assert.True(root.GetProperty("submitted").GetBoolean());
+        Assert.Equal(1, root.GetProperty("submitCount").GetInt32());
         Assert.Equal(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, root.GetProperty("eventType").GetString());
         Assert.Equal("1234567890", root.GetProperty("businessAccountId").GetString());
-        Assert.True(root.GetProperty("cancelledCodeWasNotReused").GetBoolean());
-        Assert.Equal("fresh-code", root.GetProperty("authorizationCode").GetString());
+        Assert.Equal("one-time-code", root.GetProperty("authorizationCode").GetString());
         Assert.Equal("987654321", root.GetProperty("configId").GetString());
         Assert.Equal("whatsapp_business_app_onboarding", root.GetProperty("featureType").GetString());
         Assert.True(root.GetProperty("setup").ValueKind == JsonValueKind.Object);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_accepts_object_finish_callback_without_session_version()
+    {
+        const string scenario = """
+            window.messageHandler({
+                origin: 'https://business.facebook.com',
+                data: { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                    data: { waba_id: '1234567890' } }
+            });
+            JSON.stringify({ submitCount: form.submitCount,
+                businessAccountId: inputElements['#whatsappSignupWabaId']?.value });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
+
+        Assert.Equal(1, state.RootElement.GetProperty("submitCount").GetInt32());
+        Assert.Equal("1234567890", state.RootElement.GetProperty("businessAccountId").GetString());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_rejects_unknown_incomplete_or_malformed_callbacks()
+    {
+        const string scenario = """
+            const finish = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 99, data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://facebook.com.attacker.example', data: JSON.stringify(finish) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: '{malformed-json' });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify([]) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, type: 'UNKNOWN' }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, event: 'FINISH' }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: null }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: {} }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: { waba_id: 1234567890 } }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: { waba_id: 'waba-test' } }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish,
+                data: { waba_id: '1'.repeat(129) } }) });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
+
+        Assert.Equal(0, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_submits_only_once_for_duplicate_valid_callbacks()
+    {
+        const string scenario = """
+            const finish = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 3, data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://www.facebook.com', data: finish });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, version: 4 }) });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
+
+        Assert.Equal(1, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_does_not_submit_without_oauth_code()
+    {
+        const string scenario = """
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({
+                type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                data: { waba_id: '1234567890' }
+            }) });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario, "{ authResponse: {} }");
+
+        Assert.Equal(0, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_rejects_non_string_oauth_code()
+    {
+        const string scenario = """
+            window.messageHandler({ origin: 'https://www.facebook.com', data: {
+                type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 3, data: { waba_id: '1234567890' }
+            } });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(
+            scenario,
+            "{ authResponse: { code: 1234567890 } }");
+
+        Assert.Equal(0, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_cancel_callback_does_not_reuse_previous_oauth_code()
+    {
+        const string scenario = """
+            const finish = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({
+                type: 'WA_EMBEDDED_SIGNUP', event: 'CANCEL', data: {}
+            }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: finish });
+            const staleCodeWasRejected = form.submitCount === 0;
+            startButton.clickHandler();
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify(finish) });
+            JSON.stringify({
+                staleCodeWasRejected,
+                submitCount: form.submitCount,
+                authorizationCode: inputElements['#whatsappSignupCode']?.value
+            });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(
+            scenario,
+            "loginCount === 1 ? { authResponse: { code: 'stale-code' } } : { authResponse: { code: 'fresh-code' } }");
+
+        Assert.True(state.RootElement.GetProperty("staleCodeWasRejected").GetBoolean());
+        Assert.Equal(1, state.RootElement.GetProperty("submitCount").GetInt32());
+        Assert.Equal("fresh-code", state.RootElement.GetProperty("authorizationCode").GetString());
     }
 
     [Fact]
@@ -557,6 +620,69 @@ public class WhatsAppEmbeddedSignupTests
 
     private static WhatsAppBusinessConnectionService CreateConnectionService(ApplicationDbContext db, FakeMetaSignupClient meta) =>
         new(db, meta, new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()), Options.Create(ConfiguredOptions()));
+
+    private static async Task<JsonDocument> EvaluateEmbeddedSignupScriptAsync(
+        string scenario,
+        string authorizationResponse = "{ authResponse: { code: 'one-time-code' } }")
+    {
+        var script = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "Orofoods.Web",
+            "wwwroot",
+            "js",
+            "whatsapp-embedded-signup.js"));
+        const string harness = """
+            const inputElements = {};
+            const form = {
+                submitCount: 0,
+                querySelector(selector) { return inputElements[selector] ??= { value: '' }; },
+                requestSubmit() { this.submitCount++; }
+            };
+            const startButton = {
+                disabled: false,
+                addEventListener(name, callback) { this.clickHandler = callback; }
+            };
+            const status = { textContent: '' };
+            const configNode = { textContent: '{"appId":"123456789","configurationId":"987654321","graphApiVersion":"v26.0"}' };
+            globalThis.window = globalThis;
+            globalThis.URL = class {
+                constructor(value) {
+                    const separator = value.indexOf('://');
+                    if (separator <= 0) throw new Error('Invalid URL');
+                    this.protocol = `${value.substring(0, separator)}:`;
+                    this.hostname = value.substring(separator + 3).split('/')[0].split(':')[0];
+                }
+            };
+            window.addEventListener = (name, callback) => { window.messageHandler = callback; };
+            globalThis.document = {
+                getElementById(id) {
+                    return ({ whatsappEmbeddedSignupConfig: configNode, whatsappEmbeddedSignupForm: form,
+                        whatsappEmbeddedSignupStart: startButton, whatsappEmbeddedSignupStatus: status })[id] ?? null;
+                },
+                createElement() { return {}; },
+                head: { appendChild() {} }
+            };
+            let loginCount = 0;
+            globalThis.FB = {
+                init() {},
+                login(callback, options) {
+                    loginCount++;
+                    window.loginOptions = options;
+                    callback(__AUTH_RESPONSE__);
+                }
+            };
+            __SCRIPT__
+            window.fbAsyncInit();
+            startButton.clickHandler();
+            __SCENARIO__
+            """;
+        var testScript = harness
+            .Replace("__AUTH_RESPONSE__", authorizationResponse, StringComparison.Ordinal)
+            .Replace("__SCRIPT__", script, StringComparison.Ordinal)
+            .Replace("__SCENARIO__", scenario, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(testScript);
+        return JsonDocument.Parse(result.AsString());
+    }
 
     private static WhatsAppBusinessOptions ConfiguredOptions() => new()
     {
