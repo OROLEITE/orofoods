@@ -20,6 +20,7 @@ public sealed class MetaWhatsAppEmbeddedSignupClient(
     IOptions<WhatsAppBusinessOptions> options) : IMetaWhatsAppEmbeddedSignupClient
 {
     private static readonly HashSet<string> SupportedSyncTypes = ["history"];
+    private const int MaxPhoneNumberPages = 100;
 
     public async Task<string> ExchangeCodeAsync(string code, CancellationToken cancellationToken = default)
     {
@@ -40,11 +41,37 @@ public sealed class MetaWhatsAppEmbeddedSignupClient(
 
     public async Task<IReadOnlyList<MetaWhatsAppPhoneNumber>> GetPhoneNumbersAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default)
     {
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, $"{Version}/{Uri.EscapeDataString(businessAccountId)}/phone_numbers", accessToken);
-        using var response = await SendAsync(request, cancellationToken);
-        var payload = await ReadResponseAsync<PhoneNumbersResponse>(response, cancellationToken);
-        return payload.Data?.Where(x => !string.IsNullOrWhiteSpace(x.Id) && !string.IsNullOrWhiteSpace(x.DisplayPhoneNumber))
-            .Select(x => new MetaWhatsAppPhoneNumber(x.Id!, x.DisplayPhoneNumber!)).ToArray() ?? [];
+        var baseAddress = httpClient.BaseAddress ?? throw new InvalidOperationException("A URL da API Meta nÃ£o estÃ¡ configurada.");
+        var firstPageUri = new Uri(baseAddress, $"{Version}/{Uri.EscapeDataString(businessAccountId)}/phone_numbers");
+        var pageUri = firstPageUri;
+        var visitedPages = new HashSet<string>(StringComparer.Ordinal);
+        var phoneNumbers = new List<MetaWhatsAppPhoneNumber>();
+
+        for (var page = 0; page < MaxPhoneNumberPages; page++)
+        {
+            if (!visitedPages.Add(pageUri.AbsoluteUri))
+                throw new InvalidOperationException("A paginaÃ§Ã£o de nÃºmeros WhatsApp da Meta nÃ£o pÃ´de ser validada.");
+
+            using var request = CreateAuthorizedRequest(HttpMethod.Get, pageUri.AbsoluteUri, accessToken);
+            using var response = await SendAsync(request, cancellationToken);
+            var payload = await ReadResponseAsync<PhoneNumbersResponse>(response, cancellationToken);
+            if (payload.Data is not null)
+            {
+                phoneNumbers.AddRange(payload.Data
+                    .Where(x => !string.IsNullOrWhiteSpace(x.DisplayPhoneNumber))
+                    .Select(x => new MetaWhatsAppPhoneNumber(x.Id ?? string.Empty, x.DisplayPhoneNumber!)));
+            }
+
+            if (string.IsNullOrWhiteSpace(payload.Paging?.Next))
+                return phoneNumbers;
+
+            if (page == MaxPhoneNumberPages - 1)
+                throw new InvalidOperationException("A paginaÃ§Ã£o de nÃºmeros WhatsApp da Meta excedeu o limite de seguranÃ§a.");
+
+            pageUri = ValidateNextPhoneNumbersPage(payload.Paging.Next, pageUri, firstPageUri.AbsolutePath);
+        }
+
+        throw new InvalidOperationException("A paginaÃ§Ã£o de nÃºmeros WhatsApp da Meta nÃ£o pÃ´de ser concluÃ­da.");
     }
 
     public async Task SubscribeAppAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default)
@@ -75,6 +102,30 @@ public sealed class MetaWhatsAppEmbeddedSignupClient(
         var request = new HttpRequestMessage(method, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return request;
+    }
+
+    private static Uri ValidateNextPhoneNumbersPage(string nextPage, Uri currentPage, string expectedPath)
+    {
+        if (!Uri.TryCreate(nextPage, UriKind.Absolute, out var nextUri) &&
+            !Uri.TryCreate(currentPage, nextPage, out nextUri))
+            throw new InvalidOperationException("A paginaÃ§Ã£o de nÃºmeros WhatsApp da Meta nÃ£o pÃ´de ser validada.");
+
+        if (!string.Equals(nextUri.Scheme, currentPage.Scheme, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(nextUri.Host, currentPage.Host, StringComparison.OrdinalIgnoreCase) ||
+            nextUri.Port != currentPage.Port ||
+            !string.Equals(nextUri.AbsolutePath, expectedPath, StringComparison.Ordinal) ||
+            !string.IsNullOrEmpty(nextUri.UserInfo) ||
+            !string.IsNullOrEmpty(nextUri.Fragment))
+            throw new InvalidOperationException("A paginaÃ§Ã£o de nÃºmeros WhatsApp da Meta nÃ£o pÃ´de ser validada.");
+
+        var safeQuery = string.Join('&', nextUri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(parameter =>
+            {
+                var key = Uri.UnescapeDataString(parameter.Split('=', 2)[0].Replace('+', ' '));
+                return !string.Equals(key, "access_token", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(key, "appsecret_proof", StringComparison.OrdinalIgnoreCase);
+            }));
+        return new UriBuilder(nextUri) { Query = safeQuery }.Uri;
     }
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -121,7 +172,10 @@ public sealed class MetaWhatsAppEmbeddedSignupClient(
     }
 
     private sealed record TokenExchangeResponse([property: JsonPropertyName("access_token")] string? AccessToken);
-    private sealed record PhoneNumbersResponse([property: JsonPropertyName("data")] List<PhoneNumberItem>? Data);
+    private sealed record PhoneNumbersResponse(
+        [property: JsonPropertyName("data")] List<PhoneNumberItem>? Data,
+        [property: JsonPropertyName("paging")] PhoneNumbersPaging? Paging);
+    private sealed record PhoneNumbersPaging([property: JsonPropertyName("next")] string? Next);
     private sealed record PhoneNumberItem([property: JsonPropertyName("id")] string? Id, [property: JsonPropertyName("display_phone_number")] string? DisplayPhoneNumber);
     private sealed record SuccessResponse([property: JsonPropertyName("success")] bool Success);
     private sealed record SyncRequestResponse([property: JsonPropertyName("request_id")] string? RequestId);

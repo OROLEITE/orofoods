@@ -28,7 +28,6 @@ public class WhatsAppEmbeddedSignupTests
             GraphApiVersion = "v23.0",
             EmbeddedSignupAppId = "public-app-id",
             EmbeddedSignupConfigId = "public-config-id",
-            EmbeddedSignupPhoneNumberId = "phone-id",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785",
             AppSecret = "test-app-secret",
             VerifyToken = "test-verify-token"
@@ -105,7 +104,6 @@ public class WhatsAppEmbeddedSignupTests
             options => options.GraphApiVersion = "",
             options => options.EmbeddedSignupAppId = "",
             options => options.EmbeddedSignupConfigId = "",
-            options => options.EmbeddedSignupPhoneNumberId = "",
             options => options.EmbeddedSignupDisplayPhoneNumber = "",
             options => options.AppSecret = "",
             options => options.VerifyToken = ""
@@ -118,6 +116,14 @@ public class WhatsAppEmbeddedSignupTests
             mutation(options);
             Assert.False(options.IsEmbeddedSignupReady);
         }
+    }
+
+    [Fact]
+    public void Embedded_signup_readiness_does_not_require_a_preconfigured_phone_number_id()
+    {
+        var options = ConfiguredOptions();
+
+        Assert.True(options.IsEmbeddedSignupReady);
     }
 
     [Theory]
@@ -283,7 +289,6 @@ public class WhatsAppEmbeddedSignupTests
             Enabled = true,
             EmbeddedSignupEnabled = true,
             PhoneNumberId = "legacy-phone-number",
-            EmbeddedSignupPhoneNumberId = "coexistence-phone-number",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
         });
         var provider = new WhatsAppPhoneNumberIdProvider(db, settings);
@@ -373,6 +378,43 @@ public class WhatsAppEmbeddedSignupTests
     }
 
     [Fact]
+    public async Task Embedded_signup_client_reads_all_pages_of_meta_phone_numbers()
+    {
+        var handler = new RecordingMetaHandler(request => request.RequestUri!.Query.Contains("after=cursor", StringComparison.Ordinal)
+            ? Json("""{"data":[{"id":"555000000005678","display_phone_number":"+55 48 99999-0000"}]}""")
+            : Json("""{"data":[{"id":"555000000001234","display_phone_number":"+55 48 92007-7785"}],"paging":{"next":"https://graph.facebook.com/v23.0/waba-test/phone_numbers?after=cursor&access_token=must-not-be-forwarded&appsecret_proof=must-not-be-forwarded"}}"""));
+        var client = new MetaWhatsAppEmbeddedSignupClient(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            Options.Create(ConfiguredOptions()));
+
+        var numbers = await client.GetPhoneNumbersAsync("waba-test", "authorized-token");
+
+        Assert.Equal(2, numbers.Count);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal("555000000001234", numbers[0].Id);
+        Assert.Equal("555000000005678", numbers[1].Id);
+        Assert.Contains("after=cursor", handler.Requests[1].RequestUri.Query);
+        Assert.DoesNotContain("access_token", handler.Requests[1].RequestUri.Query);
+        Assert.DoesNotContain("appsecret_proof", handler.Requests[1].RequestUri.Query);
+        Assert.All(handler.Requests, request => Assert.Equal("Bearer authorized-token", request.Authorization));
+    }
+
+    [Fact]
+    public async Task Embedded_signup_client_rejects_phone_number_pagination_to_another_host()
+    {
+        var handler = new RecordingMetaHandler(_ => Json("""{"data":[],"paging":{"next":"https://attacker.example/v23.0/waba-test/phone_numbers?after=cursor"}}"""));
+        var client = new MetaWhatsAppEmbeddedSignupClient(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            Options.Create(ConfiguredOptions()));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client.GetPhoneNumbersAsync("waba-test", "authorized-token"));
+
+        Assert.Single(handler.Requests);
+        Assert.Equal("graph.facebook.com", handler.Requests[0].RequestUri.Host);
+    }
+
+    [Fact]
     public async Task Embedded_signup_client_blocks_state_sync_request_until_the_official_contract_is_validated()
     {
         var handler = new RecordingMetaHandler(_ => Json("{}"));
@@ -397,32 +439,82 @@ public class WhatsAppEmbeddedSignupTests
             service.CompleteAsync("FINISH", "code", "123456789"));
 
         Assert.Equal(0, meta.ExchangeCount);
+        Assert.Equal(0, meta.PhoneNumbersRequestCount);
         Assert.Empty(db.WhatsAppBusinessConnections);
     }
 
     [Fact]
-    public async Task Embedded_signup_rejects_wrong_phone_id_or_display_number_before_subscribing()
+    public async Task Embedded_signup_rejects_when_meta_returns_no_matching_display_number()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var meta = new FakeMetaSignupClient
         {
-            PhoneNumbers = [new MetaWhatsAppPhoneNumber("another-number-id", "+5548920077785")]
+            PhoneNumbers = [new MetaWhatsAppPhoneNumber("1392450397288350", "+5548999999999")]
         };
         var service = CreateConnectionService(db, meta);
 
         await Assert.ThrowsAsync<WhatsAppEmbeddedSignupValidationException>(() =>
             service.CompleteAsync(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, "code", "123456789"));
 
+        Assert.Equal(1, meta.PhoneNumbersRequestCount);
         Assert.Equal(0, meta.SubscribeCount);
         Assert.Empty(db.WhatsAppBusinessConnections);
     }
 
     [Fact]
-    public async Task Embedded_signup_connects_configured_number_persists_only_protected_token_and_requests_history_only()
+    public async Task Embedded_signup_rejects_multiple_normalized_display_number_matches_before_subscribing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var meta = new FakeMetaSignupClient
+        {
+            PhoneNumbers =
+            [
+                new MetaWhatsAppPhoneNumber("1392450397288350", "+55 48 92007-7785"),
+                new MetaWhatsAppPhoneNumber("1425306064001765", "+5548920077785")
+            ]
+        };
+        var service = CreateConnectionService(db, meta);
+
+        await Assert.ThrowsAsync<WhatsAppEmbeddedSignupValidationException>(() =>
+            service.CompleteAsync(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, "code", "123456789"));
+
+        Assert.Equal(1, meta.PhoneNumbersRequestCount);
+        Assert.Equal(0, meta.SubscribeCount);
+        Assert.Empty(db.WhatsAppBusinessConnections);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_rejects_non_numeric_meta_phone_number_id_before_subscribing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var meta = new FakeMetaSignupClient
+        {
+            PhoneNumbers = [new MetaWhatsAppPhoneNumber("invalid-id", "+55 48 92007-7785")]
+        };
+        var service = CreateConnectionService(db, meta);
+
+        await Assert.ThrowsAsync<WhatsAppEmbeddedSignupValidationException>(() =>
+            service.CompleteAsync(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, "code", "123456789"));
+
+        Assert.Equal(1, meta.PhoneNumbersRequestCount);
+        Assert.Equal(0, meta.SubscribeCount);
+        Assert.Empty(db.WhatsAppBusinessConnections);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_connects_uniquely_matched_number_persists_only_protected_token_and_requests_history_only()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         const string accessToken = "connected-meta-token-private";
-        var meta = new FakeMetaSignupClient { AccessToken = accessToken };
+        var meta = new FakeMetaSignupClient
+        {
+            AccessToken = accessToken,
+            PhoneNumbers =
+            [
+                new MetaWhatsAppPhoneNumber("555000000001234", "+55 48 92007-7785"),
+                new MetaWhatsAppPhoneNumber("555000000005678", "+55 48 99999-0000")
+            ]
+        };
         var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
         var settings = Options.Create(ConfiguredOptions());
         var service = new WhatsAppBusinessConnectionService(db, meta, protector, settings);
@@ -436,7 +528,7 @@ public class WhatsAppEmbeddedSignupTests
         Assert.True(result.Connected);
         Assert.False(result.ContactsSyncRequested);
         Assert.True(result.HistorySyncRequested);
-        Assert.Equal("1392450397288350", connection.PhoneNumberId);
+        Assert.Equal("555000000001234", connection.PhoneNumberId);
         Assert.Equal("+55 48 92007-7785", connection.DisplayPhoneNumber);
         Assert.Equal("legacy-phone-id", settings.Value.PhoneNumberId);
         Assert.NotEqual(accessToken, connection.ProtectedAccessToken);
@@ -472,7 +564,6 @@ public class WhatsAppEmbeddedSignupTests
         EmbeddedSignupEnabled = true,
         GraphApiVersion = "v23.0",
         PhoneNumberId = "legacy-phone-id",
-        EmbeddedSignupPhoneNumberId = "1392450397288350",
         EmbeddedSignupDisplayPhoneNumber = "+5548920077785",
         EmbeddedSignupAppId = "123456789012345",
         EmbeddedSignupConfigId = "987654321098765",
@@ -497,6 +588,7 @@ public class WhatsAppEmbeddedSignupTests
     private sealed class FakeMetaSignupClient : IMetaWhatsAppEmbeddedSignupClient
     {
         public int ExchangeCount { get; private set; }
+        public int PhoneNumbersRequestCount { get; private set; }
         public int SubscribeCount { get; private set; }
         public string AccessToken { get; init; } = "fake-meta-token";
         public IReadOnlyList<MetaWhatsAppPhoneNumber> PhoneNumbers { get; init; } = [new("1392450397288350", "+55 48 92007-7785")];
@@ -508,8 +600,11 @@ public class WhatsAppEmbeddedSignupTests
             return Task.FromResult(AccessToken);
         }
 
-        public Task<IReadOnlyList<MetaWhatsAppPhoneNumber>> GetPhoneNumbersAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default) =>
-            Task.FromResult(PhoneNumbers);
+        public Task<IReadOnlyList<MetaWhatsAppPhoneNumber>> GetPhoneNumbersAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default)
+        {
+            PhoneNumbersRequestCount++;
+            return Task.FromResult(PhoneNumbers);
+        }
 
         public Task SubscribeAppAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default)
         {

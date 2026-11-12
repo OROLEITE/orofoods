@@ -61,14 +61,12 @@ public class WhatsAppBusinessTests
         {
             EmbeddedSignupEnabled = true,
             AccessToken = "legacy-token",
-            EmbeddedSignupPhoneNumberId = "phone-test",
             EmbeddedSignupDisplayPhoneNumber = "+55 (48) 92007-7785"
         }));
         var phoneProvider = new WhatsAppPhoneNumberIdProvider(db, Options.Create(new WhatsAppBusinessOptions
         {
             EmbeddedSignupEnabled = true,
             PhoneNumberId = "legacy-phone-id",
-            EmbeddedSignupPhoneNumberId = "phone-test",
             EmbeddedSignupDisplayPhoneNumber = "+55 (48) 92007-7785"
         }));
 
@@ -139,7 +137,6 @@ public class WhatsAppBusinessTests
             EmbeddedSignupEnabled = true,
             AccessToken = "legacy-token",
             PhoneNumberId = "legacy-phone-id",
-            EmbeddedSignupPhoneNumberId = "configured-phone-id",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
         });
         var tokenProvider = new WhatsAppAccessTokenProvider(db, protector, settings);
@@ -163,9 +160,8 @@ public class WhatsAppBusinessTests
     }
 
     [Theory]
-    [InlineData("different-phone-id", "+5548920077785")]
     [InlineData("phone-test", "+5548999999999")]
-    public async Task Embedded_signup_providers_reject_connection_for_a_different_configured_number(
+    public async Task Embedded_signup_providers_reject_connection_for_a_different_display_number(
         string connectedPhoneNumberId,
         string connectedDisplayPhoneNumber)
     {
@@ -187,7 +183,6 @@ public class WhatsAppBusinessTests
             EmbeddedSignupEnabled = true,
             AccessToken = "legacy-token",
             PhoneNumberId = "legacy-phone-id",
-            EmbeddedSignupPhoneNumberId = "phone-test",
             EmbeddedSignupDisplayPhoneNumber = "+55 (48) 92007-7785"
         });
         var tokenProvider = new WhatsAppAccessTokenProvider(db, protector, settings);
@@ -232,7 +227,6 @@ public class WhatsAppBusinessTests
             EmbeddedSignupEnabled = true,
             AccessToken = "legacy-token",
             PhoneNumberId = "legacy-phone-id",
-            EmbeddedSignupPhoneNumberId = "phone-test",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
         });
         var provider = new WhatsAppAccessTokenProvider(db, protector, settings);
