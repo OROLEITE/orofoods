@@ -118,7 +118,6 @@ public sealed class WhatsAppCrmOperationsTests
         {
             EmbeddedSignupEnabled = true,
             BusinessAccountId = "legacy-account",
-            EmbeddedSignupPhoneNumberId = "phone-123",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
         }));
 
@@ -133,7 +132,6 @@ public sealed class WhatsAppCrmOperationsTests
         {
             EmbeddedSignupEnabled = true,
             BusinessAccountId = "legacy-account",
-            EmbeddedSignupPhoneNumberId = "configured-phone",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
         });
         var provider = new WhatsAppBusinessAccountIdProvider(db, settings);

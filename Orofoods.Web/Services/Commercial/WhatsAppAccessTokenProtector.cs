@@ -124,7 +124,6 @@ internal static class WhatsAppBusinessConnectionResolver
         var configuredDisplayPhoneNumber = NormalizePhone(options.EmbeddedSignupDisplayPhoneNumber);
 
         if (string.IsNullOrWhiteSpace(connection.PhoneNumberId) ||
-            !string.Equals(connection.PhoneNumberId, options.EmbeddedSignupPhoneNumberId, StringComparison.Ordinal) ||
             connectedDisplayPhoneNumber.Length == 0 ||
             configuredDisplayPhoneNumber.Length == 0 ||
             connectedDisplayPhoneNumber != configuredDisplayPhoneNumber ||
