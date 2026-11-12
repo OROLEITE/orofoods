@@ -23,12 +23,16 @@ public sealed class WhatsAppBusinessOptions
         Enabled &&
         EmbeddedSignupEnabled &&
         IsGraphApiVersionValid(GraphApiVersion) &&
-        !string.IsNullOrWhiteSpace(EmbeddedSignupAppId) &&
-        !string.IsNullOrWhiteSpace(EmbeddedSignupConfigId) &&
+        IsMetaIdentifier(EmbeddedSignupAppId) &&
+        IsMetaIdentifier(EmbeddedSignupConfigId) &&
         !string.IsNullOrWhiteSpace(AppSecret) &&
         !string.IsNullOrWhiteSpace(VerifyToken) &&
-        !string.IsNullOrWhiteSpace(EmbeddedSignupPhoneNumberId) &&
+        IsMetaIdentifier(EmbeddedSignupPhoneNumberId) &&
         !string.IsNullOrWhiteSpace(EmbeddedSignupDisplayPhoneNumber);
+
+    private static bool IsMetaIdentifier(string value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.All(char.IsAsciiDigit);
 
     private static bool IsGraphApiVersionValid(string value) =>
         !string.IsNullOrWhiteSpace(value) &&

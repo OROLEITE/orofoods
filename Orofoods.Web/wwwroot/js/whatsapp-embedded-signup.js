@@ -13,6 +13,20 @@
     let submitted = false;
 
     const showStatus = message => { status.textContent = message; };
+    const resetSession = () => {
+        authorizationCode = null;
+        sessionInfo = null;
+        submitted = false;
+    };
+    const isMetaOrigin = origin => {
+        try {
+            const url = new URL(origin);
+            return url.protocol === 'https:' &&
+                (url.hostname === 'facebook.com' || url.hostname.endsWith('.facebook.com'));
+        } catch {
+            return false;
+        }
+    };
     const submitWhenComplete = () => {
         if (submitted || !authorizationCode || !sessionInfo) return;
         submitted = true;
@@ -24,11 +38,21 @@
     };
 
     window.addEventListener('message', event => {
-        if (event.origin !== 'https://www.facebook.com') return;
+        if (!isMetaOrigin(event.origin)) return;
         const data = event.data;
         if (!data || typeof data !== 'object' || data.type !== 'WA_EMBEDDED_SIGNUP') return;
         if (data.event !== 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING' ||
-            !data.data || typeof data.data.waba_id !== 'string' || !data.data.waba_id) return;
+            data.version !== 3 ||
+            !data.data ||
+            typeof data.data.waba_id !== 'string' ||
+            !/^[0-9]+$/.test(data.data.waba_id)) {
+            if (data.event === 'CANCEL' || data.event === 'ERROR') {
+                resetSession();
+                showStatus('A conexão com a Meta não foi concluída. Nenhuma alteração foi aplicada.');
+                startButton.disabled = false;
+            }
+            return;
+        }
         sessionInfo = data;
         submitWhenComplete();
     });
@@ -48,6 +72,7 @@
     startButton.disabled = true;
     startButton.addEventListener('click', () => {
         if (!window.FB) return showStatus('O login da Meta ainda está carregando.');
+        resetSession();
         startButton.disabled = true;
         showStatus('Conclua a confirmação no WhatsApp Business do celular.');
         FB.login(response => {
@@ -64,8 +89,8 @@
             response_type: 'code',
             override_default_response_type: true,
             extras: {
-                featureType: 'whatsapp_business_app_onboarding',
-                sessionInfoVersion: '3'
+                setup: {},
+                featureType: 'whatsapp_business_app_onboarding'
             }
         });
     });

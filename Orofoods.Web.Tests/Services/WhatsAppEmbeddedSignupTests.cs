@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Microsoft.Extensions.Options;
+using Jint;
+using Options = Microsoft.Extensions.Options.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Services.Commercial;
@@ -116,6 +118,120 @@ public class WhatsAppEmbeddedSignupTests
             mutation(options);
             Assert.False(options.IsEmbeddedSignupReady);
         }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("public-login-config-id")]
+    [InlineData("123 456")]
+    public void Embedded_signup_readiness_rejects_invalid_meta_configuration_id(string configurationId)
+    {
+        var options = ConfiguredOptions();
+        options.EmbeddedSignupConfigId = configurationId;
+
+        Assert.False(options.IsEmbeddedSignupReady);
+    }
+
+    [Fact]
+    public void Embedded_signup_v4_launch_preserves_coexistence_and_validates_meta_session_callback()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-embedded-signup.js"));
+
+        Assert.Contains("setup: {}", script);
+        Assert.Contains("featureType: 'whatsapp_business_app_onboarding'", script);
+        Assert.DoesNotContain("sessionInfoVersion", script);
+        Assert.Contains("FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING", script);
+        Assert.Contains("data.version !== 3", script);
+        Assert.Contains("waba_id", script);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_submits_only_a_valid_facebook_coexistence_callback()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-embedded-signup.js"));
+        const string harness = """
+            const inputElements = {};
+            const form = {
+                submitted: false,
+                querySelector(selector) { return inputElements[selector] ??= { value: '' }; },
+                requestSubmit() { this.submitted = true; }
+            };
+            const startButton = {
+                disabled: false,
+                addEventListener(name, callback) { this.clickHandler = callback; }
+            };
+            const status = { textContent: '' };
+            const configNode = { textContent: '{"appId":"123456789","configurationId":"987654321","graphApiVersion":"v26.0"}' };
+            globalThis.window = globalThis;
+            globalThis.URL = class {
+                constructor(value) {
+                    const separator = value.indexOf('://');
+                    if (separator <= 0) throw new Error('Invalid URL');
+                    this.protocol = `${value.substring(0, separator)}:`;
+                    this.hostname = value.substring(separator + 3).split('/')[0].split(':')[0];
+                }
+            };
+            window.addEventListener = (name, callback) => { window.messageHandler = callback; };
+            globalThis.document = {
+                getElementById(id) {
+                    return ({ whatsappEmbeddedSignupConfig: configNode, whatsappEmbeddedSignupForm: form,
+                        whatsappEmbeddedSignupStart: startButton, whatsappEmbeddedSignupStatus: status })[id] ?? null;
+                },
+                createElement() { return {}; },
+                head: { appendChild() {} }
+            };
+            let loginCount = 0;
+            globalThis.FB = {
+                init() {},
+                login(callback, options) {
+                    loginCount++;
+                    window.loginOptions = options;
+                    const code = loginCount === 1 ? 'stale-code' : loginCount === 2 ? null : 'fresh-code';
+                    callback(code ? { authResponse: { code } } : { authResponse: {} });
+                }
+            };
+            __SCRIPT__
+            window.fbAsyncInit();
+            startButton.clickHandler();
+            const session = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 3, data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://facebook.com.attacker.example', data: session });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: { ...session, version: 2 } });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: { ...session, data: { waba_id: 'waba-test' } } });
+            const ignoredCallbacksDidNotSubmit = !form.submitted;
+            window.messageHandler({ origin: 'https://www.facebook.com', data: { type: 'WA_EMBEDDED_SIGNUP',
+                event: 'CANCEL', version: 3, data: {} } });
+            startButton.clickHandler();
+            window.messageHandler({ origin: 'https://www.facebook.com', data: session });
+            const cancelledCodeWasNotReused = !form.submitted;
+            startButton.clickHandler();
+            window.messageHandler({ origin: 'https://www.facebook.com', data: session });
+            JSON.stringify({
+                ignoredCallbacksDidNotSubmit,
+                cancelledCodeWasNotReused,
+                submitted: form.submitted,
+                eventType: inputElements['#whatsappSignupEventType']?.value,
+                businessAccountId: inputElements['#whatsappSignupWabaId']?.value,
+                authorizationCode: inputElements['#whatsappSignupCode']?.value,
+                configId: window.loginOptions?.config_id,
+                featureType: window.loginOptions?.extras?.featureType,
+                setup: window.loginOptions?.extras?.setup
+            });
+            """;
+
+        var result = await new Engine().EvaluateAsync(harness.Replace("__SCRIPT__", script, StringComparison.Ordinal));
+        using var state = JsonDocument.Parse(result.AsString());
+        var root = state.RootElement;
+
+        Assert.True(root.GetProperty("ignoredCallbacksDidNotSubmit").GetBoolean());
+        Assert.True(root.GetProperty("submitted").GetBoolean());
+        Assert.Equal(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, root.GetProperty("eventType").GetString());
+        Assert.Equal("1234567890", root.GetProperty("businessAccountId").GetString());
+        Assert.True(root.GetProperty("cancelledCodeWasNotReused").GetBoolean());
+        Assert.Equal("fresh-code", root.GetProperty("authorizationCode").GetString());
+        Assert.Equal("987654321", root.GetProperty("configId").GetString());
+        Assert.Equal("whatsapp_business_app_onboarding", root.GetProperty("featureType").GetString());
+        Assert.True(root.GetProperty("setup").ValueKind == JsonValueKind.Object);
     }
 
     [Fact]
@@ -358,11 +474,20 @@ public class WhatsAppEmbeddedSignupTests
         PhoneNumberId = "legacy-phone-id",
         EmbeddedSignupPhoneNumberId = "1392450397288350",
         EmbeddedSignupDisplayPhoneNumber = "+5548920077785",
-        EmbeddedSignupAppId = "public-app-id",
-        EmbeddedSignupConfigId = "public-login-config-id",
+        EmbeddedSignupAppId = "123456789012345",
+        EmbeddedSignupConfigId = "987654321098765",
         AppSecret = "app-secret-private",
         VerifyToken = "verify-token-private"
     };
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Orofoods.Web", "Orofoods.Web.csproj")))
+            directory = directory.Parent;
+
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Orofoods repository root was not found.");
+    }
 
     private static HttpResponseMessage Json(string json) => new(HttpStatusCode.OK)
     {
