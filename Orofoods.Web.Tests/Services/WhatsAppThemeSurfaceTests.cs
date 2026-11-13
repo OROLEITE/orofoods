@@ -128,13 +128,22 @@ public class WhatsAppThemeSurfaceTests
         Assert.Contains("color: #fff;", hover);
 
         var disabled = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-action:disabled");
-        Assert.Contains("background-color: var(--crm-surface-muted);", disabled);
-        Assert.Contains("color: var(--crm-muted);", disabled);
+        Assert.Contains("border-color: #64748B;", disabled);
+        Assert.Contains("background-color: #E2E8F0;", disabled);
+        Assert.Contains("color: #334155;", disabled);
         Assert.Contains("cursor: not-allowed;", disabled);
 
         var cancel = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-dialog-cancel");
         Assert.Contains("background-color: var(--crm-surface-muted);", cancel);
         Assert.Contains("color: var(--crm-text);", cancel);
+
+        var darkDisabled = GetRule(css, """html[data-theme="dark"] body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-action:disabled""");
+        Assert.Contains("background-color: #303B46;", darkDisabled);
+        Assert.Contains("color: #E2E8F0;", darkDisabled);
+
+        var darkCancel = GetRule(css, """html[data-theme="dark"] body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-dialog-cancel""");
+        Assert.Contains("background-color: #334155;", darkCancel);
+        Assert.Contains("color: #F8FAFC;", darkCancel);
         Assert.Contains("@media (max-width: 520px)", css);
     }
 
@@ -152,8 +161,8 @@ public class WhatsAppThemeSurfaceTests
 
         var actions = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-actions");
         Assert.Contains("display: flex;", actions);
-        Assert.Contains("flex: 1 1 430px;", actions);
-        Assert.Contains("flex-wrap: wrap;", actions);
+        Assert.Contains("flex: 0 0 auto;", actions);
+        Assert.Contains("flex-wrap: nowrap;", actions);
 
         var button = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-actions .whatsapp-primary-action");
         Assert.Contains("max-width: none;", button);
@@ -173,6 +182,9 @@ public class WhatsAppThemeSurfaceTests
 
         var header = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-header");
         Assert.Contains("flex-wrap: wrap;", header);
+        Assert.Matches(
+            new Regex(@"body:has\(\.whatsapp-inbox-page\) \.whatsapp-inbox-page \.whatsapp-thread-actions\s*\{\s*width:\s*100%;\s*flex:\s*1 1 100%;\s*flex-wrap:\s*wrap;"),
+            css);
         Assert.Contains("body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-header-actions .whatsapp-channel-badge", css);
         Assert.Contains("@media (max-width: 767.98px)", css);
         Assert.Contains("@media (max-width: 420px)", css);
