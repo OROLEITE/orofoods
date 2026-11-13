@@ -352,7 +352,13 @@ public class WhatsAppPollingUiTests
         const string threadSelector = "body:has(.whatsapp-inbox-page) .whatsapp-thread";
         const string messagesSelector = "body:has(.whatsapp-inbox-page) .whatsapp-messages";
         const string composerSelector = "body:has(.whatsapp-inbox-page) .whatsapp-compose";
-        var responsiveStart = styles.LastIndexOf("@media (max-width: 767.98px)", StringComparison.Ordinal);
+        var mobileMessagesStart = styles.LastIndexOf(messagesSelector, StringComparison.Ordinal);
+        Assert.True(mobileMessagesStart >= 0, $"Could not find CSS selector {messagesSelector}.");
+        var responsiveStart = styles.LastIndexOf(
+            "@media (max-width: 767.98px)",
+            mobileMessagesStart,
+            StringComparison.Ordinal);
+        Assert.True(responsiveStart >= 0, "Could not find the mobile breakpoint for the messages selector.");
         var thread = ReadCssRule(styles, threadSelector, styles.LastIndexOf(threadSelector, StringComparison.Ordinal));
         var messages = ReadCssRule(styles, messagesSelector, styles.LastIndexOf(messagesSelector, responsiveStart - 1, StringComparison.Ordinal));
         var composer = ReadCssRule(styles, composerSelector, styles.LastIndexOf(composerSelector, StringComparison.Ordinal));
