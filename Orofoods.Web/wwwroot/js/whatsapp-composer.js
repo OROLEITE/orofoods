@@ -113,11 +113,11 @@
         customerSearchController?.abort();
         if (customerDialog?.open) customerDialog.close();
     };
-    const renderCustomerResults = results => {
+    const renderCustomerResults = (results, emptyMessage = 'Nenhum cliente encontrado.') => {
         if (!customerResults) return;
         customerResults.replaceChildren();
         if (!results.length) {
-            appendText(customerResults, 'p', 'Nenhum cliente encontrado.', 'whatsapp-customer-results-empty');
+            if (emptyMessage) appendText(customerResults, 'p', emptyMessage, 'whatsapp-customer-results-empty');
             return;
         }
         for (const customer of results) {
@@ -143,8 +143,9 @@
     const searchCustomers = async () => {
         const term = customerSearch?.value.trim() || '';
         customerSearchController?.abort();
-        if (term.length < 2) { renderCustomerResults([]); return; }
+        if (term.length < 2) { renderCustomerResults([], 'Digite pelo menos 2 caracteres para buscar.'); return; }
         customerSearchController = new AbortController();
+        renderCustomerResults([], 'Buscando clientes...');
         try {
             const url = new URL(activeCustomerTrigger.dataset.customerSearchUrl, window.location.origin);
             url.searchParams.set('q', term);
@@ -152,7 +153,7 @@
             if (!response.ok) throw new Error('customer search failed');
             renderCustomerResults((await response.json()).results || []);
         } catch (error) {
-            if (error?.name !== 'AbortError') renderCustomerResults([]);
+            if (error?.name !== 'AbortError') renderCustomerResults([], 'Não foi possível buscar clientes. Tente novamente.');
         }
     };
     const openCustomerDialog = (mode, trigger) => {
@@ -170,7 +171,7 @@
         customerSubmit.disabled = mode === 'link';
         customerSubmit.textContent = mode === 'start' ? 'Criar ou abrir conversa' : 'Vincular cliente';
         customerSearch.value = '';
-        renderCustomerResults([]);
+        renderCustomerResults([], 'Digite pelo menos 2 caracteres para buscar.');
         if (typeof customerDialog?.showModal === 'function') customerDialog.showModal();
         else customerDialog?.setAttribute('open', '');
         customerSearch?.focus();

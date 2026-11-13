@@ -59,7 +59,7 @@
             <div class="whatsapp-header-actions">
                 <button type="button" class="btn whatsapp-primary-action whatsapp-new-conversation-trigger" id="whatsappNewConversationTrigger"
                         data-customer-search-url="@Url.Action("CustomerSearch", "WhatsApp", new { area = "Admin" })">
-                    <i class="fa-solid fa-plus" aria-hidden="true"></i> + Nova conversa
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova conversa
                 </button>
                 @if (User.IsInRole(ApplicationRoles.Administrator) && WhatsAppOptions.Value.EmbeddedSignupEnabled)
                 {
@@ -457,17 +457,20 @@
           data-start-url="@Url.Action("StartConversation", "WhatsApp", new { area = "Admin" })">
         <input type="hidden" name="conversationId" id="whatsappCustomerConversationId" />
         <input type="hidden" name="customerId" id="whatsappCustomerId" />
-        <label for="whatsappCustomerSearch">Buscar cliente</label>
-        <input id="whatsappCustomerSearch" type="search" autocomplete="off" placeholder="Nome, telefone ou CNPJ" />
+        <div class="whatsapp-customer-search-section">
+            <label for="whatsappCustomerSearch">Buscar cliente cadastrado</label>
+            <input id="whatsappCustomerSearch" type="search" autocomplete="off" placeholder="Nome, telefone ou CNPJ" />
+            <div class="whatsapp-customer-results" id="whatsappCustomerResults" role="listbox" aria-label="Resultados de clientes" aria-live="polite">
+                <p class="whatsapp-customer-results-empty">Digite pelo menos 2 caracteres para buscar.</p>
+            </div>
+        </div>
         <div class="whatsapp-customer-phone-field" id="whatsappCustomerPhoneField" hidden>
-            <label for="whatsappCustomerPhone">Ou informe um número com DDD</label>
+            <div class="whatsapp-customer-dialog__divider">ou informe um número avulso</div>
+            <label for="whatsappCustomerPhone">Telefone com DDD</label>
             <input id="whatsappCustomerPhone" name="phoneNumber" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999" />
         </div>
-        <div class="whatsapp-customer-results" id="whatsappCustomerResults" role="listbox" aria-label="Resultados de clientes">
-            <p class="whatsapp-customer-results-empty">Digite para buscar clientes.</p>
-        </div>
         <div class="whatsapp-customer-dialog__actions">
-            <button type="button" class="btn btn-sm btn-outline-dark whatsapp-dialog-cancel">Cancelar</button>
+            <button type="button" class="btn btn-sm whatsapp-dialog-cancel">Cancelar</button>
             <button type="submit" class="btn btn-sm whatsapp-primary-action" id="whatsappCustomerSubmit" disabled>Vincular cliente</button>
         </div>
     </form>
