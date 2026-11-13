@@ -2576,8 +2576,8 @@ body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-contact {
 body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-actions {
     display: flex;
     min-width: 0;
-    flex: 1 1 430px;
-    flex-wrap: wrap;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
@@ -2662,6 +2662,7 @@ body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-transfer-form sele
     body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-actions {
         width: 100%;
         flex: 1 1 100%;
+        flex-wrap: wrap;
         justify-content: flex-start;
         margin-left: 0;
     }
@@ -2973,25 +2974,47 @@ body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-actio
 }
 
 body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-action:disabled {
-    border-color: var(--crm-border);
-    background-color: var(--crm-surface-muted);
-    color: var(--crm-muted);
+    border-color: #64748B;
+    background-color: #E2E8F0;
+    background-image: none;
+    color: #334155;
     box-shadow: none;
     opacity: 1;
     cursor: not-allowed;
 }
 
 body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-dialog-cancel {
-    border: 1px solid var(--crm-border);
+    border: 1px solid var(--crm-muted);
     background-color: var(--crm-surface-muted);
+    background-image: none;
     color: var(--crm-text);
     box-shadow: none;
+    opacity: 1;
 }
 
 body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-dialog-cancel:hover {
     border-color: var(--crm-muted);
     background-color: var(--crm-border);
     color: var(--crm-text);
+}
+
+html[data-theme="dark"] body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-action:disabled {
+    border-color: #64748B;
+    background-color: #303B46;
+    background-image: none;
+    color: #E2E8F0;
+}
+
+html[data-theme="dark"] body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-dialog-cancel {
+    border-color: #94A3B8;
+    background-color: #334155;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-dialog-cancel:hover {
+    border-color: #CBD5E1;
+    background-color: #475569;
+    color: #FFFFFF;
 }
 
 @media (max-width: 520px) {
