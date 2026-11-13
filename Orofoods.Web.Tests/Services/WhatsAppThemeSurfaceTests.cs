@@ -108,6 +108,92 @@ public class WhatsAppThemeSurfaceTests
         Assert.Contains("@media (max-width: 767.98px)", css);
     }
 
+    [Fact]
+    public void New_conversation_dialog_buttons_have_clear_theme_states_and_mobile_layout()
+    {
+        var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
+        var css = Read("Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css");
+
+        Assert.Contains("class=\"whatsapp-customer-search-section\"", markup);
+        Assert.Contains("class=\"whatsapp-customer-dialog__divider\"", markup);
+        Assert.Contains("class=\"btn btn-sm whatsapp-dialog-cancel\"", markup);
+        Assert.Contains("aria-live=\"polite\"", markup);
+
+        var primary = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-action");
+        Assert.Contains("background-color: #0E7490;", primary);
+        Assert.Contains("color: #fff;", primary);
+
+        var hover = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-action:hover:not(:disabled)");
+        Assert.Contains("background-color: #0B5D75;", hover);
+        Assert.Contains("color: #fff;", hover);
+
+        var disabled = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-primary-action:disabled");
+        Assert.Contains("background-color: var(--crm-surface-muted);", disabled);
+        Assert.Contains("color: var(--crm-muted);", disabled);
+        Assert.Contains("cursor: not-allowed;", disabled);
+
+        var cancel = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-customer-dialog .whatsapp-dialog-cancel");
+        Assert.Contains("background-color: var(--crm-surface-muted);", cancel);
+        Assert.Contains("color: var(--crm-text);", cancel);
+        Assert.Contains("@media (max-width: 520px)", css);
+    }
+
+    [Fact]
+    public void Service_header_controls_use_aligned_cyan_actions_and_responsive_wrapping()
+    {
+        var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
+        var css = Read("Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css");
+        var triggerStart = markup.IndexOf("id=\"whatsappNewConversationTrigger\"", StringComparison.Ordinal);
+        var triggerEnd = markup.IndexOf("</button>", triggerStart, StringComparison.Ordinal);
+        var trigger = markup[triggerStart..triggerEnd];
+
+        Assert.Contains("<i class=\"fa-solid fa-plus\" aria-hidden=\"true\"></i> Nova conversa", trigger);
+        Assert.DoesNotContain("+ Nova conversa", trigger);
+
+        var actions = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-actions");
+        Assert.Contains("display: flex;", actions);
+        Assert.Contains("flex: 1 1 430px;", actions);
+        Assert.Contains("flex-wrap: wrap;", actions);
+
+        var button = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-actions .whatsapp-primary-action");
+        Assert.Contains("max-width: none;", button);
+        Assert.Contains("min-height: 38px;", button);
+        Assert.Contains("border-radius: 8px;", button);
+        Assert.Contains("background-color: #0E7490;", button);
+        Assert.Contains("color: #fff;", button);
+
+        var hover = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-actions .whatsapp-primary-action:hover:not(:disabled)");
+        Assert.Contains("background-color: #0B5D75;", hover);
+        Assert.Contains("color: #fff;", hover);
+
+        var select = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-transfer-form select");
+        Assert.Contains("min-height: 38px;", select);
+        Assert.Contains("border-radius: 8px;", select);
+        Assert.Contains("min-width: 0;", select);
+
+        var header = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-thread-header");
+        Assert.Contains("flex-wrap: wrap;", header);
+        Assert.Contains("body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-header-actions .whatsapp-channel-badge", css);
+        Assert.Contains("@media (max-width: 767.98px)", css);
+        Assert.Contains("@media (max-width: 420px)", css);
+    }
+
+    [Fact]
+    public void Customer_search_only_shows_not_found_after_a_successful_empty_response()
+    {
+        var script = Read("Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js");
+        var searchStart = script.IndexOf("const searchCustomers = async () =>", StringComparison.Ordinal);
+        var searchEnd = script.IndexOf("const openCustomerDialog =", searchStart, StringComparison.Ordinal);
+        var search = script[searchStart..searchEnd];
+
+        Assert.Contains("const renderCustomerResults = (results, emptyMessage = 'Nenhum cliente encontrado.')", script);
+        Assert.Contains("renderCustomerResults([], 'Digite pelo menos 2 caracteres para buscar.')", search);
+        Assert.Contains("renderCustomerResults([], 'Buscando clientes...')", search);
+        Assert.Contains("renderCustomerResults((await response.json()).results || []);", search);
+        Assert.Contains("renderCustomerResults([], 'Não foi possível buscar clientes. Tente novamente.')", search);
+        Assert.DoesNotContain("renderCustomerResults([]);", search);
+    }
+
     private static string GetRule(string css, string selector)
     {
         var escapedSelector = Regex.Escape(selector);
