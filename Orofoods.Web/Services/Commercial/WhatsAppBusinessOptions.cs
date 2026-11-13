@@ -12,7 +12,6 @@ public sealed class WhatsAppBusinessOptions
     public bool EmbeddedSignupEnabled { get; set; }
     public string EmbeddedSignupAppId { get; set; } = "";
     public string EmbeddedSignupConfigId { get; set; } = "";
-    public string EmbeddedSignupPhoneNumberId { get; set; } = "";
     public string EmbeddedSignupDisplayPhoneNumber { get; set; } = "";
     public string VerifyToken { get; set; } = "";
     public string WebhookPath { get; set; } = "/api/webhooks/whatsapp";
@@ -23,16 +22,24 @@ public sealed class WhatsAppBusinessOptions
         Enabled &&
         EmbeddedSignupEnabled &&
         IsGraphApiVersionValid(GraphApiVersion) &&
-        !string.IsNullOrWhiteSpace(EmbeddedSignupAppId) &&
-        !string.IsNullOrWhiteSpace(EmbeddedSignupConfigId) &&
+        IsMetaIdentifier(EmbeddedSignupAppId) &&
+        IsMetaIdentifier(EmbeddedSignupConfigId) &&
         !string.IsNullOrWhiteSpace(AppSecret) &&
         !string.IsNullOrWhiteSpace(VerifyToken) &&
-        !string.IsNullOrWhiteSpace(EmbeddedSignupPhoneNumberId) &&
-        !string.IsNullOrWhiteSpace(EmbeddedSignupDisplayPhoneNumber);
+        HasConfiguredDisplayPhoneNumber(EmbeddedSignupDisplayPhoneNumber);
+
+    private static bool IsMetaIdentifier(string value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.All(char.IsAsciiDigit);
 
     private static bool IsGraphApiVersionValid(string value) =>
         !string.IsNullOrWhiteSpace(value) &&
         value.All(character => char.IsAsciiLetterOrDigit(character) || character == '.');
+
+    private static bool HasConfiguredDisplayPhoneNumber(string value) =>
+        NormalizePhone(value).Length > 0;
+
+    private static string NormalizePhone(string value) => new(value.Where(char.IsAsciiDigit).ToArray());
 }
 
 public interface IWhatsAppBusinessGateway

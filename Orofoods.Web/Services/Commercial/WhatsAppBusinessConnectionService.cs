@@ -31,11 +31,19 @@ public sealed class WhatsAppBusinessConnectionService(
             throw new WhatsAppEmbeddedSignupValidationException();
 
         var accessToken = await metaClient.ExchangeCodeAsync(authorizationCode, cancellationToken);
+        if (string.IsNullOrWhiteSpace(accessToken))
+            throw new WhatsAppEmbeddedSignupValidationException();
+
         var phoneNumbers = await metaClient.GetPhoneNumbersAsync(businessAccountId, accessToken, cancellationToken);
-        var configuredPhone = phoneNumbers.SingleOrDefault(number =>
-            string.Equals(number.Id, settings.EmbeddedSignupPhoneNumberId, StringComparison.Ordinal));
-        if (configuredPhone is null ||
-            NormalizePhone(configuredPhone.DisplayPhoneNumber) != NormalizePhone(settings.EmbeddedSignupDisplayPhoneNumber))
+        var expectedPhone = NormalizePhone(settings.EmbeddedSignupDisplayPhoneNumber);
+        var matchingPhones = phoneNumbers
+            .Where(number => NormalizePhone(number.DisplayPhoneNumber) == expectedPhone)
+            .ToArray();
+        if (matchingPhones.Length != 1)
+            throw new WhatsAppEmbeddedSignupValidationException();
+
+        var configuredPhone = matchingPhones[0];
+        if (string.IsNullOrWhiteSpace(configuredPhone.Id) || !configuredPhone.Id.All(char.IsAsciiDigit))
             throw new WhatsAppEmbeddedSignupValidationException();
 
         await metaClient.SubscribeAppAsync(businessAccountId, accessToken, cancellationToken);

@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Microsoft.Extensions.Options;
+using Jint;
+using Options = Microsoft.Extensions.Options.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Models.Commercial;
 using Orofoods.Web.Services.Commercial;
@@ -26,7 +28,6 @@ public class WhatsAppEmbeddedSignupTests
             GraphApiVersion = "v23.0",
             EmbeddedSignupAppId = "public-app-id",
             EmbeddedSignupConfigId = "public-config-id",
-            EmbeddedSignupPhoneNumberId = "phone-id",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785",
             AppSecret = "test-app-secret",
             VerifyToken = "test-verify-token"
@@ -103,7 +104,6 @@ public class WhatsAppEmbeddedSignupTests
             options => options.GraphApiVersion = "",
             options => options.EmbeddedSignupAppId = "",
             options => options.EmbeddedSignupConfigId = "",
-            options => options.EmbeddedSignupPhoneNumberId = "",
             options => options.EmbeddedSignupDisplayPhoneNumber = "",
             options => options.AppSecret = "",
             options => options.VerifyToken = ""
@@ -116,6 +116,191 @@ public class WhatsAppEmbeddedSignupTests
             mutation(options);
             Assert.False(options.IsEmbeddedSignupReady);
         }
+    }
+
+    [Fact]
+    public void Embedded_signup_readiness_does_not_require_a_preconfigured_phone_number_id()
+    {
+        var options = ConfiguredOptions();
+
+        Assert.True(options.IsEmbeddedSignupReady);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("public-login-config-id")]
+    [InlineData("123 456")]
+    public void Embedded_signup_readiness_rejects_invalid_meta_configuration_id(string configurationId)
+    {
+        var options = ConfiguredOptions();
+        options.EmbeddedSignupConfigId = configurationId;
+
+        Assert.False(options.IsEmbeddedSignupReady);
+    }
+
+    [Fact]
+    public void Embedded_signup_v4_launch_preserves_coexistence_configuration()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-embedded-signup.js"));
+
+        Assert.Contains("setup: {}", script);
+        Assert.Contains("featureType: 'whatsapp_business_app_onboarding'", script);
+        Assert.DoesNotContain("sessionInfoVersion", script);
+        Assert.Contains("FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING", script);
+        Assert.Contains("waba_id", script);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_accepts_json_string_finish_callback_without_requiring_version_three()
+    {
+        const string scenario = """
+            const session = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 4, data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify(session) });
+            JSON.stringify({
+                submitCount: form.submitCount,
+                eventType: inputElements['#whatsappSignupEventType']?.value,
+                businessAccountId: inputElements['#whatsappSignupWabaId']?.value,
+                authorizationCode: inputElements['#whatsappSignupCode']?.value,
+                configId: window.loginOptions?.config_id,
+                featureType: window.loginOptions?.extras?.featureType,
+                setup: window.loginOptions?.extras?.setup
+            });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
+        var root = state.RootElement;
+
+        Assert.Equal(1, root.GetProperty("submitCount").GetInt32());
+        Assert.Equal(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, root.GetProperty("eventType").GetString());
+        Assert.Equal("1234567890", root.GetProperty("businessAccountId").GetString());
+        Assert.Equal("one-time-code", root.GetProperty("authorizationCode").GetString());
+        Assert.Equal("987654321", root.GetProperty("configId").GetString());
+        Assert.Equal("whatsapp_business_app_onboarding", root.GetProperty("featureType").GetString());
+        Assert.True(root.GetProperty("setup").ValueKind == JsonValueKind.Object);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_accepts_object_finish_callback_without_session_version()
+    {
+        const string scenario = """
+            window.messageHandler({
+                origin: 'https://business.facebook.com',
+                data: { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                    data: { waba_id: '1234567890' } }
+            });
+            JSON.stringify({ submitCount: form.submitCount,
+                businessAccountId: inputElements['#whatsappSignupWabaId']?.value });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
+
+        Assert.Equal(1, state.RootElement.GetProperty("submitCount").GetInt32());
+        Assert.Equal("1234567890", state.RootElement.GetProperty("businessAccountId").GetString());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_rejects_unknown_incomplete_or_malformed_callbacks()
+    {
+        const string scenario = """
+            const finish = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 99, data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://facebook.com.attacker.example', data: JSON.stringify(finish) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: '{malformed-json' });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify([]) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, type: 'UNKNOWN' }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, event: 'FINISH' }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: null }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: {} }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: { waba_id: 1234567890 } }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, data: { waba_id: 'waba-test' } }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish,
+                data: { waba_id: '1'.repeat(129) } }) });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
+
+        Assert.Equal(0, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_submits_only_once_for_duplicate_valid_callbacks()
+    {
+        const string scenario = """
+            const finish = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 3, data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://www.facebook.com', data: finish });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({ ...finish, version: 4 }) });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario);
+
+        Assert.Equal(1, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_does_not_submit_without_oauth_code()
+    {
+        const string scenario = """
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({
+                type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                data: { waba_id: '1234567890' }
+            }) });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(scenario, "{ authResponse: {} }");
+
+        Assert.Equal(0, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_rejects_non_string_oauth_code()
+    {
+        const string scenario = """
+            window.messageHandler({ origin: 'https://www.facebook.com', data: {
+                type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                version: 3, data: { waba_id: '1234567890' }
+            } });
+            JSON.stringify({ submitCount: form.submitCount });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(
+            scenario,
+            "{ authResponse: { code: 1234567890 } }");
+
+        Assert.Equal(0, state.RootElement.GetProperty("submitCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Embedded_signup_v4_cancel_callback_does_not_reuse_previous_oauth_code()
+    {
+        const string scenario = """
+            const finish = { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+                data: { waba_id: '1234567890' } };
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify({
+                type: 'WA_EMBEDDED_SIGNUP', event: 'CANCEL', data: {}
+            }) });
+            window.messageHandler({ origin: 'https://www.facebook.com', data: finish });
+            const staleCodeWasRejected = form.submitCount === 0;
+            startButton.clickHandler();
+            window.messageHandler({ origin: 'https://www.facebook.com', data: JSON.stringify(finish) });
+            JSON.stringify({
+                staleCodeWasRejected,
+                submitCount: form.submitCount,
+                authorizationCode: inputElements['#whatsappSignupCode']?.value
+            });
+            """;
+
+        using var state = await EvaluateEmbeddedSignupScriptAsync(
+            scenario,
+            "loginCount === 1 ? { authResponse: { code: 'stale-code' } } : { authResponse: { code: 'fresh-code' } }");
+
+        Assert.True(state.RootElement.GetProperty("staleCodeWasRejected").GetBoolean());
+        Assert.Equal(1, state.RootElement.GetProperty("submitCount").GetInt32());
+        Assert.Equal("fresh-code", state.RootElement.GetProperty("authorizationCode").GetString());
     }
 
     [Fact]
@@ -167,7 +352,6 @@ public class WhatsAppEmbeddedSignupTests
             Enabled = true,
             EmbeddedSignupEnabled = true,
             PhoneNumberId = "legacy-phone-number",
-            EmbeddedSignupPhoneNumberId = "coexistence-phone-number",
             EmbeddedSignupDisplayPhoneNumber = "+5548920077785"
         });
         var provider = new WhatsAppPhoneNumberIdProvider(db, settings);
@@ -257,6 +441,43 @@ public class WhatsAppEmbeddedSignupTests
     }
 
     [Fact]
+    public async Task Embedded_signup_client_reads_all_pages_of_meta_phone_numbers()
+    {
+        var handler = new RecordingMetaHandler(request => request.RequestUri!.Query.Contains("after=cursor", StringComparison.Ordinal)
+            ? Json("""{"data":[{"id":"555000000005678","display_phone_number":"+55 48 99999-0000"}]}""")
+            : Json("""{"data":[{"id":"555000000001234","display_phone_number":"+55 48 92007-7785"}],"paging":{"next":"https://graph.facebook.com/v23.0/waba-test/phone_numbers?after=cursor&access_token=must-not-be-forwarded&appsecret_proof=must-not-be-forwarded"}}"""));
+        var client = new MetaWhatsAppEmbeddedSignupClient(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            Options.Create(ConfiguredOptions()));
+
+        var numbers = await client.GetPhoneNumbersAsync("waba-test", "authorized-token");
+
+        Assert.Equal(2, numbers.Count);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal("555000000001234", numbers[0].Id);
+        Assert.Equal("555000000005678", numbers[1].Id);
+        Assert.Contains("after=cursor", handler.Requests[1].RequestUri.Query);
+        Assert.DoesNotContain("access_token", handler.Requests[1].RequestUri.Query);
+        Assert.DoesNotContain("appsecret_proof", handler.Requests[1].RequestUri.Query);
+        Assert.All(handler.Requests, request => Assert.Equal("Bearer authorized-token", request.Authorization));
+    }
+
+    [Fact]
+    public async Task Embedded_signup_client_rejects_phone_number_pagination_to_another_host()
+    {
+        var handler = new RecordingMetaHandler(_ => Json("""{"data":[],"paging":{"next":"https://attacker.example/v23.0/waba-test/phone_numbers?after=cursor"}}"""));
+        var client = new MetaWhatsAppEmbeddedSignupClient(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            Options.Create(ConfiguredOptions()));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client.GetPhoneNumbersAsync("waba-test", "authorized-token"));
+
+        Assert.Single(handler.Requests);
+        Assert.Equal("graph.facebook.com", handler.Requests[0].RequestUri.Host);
+    }
+
+    [Fact]
     public async Task Embedded_signup_client_blocks_state_sync_request_until_the_official_contract_is_validated()
     {
         var handler = new RecordingMetaHandler(_ => Json("{}"));
@@ -281,32 +502,82 @@ public class WhatsAppEmbeddedSignupTests
             service.CompleteAsync("FINISH", "code", "123456789"));
 
         Assert.Equal(0, meta.ExchangeCount);
+        Assert.Equal(0, meta.PhoneNumbersRequestCount);
         Assert.Empty(db.WhatsAppBusinessConnections);
     }
 
     [Fact]
-    public async Task Embedded_signup_rejects_wrong_phone_id_or_display_number_before_subscribing()
+    public async Task Embedded_signup_rejects_when_meta_returns_no_matching_display_number()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var meta = new FakeMetaSignupClient
         {
-            PhoneNumbers = [new MetaWhatsAppPhoneNumber("another-number-id", "+5548920077785")]
+            PhoneNumbers = [new MetaWhatsAppPhoneNumber("1392450397288350", "+5548999999999")]
         };
         var service = CreateConnectionService(db, meta);
 
         await Assert.ThrowsAsync<WhatsAppEmbeddedSignupValidationException>(() =>
             service.CompleteAsync(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, "code", "123456789"));
 
+        Assert.Equal(1, meta.PhoneNumbersRequestCount);
         Assert.Equal(0, meta.SubscribeCount);
         Assert.Empty(db.WhatsAppBusinessConnections);
     }
 
     [Fact]
-    public async Task Embedded_signup_connects_configured_number_persists_only_protected_token_and_requests_history_only()
+    public async Task Embedded_signup_rejects_multiple_normalized_display_number_matches_before_subscribing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var meta = new FakeMetaSignupClient
+        {
+            PhoneNumbers =
+            [
+                new MetaWhatsAppPhoneNumber("1392450397288350", "+55 48 92007-7785"),
+                new MetaWhatsAppPhoneNumber("1425306064001765", "+5548920077785")
+            ]
+        };
+        var service = CreateConnectionService(db, meta);
+
+        await Assert.ThrowsAsync<WhatsAppEmbeddedSignupValidationException>(() =>
+            service.CompleteAsync(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, "code", "123456789"));
+
+        Assert.Equal(1, meta.PhoneNumbersRequestCount);
+        Assert.Equal(0, meta.SubscribeCount);
+        Assert.Empty(db.WhatsAppBusinessConnections);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_rejects_non_numeric_meta_phone_number_id_before_subscribing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var meta = new FakeMetaSignupClient
+        {
+            PhoneNumbers = [new MetaWhatsAppPhoneNumber("invalid-id", "+55 48 92007-7785")]
+        };
+        var service = CreateConnectionService(db, meta);
+
+        await Assert.ThrowsAsync<WhatsAppEmbeddedSignupValidationException>(() =>
+            service.CompleteAsync(WhatsAppEmbeddedSignupEvents.FinishBusinessAppOnboarding, "code", "123456789"));
+
+        Assert.Equal(1, meta.PhoneNumbersRequestCount);
+        Assert.Equal(0, meta.SubscribeCount);
+        Assert.Empty(db.WhatsAppBusinessConnections);
+    }
+
+    [Fact]
+    public async Task Embedded_signup_connects_uniquely_matched_number_persists_only_protected_token_and_requests_history_only()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         const string accessToken = "connected-meta-token-private";
-        var meta = new FakeMetaSignupClient { AccessToken = accessToken };
+        var meta = new FakeMetaSignupClient
+        {
+            AccessToken = accessToken,
+            PhoneNumbers =
+            [
+                new MetaWhatsAppPhoneNumber("555000000001234", "+55 48 92007-7785"),
+                new MetaWhatsAppPhoneNumber("555000000005678", "+55 48 99999-0000")
+            ]
+        };
         var protector = new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider());
         var settings = Options.Create(ConfiguredOptions());
         var service = new WhatsAppBusinessConnectionService(db, meta, protector, settings);
@@ -320,7 +591,7 @@ public class WhatsAppEmbeddedSignupTests
         Assert.True(result.Connected);
         Assert.False(result.ContactsSyncRequested);
         Assert.True(result.HistorySyncRequested);
-        Assert.Equal("1392450397288350", connection.PhoneNumberId);
+        Assert.Equal("555000000001234", connection.PhoneNumberId);
         Assert.Equal("+55 48 92007-7785", connection.DisplayPhoneNumber);
         Assert.Equal("legacy-phone-id", settings.Value.PhoneNumberId);
         Assert.NotEqual(accessToken, connection.ProtectedAccessToken);
@@ -350,19 +621,90 @@ public class WhatsAppEmbeddedSignupTests
     private static WhatsAppBusinessConnectionService CreateConnectionService(ApplicationDbContext db, FakeMetaSignupClient meta) =>
         new(db, meta, new WhatsAppAccessTokenProtector(new EphemeralDataProtectionProvider()), Options.Create(ConfiguredOptions()));
 
+    private static async Task<JsonDocument> EvaluateEmbeddedSignupScriptAsync(
+        string scenario,
+        string authorizationResponse = "{ authResponse: { code: 'one-time-code' } }")
+    {
+        var script = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "Orofoods.Web",
+            "wwwroot",
+            "js",
+            "whatsapp-embedded-signup.js"));
+        const string harness = """
+            const inputElements = {};
+            const form = {
+                submitCount: 0,
+                querySelector(selector) { return inputElements[selector] ??= { value: '' }; },
+                requestSubmit() { this.submitCount++; }
+            };
+            const startButton = {
+                disabled: false,
+                addEventListener(name, callback) { this.clickHandler = callback; }
+            };
+            const status = { textContent: '' };
+            const configNode = { textContent: '{"appId":"123456789","configurationId":"987654321","graphApiVersion":"v26.0"}' };
+            globalThis.window = globalThis;
+            globalThis.URL = class {
+                constructor(value) {
+                    const separator = value.indexOf('://');
+                    if (separator <= 0) throw new Error('Invalid URL');
+                    this.protocol = `${value.substring(0, separator)}:`;
+                    this.hostname = value.substring(separator + 3).split('/')[0].split(':')[0];
+                }
+            };
+            window.addEventListener = (name, callback) => { window.messageHandler = callback; };
+            globalThis.document = {
+                getElementById(id) {
+                    return ({ whatsappEmbeddedSignupConfig: configNode, whatsappEmbeddedSignupForm: form,
+                        whatsappEmbeddedSignupStart: startButton, whatsappEmbeddedSignupStatus: status })[id] ?? null;
+                },
+                createElement() { return {}; },
+                head: { appendChild() {} }
+            };
+            let loginCount = 0;
+            globalThis.FB = {
+                init() {},
+                login(callback, options) {
+                    loginCount++;
+                    window.loginOptions = options;
+                    callback(__AUTH_RESPONSE__);
+                }
+            };
+            __SCRIPT__
+            window.fbAsyncInit();
+            startButton.clickHandler();
+            __SCENARIO__
+            """;
+        var testScript = harness
+            .Replace("__AUTH_RESPONSE__", authorizationResponse, StringComparison.Ordinal)
+            .Replace("__SCRIPT__", script, StringComparison.Ordinal)
+            .Replace("__SCENARIO__", scenario, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(testScript);
+        return JsonDocument.Parse(result.AsString());
+    }
+
     private static WhatsAppBusinessOptions ConfiguredOptions() => new()
     {
         Enabled = true,
         EmbeddedSignupEnabled = true,
         GraphApiVersion = "v23.0",
         PhoneNumberId = "legacy-phone-id",
-        EmbeddedSignupPhoneNumberId = "1392450397288350",
         EmbeddedSignupDisplayPhoneNumber = "+5548920077785",
-        EmbeddedSignupAppId = "public-app-id",
-        EmbeddedSignupConfigId = "public-login-config-id",
+        EmbeddedSignupAppId = "123456789012345",
+        EmbeddedSignupConfigId = "987654321098765",
         AppSecret = "app-secret-private",
         VerifyToken = "verify-token-private"
     };
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Orofoods.Web", "Orofoods.Web.csproj")))
+            directory = directory.Parent;
+
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Orofoods repository root was not found.");
+    }
 
     private static HttpResponseMessage Json(string json) => new(HttpStatusCode.OK)
     {
@@ -372,6 +714,7 @@ public class WhatsAppEmbeddedSignupTests
     private sealed class FakeMetaSignupClient : IMetaWhatsAppEmbeddedSignupClient
     {
         public int ExchangeCount { get; private set; }
+        public int PhoneNumbersRequestCount { get; private set; }
         public int SubscribeCount { get; private set; }
         public string AccessToken { get; init; } = "fake-meta-token";
         public IReadOnlyList<MetaWhatsAppPhoneNumber> PhoneNumbers { get; init; } = [new("1392450397288350", "+55 48 92007-7785")];
@@ -383,8 +726,11 @@ public class WhatsAppEmbeddedSignupTests
             return Task.FromResult(AccessToken);
         }
 
-        public Task<IReadOnlyList<MetaWhatsAppPhoneNumber>> GetPhoneNumbersAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default) =>
-            Task.FromResult(PhoneNumbers);
+        public Task<IReadOnlyList<MetaWhatsAppPhoneNumber>> GetPhoneNumbersAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default)
+        {
+            PhoneNumbersRequestCount++;
+            return Task.FromResult(PhoneNumbers);
+        }
 
         public Task SubscribeAppAsync(string businessAccountId, string accessToken, CancellationToken cancellationToken = default)
         {
