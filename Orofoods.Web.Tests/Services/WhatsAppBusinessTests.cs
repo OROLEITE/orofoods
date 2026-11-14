@@ -995,6 +995,22 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Index_does_not_select_a_conversation_outside_the_current_seller_scope()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (user, ownConversation) = await CreateAssignedConversationAsync(db, userId: "user-a");
+        var (_, otherConversation) = await CreateAssignedConversationAsync(db, userId: "user-b", phoneNumber: "5511000000002");
+        var controller = CreateController(db, user.Id, new TrackingWhatsAppGateway());
+
+        var result = Assert.IsType<ViewResult>(await controller.Index(otherConversation.Id, CancellationToken.None));
+        var model = Assert.IsType<WhatsAppInboxViewModel>(result.Model);
+
+        Assert.Null(model.Selected);
+        Assert.Contains(model.Conversations, conversation => conversation.Id == ownConversation.Id);
+        Assert.DoesNotContain(model.Conversations, conversation => conversation.Id == otherConversation.Id);
+    }
+
+    [Fact]
     public async Task Updates_returns_each_recent_message_once_without_rendering_a_full_page()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

@@ -241,6 +241,30 @@ public sealed class WhatsAppCrmOperationsTests
     }
 
     [Fact]
+    public async Task Index_with_conversation_id_loads_that_history_and_its_current_service_window()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var inboundAt = new DateTime(2026, 11, 13, 12, 0, 0, DateTimeKind.Utc);
+        var target = new WhatsAppConversation { PhoneNumber = "5511999990000", LastInboundAt = inboundAt };
+        var other = new WhatsAppConversation { PhoneNumber = "5511999990001", LastInboundAt = inboundAt.AddHours(-25) };
+        db.AddRange(
+            target,
+            other,
+            new WhatsAppMessage { Conversation = target, Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Histórico selecionado" },
+            new WhatsAppMessage { Conversation = other, Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Histórico incorreto" });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, new TrackingGateway(), timeProvider: new FixedTimeProvider(inboundAt.AddHours(1)));
+
+        var result = Assert.IsType<ViewResult>(await controller.Index(target.Id, CancellationToken.None, markAsRead: false));
+        var model = Assert.IsType<WhatsAppInboxViewModel>(result.Model);
+
+        Assert.Equal(target.Id, model.Selected!.Id);
+        Assert.True(model.ServiceWindowOpen);
+        Assert.Single(model.Messages);
+        Assert.Equal("Histórico selecionado", model.Messages[0].TextBody);
+    }
+
+    [Fact]
     public async Task Start_conversation_normalizes_an_ad_hoc_number_and_reuses_the_existing_history()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
