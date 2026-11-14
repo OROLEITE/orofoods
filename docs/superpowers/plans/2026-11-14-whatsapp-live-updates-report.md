@@ -4,6 +4,13 @@
 
 Implementação local no worktree `fix/whatsapp-crm-auto-refresh`, baseado em `origin/main` no commit `bc85ae2c5696b7a3b38e982a310771c5b9795df2`. Não houve publicação, acesso a Produção/Staging, alteração de banco real ou mudança de Meta/WMC.
 
+## Reconciliação da correção publicada do sininho
+
+- `origin/main` local e `main` consultado no GitHub continuam em `bc85ae2c5696b7a3b38e982a310771c5b9795df2`.
+- O commit `373c8c2b1b3ec77408a9edeecd64b820bebcbcf2` existe no repositório local como `fix/whatsapp-notification-conversation-navigation`, mas não está em `origin/main`, não foi encontrado no GitHub remoto e não é ancestral desta branch.
+- A funcionalidade do commit foi preservada: o produtor usa `/Admin/WhatsApp?id={conversation.Id}` e as regressões de URL, histórico/janela de 24 horas e autorização de vendedor foram reincorporadas e passaram em 118 testes focados.
+- Portanto, não há publicação nova proposta sobre uma base que descarte essa correção; os commits locais `c1de5d8` e `50a894d` mantêm o comportamento e a cobertura.
+
 ## Diagnóstico
 
 - O webhook já persistia mensagens com deduplicação por `ExternalMessageId`, mas descartava `contacts[].profile.name`.
