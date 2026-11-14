@@ -15,6 +15,7 @@ public class WhatsAppConversation
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }
     [MaxLength(30)] public string PhoneNumber { get; set; } = "";
+    [MaxLength(256)] public string? ProfileName { get; set; }
     public string? AssignedUserId { get; set; }
     public ApplicationUser? AssignedUser { get; set; }
     public WhatsAppConversationStatus Status { get; set; } = WhatsAppConversationStatus.Pending;

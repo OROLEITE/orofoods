@@ -163,12 +163,15 @@ public class WhatsAppController(
             conversations = conversations.Select(item =>
             {
                 latest.TryGetValue(item.Id, out var lastMessage);
+                var profileName = item.ProfileName;
+                var displayName = profileName ?? item.PhoneNumber;
                 return new
                 {
                     item.Id,
-                    name = item.Customer?.TradeName ?? item.PhoneNumber,
+                    name = displayName,
                     phoneNumber = item.PhoneNumber,
-                    initials = Initials(item.Customer?.TradeName),
+                    initials = Initials(profileName),
+                    profileName,
                     identified = item.CustomerId.HasValue,
                     preview = Preview(lastMessage),
                     messageType = lastMessage?.Type.ToString().ToLowerInvariant(),
@@ -376,26 +379,26 @@ public class WhatsAppController(
         if (conversation.Status == WhatsAppConversationStatus.Closed)
         {
             TempData["WhatsAppError"] = "Conversa fechada. Reabra ou abra uma nova conversa antes de enviar.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         var cleanedText = text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(cleanedText) || cleanedText.Length > 4096)
         {
             TempData["WhatsAppError"] = "Informe uma mensagem válida de até 4.096 caracteres.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         if (!WhatsAppServiceWindow.IsOpen(conversation.LastInboundAt, CurrentUtcNow()))
         {
             TempData["WhatsAppError"] = "A janela de atendimento de 24 horas encerrou. Consulte um modelo aprovado para retomar a conversa.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         if (!TryNormalizeClientRequestId(clientRequestId, out var normalizedRequestId))
         {
             TempData["WhatsAppError"] = "Não foi possível validar o identificador desta mensagem. Atualize a conversa e tente novamente.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         return await PersistAndSendAsync(
@@ -423,17 +426,17 @@ public class WhatsAppController(
         if (conversation.Status == WhatsAppConversationStatus.Closed)
         {
             TempData["WhatsAppError"] = "Conversa fechada. Reabra o atendimento antes de enviar.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
         if (WhatsAppServiceWindow.IsOpen(conversation.LastInboundAt, CurrentUtcNow()))
         {
             TempData["WhatsAppError"] = "A janela de atendimento está aberta. Envie uma mensagem livre nesta conversa.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
         if (!TryNormalizeClientRequestId(clientRequestId, out var normalizedRequestId))
         {
             TempData["WhatsAppError"] = "Não foi possível validar o identificador desta mensagem.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         var body = NormalizeTemplateParameters(bodyParameters);
@@ -446,12 +449,12 @@ public class WhatsAppController(
         catch (InvalidOperationException)
         {
             TempData["WhatsAppError"] = "Não foi possível consultar os modelos aprovados. Tente novamente.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
         catch (HttpRequestException)
         {
             TempData["WhatsAppError"] = "Não foi possível consultar os modelos aprovados. Tente novamente.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         var template = approvedTemplates.SingleOrDefault(item =>
@@ -461,7 +464,7 @@ public class WhatsAppController(
             body.Any(string.IsNullOrWhiteSpace) || header.Any(string.IsNullOrWhiteSpace))
         {
             TempData["WhatsAppError"] = "Selecione um modelo aprovado e preencha todos os parâmetros solicitados.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         var renderedHeader = RenderTemplateText(template.HeaderText, header, template.HeaderParameterNames);
@@ -470,7 +473,7 @@ public class WhatsAppController(
         if (historyText.Length > 4096)
         {
             TempData["WhatsAppError"] = "O conteúdo deste modelo excede o limite aceito para o histórico.";
-            return RedirectToAction(nameof(Index), new { id = conversationId });
+            return SendOutcome(conversationId);
         }
 
         return await PersistAndSendAsync(
@@ -501,7 +504,7 @@ public class WhatsAppController(
         if (existing is not null)
         {
             ReportDuplicateSendOutcome(existing, conversation.Id);
-            return RedirectToAction(nameof(Index), new { id = conversation.Id });
+            return SendOutcome(conversation.Id, existing.ConversationId == conversation.Id ? existing : null);
         }
 
         var now = CurrentUtcNow();
@@ -528,7 +531,7 @@ public class WhatsAppController(
             if (existing is null)
                 throw;
             ReportDuplicateSendOutcome(existing, conversation.Id);
-            return RedirectToAction(nameof(Index), new { id = conversation.Id });
+            return SendOutcome(conversation.Id, existing.ConversationId == conversation.Id ? existing : null);
         }
 
         WhatsAppSendResult result;
@@ -546,7 +549,7 @@ public class WhatsAppController(
             message.ErrorMessage = "O resultado do envio ainda não foi confirmado.";
             await db.SaveChangesAsync(cancellationToken);
             TempData["WhatsAppError"] = "Não foi possível confirmar o envio. A mensagem permanece pendente para evitar duplicidade; atualize o histórico antes de tentar novamente.";
-            return RedirectToAction(nameof(Index), new { id = conversation.Id });
+            return SendOutcome(conversation.Id, message);
         }
 
         if (string.Equals(result.ErrorCode, "UNKNOWN", StringComparison.Ordinal) ||
@@ -556,7 +559,7 @@ public class WhatsAppController(
             message.ErrorMessage = "O resultado do envio ainda não foi confirmado.";
             await db.SaveChangesAsync(cancellationToken);
             TempData["WhatsAppError"] = "Não foi possível confirmar o envio. A mensagem permanece pendente para evitar duplicidade; atualize o histórico antes de tentar novamente.";
-            return RedirectToAction(nameof(Index), new { id = conversation.Id });
+            return SendOutcome(conversation.Id, message);
         }
 
         if (!result.Succeeded)
@@ -567,7 +570,7 @@ public class WhatsAppController(
             message.ErrorMessage = "Não foi possível confirmar o envio da mensagem.";
             await db.SaveChangesAsync(cancellationToken);
             TempData["WhatsAppError"] = message.ErrorMessage;
-            return RedirectToAction(nameof(Index), new { id = conversation.Id });
+            return SendOutcome(conversation.Id, message);
         }
 
         var sentAt = CurrentUtcNow();
@@ -578,7 +581,17 @@ public class WhatsAppController(
         conversation.LastMessageAt = sentAt;
         conversation.UpdatedAt = sentAt;
         await db.SaveChangesAsync(cancellationToken);
-        return RedirectToAction(nameof(Index), new { id = conversation.Id });
+        return SendOutcome(conversation.Id, message);
+    }
+
+    private IActionResult SendOutcome(long conversationId, WhatsAppMessage? message = null)
+    {
+        if (!Request.Headers.Accept.Any(value => value?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true))
+            return RedirectToAction(nameof(Index), new { id = conversationId });
+        var error = TempData["WhatsAppError"] as string;
+        TempData.Remove("WhatsAppError");
+        Response.Headers.CacheControl = "no-store";
+        return Json(new { message = message is null ? null : MessagePayload(message), error });
     }
 
     private void ReportDuplicateSendOutcome(WhatsAppMessage existing, long conversationId)
@@ -764,6 +777,7 @@ public class WhatsAppController(
     {
         message.Id,
         message.ConversationId,
+        message.ClientRequestId,
         direction = message.Direction.ToString().ToLowerInvariant(),
         type = message.Type.ToString().ToLowerInvariant(),
         message.TextBody,

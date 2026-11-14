@@ -5,7 +5,7 @@
 @{
     ViewData["Title"] = "WhatsApp";
     var selected = Model.Selected;
-    var selectedName = selected?.Customer?.TradeName ?? selected?.PhoneNumber;
+    var selectedName = selected is null ? null : selected.ProfileName ?? selected.PhoneNumber;
     var hasExplicitSelection = selected is not null && Context.Request.Query.ContainsKey("id");
 }
 
@@ -46,6 +46,7 @@
 }
 
 <section class="section whatsapp-inbox-page @(selected is null ? "" : "has-selection") @(hasExplicitSelection ? "has-explicit-selection" : "")"
+         data-conversation-id="@selected?.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })"
          data-service-window-open="@Model.ServiceWindowOpen.ToString().ToLowerInvariant()"
          data-conversation-status="@(selected?.Status.ToString().ToLowerInvariant() ?? "")"
          aria-label="Atendimento WhatsApp">
@@ -65,11 +66,10 @@
                 {
                     <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="WhatsAppEmbeddedSignup" asp-action="Connect">Conectar número</a>
                 }
-                <button type="button" class="whatsapp-sound-toggle" aria-pressed="true" aria-label="Som ligado" title="Som ligado"><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Som ligado</span></button>
-                <span class="whatsapp-channel-badge"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Atendimento</span>
             </div>
         </header>
 
+        <p id="whatsappSyncFeedback" class="whatsapp-sync-feedback" role="status" aria-live="polite" hidden></p>
         <div class="whatsapp-inbox">
             <aside class="whatsapp-conversations" aria-label="Lista de conversas">
                 <header class="whatsapp-panel-heading">
@@ -87,7 +87,7 @@
                 <nav class="whatsapp-conversation-list" aria-label="Conversas recentes">
                     @foreach (var conversation in Model.Conversations)
                     {
-                        var contactName = conversation.Customer?.TradeName;
+                        var contactName = conversation.ProfileName;
                         var contactLabel = contactName ?? conversation.PhoneNumber;
                         var hasUnread = conversation.UnreadCount > 0;
                         Model.LatestMessages.TryGetValue(conversation.Id, out var latestMessage);
@@ -190,21 +190,12 @@
                             @(selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open ? "Em atendimento" : selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending ? "Novo" : "Finalizado")
                         </span>
                         <div class="whatsapp-thread-actions">
-                            @if (selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Pending)
+                            <form asp-action="Claim" method="post" data-conversation-action="pending" hidden="@(selected.Status != WhatsAppConversationStatus.Pending)"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm whatsapp-primary-action" type="submit">Assumir atendimento</button></form>
+                            <form asp-action="Close" method="post" data-conversation-action="open" hidden="@(selected.Status != WhatsAppConversationStatus.Open)"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm whatsapp-primary-action" type="submit">Finalizar atendimento</button></form>
+                            <form asp-action="Reopen" method="post" data-conversation-action="closed" hidden="@(selected.Status != WhatsAppConversationStatus.Closed)"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm whatsapp-primary-action" type="submit">Reabrir atendimento</button></form>
+                            @if (Model.TransferCandidates is { Count: > 0 })
                             {
-                                <form asp-action="Claim" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm whatsapp-primary-action" type="submit">Assumir atendimento</button></form>
-                            }
-                            else if (selected.Status == Orofoods.Web.Models.Commercial.WhatsAppConversationStatus.Open)
-                            {
-                                <form asp-action="Close" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm whatsapp-primary-action" type="submit">Finalizar atendimento</button></form>
-                            }
-                            else if (selected.Status == WhatsAppConversationStatus.Closed)
-                            {
-                                <form asp-action="Reopen" method="post"><input type="hidden" name="conversationId" value="@selected.Id" /><button class="btn btn-sm whatsapp-primary-action" type="submit">Reabrir atendimento</button></form>
-                            }
-                            @if (selected.Status != WhatsAppConversationStatus.Closed && Model.TransferCandidates is { Count: > 0 })
-                            {
-                                <form asp-action="Transfer" method="post" class="whatsapp-transfer-form">
+                                <form asp-action="Transfer" method="post" class="whatsapp-transfer-form" hidden="@(selected.Status == WhatsAppConversationStatus.Closed)">
                                     <input type="hidden" name="conversationId" value="@selected.Id" />
                                     <label class="visually-hidden" for="whatsappTransferTarget">Transferir para atendente</label>
                                     <select id="whatsappTransferTarget" name="targetUserId" required aria-label="Transferir para atendente">
@@ -250,7 +241,7 @@
                                     Orofoods.Web.Models.Commercial.WhatsAppMessageStatus.Failed => "fa-circle-exclamation",
                                     _ => "fa-arrow-down"
                                 };
-                                <article class="whatsapp-message whatsapp-message--@(isOutbound ? "outbound" : "inbound") whatsapp-message--@message.Type.ToString().ToLowerInvariant()" data-message-id="@message.Id" data-message-status="@message.Status.ToString().ToLowerInvariant()">
+                                <article class="whatsapp-message whatsapp-message--@(isOutbound ? "outbound" : "inbound") whatsapp-message--@message.Type.ToString().ToLowerInvariant()" data-message-id="@message.Id" data-client-request-id="@message.ClientRequestId" data-created-at="@ToUtcIso(message.CreatedAt)" data-message-status="@message.Status.ToString().ToLowerInvariant()">
                                     @if (message.MediaState == Orofoods.Web.Models.Commercial.WhatsAppMediaState.Available)
                                     {
                                         var mediaUrl = Url.Action("Media", "WhatsApp", new { area = "Admin", messageId = message.Id });
@@ -330,17 +321,11 @@
 
                     <button class="whatsapp-new-message" type="button" hidden><i class="fa-solid fa-arrow-down" aria-hidden="true"></i> Nova mensagem</button>
 
-                    @if (selected.Status == WhatsAppConversationStatus.Closed)
-                    {
-                        <div class="whatsapp-polling-context" data-conversation-id="@selected.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })" hidden></div>
-                        <div class="whatsapp-composer-locked" role="status">
+                        <div class="whatsapp-composer-locked" role="status" hidden="@(selected.Status != WhatsAppConversationStatus.Closed)">
                             <strong>Atendimento finalizado</strong>
                             <span>Reabra a conversa para continuar o histórico.</span>
                         </div>
-                    }
-                    else if (Model.ServiceWindowOpen)
-                    {
-                        <form asp-action="Send" method="post" class="whatsapp-compose" data-conversation-id="@selected.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })">
+                        <form asp-action="Send" method="post" class="whatsapp-compose" hidden="@(selected.Status == WhatsAppConversationStatus.Closed || !Model.ServiceWindowOpen)" data-conversation-id="@selected.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })">
                             <input type="hidden" name="conversationId" value="@selected.Id" />
                             <input type="hidden" name="clientRequestId" value="@Guid.NewGuid().ToString("N")" />
                             <label for="whatsappText">Mensagem livre · janela de 24 horas</label>
@@ -352,12 +337,10 @@
                             {
                                 <p class="whatsapp-send-feedback whatsapp-send-feedback--error" role="alert">@sendError</p>
                             }
-                            <p class="whatsapp-send-feedback" id="whatsappSendFeedback" role="status" aria-live="polite" hidden></p>
+                            <p class="whatsapp-send-feedback" role="status" aria-live="polite" hidden></p>
                         </form>
-                    }
-                    else
-                    {
                         <form asp-action="SendTemplate" method="post" class="whatsapp-compose whatsapp-template-compose"
+                              hidden="@(selected.Status == WhatsAppConversationStatus.Closed || Model.ServiceWindowOpen)"
                               data-conversation-id="@selected.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })"
                               data-templates-url="@Url.Action("Templates", "WhatsApp", new { area = "Admin", conversationId = selected.Id })">
                             <input type="hidden" name="conversationId" value="@selected.Id" />
@@ -388,7 +371,6 @@
                             }
                             <p class="whatsapp-send-feedback" id="whatsappSendFeedback" role="status" aria-live="polite" hidden></p>
                         </form>
-                    }
                 }
             </section>
 

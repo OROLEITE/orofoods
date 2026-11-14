@@ -1,0 +1,45 @@
+.global-notification-menu [hidden] { display: none !important; }
+.global-notification-menu .global-notification-panel { z-index: 1100; }
+.global-notification-menu form { margin: 0; }
+.global-notification-menu .global-notification-item {
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid #edf0eb;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+.global-notification-menu .global-notification-item.is-unread { background: #fffaf0; }
+.global-notification-menu .global-notification-item:hover { background: #f4f6f2; }
+.global-notification-menu .global-notification-read-all,
+.global-notification-menu .whatsapp-sound-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.global-notification-menu .global-notification-read-all { margin: 10px 15px; }
+.global-notification-menu .whatsapp-sound-toggle[aria-pressed="true"] { background: #0e7490; border-color: #0e7490; color: #fff; }
+.global-notification-menu .global-notification-status { margin: 0; padding: 12px 15px; color: #a33425; font-size: 12px; }
+.global-notification-menu .global-notification-panel > footer { flex-wrap: wrap; }
+.global-notification-menu button:focus-visible { outline: 3px solid #d9a22a; outline-offset: -3px; }
+html[data-theme="dark"] .global-notification-menu .global-notification-panel { background: #17212b; border-color: #344454; color: #e2e8f0; }
+html[data-theme="dark"] .global-notification-menu .global-notification-item { color: #e2e8f0; border-color: #344454; }
+html[data-theme="dark"] .global-notification-menu .global-notification-item.is-unread { background: #243542; }
+html[data-theme="dark"] .global-notification-menu .global-notification-item:hover { background: #304554; }
+html[data-theme="dark"] .global-notification-menu .global-notification-item small,
+html[data-theme="dark"] .global-notification-menu .global-notification-item time { color: #b6c5d2; }
+html[data-theme="dark"] .global-notification-menu .global-notification-read-all,
+html[data-theme="dark"] .global-notification-menu .whatsapp-sound-toggle[aria-pressed="false"] { background: #243542; border-color: #607284; color: #e2e8f0; }
+html[data-theme="dark"] .global-notification-menu .global-notification-status { color: #fca5a5; }

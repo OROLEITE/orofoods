@@ -747,6 +747,110 @@ public sealed class WhatsAppCrmOperationsTests
         };
     }
 
+    [Theory]
+    [InlineData(true, "sent")]
+    [InlineData(false, "failed")]
+    public async Task Async_send_returns_the_persisted_message_and_replays_without_duplicate(bool succeeds, string status)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var conversation = new WhatsAppConversation { PhoneNumber = "5511993456789", LastInboundAt = DateTime.UtcNow };
+        db.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway { NextResult = new(succeeds, succeeds ? "wamid.live-send" : null, succeeds ? null : "REJECTED", null) };
+        var controller = CreateController(db, gateway);
+        controller.Request.Headers.Accept = "application/json";
+        var requestId = Guid.NewGuid().ToString("N");
+        var first = Assert.IsType<JsonResult>(await controller.Send(conversation.Id, "Resposta imediata", CancellationToken.None, requestId));
+        var replay = Assert.IsType<JsonResult>(await controller.Send(conversation.Id, "Resposta imediata", CancellationToken.None, requestId));
+        using var payload = JsonDocument.Parse(JsonSerializer.Serialize(first.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        using var repeated = JsonDocument.Parse(JsonSerializer.Serialize(replay.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var message = payload.RootElement.GetProperty("message");
+        Assert.Equal(status, message.GetProperty("status").GetString());
+        Assert.Equal("Resposta imediata", message.GetProperty("textBody").GetString());
+        Assert.Equal(requestId, message.GetProperty("clientRequestId").GetString());
+        Assert.Equal(message.GetProperty("id").GetInt64(), repeated.RootElement.GetProperty("message").GetProperty("id").GetInt64());
+        Assert.Single(db.WhatsAppMessages);
+        Assert.Equal(1, gateway.TextCalls);
+    }
+
+    [Fact]
+    public async Task Profile_from_matching_webhook_contact_is_independent_of_customer_registration()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = new WhatsAppConversationService(db, Options.Create(new WhatsAppBusinessOptions { Enabled = true }), new UserNotificationService(db));
+        using var document = JsonDocument.Parse("""
+            {"entry":[{"changes":[{"value":{
+              "contacts":[{"wa_id":"5511987654321","profile":{"name":"Pessoa errada"}},{"wa_id":"5511976543210","profile":{"name":"  Maria da Silva  "}}],
+              "messages":[{"id":"wamid.profile.live","from":"5511976543210","type":"text","text":{"body":"Olá"}}]
+            }}]}]}
+            """);
+        await service.ProcessAsync(document);
+        var conversation = Assert.Single(db.WhatsAppConversations);
+        var controller = CreateController(db, new TrackingGateway());
+        var result = Assert.IsType<JsonResult>(await controller.Updates(conversation.Id, CancellationToken.None));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal("Maria da Silva", json.RootElement.GetProperty("conversations")[0].GetProperty("name").GetString());
+        Assert.False(json.RootElement.GetProperty("conversations")[0].GetProperty("identified").GetBoolean());
+        Assert.Null(conversation.CustomerId);
+    }
+
+    [Fact]
+    public async Task Async_send_unknown_result_keeps_same_pending_message_on_retry()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var conversation = new WhatsAppConversation { PhoneNumber = "5511993456788", LastInboundAt = DateTime.UtcNow };
+        db.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway { NextException = new HttpRequestException("offline") };
+        var controller = CreateController(db, gateway);
+        controller.Request.Headers.Accept = "application/json";
+        var requestId = Guid.NewGuid().ToString("N");
+        await controller.Send(conversation.Id, "Não duplicar", CancellationToken.None, requestId);
+        var retry = Assert.IsType<JsonResult>(await controller.Send(conversation.Id, "Não duplicar", CancellationToken.None, requestId));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(retry.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal("pending", json.RootElement.GetProperty("message").GetProperty("status").GetString());
+        Assert.Single(db.WhatsAppMessages);
+        Assert.Equal(1, gateway.TextCalls);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Async_send_preserves_closed_conversation_and_24_hour_guards(bool closed)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var conversation = new WhatsAppConversation { PhoneNumber = "5511993456787", LastInboundAt = DateTime.UtcNow.AddHours(-25), Status = closed ? WhatsAppConversationStatus.Closed : WhatsAppConversationStatus.Open };
+        db.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway();
+        var controller = CreateController(db, gateway);
+        controller.Request.Headers.Accept = "application/json";
+        var result = Assert.IsType<JsonResult>(await controller.Send(conversation.Id, "Bloqueada", CancellationToken.None, Guid.NewGuid().ToString("N")));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("message").ValueKind);
+        Assert.False(string.IsNullOrWhiteSpace(json.RootElement.GetProperty("error").GetString()));
+        Assert.Empty(db.WhatsAppMessages);
+        Assert.Equal(0, gateway.TextCalls);
+    }
+
+    [Theory]
+    [InlineData("Pessoa errada")]
+    [InlineData(null)]
+    public async Task Unmatched_or_missing_profile_keeps_phone_fallback(string? name)
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = new WhatsAppConversationService(db, Options.Create(new WhatsAppBusinessOptions { Enabled = true }), new UserNotificationService(db));
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(new { entry = new[] { new { changes = new[] { new { value = new {
+            contacts = new[] { new { wa_id = "5511987654321", profile = new { name } } },
+            messages = new[] { new { id = "wamid.profile.fallback", from = "5511912345654", type = "text", text = new { body = "Olá" } } }
+        } } } } } }));
+        await service.ProcessAsync(document);
+        var conversation = Assert.Single(db.WhatsAppConversations);
+        var result = Assert.IsType<JsonResult>(await CreateController(db, new TrackingGateway()).Updates(conversation.Id, CancellationToken.None));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal("5511912345654", json.RootElement.GetProperty("conversations")[0].GetProperty("name").GetString());
+    }
+
     private static StringContent JsonContent(string value) => new(value, Encoding.UTF8, "application/json");
 
     private sealed class FixedAccessTokenProvider : IWhatsAppAccessTokenProvider

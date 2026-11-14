@@ -69,7 +69,7 @@ public class WhatsAppThemeSurfaceTests
     [Fact]
     public void Sound_toggle_uses_light_dark_tokens_for_each_state_without_changing_its_script()
     {
-        var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
+        var markup = Read("Orofoods.Web", "Views", "Shared", "_NotificationBell.cshtml");
         var css = Read("Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css");
         var script = Read("Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js");
 
