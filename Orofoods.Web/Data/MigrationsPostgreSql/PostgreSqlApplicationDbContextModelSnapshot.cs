@@ -780,6 +780,10 @@ namespace Orofoods.Web.Data.MigrationsPostgreSql
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<string>("ProfileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 

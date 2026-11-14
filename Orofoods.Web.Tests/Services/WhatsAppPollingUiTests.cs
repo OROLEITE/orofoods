@@ -21,7 +21,7 @@ public class WhatsAppPollingUiTests
         Assert.Contains("article.dataset.messageId", script);
         Assert.Contains("textarea.value === submittedText", script);
         Assert.Contains("textarea.value = ''", script);
-        Assert.Contains("window.location.reload()", script);
+        Assert.DoesNotContain("window.location.reload()", script);
         Assert.Contains("payload.serviceWindowOpen", script);
     }
 
@@ -47,7 +47,7 @@ public class WhatsAppPollingUiTests
         Assert.DoesNotContain("orofoods.crm.theme", layout);
         Assert.DoesNotContain("orofoods.crm.theme", script);
         Assert.DoesNotContain("whatsapp-theme-toggle", view);
-        Assert.Contains("whatsapp-sound-toggle", view);
+        Assert.Contains("whatsapp-sound-toggle", ReadText(Path.Combine(root, "Orofoods.Web", "Views", "Shared", "_NotificationBell.cshtml")));
         Assert.Contains("html[data-theme=\"dark\"]:has(.whatsapp-inbox-page)", styles);
         Assert.Contains("--crm-page-bg", styles);
         Assert.Contains("--crm-chat-bg", styles);
@@ -92,7 +92,7 @@ public class WhatsAppPollingUiTests
         Assert.Contains("<section class=\"section whatsapp-inbox-page", view);
         Assert.Contains("<header class=\"whatsapp-page-heading\">", view);
         Assert.Contains("<div class=\"whatsapp-header-actions\">", view);
-        Assert.Contains("class=\"whatsapp-sound-toggle\" aria-pressed=\"true\"", view);
+        Assert.Contains("class=\"whatsapp-sound-toggle\" aria-pressed=\"true\"", ReadText(Path.Combine(root, "Orofoods.Web", "Views", "Shared", "_NotificationBell.cshtml")));
         Assert.Contains("background-color: var(--crm-accent-soft, #f7ecd7)", soundOnLight);
         Assert.Contains("background-color: var(--crm-surface-muted", soundOffLight);
         Assert.Contains("background-color: var(--crm-accent-soft", soundOnDark);
@@ -179,7 +179,7 @@ public class WhatsAppPollingUiTests
         Assert.Contains("if (!submittedText.trim()) return;", submitHandler);
         Assert.Contains("if (sendInFlight)", submitHandler);
         Assert.Contains("sendInFlight = true;", submitHandler);
-        Assert.Contains("window.location.reload()", script);
+        Assert.DoesNotContain("window.location.reload()", script);
         Assert.Contains("setInterval(synchronize, 4000)", script);
         Assert.Contains("WhatsApp sync failed.", script);
     }
@@ -236,9 +236,8 @@ public class WhatsAppPollingUiTests
         var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var helper = ExtractBetween(script, "const rotateClientRequestId = input => {", "\n    };");
         var submitHandler = ExtractBetween(script, "form.addEventListener('submit', async event =>", "    const schedule =");
-        var synchronizeEnd = submitHandler.IndexOf("rotateClientRequestId", StringComparison.Ordinal);
-        Assert.True(synchronizeEnd > submitHandler.IndexOf("await synchronize();", StringComparison.Ordinal),
-            "A request key should rotate only after the successful response is synchronized.");
+        var successPath = ExtractBetween(submitHandler, "await synchronize();", "        } catch {");
+        Assert.Contains("rotateClientRequestId", successPath);
 
         const string harness = """
             const window = { crypto: { randomUUID() { return '12345678-1234-1234-1234-123456789abc'; } } };
@@ -407,7 +406,7 @@ public class WhatsAppPollingUiTests
         var reconcile = script[reconcileStart..reconcileEnd];
 
         Assert.Contains("const renderedMessageElements = new Map(", script);
-        Assert.Contains("messageList.querySelectorAll('[data-message-id]')", script);
+        Assert.Contains("messageList?.querySelectorAll('[data-message-id]')", script);
         Assert.Contains("renderedMessageElements.get(messageId)", reconcile);
         Assert.DoesNotContain("notificationSeenInboundIds.has", reconcile);
         Assert.Contains("console.error('WhatsApp message reconciliation failed.'", reconcile);
@@ -424,8 +423,9 @@ public class WhatsAppPollingUiTests
     [InlineData(true, "closed", false, 0)]
     [InlineData(false, "pending", true, 0)]
     [InlineData(false, "open", true, 100)]
+    [InlineData(false, "pending", false, 1, false)]
     public async Task Sync_continues_after_optional_unread_badge_is_missing(
-        bool identified, string status, bool initialBadgePresent, int unreadCount)
+        bool identified, string status, bool initialBadgePresent, int unreadCount, bool initialTimePresent = true)
     {
         var root = FindRepositoryRoot();
         var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
@@ -439,7 +439,7 @@ public class WhatsAppPollingUiTests
         var updateConversations = ExtractBetween(script, "    const updateConversations = conversations =>", "    const synchronize = async () =>");
         var updateMessages = ExtractBetween(script, "    const updateMessages = messages =>", "    const conversationElement = conversation =>");
         var synchronize = ExtractBetween(script, "    const synchronize = async () =>", "    form.addEventListener('submit'");
-        var scenario = JsonSerializer.Serialize(new { identified, status, initialBadgePresent, unreadCount });
+        var scenario = JsonSerializer.Serialize(new { identified, status, initialBadgePresent, unreadCount, initialTimePresent });
 
         const string harness = """
             const scenario = __SCENARIO__;
@@ -473,7 +473,8 @@ public class WhatsAppPollingUiTests
                 append(...nodes) { this.children.push(...nodes); }
             });
             const title = makeNode();
-            const time = makeNode();
+            let time = scenario.initialTimePresent ? makeNode() : null;
+            const titleContainer = { append(node) { time = node; } };
             const previewText = makeNode();
             let unreadBadge = scenario.initialBadgePresent ? makeNode() : null;
             const previewContainer = {
@@ -490,6 +491,7 @@ public class WhatsAppPollingUiTests
                 querySelector(selector) {
                     if (selector === '.whatsapp-conversation-title strong') return title;
                     if (selector === '.whatsapp-conversation-title time') return time;
+                    if (selector === '.whatsapp-conversation-title') return titleContainer;
                     if (selector === '.whatsapp-conversation-preview > span:first-child') return previewText;
                     if (selector === '.whatsapp-conversation-preview') return previewContainer;
                     if (selector === '.whatsapp-unread-badge') return unreadBadge;

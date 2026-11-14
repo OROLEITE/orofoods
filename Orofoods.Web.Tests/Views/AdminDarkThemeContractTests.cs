@@ -255,7 +255,7 @@ public class AdminDarkThemeContractTests
         Assert.DoesNotContain("whatsapp-theme-toggle", view);
         Assert.DoesNotContain("whatsapp-theme-toggle", script);
         Assert.DoesNotContain("orofoods.crm.theme", script);
-        Assert.Contains("whatsapp-sound-toggle", view);
+        Assert.Contains("whatsapp-sound-toggle", File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_NotificationBell.cshtml")));
         Assert.Contains("soundToggle?.addEventListener", script);
         Assert.Contains("Som desligado", script);
         Assert.DoesNotContain("whatsapp-theme-toggle", whatsappStyles);

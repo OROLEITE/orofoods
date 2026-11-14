@@ -2,6 +2,8 @@
 @inject UserNotificationService NotificationService
 @{
     var notificationUserId = NotificationService.CurrentUserId(User);
+    var isWhatsAppRoute = string.Equals(ViewContext.RouteData.Values["area"]?.ToString(), "Admin", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), "WhatsApp", StringComparison.OrdinalIgnoreCase);
     var unreadCount = 0;
     var notifications = new List<Orofoods.Web.Models.Commercial.UserNotification>();
     if (!string.IsNullOrWhiteSpace(notificationUserId))
@@ -9,7 +11,7 @@
         try
         {
             unreadCount = await NotificationService.UnreadCountAsync(notificationUserId);
-            notifications = (await NotificationService.RecentAsync(notificationUserId)).Take(10).ToList();
+            notifications = await NotificationService.RecentAsync(notificationUserId);
         }
         catch
         {
@@ -20,30 +22,45 @@
 }
 @if (notificationUserId is not null)
 {
-    <details class="global-notification-menu">
+    <link rel="stylesheet" href="~/css/notification-bell.css" asp-append-version="true" />
+    <script src="~/js/notification-bell.js" asp-append-version="true" defer></script>
+    <details class="global-notification-menu" data-notification-bell
+             data-updates-url="@Url.Action("Index", "Notifications", new { area = "Admin" })"
+             data-read-url="@Url.Action("Read", "Notifications", new { area = "Admin" })"
+             data-read-all-url="@Url.Action("ReadAll", "Notifications", new { area = "Admin" })"
+             data-fallback-url="@Url.Action("Index", "Notifications", new { area = "Admin" })">
         <summary class="global-notification-trigger" aria-label="Notificações" aria-controls="globalNotificationPanel">
             <i class="fa-solid fa-bell" aria-hidden="true"></i>
-            @if (unreadCount > 0) { <span class="global-notification-badge">@(unreadCount > 99 ? "99+" : unreadCount)</span> }
+            <span class="global-notification-badge" data-notification-count hidden="@(unreadCount == 0)" aria-live="polite" aria-atomic="true">@(unreadCount > 99 ? "99+" : unreadCount.ToString())</span>
         </summary>
         <div id="globalNotificationPanel" class="global-notification-panel">
             <header><strong>Notificações</strong><a asp-area="Admin" asp-controller="Notifications" asp-action="Index">Ver todas</a></header>
-            @if (!notifications.Any())
-            {
-                <p class="global-notification-empty">Nenhuma notificação nova.</p>
-            }
-            else
-            {
-                <div class="global-notification-items">
+            <form asp-area="Admin" asp-controller="Notifications" asp-action="ReadAll" method="post" data-notification-read-all>
+                <button class="global-notification-read-all" type="submit">Marcar todas como lidas</button>
+            </form>
+            <p class="global-notification-empty" data-notification-empty hidden="@(notifications.Count > 0)">Nenhuma notificação nova.</p>
+            <div class="global-notification-items" data-notification-items>
                     @foreach (var notification in notifications)
                     {
-                        var target = !string.IsNullOrWhiteSpace(notification.ActionUrl) && Url.IsLocalUrl(notification.ActionUrl) ? notification.ActionUrl : Url.Action("Index", "Notifications", new { area = "Admin" });
-                        <a class="global-notification-item @(notification.ReadAt is null ? "is-unread" : "")" href="@target">
-                            <i class="fa-solid fa-circle-info" aria-hidden="true"></i><span><strong>@notification.Title</strong><small>@notification.Message</small><time>@notification.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</time></span>
-                        </a>
+                        <form asp-area="Admin" asp-controller="Notifications" asp-action="Read" method="post" data-notification-id="@notification.Id">
+                            <input type="hidden" name="id" value="@notification.Id" />
+                            <input type="hidden" name="navigate" value="true" />
+                            <button type="submit" class="global-notification-item @(notification.ReadAt is null ? "is-unread" : "")">
+                                <i class="fa-solid fa-circle-info" aria-hidden="true"></i><span><strong>@notification.Title</strong><small>@notification.Message</small><time datetime="@notification.CreatedAt.ToString("O")">@notification.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</time></span>
+                            </button>
+                        </form>
                     }
-                </div>
-            }
-            <footer><a asp-area="Admin" asp-controller="Notifications" asp-action="Index">Ver todas as notificações</a></footer>
+            </div>
+            <p class="global-notification-status" data-notification-status role="status" hidden></p>
+            <footer>
+                @if (isWhatsAppRoute)
+                {
+                    <div class="global-notification-sound" data-notification-sound>
+                        <button type="button" class="whatsapp-sound-toggle" aria-pressed="true" aria-label="Som ligado" title="Som ligado"><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Som ligado</span></button>
+                    </div>
+                }
+                <a asp-area="Admin" asp-controller="Notifications" asp-action="Index">Ver todas as notificações</a>
+            </footer>
         </div>
     </details>
 }

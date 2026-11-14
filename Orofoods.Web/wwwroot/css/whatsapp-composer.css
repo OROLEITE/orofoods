@@ -2536,6 +2536,17 @@ body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-primary-action:foc
     outline-offset: 2px;
 }
 
+.whatsapp-inbox-page [hidden] {
+    display: none !important;
+}
+
+.whatsapp-sync-feedback {
+    color: var(--crm-text, #334155);
+    background: var(--crm-surface-muted, #f1f5f9);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
 .whatsapp-inbox-page .whatsapp-new-conversation-trigger,
 .whatsapp-inbox-page .whatsapp-empty-new-conversation-trigger {
     min-height: 38px;

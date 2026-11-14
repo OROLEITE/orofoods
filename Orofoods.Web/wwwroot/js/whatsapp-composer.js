@@ -1,13 +1,13 @@
 (() => {
     const textarea = document.getElementById('whatsappText');
-    const form = document.querySelector('.whatsapp-compose') ?? {
+    const form = document.querySelector('.whatsapp-compose:not(.whatsapp-template-compose)') ?? {
         dataset: {},
         addEventListener() {},
         querySelector() { return null; },
         requestSubmit() {}
     };
-    const templateForm = form.classList?.contains('whatsapp-template-compose') ? form : null;
-    const pollingContext = form.dataset.conversationId ? form : document.querySelector('.whatsapp-polling-context');
+    const templateForm = document.querySelector('.whatsapp-template-compose');
+    const pollingContext = form.dataset.conversationId ? form : document.querySelector('.whatsapp-inbox-page');
     const inboxPage = document.querySelector('.whatsapp-inbox-page');
     const messageList = document.querySelector('.whatsapp-messages');
     const conversationList = document.querySelector('.whatsapp-conversation-list');
@@ -17,7 +17,8 @@
     const minHeight = 46;
     const maxHeight = 160;
     const soundPreferenceKey = 'orofoods.whatsapp.sound';
-    let soundEnabled = localStorage.getItem(soundPreferenceKey) !== 'off';
+    let soundEnabled = true;
+    try { soundEnabled = localStorage.getItem(soundPreferenceKey) !== 'off'; } catch { /* Storage can be disabled. */ }
     let audioContext;
     let initialState = true;
     const notificationSeenInboundIds = new Set();
@@ -73,7 +74,7 @@
         } catch { /* autoplay failures are intentionally silent */ }
     };
     updateSoundToggle();
-    soundToggle?.addEventListener('click', () => { soundEnabled = !soundEnabled; localStorage.setItem(soundPreferenceKey, soundEnabled ? 'on' : 'off'); updateSoundToggle(); if (soundEnabled) unlockAudio(); });
+    soundToggle?.addEventListener('click', () => { soundEnabled = !soundEnabled; try { localStorage.setItem(soundPreferenceKey, soundEnabled ? 'on' : 'off'); } catch { /* Keep the session preference. */ } updateSoundToggle(); if (soundEnabled) unlockAudio(); });
     ['pointerdown', 'keydown', 'click'].forEach(eventName =>
         document.addEventListener(eventName, unlockAudio, { once: true, passive: true }));
 
@@ -191,12 +192,12 @@
     });
     document.querySelector('.whatsapp-dialog-cancel')?.addEventListener('click', closeCustomerDialog);
 
-    if (!pollingContext || !messageList || !conversationList) return;
+    if (!pollingContext || !conversationList) return;
 
     const selectedConversationId = Number(pollingContext.dataset.conversationId);
     const updatesUrl = pollingContext.dataset.updatesUrl;
     const renderedMessageElements = new Map(
-        [...messageList.querySelectorAll('[data-message-id]')]
+        [...(messageList?.querySelectorAll('[data-message-id]') ?? [])]
             .map(element => [String(element.dataset.messageId), element]));
     let requestInFlight = false;
     let sendInFlight = false;
@@ -204,11 +205,12 @@
     const sendButton = form?.querySelector('button[type="submit"]');
     const sendFeedback = document.getElementById('whatsappSendFeedback');
 
-    const showSendFeedback = (message, isError = false) => {
-        if (!sendFeedback) return;
-        sendFeedback.textContent = message;
-        sendFeedback.hidden = !message;
-        sendFeedback.classList.toggle('whatsapp-send-feedback--error', isError);
+    const showSendFeedback = (message, isError = false, targetForm = form) => {
+        const feedback = targetForm.querySelector('.whatsapp-send-feedback') ?? sendFeedback;
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.hidden = !message;
+        feedback.classList.toggle('whatsapp-send-feedback--error', isError);
     };
 
     const handleComposerKeydown = event => {
@@ -221,8 +223,9 @@
     };
     textarea?.addEventListener('keydown', handleComposerKeydown);
 
-    const isNearBottom = () => messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 64;
+    const isNearBottom = () => Boolean(messageList && messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 64);
     const scrollToBottom = () => {
+        if (!messageList) return;
         messageList.scrollTop = messageList.scrollHeight;
         if (newMessageButton) newMessageButton.hidden = true;
     };
@@ -235,7 +238,7 @@
     scrollToBottom();
 
     newMessageButton?.addEventListener('click', scrollToBottom);
-    messageList.addEventListener('scroll', () => {
+    messageList?.addEventListener('scroll', () => {
         if (isNearBottom() && newMessageButton) newMessageButton.hidden = true;
     }, { passive: true });
 
@@ -362,7 +365,11 @@
     };
 
     const updateMessages = messages => {
+        if (!messageList) return;
         const keepBottom = isNearBottom();
+        const viewportTop = messageList.getBoundingClientRect?.().top;
+        const anchor = [...renderedMessageElements.values()].find(article => article.getBoundingClientRect?.().bottom > viewportTop);
+        const anchorTop = anchor?.getBoundingClientRect?.().top;
         let appended = false;
         messageList.querySelector('.whatsapp-messages-empty')?.remove();
         for (const message of messages) {
@@ -371,6 +378,15 @@
             if (message.direction === 'inbound') notificationSeenInboundIds.add(messageId);
 
             let article = renderedMessageElements.get(messageId);
+            if (!article && message.clientRequestId) {
+                const pendingKey = `request:${message.clientRequestId}`;
+                article = renderedMessageElements.get(pendingKey);
+                if (article) {
+                    renderedMessageElements.delete(pendingKey);
+                    article.dataset.messageId = messageId;
+                    renderedMessageElements.set(messageId, article);
+                }
+            }
             const isNewMessage = !article;
             if (isNewMessage) {
                 article = document.createElement('article');
@@ -378,7 +394,17 @@
             }
 
             try {
+                const statusOrder = { pending: 0, sent: 1, delivered: 2, read: 3, failed: 4 };
+                if (message.direction === 'outbound' && statusOrder[article.dataset.messageStatus] > statusOrder[message.status]) continue;
                 renderMessage(article, message);
+                article.dataset.createdAt = message.createdAt;
+                if (message.clientRequestId) article.dataset.clientRequestId = message.clientRequestId;
+                // Keep the original draft on an optimistic bubble. The API may
+                // normalize whitespace, but a lost response must be retried
+                // with the exact same client request id rather than looking
+                // like an edited draft and creating a duplicate send.
+                if (message.direction === 'outbound' && article.dataset.submittedText === undefined)
+                    article.dataset.submittedText = message.textBody;
             } catch (error) {
                 console.error('WhatsApp message reconciliation failed.', {
                     messageId,
@@ -394,9 +420,17 @@
                 appended = true;
             }
         }
-        if (!appended) return;
-        if (keepBottom) scrollToBottom();
-        else if (newMessageButton) newMessageButton.hidden = false;
+        if (messageList.children) {
+            const chronological = [...renderedMessageElements.values()].sort((left, right) =>
+                String(left.dataset.createdAt || '').localeCompare(String(right.dataset.createdAt || '')) ||
+                Number(left.dataset.messageId || Number.MAX_SAFE_INTEGER) - Number(right.dataset.messageId || Number.MAX_SAFE_INTEGER));
+            chronological.forEach((article, index) => {
+                if (messageList.children[index] !== article) messageList.insertBefore(article, messageList.children[index] ?? null);
+            });
+        }
+        if (keepBottom && appended) scrollToBottom();
+        else if (!keepBottom && anchorTop !== undefined) messageList.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
+        if (appended && !keepBottom && newMessageButton) newMessageButton.hidden = false;
     };
 
     const conversationElement = conversation => {
@@ -422,7 +456,11 @@
         if (conversation.id === selectedConversationId) element.setAttribute('aria-current', 'page');
         element.querySelector('.whatsapp-conversation-title strong').textContent = conversation.name;
         if (conversation.phoneNumber) element.dataset.searchPhone = conversation.phoneNumber;
-        const time = element.querySelector('.whatsapp-conversation-title time');
+        let time = element.querySelector('.whatsapp-conversation-title time');
+        if (!time) {
+            time = document.createElement('time');
+            element.querySelector('.whatsapp-conversation-title').append(time);
+        }
         time.textContent = formatTime(conversation.lastMessageAt);
         time.dateTime = conversation.lastMessageAt || '';
         const preview = element.querySelector('.whatsapp-conversation-preview > span:first-child');
@@ -469,8 +507,10 @@
                 notificationSeenInboundIds.add(String(conversation.lastMessageId));
             let element = conversationList.querySelector(`[data-conversation-id="${conversation.id}"]`);
             if (!element) element = conversationElement(conversation);
-            updateConversation(element, conversation);
-            conversationList.append(element);
+            try {
+                updateConversation(element, conversation);
+                conversationList.append(element);
+            } catch { /* A malformed list item must not stop history updates. */ }
         }
         conversationList.querySelectorAll('[data-conversation-id]').forEach(element => {
             if (!visibleIds.has(String(element.dataset.conversationId))) element.remove();
@@ -489,24 +529,40 @@
             const url = new URL(updatesUrl, window.location.origin);
             url.searchParams.set('conversationId', selectedConversationId);
             const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
-            if (!response.ok) return;
+            if (!response.ok || response.redirected) throw new Error(`HTTP ${response.status}`);
             syncStage = 'parse';
             const payload = await response.json();
             const nextSelectedConversation = (payload.conversations || [])
                 .find(conversation => String(conversation.id) === String(selectedConversationId));
-            const serviceWindowChanged = Boolean(inboxPage && typeof payload.serviceWindowOpen === 'boolean' &&
-                String(payload.serviceWindowOpen) !== inboxPage.dataset.serviceWindowOpen);
-            const conversationStatusChanged = Boolean(inboxPage && nextSelectedConversation?.status &&
-                nextSelectedConversation.status !== inboxPage.dataset.conversationStatus);
-            if (serviceWindowChanged || conversationStatusChanged) {
-                window.location.reload();
-                return;
+            if (inboxPage && nextSelectedConversation) {
+                inboxPage.dataset.serviceWindowOpen = String(payload.serviceWindowOpen);
+                inboxPage.dataset.conversationStatus = nextSelectedConversation.status;
+                const freeTextAllowed = payload.serviceWindowOpen === true && nextSelectedConversation.status !== 'closed';
+                form.hidden = !freeTextAllowed;
+                if (sendButton) sendButton.disabled = !freeTextAllowed || sendInFlight;
+                if (templateForm) templateForm.hidden = payload.serviceWindowOpen !== false || nextSelectedConversation.status === 'closed';
+                document.querySelectorAll('[data-conversation-action]').forEach(action => {
+                    action.hidden = action.dataset.conversationAction !== nextSelectedConversation.status;
+                });
+                const locked = document.querySelector('.whatsapp-composer-locked');
+                if (locked) locked.hidden = nextSelectedConversation.status !== 'closed';
+                const transfer = document.querySelector('.whatsapp-transfer-form');
+                if (transfer) transfer.hidden = nextSelectedConversation.status === 'closed';
+                const title = document.querySelector('.whatsapp-thread-contact strong');
+                if (title) title.textContent = nextSelectedConversation.name;
+                const pill = document.querySelector('.whatsapp-status-pill');
+                if (pill) {
+                    pill.className = `whatsapp-status-pill whatsapp-status-pill--${nextSelectedConversation.status}`;
+                    pill.textContent = nextSelectedConversation.status === 'closed' ? 'Finalizado' : nextSelectedConversation.status === 'pending' ? 'Novo' : 'Em atendimento';
+                }
             }
             const before = notificationSeenInboundIds.size;
             syncStage = 'update-conversations';
             updateConversations(payload.conversations || []);
             syncStage = 'update-messages';
             updateMessages(payload.messages || []);
+            const feedback = document.getElementById?.('whatsappSyncFeedback');
+            if (feedback) feedback.hidden = true;
             syncStage = 'notification';
             const newInbound = notificationSeenInboundIds.size > before && !initialState;
             initialState = false;
@@ -515,6 +571,11 @@
                 playInboundBeep();
             }
         } catch (error) {
+            const feedback = document.getElementById?.('whatsappSyncFeedback');
+            if (feedback) {
+                feedback.hidden = false;
+                feedback.textContent = 'Atualização interrompida. Tentando reconectar…';
+            }
             if (error?.name !== 'AbortError') {
                 console.error('WhatsApp sync failed.', {
                     stage: syncStage,
@@ -529,7 +590,6 @@
     };
 
     form.addEventListener('submit', async event => {
-        if (templateForm) return;
         if (sendInFlight) {
             event.preventDefault();
             return;
@@ -539,8 +599,17 @@
         const submittedText = textarea?.value ?? '';
         if (!submittedText.trim()) return;
 
+        const requestInput = form.querySelector('[name="clientRequestId"]');
+        const previousAttempt = [...renderedMessageElements.values()].find(article => article.dataset.clientRequestId === requestInput?.value);
+        if (previousAttempt && previousAttempt.dataset.submittedText !== submittedText) {
+            if (previousAttempt.dataset.messageStatus === 'pending') {
+                showSendFeedback('A tentativa anterior ainda aguarda confirmação. Seu novo rascunho foi preservado.', true);
+                return;
+            }
+            rotateClientRequestId(requestInput);
+        }
+
         sendInFlight = true;
-        form.querySelector('.whatsapp-send-feedback--error')?.remove();
         showSendFeedback('');
 
         const keepAtBottom = isNearBottom();
@@ -554,26 +623,42 @@
         if (buttonLabel) buttonLabel.textContent = 'Enviando…';
         form.setAttribute('aria-busy', 'true');
 
+        const requestKey = `request:${requestInput?.value}`;
+        if (!renderedMessageElements.has(requestKey) && ![...renderedMessageElements.values()].some(article => article.dataset.clientRequestId === requestInput?.value)) {
+            const article = document.createElement('article');
+            article.dataset.clientRequestId = requestInput?.value;
+            article.dataset.submittedText = submittedText;
+            article.dataset.createdAt = new Date().toISOString();
+            renderMessage(article, { direction: 'outbound', type: 'text', textBody: submittedText, status: 'pending', statusLabel: 'Enviando…', createdAt: article.dataset.createdAt });
+            messageList.querySelector('.whatsapp-messages-empty')?.remove();
+            messageList.append(article);
+            renderedMessageElements.set(requestKey, article);
+            if (keepAtBottom) scrollToBottom();
+        }
+
         try {
             const response = await fetch(form.action, {
                 method: form.method || 'POST',
                 body: new FormData(form),
                 credentials: 'same-origin',
-                headers: { Accept: 'text/html' },
+                headers: { Accept: 'application/json' },
                 redirect: 'follow'
             });
-            const responseUrl = new URL(response.url || form.action, window.location.href);
-            const responseDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
-            const serverError = responseDocument.querySelector('.whatsapp-send-feedback--error')?.textContent.trim();
+            if (!response.ok || response.redirected) throw new Error('Envio não confirmado');
+            const outcome = await response.json();
+            if (outcome.message) updateMessages([outcome.message]);
+            const serverError = outcome.error;
 
             if (serverError) {
                 showSendFeedback(serverError, true);
-                renewClientRequestIdAfterConfirmedFailure(responseDocument, form.querySelector('[name="clientRequestId"]'));
+                if (outcome.message?.status === 'failed') rotateClientRequestId(requestInput);
+                if (!outcome.message) {
+                    renderedMessageElements.get(requestKey)?.remove();
+                    renderedMessageElements.delete(requestKey);
+                }
                 return;
             }
-            if (!response.ok || responseUrl.origin !== window.location.origin ||
-                !/\/Admin\/WhatsApp(?:\/|$)/i.test(responseUrl.pathname) ||
-                !responseDocument.querySelector('.whatsapp-compose')) {
+            if (!outcome.message || !['sent', 'delivered', 'read'].includes(outcome.message.status)) {
                 throw new Error('Não foi possível confirmar o envio. Confira sua conexão e tente novamente.');
             }
 
@@ -584,7 +669,7 @@
                 resizeComposer();
             }
             textarea?.focus();
-            await scrollToBottomAfterUpdate();
+            if (keepAtBottom) await scrollToBottomAfterUpdate();
         } catch {
             if (!keepAtBottom) messageList.scrollTop = previousScrollTop;
             showSendFeedback('Não foi possível confirmar o envio. Confira sua conexão e tente novamente.', true);
@@ -592,7 +677,7 @@
             sendInFlight = false;
             form.removeAttribute('aria-busy');
             if (sendButton) {
-                sendButton.disabled = false;
+                sendButton.disabled = inboxPage?.dataset.serviceWindowOpen === 'false' || inboxPage?.dataset.conversationStatus === 'closed';
                 sendButton.removeAttribute('aria-busy');
             }
             if (buttonLabel && previousButtonLabel !== undefined) buttonLabel.textContent = previousButtonLabel;
@@ -703,8 +788,7 @@
         if (templateSendButton?.disabled) return;
 
         sendInFlight = true;
-        templateForm.querySelector('.whatsapp-send-feedback--error')?.remove();
-        showSendFeedback('');
+        showSendFeedback('', false, templateForm);
         const buttonLabel = templateSendButton.querySelector('span');
         const previousButtonLabel = buttonLabel?.textContent;
         templateSendButton.disabled = true;
@@ -717,20 +801,19 @@
                 method: templateForm.method || 'POST',
                 body: new FormData(templateForm),
                 credentials: 'same-origin',
-                headers: { Accept: 'text/html' },
+                headers: { Accept: 'application/json' },
                 redirect: 'follow'
             });
-            const responseUrl = new URL(response.url || templateForm.action, window.location.href);
-            const responseDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
-            const serverError = responseDocument.querySelector('.whatsapp-send-feedback--error')?.textContent.trim();
+            if (!response.ok || response.redirected) throw new Error('Envio não confirmado');
+            const outcome = await response.json();
+            if (outcome.message) updateMessages([outcome.message]);
+            const serverError = outcome.error;
             if (serverError) {
-                showSendFeedback(serverError, true);
-                renewClientRequestIdAfterConfirmedFailure(responseDocument, templateRequestId);
+                showSendFeedback(serverError, true, templateForm);
+                if (outcome.message?.status === 'failed') rotateClientRequestId(templateRequestId);
                 return;
             }
-            if (!response.ok || responseUrl.origin !== window.location.origin ||
-                !/\/Admin\/WhatsApp(?:\/|$)/i.test(responseUrl.pathname) ||
-                !responseDocument.querySelector('.whatsapp-template-compose'))
+            if (!outcome.message || !['sent', 'delivered', 'read'].includes(outcome.message.status))
                 throw new Error('Não foi possível confirmar o envio. Confira o histórico antes de tentar novamente.');
 
             await synchronize();
@@ -738,7 +821,7 @@
             templateParameters.querySelectorAll('input').forEach(input => { input.value = ''; });
             updateTemplateSendButton();
         } catch {
-            showSendFeedback('Não foi possível confirmar o envio. Confira o histórico antes de tentar novamente.', true);
+            showSendFeedback('Não foi possível confirmar o envio. Confira o histórico antes de tentar novamente.', true, templateForm);
         } finally {
             sendInFlight = false;
             templateForm.removeAttribute('aria-busy');
@@ -756,6 +839,7 @@
         schedule();
         if (!document.hidden) void synchronize();
     });
+    window.addEventListener('online', () => { void synchronize(); });
     schedule();
     void synchronize();
 })();

@@ -871,6 +871,7 @@ public class WhatsAppBusinessTests
         Assert.Single(db.WhatsAppMessages);
         Assert.Single(db.UserNotifications);
         var conversation = db.WhatsAppConversations.Single();
+        Assert.Equal($"/Admin/WhatsApp?id={conversation.Id}", db.UserNotifications.Single().ActionUrl);
         Assert.Equal(customer.Id, conversation.CustomerId);
         Assert.Equal(user.Id, conversation.AssignedUserId);
         Assert.Equal(1, conversation.UnreadCount);
@@ -932,6 +933,39 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Webhook_persists_meta_contact_profile_name_without_using_customer_identity()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = new WhatsAppConversationService(db, Options.Create(new WhatsAppBusinessOptions { Enabled = true, AppSecret = "secret" }), new UserNotificationService(db));
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(new
+        {
+            entry = new[]
+            {
+                new
+                {
+                    changes = new[]
+                    {
+                        new
+                        {
+                            value = new
+                            {
+                                contacts = new[] { new { wa_id = "5511888880001", profile = new { name = "Maria Perfil" } } },
+                                messages = new[] { new { id = "wamid.profile-name", from = "5511888880001", type = "text", text = new { body = "OlÃ¡" } } }
+                            }
+                        }
+                    }
+                }
+            }
+        }));
+
+        await service.ProcessAsync(document);
+
+        var conversation = Assert.Single(await db.WhatsAppConversations.AsNoTracking().ToListAsync());
+        Assert.Equal("Maria Perfil", conversation.ProfileName);
+        Assert.Null(conversation.CustomerId);
+    }
+
+    [Fact]
     public async Task Ambiguous_phone_does_not_auto_link_customer()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -961,10 +995,27 @@ public class WhatsAppBusinessTests
     }
 
     [Fact]
+    public async Task Index_does_not_select_a_conversation_outside_the_current_seller_scope()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var (user, ownConversation) = await CreateAssignedConversationAsync(db, userId: "user-a");
+        var (_, otherConversation) = await CreateAssignedConversationAsync(db, userId: "user-b", phoneNumber: "5511000000002");
+        var controller = CreateController(db, user.Id, new TrackingWhatsAppGateway());
+
+        var result = Assert.IsType<ViewResult>(await controller.Index(otherConversation.Id, CancellationToken.None));
+        var model = Assert.IsType<WhatsAppInboxViewModel>(result.Model);
+
+        Assert.Null(model.Selected);
+        Assert.Contains(model.Conversations, conversation => conversation.Id == ownConversation.Id);
+        Assert.DoesNotContain(model.Conversations, conversation => conversation.Id == otherConversation.Id);
+    }
+
+    [Fact]
     public async Task Updates_returns_each_recent_message_once_without_rendering_a_full_page()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var (user, conversation) = await CreateAssignedConversationAsync(db, unreadCount: 0);
+        conversation.ProfileName = "Maria Perfil";
         db.WhatsAppMessages.AddRange(
             new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-1", Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Um", CreatedAt = DateTime.UtcNow.AddSeconds(-1) },
             new WhatsAppMessage { ConversationId = conversation.Id, ExternalMessageId = "poll-2", Direction = WhatsAppMessageDirection.Inbound, Type = WhatsAppMessageType.Text, TextBody = "Dois", CreatedAt = DateTime.UtcNow });
@@ -979,6 +1030,7 @@ public class WhatsAppBusinessTests
         Assert.Equal(2, messages.Count);
         Assert.Equal(2, messages.Select(item => item.GetProperty("id").GetInt64()).Distinct().Count());
         Assert.Equal(conversation.PhoneNumber, conversations.Single().GetProperty("phoneNumber").GetString());
+        Assert.Equal("Maria Perfil", conversations.Single().GetProperty("name").GetString());
         Assert.Equal("no-store, no-cache, must-revalidate", controller.Response.Headers.CacheControl.ToString());
         Assert.EndsWith("Z", messages[0].GetProperty("createdAt").GetString());
     }
