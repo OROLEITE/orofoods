@@ -337,7 +337,7 @@
                             <p class="whatsapp-send-feedback" role="status" aria-live="polite" hidden></p>
                         </form>
                         <form asp-action="SendTemplate" method="post" class="whatsapp-compose whatsapp-template-compose"
-                              hidden="@(selected.Status == WhatsAppConversationStatus.Closed || Model.ServiceWindowOpen)"
+                              hidden="@(selected.Status == WhatsAppConversationStatus.Closed)"
                               data-conversation-id="@selected.Id" data-updates-url="@Url.Action("Updates", "WhatsApp", new { area = "Admin" })"
                               data-templates-url="@Url.Action("Templates", "WhatsApp", new { area = "Admin", conversationId = selected.Id })">
                             <input type="hidden" name="conversationId" value="@selected.Id" />
@@ -345,8 +345,16 @@
                             <input type="hidden" name="language" id="whatsappTemplateLanguage" />
                             <input type="hidden" name="clientRequestId" id="whatsappTemplateRequestId" value="@Guid.NewGuid().ToString("N")" />
                             <div class="whatsapp-window-closed-note">
-                                <strong>Janela de atendimento encerrada</strong>
-                                <span>Mensagens livres ficam disponíveis por 24 horas após a última mensagem do cliente. Para retomar, use um modelo aprovado.</span>
+                                @if (Model.ServiceWindowOpen)
+                                {
+                                    <strong>Modelo aprovado disponível</strong>
+                                    <span>Você também pode enviar um modelo aprovado dentro da janela de atendimento.</span>
+                                }
+                                else
+                                {
+                                    <strong>Janela de atendimento encerrada</strong>
+                                    <span>Mensagens livres ficam disponíveis por 24 horas após a última mensagem do cliente. Para retomar, use um modelo aprovado.</span>
+                                }
                             </div>
                             <button type="button" class="btn whatsapp-primary-action whatsapp-template-load-button" id="whatsappLoadTemplates">
                                 Enviar mensagem modelo

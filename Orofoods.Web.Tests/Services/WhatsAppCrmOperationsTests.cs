@@ -241,6 +241,31 @@ public sealed class WhatsAppCrmOperationsTests
     }
 
     [Fact]
+    public async Task Template_catalog_is_available_inside_an_open_service_window()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var inboundAt = new DateTime(2026, 11, 10, 12, 0, 0, DateTimeKind.Utc);
+        var conversation = new WhatsAppConversation
+        {
+            PhoneNumber = "5511999990000",
+            LastInboundAt = inboundAt
+        };
+        db.WhatsAppConversations.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway
+        {
+            Templates = [new WhatsAppApprovedTemplate("follow_up", "pt_BR", "UTILITY", null, "Retomada {{1}}", 0, 1)]
+        };
+        var controller = CreateController(db, gateway, timeProvider: new FixedTimeProvider(inboundAt.AddHours(1)));
+
+        var result = Assert.IsType<JsonResult>(await controller.Templates(conversation.Id, CancellationToken.None));
+        using var payload = JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
+
+        Assert.Equal(1, gateway.TemplateCatalogCalls);
+        Assert.Single(payload.RootElement.GetProperty("results").EnumerateArray());
+    }
+
+    [Fact]
     public async Task Index_with_conversation_id_loads_that_history_and_its_current_service_window()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -410,6 +435,67 @@ public sealed class WhatsAppCrmOperationsTests
         Assert.Equal(1, gateway.TemplateCalls);
         Assert.Equal("Retomada cliente", message.TextBody);
         Assert.Equal(WhatsAppMessageStatus.Sent, message.Status);
+    }
+
+    [Fact]
+    public async Task Open_window_allows_an_approved_template_without_disabling_free_text()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var inboundAt = new DateTime(2026, 11, 10, 12, 0, 0, DateTimeKind.Utc);
+        var conversation = new WhatsAppConversation
+        {
+            PhoneNumber = "5511999990000",
+            LastInboundAt = inboundAt
+        };
+        db.WhatsAppConversations.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway
+        {
+            NextResult = new WhatsAppSendResult(true, "wamid.template-open", null, null),
+            Templates = [new WhatsAppApprovedTemplate("follow_up", "pt_BR", "UTILITY", null, "Retomada {{1}}", 0, 1)]
+        };
+        var controller = CreateController(db, gateway, timeProvider: new FixedTimeProvider(inboundAt.AddHours(1)));
+
+        await controller.SendTemplate(conversation.Id, "follow_up", "pt_BR", ["cliente"], [], Guid.NewGuid().ToString("N"), CancellationToken.None);
+        var freeTextGateway = new TrackingGateway
+        {
+            NextResult = new WhatsAppSendResult(true, "wamid.free-open", null, null)
+        };
+        var freeTextController = CreateController(db, freeTextGateway, timeProvider: new FixedTimeProvider(inboundAt.AddHours(1)));
+        await freeTextController.Send(conversation.Id, "Mensagem livre", CancellationToken.None, Guid.NewGuid().ToString("N"));
+
+        var messages = await db.WhatsAppMessages.OrderBy(message => message.Id).ToListAsync();
+        Assert.Equal(1, gateway.TemplateCalls);
+        Assert.Equal(1, freeTextGateway.TextCalls);
+        Assert.Equal(2, messages.Count);
+        Assert.Equal("Retomada cliente", messages[0].TextBody);
+        Assert.Equal("Mensagem livre", messages[1].TextBody);
+    }
+
+    [Fact]
+    public async Task Closed_conversation_rejects_template_catalog_and_send()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var conversation = new WhatsAppConversation
+        {
+            PhoneNumber = "5511999990000",
+            Status = WhatsAppConversationStatus.Closed,
+            LastInboundAt = DateTime.UtcNow
+        };
+        db.WhatsAppConversations.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway
+        {
+            Templates = [new WhatsAppApprovedTemplate("follow_up", "pt_BR", "UTILITY", null, "Retomada", 0, 0)]
+        };
+        var controller = CreateController(db, gateway);
+
+        Assert.IsType<BadRequestObjectResult>(await controller.Templates(conversation.Id, CancellationToken.None));
+        await controller.SendTemplate(conversation.Id, "follow_up", "pt_BR", [], [], Guid.NewGuid().ToString("N"), CancellationToken.None);
+
+        Assert.Equal(0, gateway.TemplateCatalogCalls);
+        Assert.Equal(0, gateway.TemplateCalls);
+        Assert.Empty(await db.WhatsAppMessages.ToListAsync());
     }
 
     [Fact]
