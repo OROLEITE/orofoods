@@ -109,6 +109,21 @@ public class WhatsAppThemeSurfaceTests
     }
 
     [Fact]
+    public void Approved_template_action_uses_the_required_label_and_cyan_theme_contract()
+    {
+        var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
+        var css = Read("Orofoods.Web", "wwwroot", "css", "whatsapp-composer.css");
+
+        Assert.Contains("Enviar mensagem modelo", markup);
+        Assert.DoesNotContain("Consultar modelos aprovados", markup);
+        Assert.Contains("class=\"btn whatsapp-primary-action whatsapp-template-load-button\"", markup);
+
+        var primary = GetRule(css, "body:has(.whatsapp-inbox-page) .whatsapp-inbox-page .whatsapp-primary-action");
+        Assert.Contains("background-color: #0E7490;", primary);
+        Assert.Contains("color: #fff;", primary);
+    }
+
+    [Fact]
     public void New_conversation_dialog_buttons_have_clear_theme_states_and_mobile_layout()
     {
         var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
