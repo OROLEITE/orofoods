@@ -34,12 +34,12 @@ public class OperatorCrmAuthorizationTests
     }
 
     [Fact]
-    public void No_other_admin_controller_grants_operator_role()
+    public void No_unrelated_admin_controller_grants_operator_role()
     {
         var adminControllers = typeof(WhatsAppController).Assembly.GetTypes()
             .Where(type => type.Namespace == typeof(WhatsAppController).Namespace && type.IsClass && !type.IsAbstract && typeof(ControllerBase).IsAssignableFrom(type));
 
-        foreach (var controller in adminControllers.Where(type => type != typeof(WhatsAppController)))
+        foreach (var controller in adminControllers.Where(type => type != typeof(WhatsAppController) && type != typeof(NotificationsController)))
         {
             var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
             Assert.True(authorize is not null, $"{controller.Name} lacks controller-level authorization.");
@@ -152,7 +152,7 @@ public class OperatorCrmAuthorizationTests
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web/Areas/Admin/Views/WhatsApp/Index.cshtml"));
         var view = File.ReadAllText(path);
 
-        Assert.Contains("else if (selected.Status == WhatsAppConversationStatus.Closed)", view);
+        Assert.Contains("data-conversation-action=\"closed\" hidden=\"@(selected.Status != WhatsAppConversationStatus.Closed)\"", view);
         Assert.Contains("asp-action=\"Reopen\"", view);
         Assert.Contains("if (!User.IsInRole(ApplicationRoles.Operator))", view);
         Assert.Contains("asp-action=\"Details\"", view);

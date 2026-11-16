@@ -14,7 +14,7 @@
     var isAdministrator = User.IsInRole("Administrador");
     var isCommercialManager = User.IsInRole("GerenteComercial");
     var isSalesRepresentative = User.IsInRole("Vendedor");
-    var showNotifications = isAuthenticated && (isAdministrator || isCommercialManager || isSalesRepresentative);
+    var showNotifications = isAuthenticated && (isAdministrator || isCommercialManager || isSalesRepresentative || User.IsInRole("Operador"));
     var accountContext = customerName ?? (isAdministrator ? "Administrador" : isCommercialManager ? "Gerente comercial" : isSalesRepresentative ? "Vendedor" : "Cliente");
     var panelUrl = isAdministrator
         ? Url.Action("Index", "Dashboard", new { area = "Admin" })

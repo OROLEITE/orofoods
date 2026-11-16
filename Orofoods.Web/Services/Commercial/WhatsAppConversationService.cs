@@ -192,7 +192,8 @@ public sealed class WhatsAppConversationService(
                     if (messageNodes.ValueKind != JsonValueKind.Array)
                         throw new WhatsAppWebhookPayloadException();
                     foreach (var node in messageNodes.EnumerateArray())
-                        messages.Add(ParseMessage(node, isEcho: options.Value.EmbeddedSignupEnabled && field == "smb_message_echoes"));
+                        messages.Add(ParseMessage(node, isEcho: options.Value.EmbeddedSignupEnabled && field == "smb_message_echoes")
+                            with { ProfileName = ReadProfileName(value, node) });
                 }
 
                 if (hasStatuses)
@@ -209,6 +210,24 @@ public sealed class WhatsAppConversationService(
         }
 
         return new WebhookBatch(messages, statuses);
+    }
+
+    private static string? ReadProfileName(JsonElement value, JsonElement message)
+    {
+        if (!message.TryGetProperty("from", out var from) || from.ValueKind != JsonValueKind.String ||
+            TryNormalizePhone(from.GetString()) is not { } phone ||
+            !value.TryGetProperty("contacts", out var contacts) || contacts.ValueKind != JsonValueKind.Array)
+            return null;
+        foreach (var contact in contacts.EnumerateArray())
+        {
+            if (contact.ValueKind == JsonValueKind.Object &&
+                contact.TryGetProperty("wa_id", out var id) && id.ValueKind == JsonValueKind.String &&
+                TryNormalizePhone(id.GetString()) == phone &&
+                contact.TryGetProperty("profile", out var profile) && profile.ValueKind == JsonValueKind.Object &&
+                profile.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String)
+                return name.GetString();
+        }
+        return null;
     }
 
     private static void ValidateSource(string? entryId, JsonElement value, string? configuredBusinessAccountId, string? configuredPhoneNumberId)
@@ -416,6 +435,7 @@ public sealed class WhatsAppConversationService(
                 conversation = new WhatsAppConversation
                 {
                     PhoneNumber = conversationPhone,
+                    ProfileName = NormalizeProfileName(message.ProfileName),
                     CustomerId = customer?.Id,
                     AssignedUserId = customer?.InternalSalesUserId,
                     Status = WhatsAppConversationStatus.Pending,
@@ -433,6 +453,8 @@ public sealed class WhatsAppConversationService(
                     conversation.Status = WhatsAppConversationStatus.Pending;
                 conversation.CustomerId ??= customer?.Id;
                 conversation.AssignedUserId ??= customer?.InternalSalesUserId;
+                if (NormalizeProfileName(message.ProfileName) is { } profileName)
+                    conversation.ProfileName = profileName;
                 if (conversation.LastMessageAt is null || conversation.LastMessageAt < message.OccurredAt)
                     conversation.LastMessageAt = message.OccurredAt;
                 if (message.Direction == WhatsAppMessageDirection.Inbound)
@@ -485,7 +507,7 @@ public sealed class WhatsAppConversationService(
                     Type = UserNotificationType.WhatsAppMessageReceived,
                     Title = "Nova mensagem WhatsApp",
                     Message = messageType == WhatsAppMessageType.Text ? message.Text! : "Nova mensagem recebida.",
-                    ActionUrl = "/Admin/WhatsApp",
+                    ActionUrl = $"/Admin/WhatsApp?id={conversation.Id}",
                     DeduplicationKey = $"WHATSAPP_MESSAGE:{message.ExternalId}"
                 }, cancellationToken);
 
@@ -503,6 +525,13 @@ public sealed class WhatsAppConversationService(
             if (await db.WhatsAppMessages.AsNoTracking().AnyAsync(x => x.ExternalMessageId == message.ExternalId, cancellationToken)) return;
             throw;
         }
+    }
+
+    private static string? NormalizeProfileName(string? profileName)
+    {
+        if (string.IsNullOrWhiteSpace(profileName)) return null;
+        var cleaned = string.Concat(profileName.Trim().Where(character => !char.IsControl(character)));
+        return cleaned.Length is 0 or > 256 ? null : cleaned;
     }
 
     private async Task DownloadMediaAsync(WhatsAppMessage message, CancellationToken cancellationToken)
@@ -637,7 +666,7 @@ public sealed class WhatsAppConversationService(
 
     private sealed record CustomerPhoneCandidate(int Id, string WhatsApp, string Phone, string? InternalSalesUserId);
     private sealed record InboundMessage(string ExternalId, string From, string Type, string? Text, InboundMedia? Media,
-        WhatsAppMessageDirection Direction, DateTime OccurredAt, bool IsHistory);
+        WhatsAppMessageDirection Direction, DateTime OccurredAt, bool IsHistory, string? ProfileName = null);
     private sealed record InboundMedia(string MediaId, string MimeType, string? FileName, string? Caption, bool IsVoice);
     private sealed record InboundStatus(string ExternalId, WhatsAppMessageStatus Status, DateTime OccurredAt, string? ErrorCode, string? ErrorMessage);
     private sealed record InboundFailure(string? Code, string? Message);

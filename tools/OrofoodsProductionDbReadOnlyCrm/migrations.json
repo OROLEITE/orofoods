@@ -42,5 +42,6 @@
   "20261027193210_AddSalesRepresentativeWmcCode",
   "20261106113458_AddWhatsAppBusinessConnection",
   "20261106120359_AddWhatsAppWebhookDelivery",
-  "20261110151548_AddWhatsAppCrmOperationGuards"
+  "20261110151548_AddWhatsAppCrmOperationGuards",
+  "20261114120956_AddWhatsAppContactProfileName"
 ]
