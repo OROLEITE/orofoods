@@ -42,7 +42,7 @@
 
 - [ ] **Step 2: Run the focused tests to verify the new contracts fail for the missing label and expose any real behavioral gap**
 
-  Run: `dotnet test Orofoods.Web.Tests/Orofoods.Web.Tests.csproj --filter "FullyQualifiedName~WhatsAppCrmOperationsTests|FullyQualifiedName~WhatsAppThemeSurfaceTests" -c Release -p:NuGetAudit=false`
+  Run: `dotnet test Orofoods.Web.Tests/Orofoods.Web.Tests.csproj --filter "FullyQualifiedName~WhatsAppCrmOperationsTests|FullyQualifiedName~WhatsAppThemeSurfaceTests" -c Release -p:NuGetAudit=false -p:IsTestProject=true`
 
   Expected: the new label contract fails before implementation; existing behavior tests should pass unless a genuine hardening gap is found.
 
@@ -61,7 +61,7 @@
 
 - [ ] **Step 2: Run the focused tests and verify the contract is green**
 
-  Run: `dotnet test Orofoods.Web.Tests/Orofoods.Web.Tests.csproj --filter "FullyQualifiedName~WhatsAppCrmOperationsTests|FullyQualifiedName~WhatsAppThemeSurfaceTests" -c Release -p:NuGetAudit=false`
+  Run: `dotnet test Orofoods.Web.Tests/Orofoods.Web.Tests.csproj --filter "FullyQualifiedName~WhatsAppCrmOperationsTests|FullyQualifiedName~WhatsAppThemeSurfaceTests" -c Release -p:NuGetAudit=false -p:IsTestProject=true`
 
 - [ ] **Step 3: Commit the scoped implementation**
 
@@ -78,11 +78,11 @@
 
 - [ ] **Step 1: Run the focused WhatsApp tests**
 
-  Run the Task 2 command and record the result.
+  Run the Task 2 command, including `-p:IsTestProject=true` so the .NET 10 SDK does not silently skip this project, and record the result.
 
 - [ ] **Step 2: Run the full test suite and Release build**
 
-  Run: `dotnet test Orofoods.Web.Tests/Orofoods.Web.Tests.csproj -c Release -p:NuGetAudit=false`
+  Run: `dotnet test Orofoods.Web.Tests/Orofoods.Web.Tests.csproj -c Release -p:NuGetAudit=false -p:IsTestProject=true`
 
   Run: `dotnet build Orofoods.Web/Orofoods.Web.csproj -c Release --no-restore -p:NuGetAudit=false`
 
