@@ -116,10 +116,7 @@
                             <span class="whatsapp-conversation-copy">
                                 <span class="whatsapp-conversation-title">
                                     <strong>@contactLabel</strong>
-                                    @if (conversation.LastMessageAt.HasValue)
-                                    {
-                                        <time datetime="@(ToUtcIso(conversation.LastMessageAt.Value))">@FormatTime(conversation.LastMessageAt.Value)</time>
-                                    }
+                                    <time datetime="@(conversation.LastMessageAt.HasValue ? ToUtcIso(conversation.LastMessageAt.Value) : null)">@(conversation.LastMessageAt.HasValue ? FormatTime(conversation.LastMessageAt.Value) : string.Empty)</time>
                                 </span>
                                 <span class="whatsapp-conversation-preview">
                                     <span>
@@ -135,8 +132,8 @@
                                     }
                                 </span>
                                 <span class="whatsapp-conversation-meta">
-                                    <i class="fa-solid @(conversation.LastInboundAt.HasValue ? "fa-arrow-down" : "fa-comment")" aria-hidden="true"></i>
-                                    @conversationStatus
+                                    <i class="whatsapp-conversation-meta-icon fa-solid @(conversation.LastInboundAt.HasValue ? "fa-arrow-down" : "fa-comment")" aria-hidden="true"></i>
+                                    <span class="whatsapp-conversation-meta-text">@conversationStatus</span>
                                 </span>
                             </span>
                         </a>

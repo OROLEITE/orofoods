@@ -178,6 +178,7 @@ public class WhatsAppController(
                     lastMessageId = lastMessage?.Id,
                     lastMessageDirection = lastMessage?.Direction.ToString().ToLowerInvariant(),
                     lastMessageAt = item.LastMessageAt.HasValue ? ToUtcIso(item.LastMessageAt.Value) : null,
+                    lastInboundAt = item.LastInboundAt.HasValue ? ToUtcIso(item.LastInboundAt.Value) : null,
                     item.UnreadCount,
                     status = item.Status.ToString().ToLowerInvariant()
                 };
