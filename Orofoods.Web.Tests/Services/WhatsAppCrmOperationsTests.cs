@@ -323,6 +323,33 @@ public sealed class WhatsAppCrmOperationsTests
     }
 
     [Fact]
+    public async Task New_number_can_send_an_approved_template_without_an_inbound_message()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var gateway = new TrackingGateway
+        {
+            Templates = [new WhatsAppApprovedTemplate("welcome", "pt_BR", "UTILITY", null, "Olá {{1}}", 0, 1)]
+        };
+        var controller = CreateController(db, gateway);
+
+        var start = Assert.IsType<RedirectToActionResult>(await controller.StartConversation(null, "+55 (48) 92007-7785", CancellationToken.None));
+        var conversation = await db.WhatsAppConversations.SingleAsync();
+        var index = Assert.IsType<ViewResult>(await controller.Index(conversation.Id, CancellationToken.None, markAsRead: false));
+        var model = Assert.IsType<WhatsAppInboxViewModel>(index.Model);
+
+        Assert.Equal(nameof(WhatsAppController.Index), start.ActionName);
+        Assert.Null(conversation.LastInboundAt);
+        Assert.False(model.ServiceWindowOpen);
+
+        await controller.SendTemplate(conversation.Id, "welcome", "pt_BR", ["Cliente novo"], [], Guid.NewGuid().ToString("N"), CancellationToken.None);
+
+        var message = await db.WhatsAppMessages.SingleAsync();
+        Assert.Equal(1, gateway.TemplateCalls);
+        Assert.Equal("Olá Cliente novo", message.TextBody);
+        Assert.Equal(WhatsAppMessageStatus.Sent, message.Status);
+    }
+
+    [Fact]
     public async Task Start_conversation_rejects_customers_outside_the_current_seller_scope()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -359,6 +386,62 @@ public sealed class WhatsAppCrmOperationsTests
 
         Assert.Equal(0, gateway.TextCalls);
         Assert.Empty(await db.WhatsAppMessages.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Expired_window_blocks_free_text_but_allows_an_approved_template()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var inboundAt = new DateTime(2026, 11, 10, 12, 0, 0, DateTimeKind.Utc);
+        var conversation = new WhatsAppConversation { PhoneNumber = "5511999990000", LastInboundAt = inboundAt };
+        db.WhatsAppConversations.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway
+        {
+            Templates = [new WhatsAppApprovedTemplate("follow_up", "pt_BR", "UTILITY", null, "Retomada {{1}}", 0, 1)]
+        };
+        var controller = CreateController(db, gateway, timeProvider: new FixedTimeProvider(inboundAt.AddHours(25)));
+
+        await controller.Send(conversation.Id, "Mensagem livre bloqueada", CancellationToken.None, Guid.NewGuid().ToString("N"));
+        await controller.SendTemplate(conversation.Id, "follow_up", "pt_BR", ["cliente"], [], Guid.NewGuid().ToString("N"), CancellationToken.None);
+
+        var message = await db.WhatsAppMessages.SingleAsync();
+        Assert.Equal(0, gateway.TextCalls);
+        Assert.Equal(1, gateway.TemplateCalls);
+        Assert.Equal("Retomada cliente", message.TextBody);
+        Assert.Equal(WhatsAppMessageStatus.Sent, message.Status);
+    }
+
+    [Fact]
+    public async Task Inbound_reply_reopens_the_service_window_for_free_text()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var expiredAt = DateTime.UtcNow.AddHours(-25);
+        var conversation = new WhatsAppConversation { PhoneNumber = "5511999990000", LastInboundAt = expiredAt };
+        db.WhatsAppConversations.Add(conversation);
+        await db.SaveChangesAsync();
+        var service = new WhatsAppConversationService(
+            db,
+            Options.Create(new WhatsAppBusinessOptions { Enabled = true }),
+            new UserNotificationService(db));
+        using var document = JsonDocument.Parse("""
+            {"entry":[{"changes":[{"value":{
+              "messages":[{"id":"wamid.window-reopen","from":"5511999990000","type":"text","text":{"body":"Resposta do cliente"}}]
+            }}]}]}
+            """);
+
+        await service.ProcessAsync(document);
+        var gateway = new TrackingGateway();
+        var controller = CreateController(db, gateway, timeProvider: new FixedTimeProvider(DateTime.UtcNow.AddMinutes(5)));
+        var update = Assert.IsType<JsonResult>(await controller.Updates(conversation.Id, CancellationToken.None));
+        using var payload = JsonDocument.Parse(JsonSerializer.Serialize(update.Value));
+
+        await controller.Send(conversation.Id, "Resposta livre liberada", CancellationToken.None, Guid.NewGuid().ToString("N"));
+
+        Assert.True(conversation.LastInboundAt > expiredAt);
+        Assert.True(payload.RootElement.GetProperty("serviceWindowOpen").GetBoolean());
+        Assert.Equal(1, gateway.TextCalls);
+        Assert.Equal("Resposta livre liberada", (await db.WhatsAppMessages.OrderBy(message => message.Id).LastAsync()).TextBody);
     }
 
     [Fact]
@@ -550,6 +633,45 @@ public sealed class WhatsAppCrmOperationsTests
     }
 
     [Fact]
+    public async Task Template_send_requires_all_header_and_body_parameters()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var conversation = new WhatsAppConversation { PhoneNumber = "5511999990000", LastInboundAt = DateTime.UtcNow.AddHours(-25) };
+        db.WhatsAppConversations.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway
+        {
+            Templates = [new WhatsAppApprovedTemplate("required_values", "pt_BR", "UTILITY", "Olá {{1}}", "Pedido {{1}}", 1, 1)]
+        };
+        var controller = CreateController(db, gateway);
+
+        await controller.SendTemplate(conversation.Id, "required_values", "pt_BR", [""], [""], Guid.NewGuid().ToString("N"), CancellationToken.None);
+
+        Assert.Equal(0, gateway.TemplateCalls);
+        Assert.Empty(await db.WhatsAppMessages.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Seller_cannot_send_a_template_to_a_conversation_outside_their_scope()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var conversation = new WhatsAppConversation { PhoneNumber = "5511999990000", LastInboundAt = DateTime.UtcNow.AddHours(-25) };
+        db.WhatsAppConversations.Add(conversation);
+        await db.SaveChangesAsync();
+        var gateway = new TrackingGateway
+        {
+            Templates = [new WhatsAppApprovedTemplate("approved", "pt_BR", "UTILITY", null, "Mensagem", 0, 0)]
+        };
+        var controller = CreateController(db, gateway, ApplicationRoles.Seller, "seller");
+
+        Assert.IsType<ForbidResult>(await controller.SendTemplate(conversation.Id, "approved", "pt_BR", [], [], Guid.NewGuid().ToString("N"), CancellationToken.None));
+
+        Assert.Equal(0, gateway.TemplateCatalogCalls);
+        Assert.Equal(0, gateway.TemplateCalls);
+        Assert.Empty(await db.WhatsAppMessages.ToListAsync());
+    }
+
+    [Fact]
     public async Task Transfer_requires_manager_permission_and_preserves_messages()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -703,6 +825,24 @@ public sealed class WhatsAppCrmOperationsTests
 
         Assert.False(result.Succeeded);
         Assert.Equal("UNKNOWN", result.ErrorCode);
+    }
+
+    [Fact]
+    public async Task Meta_template_send_maps_http_failure_without_exposing_response_body()
+    {
+        const string sensitiveMetaMessage = "internal recipient and access token details";
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = JsonContent($"{{\"error\":{{\"code\":132000,\"message\":\"{sensitiveMetaMessage}\"}}}}")
+        });
+        var gateway = CreateGateway(handler, embeddedSignup: false);
+
+        var result = await gateway.SendTemplateAsync("5511999990000", "approved", "pt_BR", [], []);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("400", result.ErrorCode);
+        Assert.Equal("Falha ao enviar modelo WhatsApp.", result.ErrorMessage);
+        Assert.DoesNotContain(sensitiveMetaMessage, result.ErrorMessage, StringComparison.Ordinal);
     }
 
     [Fact]
