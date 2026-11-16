@@ -410,22 +410,36 @@
         if (!conversation.identified) appendIcon(avatar, 'fa-regular fa-user');
         const copy = document.createElement('span');
         copy.className = 'whatsapp-conversation-copy';
-        copy.innerHTML = '<span class="whatsapp-conversation-title"><strong></strong><time></time></span><span class="whatsapp-conversation-preview"><span></span><span class="whatsapp-unread-badge"></span></span><span class="whatsapp-conversation-meta"></span>';
+        copy.innerHTML = `<span class="whatsapp-conversation-title"><strong></strong><time></time></span><span class="whatsapp-conversation-preview"><span></span><span class="whatsapp-unread-badge"></span></span><span class="whatsapp-conversation-meta"><i class="whatsapp-conversation-meta-icon fa-solid ${conversation.lastInboundAt ? 'fa-arrow-down' : 'fa-comment'}" aria-hidden="true"></i><span class="whatsapp-conversation-meta-text"></span></span>`;
         link.append(copy);
         return link;
     };
 
     const updateConversation = (element, conversation) => {
+        const title = element.querySelector('.whatsapp-conversation-title strong');
+        const preview = element.querySelector('.whatsapp-conversation-preview > span:first-child');
+        const previewContainer = element.querySelector('.whatsapp-conversation-preview');
+        const meta = element.querySelector('.whatsapp-conversation-meta');
+        const missingElements = [
+            !title && '.whatsapp-conversation-title strong',
+            !preview && '.whatsapp-conversation-preview > span:first-child',
+            !previewContainer && '.whatsapp-conversation-preview',
+            !meta && '.whatsapp-conversation-meta'
+        ].filter(Boolean);
+        if (missingElements.length > 0)
+            throw new Error(`WhatsApp conversation card is missing required elements: ${missingElements.join(', ')}`);
+
         element.classList.toggle('is-active', conversation.id === selectedConversationId);
         element.classList.remove('whatsapp-conversation--open', 'whatsapp-conversation--pending', 'whatsapp-conversation--closed');
         element.classList.add(`whatsapp-conversation--${conversation.status}`);
         if (conversation.id === selectedConversationId) element.setAttribute('aria-current', 'page');
-        element.querySelector('.whatsapp-conversation-title strong').textContent = conversation.name;
+        title.textContent = conversation.name;
         if (conversation.phoneNumber) element.dataset.searchPhone = conversation.phoneNumber;
         const time = element.querySelector('.whatsapp-conversation-title time');
-        time.textContent = formatTime(conversation.lastMessageAt);
-        time.dateTime = conversation.lastMessageAt || '';
-        const preview = element.querySelector('.whatsapp-conversation-preview > span:first-child');
+        if (time) {
+            time.textContent = formatTime(conversation.lastMessageAt);
+            time.dateTime = conversation.lastMessageAt || '';
+        }
         preview.replaceChildren();
         const icon = iconForType(conversation.messageType);
         if (icon) appendIcon(preview, `fa-solid ${icon}`);
@@ -434,14 +448,28 @@
         if (!badge && conversation.unreadCount > 0) {
             badge = document.createElement('span');
             badge.className = 'whatsapp-unread-badge';
-            element.querySelector('.whatsapp-conversation-preview').append(badge);
+            previewContainer.append(badge);
         }
         if (badge) {
             badge.hidden = conversation.unreadCount < 1;
             badge.textContent = conversation.unreadCount > 99 ? '99+' : conversation.unreadCount;
             badge.setAttribute('aria-label', `${conversation.unreadCount} mensagens não lidas`);
         }
-        element.querySelector('.whatsapp-conversation-meta').textContent = conversation.status === 'open'
+        let metaIcon = meta.querySelector('.whatsapp-conversation-meta-icon') ?? meta.querySelector('i');
+        let metaText = meta.querySelector('.whatsapp-conversation-meta-text');
+        if (!metaIcon || !metaText) {
+            const existingIcon = metaIcon;
+            meta.replaceChildren();
+            metaIcon = existingIcon ?? document.createElement('i');
+            metaIcon.className = 'whatsapp-conversation-meta-icon fa-solid';
+            metaIcon.setAttribute('aria-hidden', 'true');
+            meta.append(metaIcon);
+            metaText = document.createElement('span');
+            metaText.className = 'whatsapp-conversation-meta-text';
+            meta.append(metaText);
+        }
+        metaIcon.className = `whatsapp-conversation-meta-icon fa-solid ${conversation.lastInboundAt ? 'fa-arrow-down' : 'fa-comment'}`;
+        metaText.textContent = conversation.status === 'open'
             ? 'Em atendimento' : conversation.status === 'pending' ? 'Novo' : 'Finalizado';
     };
 
@@ -464,13 +492,50 @@
         conversationList.querySelector('.whatsapp-list-empty')?.remove();
         const visibleIds = new Set();
         for (const conversation of conversations) {
-            visibleIds.add(String(conversation.id));
-            if (conversation.lastMessageDirection === 'inbound' && conversation.lastMessageId != null)
-                notificationSeenInboundIds.add(String(conversation.lastMessageId));
-            let element = conversationList.querySelector(`[data-conversation-id="${conversation.id}"]`);
-            if (!element) element = conversationElement(conversation);
-            updateConversation(element, conversation);
-            conversationList.append(element);
+            const conversationId = conversation?.id == null ? null : String(conversation.id);
+            let element = null;
+            let initialError = null;
+            try {
+                if (conversationId == null) throw new Error('WhatsApp conversation payload is missing an id.');
+                element = conversationList.querySelector(`[data-conversation-id="${conversationId}"]`);
+                if (!element) {
+                    element = conversationElement(conversation);
+                    updateConversation(element, conversation);
+                } else {
+                    try {
+                        updateConversation(element, conversation);
+                    } catch (error) {
+                        initialError = error;
+                        const replacement = conversationElement(conversation);
+                        updateConversation(replacement, conversation);
+                        element.replaceWith(replacement);
+                        element = replacement;
+                        console.warn?.('WhatsApp conversation card rebuilt after a structural error.', {
+                            conversationId,
+                            name: error?.name ?? null,
+                            message: error?.message ?? null
+                        });
+                    }
+                }
+                conversationList.append(element);
+                conversationList.querySelectorAll('[data-conversation-id]').forEach(candidate => {
+                    if (candidate !== element && String(candidate.dataset.conversationId) === conversationId)
+                        candidate.remove();
+                });
+                visibleIds.add(conversationId);
+                if (conversation.lastMessageDirection === 'inbound' && conversation.lastMessageId != null)
+                    notificationSeenInboundIds.add(String(conversation.lastMessageId));
+            } catch (error) {
+                element?.remove?.();
+                console.error('WhatsApp conversation reconciliation failed.', {
+                    conversationId,
+                    name: error?.name ?? null,
+                    message: error?.message ?? null,
+                    causeName: initialError?.name ?? null,
+                    causeMessage: initialError?.message ?? null
+                });
+                continue;
+            }
         }
         conversationList.querySelectorAll('[data-conversation-id]').forEach(element => {
             if (!visibleIds.has(String(element.dataset.conversationId))) element.remove();

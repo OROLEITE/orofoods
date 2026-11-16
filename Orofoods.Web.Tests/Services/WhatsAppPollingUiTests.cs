@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Jint;
 
 namespace Orofoods.Web.Tests.Services;
@@ -419,27 +420,53 @@ public class WhatsAppPollingUiTests
     }
 
     [Theory]
-    [InlineData(true, "open", true, 2)]
-    [InlineData(false, "pending", false, 2)]
-    [InlineData(true, "closed", false, 0)]
-    [InlineData(false, "pending", true, 0)]
-    [InlineData(false, "open", true, 100)]
-    public async Task Sync_continues_after_optional_unread_badge_is_missing(
-        bool identified, string status, bool initialBadgePresent, int unreadCount)
+    [InlineData(true, "open", true, true, true, true, 2)]
+    [InlineData(false, "pending", true, true, false, true, 2)]
+    [InlineData(true, "closed", true, true, false, true, 0)]
+    [InlineData(false, "pending", true, true, true, true, 0)]
+    [InlineData(false, "open", true, true, true, true, 100)]
+    [InlineData(true, "open", true, false, true, true, 2)]
+    [InlineData(true, "open", false, true, false, true, 2)]
+    [InlineData(true, "pending", true, true, false, false, 0)]
+    public async Task Sync_continues_after_optional_conversation_elements_are_missing(
+        bool identified, string status, bool existingCardPresent, bool initialTimePresent,
+        bool initialBadgePresent, bool hasLastMessage, int unreadCount)
     {
         var root = FindRepositoryRoot();
         var script = ReadText(Path.Combine(root, "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
         var view = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml"));
+        var controller = ReadText(Path.Combine(root, "Orofoods.Web", "Areas", "Admin", "Controllers", "WhatsAppController.cs"));
 
         Assert.Contains("var hasUnread = conversation.UnreadCount > 0;", view);
         Assert.Contains("@if (hasUnread)", view);
         Assert.Contains("class=\"whatsapp-unread-badge\"", view);
+        Assert.Contains("whatsapp-conversation-meta-icon", view);
+        Assert.Contains("<time datetime=\"@(conversation.LastMessageAt.HasValue ? ToUtcIso(conversation.LastMessageAt.Value) : null)\">", view);
+        Assert.DoesNotContain("@if (conversation.LastMessageAt.HasValue)", view);
+        Assert.Contains("lastInboundAt = item.LastInboundAt.HasValue ? ToUtcIso(item.LastInboundAt.Value) : null", controller);
+        Assert.Contains("whatsapp-conversation-meta-text", view);
 
         var updateConversation = ExtractBetween(script, "    const updateConversation = (element, conversation) =>", "    const applyConversationFilter =");
         var updateConversations = ExtractBetween(script, "    const updateConversations = conversations =>", "    const synchronize = async () =>");
+        var conversationElement = ExtractBetween(script, "    const conversationElement = conversation =>", "    const updateConversation =");
         var updateMessages = ExtractBetween(script, "    const updateMessages = messages =>", "    const conversationElement = conversation =>");
         var synchronize = ExtractBetween(script, "    const synchronize = async () =>", "    form.addEventListener('submit'");
-        var scenario = JsonSerializer.Serialize(new { identified, status, initialBadgePresent, unreadCount });
+        Assert.Contains("<time></time>", conversationElement);
+        Assert.Contains("<span class=\"whatsapp-conversation-title\"><strong></strong><time></time></span>", conversationElement);
+        Assert.Contains("whatsapp-conversation-meta-text", conversationElement);
+        Assert.Contains("<span class=\"whatsapp-conversation-meta\"><i class=\"whatsapp-conversation-meta-icon", conversationElement);
+        Assert.Contains("<span class=\"whatsapp-conversation-meta-text\"></span></span>", conversationElement);
+        Assert.Contains("lastInboundAt", conversationElement);
+        var scenario = JsonSerializer.Serialize(new
+        {
+            identified,
+            status,
+            existingCardPresent,
+            initialTimePresent,
+            initialBadgePresent,
+            hasLastMessage,
+            unreadCount
+        });
 
         const string harness = """
             const scenario = __SCENARIO__;
@@ -457,7 +484,8 @@ public class WhatsAppPollingUiTests
                 name: scenario.identified ? 'Cliente de teste' : 'Contato de teste',
                 status: scenario.status,
                 unreadCount: scenario.unreadCount,
-                lastMessageAt: '2026-10-02T12:00:00Z',
+                lastMessageAt: scenario.hasLastMessage ? '2026-10-02T12:00:00Z' : null,
+                lastInboundAt: scenario.hasLastMessage ? '2026-10-02T11:59:00Z' : null,
                 preview: 'Prévia sintética',
                 messageType: 'text',
                 lastMessageDirection: 'inbound',
@@ -472,10 +500,19 @@ public class WhatsAppPollingUiTests
                 replaceChildren() { this.children = []; },
                 append(...nodes) { this.children.push(...nodes); }
             });
+            const appendText = (parent, tagName, text, className) => {
+                const node = makeNode();
+                node.className = className;
+                node.textContent = text;
+                parent.append(node);
+                return node;
+            };
             const title = makeNode();
-            const time = makeNode();
+            const time = scenario.existingCardPresent && !scenario.initialTimePresent ? null : makeNode();
             const previewText = makeNode();
-            let unreadBadge = scenario.initialBadgePresent ? makeNode() : null;
+            let unreadBadge = scenario.existingCardPresent
+                ? (scenario.initialBadgePresent ? makeNode() : null)
+                : makeNode();
             const previewContainer = {
                 append(node) {
                     if (node.className === 'whatsapp-unread-badge') unreadBadge = node;
@@ -483,10 +520,21 @@ public class WhatsAppPollingUiTests
             };
             previewText.parentElement = previewContainer;
             const conversationMeta = makeNode();
-            const existingConversation = {
+            const metaIcon = makeNode();
+            metaIcon.className = 'whatsapp-conversation-meta-icon fa-solid fa-arrow-down';
+            const metaText = makeNode();
+            metaText.className = 'whatsapp-conversation-meta-text';
+            conversationMeta.children = [metaIcon, metaText];
+            conversationMeta.querySelector = selector => {
+                if (selector === '.whatsapp-conversation-meta-icon') return metaIcon;
+                if (selector === '.whatsapp-conversation-meta-text') return metaText;
+                return null;
+            };
+            const makeConversationElement = () => ({
                 dataset: { conversationId: String(selectedConversationId) },
                 classList: { toggle() {}, remove() {}, add() {} },
                 setAttribute() {},
+                append() {},
                 querySelector(selector) {
                     if (selector === '.whatsapp-conversation-title strong') return title;
                     if (selector === '.whatsapp-conversation-title time') return time;
@@ -496,15 +544,18 @@ public class WhatsAppPollingUiTests
                     if (selector === '.whatsapp-conversation-meta') return conversationMeta;
                     return null;
                 }
-            };
+            });
+            const existingConversation = scenario.existingCardPresent ? makeConversationElement() : null;
+            const appendedConversations = [];
             const conversationList = {
                 querySelector(selector) {
                     return selector.startsWith('[data-conversation-id=') ? existingConversation : null;
                 },
                 querySelectorAll(selector) {
-                    return selector === '[data-conversation-id]' ? [existingConversation] : [];
+                    return selector === '[data-conversation-id]'
+                        ? [existingConversation, ...appendedConversations].filter(Boolean) : [];
                 },
-                append() {}
+                append(element) { appendedConversations.push(element); }
             };
             const appendedMessages = [];
             const messageList = {
@@ -527,11 +578,13 @@ public class WhatsAppPollingUiTests
             };
             const document = {
                 hidden: false,
-                createElement() { return makeNode(); },
+                createElement(tagName) {
+                    return tagName === 'a' ? makeConversationElement() : makeNode();
+                },
                 createTextNode(text) { return { textContent: String(text) }; }
             };
             const window = {
-                location: { origin: 'https://example.test' },
+                location: { origin: 'https://example.test', pathname: '/Admin/WhatsApp' },
                 setTimeout() { return 1; },
                 clearTimeout() {}
             };
@@ -547,6 +600,7 @@ public class WhatsAppPollingUiTests
                 })
             });
             __UPDATE_CONVERSATION__
+            __CONVERSATION_ELEMENT__
             __UPDATE_CONVERSATIONS__
             __UPDATE_MESSAGES__
             __SYNCHRONIZE__
@@ -556,7 +610,10 @@ public class WhatsAppPollingUiTests
                     syncErrors: console.errors.length,
                     conversationUpdated: title.textContent === testConversation.name
                         && previewText.children.map(node => node.textContent).join('') === testConversation.preview
-                        && conversationMeta.textContent === statusLabel(testConversation.status),
+                        && (time === null || (time.textContent === (testConversation.lastMessageAt ? '12:00' : '')
+                            && time.dateTime === (testConversation.lastMessageAt || '')))
+                        && metaText.textContent === statusLabel(testConversation.status)
+                        && metaIcon.className === `whatsapp-conversation-meta-icon fa-solid ${testConversation.lastInboundAt ? 'fa-arrow-down' : 'fa-comment'}`,
                     badgePresent: unreadBadge !== null,
                     badgeHidden: unreadBadge?.hidden ?? null,
                     badgeText: unreadBadge?.textContent ?? null,
@@ -570,6 +627,7 @@ public class WhatsAppPollingUiTests
         var executable = harness
             .Replace("__SCENARIO__", scenario, StringComparison.Ordinal)
             .Replace("__UPDATE_CONVERSATION__", updateConversation, StringComparison.Ordinal)
+            .Replace("__CONVERSATION_ELEMENT__", conversationElement, StringComparison.Ordinal)
             .Replace("__UPDATE_CONVERSATIONS__", updateConversations, StringComparison.Ordinal)
             .Replace("__UPDATE_MESSAGES__", updateMessages, StringComparison.Ordinal)
             .Replace("__SYNCHRONIZE__", synchronize, StringComparison.Ordinal);
@@ -580,12 +638,296 @@ public class WhatsAppPollingUiTests
         Assert.Equal(0, state.GetProperty("syncErrors").GetInt32());
         Assert.True(state.GetProperty("conversationUpdated").GetBoolean());
         Assert.True(state.GetProperty("messageInserted").GetBoolean());
-        Assert.Equal(initialBadgePresent || unreadCount > 0, state.GetProperty("badgePresent").GetBoolean());
+        Assert.Equal(existingCardPresent ? initialBadgePresent || unreadCount > 0 : true,
+            state.GetProperty("badgePresent").GetBoolean());
         if (state.GetProperty("badgePresent").GetBoolean())
         {
             Assert.Equal(unreadCount == 0, state.GetProperty("badgeHidden").GetBoolean());
             Assert.Equal(unreadCount > 99 ? "99+" : unreadCount.ToString(), state.GetProperty("badgeText").GetString());
         }
+    }
+
+    [Fact]
+    public void Dynamic_conversation_template_has_a_parseable_required_structure()
+    {
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var template = Regex.Match(script, @"copy\.innerHTML\s*=\s*`(?<html>.*?)`;", RegexOptions.Singleline);
+
+        Assert.True(template.Success, "The dynamic conversation template was not found.");
+        var root = XElement.Parse($"<root>{template.Groups["html"].Value}</root>");
+        var title = root.Descendants("span").Single(element => (string?)element.Attribute("class") == "whatsapp-conversation-title");
+        var preview = root.Descendants("span").Single(element => (string?)element.Attribute("class") == "whatsapp-conversation-preview");
+        var meta = root.Descendants("span").Single(element => (string?)element.Attribute("class") == "whatsapp-conversation-meta");
+
+        Assert.Equal(new[] { "strong", "time" }, title.Elements().Select(element => element.Name.LocalName));
+        Assert.Equal(new[] { "span", "span" }, preview.Elements().Select(element => element.Name.LocalName));
+        Assert.Equal("whatsapp-unread-badge", (string?)preview.Elements().ElementAt(1).Attribute("class"));
+        Assert.Equal(new[] { "i", "span" }, meta.Elements().Select(element => element.Name.LocalName));
+        Assert.StartsWith("whatsapp-conversation-meta-icon fa-solid", (string?)meta.Elements().First().Attribute("class"));
+        Assert.Equal("whatsapp-conversation-meta-text", (string?)meta.Elements().ElementAt(1).Attribute("class"));
+    }
+
+    [Fact]
+    public async Task Conversation_sync_rebuilds_invalid_cards_without_duplicates_and_retries_failed_recovery()
+    {
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var conversationElement = ExtractBetween(script, "    const conversationElement = conversation =>", "    const updateConversation =");
+        var updateConversation = ExtractBetween(script, "    const updateConversation = (element, conversation) =>", "    const applyConversationFilter =");
+        var updateConversations = ExtractBetween(script, "    const updateConversations = conversations =>", "    const synchronize = async () =>");
+
+        const string harness = """
+            const selectedConversationId = 1;
+            const notificationSeenInboundIds = new Set();
+            const conversationSearch = null;
+            const applyConversationFilter = () => {};
+            const formatTime = value => value ? '12:00' : '';
+            const iconForType = () => null;
+            const appendIcon = () => {};
+            const makeNode = () => ({
+                get textContent() { return this._textContent ?? ''; },
+                set textContent(value) { this._textContent = String(value); },
+                dateTime: '', hidden: false, className: '', attributes: {}, dataset: {}, children: [],
+                classList: { toggle() {}, remove() {}, add() {} },
+                setAttribute(name, value) { this.attributes[name] = value; },
+                replaceChildren() { this.children = []; },
+                append(...nodes) { this.children.push(...nodes); }
+            });
+            let order = [];
+            const cards = new Map();
+            const removeCard = card => {
+                const index = order.indexOf(card);
+                if (index >= 0) order.splice(index, 1);
+                const id = String(card.dataset.conversationId);
+                if (cards.get(id) === card) cards.delete(id);
+            };
+            const replaceCard = (card, replacement) => {
+                const index = order.indexOf(card);
+                if (index < 0) throw new Error('card was not in the list');
+                order[index] = replacement;
+                replacement.parentList = order;
+                cards.delete(String(card.dataset.conversationId));
+                cards.set(String(replacement.dataset.conversationId), replacement);
+            };
+            const makeCard = (id, missingMeta) => {
+                const strong = makeNode();
+                const time = makeNode();
+                const preview = makeNode();
+                const previewContainer = makeNode();
+                const meta = missingMeta ? null : makeNode();
+                const metaIcon = makeNode();
+                metaIcon.className = 'whatsapp-conversation-meta-icon fa-solid fa-arrow-down';
+                const metaText = makeNode();
+                metaText.className = 'whatsapp-conversation-meta-text';
+                if (meta) {
+                    meta.children = [metaIcon, metaText];
+                    meta.querySelector = selector => {
+                        if (selector === '.whatsapp-conversation-meta-icon') return metaIcon;
+                        if (selector === '.whatsapp-conversation-meta-text') return metaText;
+                        return null;
+                    };
+                }
+                const card = {
+                    dataset: { conversationId: String(id) },
+                    classList: { toggle() {}, remove() {}, add() {} },
+                    setAttribute() {},
+                    append() {},
+                    remove() { removeCard(this); },
+                    replaceWith(replacement) { replaceCard(this, replacement); },
+                    querySelector(selector) {
+                        if (selector === '.whatsapp-conversation-title strong') return strong;
+                        if (selector === '.whatsapp-conversation-title time') return time;
+                        if (selector === '.whatsapp-conversation-preview > span:first-child') return preview;
+                        if (selector === '.whatsapp-conversation-preview') return previewContainer;
+                        if (selector === '.whatsapp-unread-badge') return null;
+                        if (selector === '.whatsapp-conversation-meta') return meta;
+                        if (selector === '.whatsapp-conversation-meta-icon') return metaIcon;
+                        if (selector === '.whatsapp-conversation-meta-text') return metaText;
+                        return null;
+                    }
+                };
+                return { card, strong, metaIcon, metaText };
+            };
+            const invalid = makeCard(1, true);
+            const following = makeCard(2, false);
+            const duplicate = makeCard(2, false);
+            order = [invalid.card, following.card, duplicate.card];
+            invalid.card.parentList = order;
+            following.card.parentList = order;
+            duplicate.card.parentList = order;
+            cards.set('1', invalid.card);
+            cards.set('2', following.card);
+            let allowRecovery = false;
+            const conversationList = {
+                querySelector(selector) {
+                    const match = selector.match(/data-conversation-id="(\d+)"/);
+                    return match ? cards.get(match[1]) ?? null : null;
+                },
+                querySelectorAll() { return [...order]; },
+                append(element) {
+                    const index = order.indexOf(element);
+                    if (index >= 0) order.splice(index, 1);
+                    order.push(element);
+                    element.parentList = order;
+                    cards.set(String(element.dataset.conversationId), element);
+                }
+            };
+            const appendText = (parent, tagName, text, className) => {
+                const node = makeNode();
+                node.className = className;
+                node.textContent = text;
+                parent.append(node);
+                return node;
+            };
+            const document = {
+                createElement(tagName) {
+                    if (tagName === 'a') {
+                        if (!allowRecovery) throw new Error('recovery temporarily unavailable');
+                        return makeCard('new', false).card;
+                    }
+                    return makeNode();
+                },
+                createTextNode(text) { return { textContent: String(text) }; }
+            };
+            const window = { location: { pathname: '/Admin/WhatsApp' } };
+            const console = { errors: [], error(...args) { this.errors.push(args); } };
+            __CONVERSATION_ELEMENT__
+            __UPDATE_CONVERSATION__
+            __UPDATE_CONVERSATIONS__
+            const payload = [
+                { id: 2, name: 'Seguinte', status: 'pending', unreadCount: 0, lastMessageAt: null, lastInboundAt: null, preview: 'b' },
+                { id: 1, name: 'Recuperada', status: 'open', unreadCount: 0, lastMessageAt: null, lastInboundAt: null, preview: 'a' }
+            ];
+            updateConversations(payload);
+            const afterFailedRecovery = order.map(card => String(card.dataset.conversationId));
+            const errorsAfterFailure = console.errors.length;
+            allowRecovery = true;
+            updateConversations(payload);
+            const afterSuccessfulRecovery = order.map(card => String(card.dataset.conversationId));
+            const recovered = cards.get('1');
+            const next = cards.get('2');
+            JSON.stringify({
+                afterFailedRecovery: afterFailedRecovery.join(','),
+                errorsAfterFailure,
+                afterSuccessfulRecovery: afterSuccessfulRecovery.join(','),
+                uniqueAfterRecovery: new Set(afterSuccessfulRecovery).size === afterSuccessfulRecovery.length,
+                recoveredUpdated: recovered?.querySelector('.whatsapp-conversation-title strong')?.textContent === 'Recuperada',
+                followingUpdated: next?.querySelector('.whatsapp-conversation-title strong')?.textContent === 'Seguinte',
+                errorsAfterSuccess: console.errors.length
+            });
+            """;
+
+        var executable = harness
+            .Replace("__CONVERSATION_ELEMENT__", conversationElement, StringComparison.Ordinal)
+            .Replace("__UPDATE_CONVERSATION__", updateConversation, StringComparison.Ordinal)
+            .Replace("__UPDATE_CONVERSATIONS__", updateConversations, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(executable);
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.Equal("2", state.GetProperty("afterFailedRecovery").GetString());
+        Assert.Equal(1, state.GetProperty("errorsAfterFailure").GetInt32());
+        Assert.Equal("2,1", state.GetProperty("afterSuccessfulRecovery").GetString());
+        Assert.True(state.GetProperty("uniqueAfterRecovery").GetBoolean());
+        Assert.True(state.GetProperty("recoveredUpdated").GetBoolean());
+        Assert.True(state.GetProperty("followingUpdated").GetBoolean());
+        Assert.Equal(1, state.GetProperty("errorsAfterSuccess").GetInt32());
+    }
+
+    [Fact]
+    public async Task Conversation_sync_logs_a_structural_error_and_continues_with_later_cards()
+    {
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+        var updateConversation = ExtractBetween(script, "    const updateConversation = (element, conversation) =>", "    const applyConversationFilter =");
+        var updateConversations = ExtractBetween(script, "    const updateConversations = conversations =>", "    const synchronize = async () =>");
+
+        const string harness = """
+            const selectedConversationId = 0;
+            const notificationSeenInboundIds = new Set();
+            const conversationSearch = null;
+            const applyConversationFilter = () => {};
+            const formatTime = value => value ? '12:00' : '';
+            const iconForType = () => null;
+            const appendIcon = () => {};
+            const makeNode = () => ({
+                get textContent() { return this._textContent ?? ''; },
+                set textContent(value) { this._textContent = String(value); },
+                dateTime: '', hidden: false, className: '', attributes: {}, dataset: {}, children: [],
+                classList: { toggle() {}, remove() {}, add() {} },
+                setAttribute(name, value) { this.attributes[name] = value; },
+                replaceChildren() { this.children = []; },
+                append(...nodes) { this.children.push(...nodes); }
+            });
+            const makeCard = missingMeta => {
+                const strong = makeNode();
+                const time = makeNode();
+                const preview = makeNode();
+                const previewContainer = { append() {} };
+                const meta = missingMeta ? null : makeNode();
+                const metaIcon = makeNode();
+                metaIcon.className = 'whatsapp-conversation-meta-icon fa-solid fa-comment';
+                const metaText = makeNode();
+                metaText.className = 'whatsapp-conversation-meta-text';
+                if (meta) {
+                    meta.children = [metaIcon, metaText];
+                    meta.querySelector = selector => {
+                        if (selector === '.whatsapp-conversation-meta-icon') return metaIcon;
+                        if (selector === '.whatsapp-conversation-meta-text') return metaText;
+                        return null;
+                    };
+                }
+                const card = {
+                    dataset: { conversationId: '' },
+                    classList: { toggle() {}, remove() {}, add() {} },
+                    setAttribute() {},
+                    remove() {},
+                    querySelector(selector) {
+                        if (selector === '.whatsapp-conversation-title strong') return strong;
+                        if (selector === '.whatsapp-conversation-title time') return time;
+                        if (selector === '.whatsapp-conversation-preview > span:first-child') return preview;
+                        if (selector === '.whatsapp-conversation-preview') return previewContainer;
+                        if (selector === '.whatsapp-unread-badge') return null;
+                        if (selector === '.whatsapp-conversation-meta') return meta;
+                        return null;
+                    }
+                };
+                return { card, strong, metaText };
+            };
+            const invalid = makeCard(true);
+            invalid.card.dataset.conversationId = '1';
+            const valid = makeCard(false);
+            valid.card.dataset.conversationId = '2';
+            const cards = new Map([['1', invalid.card], ['2', valid.card]]);
+            const conversationList = {
+                querySelector(selector) {
+                    const match = selector.match(/data-conversation-id="(\d+)"/);
+                    return match ? cards.get(match[1]) ?? null : null;
+                },
+                querySelectorAll() { return [invalid.card, valid.card]; },
+                append() {}
+            };
+            const document = { createElement: makeNode, createTextNode(text) { return { textContent: String(text) }; } };
+            const console = { errors: [], error(...args) { this.errors.push(args); } };
+            __UPDATE_CONVERSATION__
+            __UPDATE_CONVERSATIONS__
+            updateConversations([
+                { id: 1, name: 'Inválido', status: 'open', unreadCount: 0, lastMessageAt: null, lastInboundAt: null, preview: 'x' },
+                { id: 2, name: 'Válido', status: 'pending', unreadCount: 0, lastMessageAt: null, lastInboundAt: null, preview: 'y' }
+            ]);
+            JSON.stringify({
+                errors: console.errors.length,
+                validUpdated: valid.strong.textContent === 'Válido' && valid.metaText.textContent === 'Novo'
+            });
+            """;
+
+        var executable = harness
+            .Replace("__UPDATE_CONVERSATION__", updateConversation, StringComparison.Ordinal)
+            .Replace("__UPDATE_CONVERSATIONS__", updateConversations, StringComparison.Ordinal);
+        var result = await new Engine().EvaluateAsync(executable);
+        using var diagnostic = JsonDocument.Parse(result.AsString());
+        var state = diagnostic.RootElement;
+
+        Assert.Equal(1, state.GetProperty("errors").GetInt32());
+        Assert.True(state.GetProperty("validUpdated").GetBoolean());
     }
 
     [Fact]
