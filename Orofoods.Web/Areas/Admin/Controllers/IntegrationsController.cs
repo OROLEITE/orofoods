@@ -136,15 +136,7 @@ public class IntegrationsController(
             brands = await LoadWmcBrandsOnDemandAsync(cancellationToken);
         }
 
-        DateTime? lastProductSyncAt = null;
-        try
-        {
-            lastProductSyncAt = await wmcProductImportService.GetLastProductImportAsync(cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogWarning(ex, "WMC product sync timestamp unavailable while rendering the integration center.");
-        }
+        var lastProductSyncAt = await LoadLastProductSyncForShellAsync(cancellationToken);
 
         return View(new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: lastProductSyncAt));
     }
@@ -188,6 +180,42 @@ public class IntegrationsController(
                 "LoadBrands",
                 stopwatch.ElapsedMilliseconds);
             return [];
+        }
+    }
+
+    private async Task<DateTime?> LoadLastProductSyncForShellAsync(CancellationToken requestCancellationToken)
+    {
+        const int timeoutSeconds = 5;
+        var stopwatch = Stopwatch.StartNew();
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(requestCancellationToken);
+        timeoutSource.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+
+        try
+        {
+            var lastProductSyncAt = await wmcProductImportService.GetLastProductImportAsync(timeoutSource.Token);
+            logger.LogInformation(
+                "WMC product sync timestamp lookup completed. Operation={Operation} DurationMs={DurationMs}",
+                "LoadLastProductSync",
+                stopwatch.ElapsedMilliseconds);
+            return lastProductSyncAt;
+        }
+        catch (OperationCanceledException) when (!requestCancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "WMC product sync timestamp lookup timed out. Operation={Operation} DurationMs={DurationMs} TimeoutSeconds={TimeoutSeconds}",
+                "LoadLastProductSync",
+                stopwatch.ElapsedMilliseconds,
+                timeoutSeconds);
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "WMC product sync timestamp unavailable while rendering the integration center. Operation={Operation} DurationMs={DurationMs}",
+                "LoadLastProductSync",
+                stopwatch.ElapsedMilliseconds);
+            return null;
         }
     }
 

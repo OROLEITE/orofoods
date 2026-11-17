@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,7 +24,12 @@ public sealed class WmcActivationDiagnosticsQuery(
         int? diagnosticOrderId = null,
         CancellationToken cancellationToken = default)
     {
+        const int timeoutSeconds = 5;
+        var stopwatch = Stopwatch.StartNew();
         var jsonOptions = wmcJsonOrderOptions.Value;
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+        var queryCancellationToken = timeoutSource.Token;
         try
         {
             var aggregates = await db.Orders
@@ -34,16 +40,16 @@ public sealed class WmcActivationDiagnosticsQuery(
                     MaxOrderId = (int?)group.Max(order => order.Id),
                     TotalOrderCount = group.LongCount()
                 })
-                .SingleOrDefaultAsync(cancellationToken);
+                .SingleOrDefaultAsync(queryCancellationToken);
 
             var inputError = diagnosticOrderId is <= 0
                 ? "Informe um Order.Id positivo."
                 : null;
             var orderEligibility = diagnosticOrderId is > 0
-                ? await ReadOrderEligibilityAsync(diagnosticOrderId.Value, jsonOptions, cancellationToken)
+                ? await ReadOrderEligibilityAsync(diagnosticOrderId.Value, jsonOptions, queryCancellationToken)
                 : null;
 
-            return new WmcActivationDiagnostics(
+            var result = new WmcActivationDiagnostics(
                 aggregates?.MaxOrderId ?? 0,
                 aggregates?.TotalOrderCount ?? 0,
                 jsonOptions.AutomaticWorkerStartAfterOrderId,
@@ -53,22 +59,45 @@ public sealed class WmcActivationDiagnosticsQuery(
                 runtime.Snapshot,
                 orderEligibility,
                 inputError);
+            logger.LogInformation(
+                "WMC activation diagnostics query completed. Operation={Operation} DurationMs={DurationMs} OrderId={OrderId}",
+                "LoadDiagnostics",
+                stopwatch.ElapsedMilliseconds,
+                diagnosticOrderId);
+            return result;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "WMC activation diagnostics query timed out. Operation={Operation} DurationMs={DurationMs} TimeoutSeconds={TimeoutSeconds} OrderId={OrderId}",
+                "LoadDiagnostics",
+                stopwatch.ElapsedMilliseconds,
+                timeoutSeconds,
+                diagnosticOrderId);
+            return UnavailableDiagnostics(jsonOptions);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "WMC activation diagnostics unavailable. OrderId={OrderId}", diagnosticOrderId);
-            return new WmcActivationDiagnostics(
-                0,
-                0,
-                jsonOptions.AutomaticWorkerStartAfterOrderId,
-                jsonOptions.Enabled,
-                jsonOptions.AutomaticWorkerEnabled,
-                wmcFileDropOptions.Value.Enabled,
-                runtime.Snapshot,
-                null,
-                "O diagnóstico está temporariamente indisponível.");
+            logger.LogWarning(
+                ex,
+                "WMC activation diagnostics unavailable. Operation={Operation} DurationMs={DurationMs} OrderId={OrderId}",
+                "LoadDiagnostics",
+                stopwatch.ElapsedMilliseconds,
+                diagnosticOrderId);
+            return UnavailableDiagnostics(jsonOptions);
         }
     }
+
+    private WmcActivationDiagnostics UnavailableDiagnostics(WmcJsonOrderOptions jsonOptions) => new(
+        0,
+        0,
+        jsonOptions.AutomaticWorkerStartAfterOrderId,
+        jsonOptions.Enabled,
+        jsonOptions.AutomaticWorkerEnabled,
+        wmcFileDropOptions.Value.Enabled,
+        runtime.Snapshot,
+        null,
+        "O diagnóstico está temporariamente indisponível.");
 
     private async Task<WmcOrderEligibilityDiagnostic> ReadOrderEligibilityAsync(
         int orderId,
