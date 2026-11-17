@@ -17,6 +17,7 @@
         panels.forEach(panel => {
             const isActive = panel.dataset.wmcTabPanel === selected;
             panel.hidden = !isActive;
+            panel.setAttribute('aria-hidden', (!isActive).toString());
             panel.toggleAttribute('data-wmc-active', isActive);
         });
         if (updateHash && !serverState && window.history?.replaceState) {

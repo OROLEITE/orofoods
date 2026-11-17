@@ -65,6 +65,12 @@
     }
     @await RenderSectionAsync("Head", required: false)
     <link rel="stylesheet" href="~/css/admin-dashboard-indicators.css" asp-append-version="true" />
+    @if (ViewContext.RouteData.Values["area"]?.ToString() == "Admin" &&
+         ViewContext.RouteData.Values["controller"]?.ToString() == "Integrations" &&
+         ViewContext.RouteData.Values["action"]?.ToString() == "Wmc")
+    {
+        <link rel="stylesheet" href="~/css/wmc-integration-center.css" asp-append-version="true" />
+    }
 }
 
 @section Scripts {

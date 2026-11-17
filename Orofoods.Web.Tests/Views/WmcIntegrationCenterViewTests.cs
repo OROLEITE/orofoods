@@ -19,6 +19,11 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.Contains("LastRun", view, StringComparison.Ordinal);
         Assert.Contains("IsRunning", view, StringComparison.Ordinal);
         Assert.Contains("data-wmc-initial-tab", view, StringComparison.Ordinal);
+        Assert.Contains("aria-hidden=\"@(initialTab == \"overview\" ? \"false\" : \"true\")\"", view, StringComparison.Ordinal);
+        Assert.Contains("hidden=\"@(initialTab == \"overview\" ? null : \"hidden\")\"", view, StringComparison.Ordinal);
+        Assert.Contains("aria-hidden=\"@(initialTab == \"clients\" ? \"false\" : \"true\")\"", view, StringComparison.Ordinal);
+        Assert.Contains("aria-hidden=\"@(initialTab == \"products\" ? \"false\" : \"true\")\"", view, StringComparison.Ordinal);
+        Assert.Contains("aria-hidden=\"@(initialTab == \"diagnostics\" ? \"false\" : \"true\")\"", view, StringComparison.Ordinal);
         Assert.DoesNotContain("Lorem ipsum", view, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -53,10 +58,16 @@ public sealed class WmcIntegrationCenterViewTests
     public void Wmc_center_declares_client_loading_duplicate_submit_and_dark_responsive_contracts()
     {
         var view = ReadWebFile("Areas", "Admin", "Views", "Integrations", "Wmc.cshtml");
+        var layout = ReadWebFile("Views", "Shared", "_AdminLayout.cshtml");
         var script = ReadWebFile("wwwroot", "js", "wmc-integration-center.js");
         var css = ReadWebFile("wwwroot", "css", "admin-integrations.css");
+        var wmcCss = ReadWebFile("wwwroot", "css", "wmc-integration-center.css");
 
         Assert.Contains("wmc-integration-center.js", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-integration-center.css", layout, StringComparison.Ordinal);
+        Assert.True(
+            layout.IndexOf("admin-dashboard-indicators.css", StringComparison.Ordinal)
+                < layout.IndexOf("wmc-integration-center.css", StringComparison.Ordinal));
         Assert.Contains("data-wmc-submit-once", view, StringComparison.Ordinal);
         Assert.Contains("data-wmc-loading", view, StringComparison.Ordinal);
         Assert.Contains("data-wmc-search", script, StringComparison.Ordinal);
@@ -66,6 +77,10 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.Contains("--admin-dark-surface", css, StringComparison.Ordinal);
         Assert.Contains("@media", css, StringComparison.Ordinal);
         Assert.Contains("wmc-tab", css, StringComparison.Ordinal);
+        Assert.Contains(".wmc-tab-panel[hidden]", wmcCss, StringComparison.Ordinal);
+        Assert.Contains("#0E7490", wmcCss, StringComparison.Ordinal);
+        Assert.Contains("#0B5D75", wmcCss, StringComparison.Ordinal);
+        Assert.Contains("wmc-diagnostics-card", wmcCss, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -102,6 +117,7 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.Contains("data-wmc-brand-load-state", view, StringComparison.Ordinal);
         Assert.Contains("data-wmc-load-brands", script, StringComparison.Ordinal);
         Assert.Contains("aria-busy", script, StringComparison.Ordinal);
+        Assert.Contains("aria-hidden", script, StringComparison.Ordinal);
         Assert.Contains("wmcLoading", script, StringComparison.Ordinal);
         Assert.Contains("event.preventDefault()", script, StringComparison.Ordinal);
     }
