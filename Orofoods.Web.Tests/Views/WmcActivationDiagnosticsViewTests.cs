@@ -42,6 +42,10 @@ public sealed class WmcActivationDiagnosticsViewTests
         Assert.DoesNotContain("lastCycle.FailedCount + lastCycle.CycleErrorCount", view, StringComparison.Ordinal);
         Assert.Contains("Ignorados antes da reserva", view, StringComparison.Ordinal);
         Assert.Contains("name=\"loadDiagnostics\"", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-diagnostics-card", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-diagnostics-card__body", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"card mt-4\"", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"card-body\"", view, StringComparison.Ordinal);
     }
 
     [Fact]

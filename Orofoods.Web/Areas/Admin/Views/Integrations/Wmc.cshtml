@@ -80,7 +80,7 @@
             <button type="button" class="wmc-tab" id="wmc-tab-diagnostics" data-wmc-tab="diagnostics" role="tab" aria-controls="wmc-panel-diagnostics" aria-selected="false">Diagnóstico</button>
         </nav>
 
-        <section id="wmc-panel-overview" class="wmc-tab-panel" data-wmc-tab-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-overview">
+        <section id="wmc-panel-overview" class="wmc-tab-panel" data-wmc-tab-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-overview" hidden="@(initialTab == "overview" ? null : "hidden")" aria-hidden="@(initialTab == "overview" ? "false" : "true")">
             <div class="wmc-overview-grid" aria-label="Indicadores WMC">
                 <article class="wmc-overview-card wmc-overview-card--connection">
                     <span class="wmc-overview-label">Conexão WMC</span>
@@ -130,9 +130,9 @@
             </section>
         </section>
 
-        <section id="wmc-panel-clients" class="wmc-tab-panel" data-wmc-tab-panel="clients" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-clients">
+        <section id="wmc-panel-clients" class="wmc-tab-panel" data-wmc-tab-panel="clients" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-clients" hidden="@(initialTab == "clients" ? null : "hidden")" aria-hidden="@(initialTab == "clients" ? "false" : "true")">
 
-        <section class="mt-4" aria-labelledby="wmc-customer-import-title">
+        <section class="wmc-content-card" aria-labelledby="wmc-customer-import-title">
             <h2 id="wmc-customer-import-title">Importação manual de clientes</h2>
             <p>Informe o código do vendedor WMC. Somente clientes com situação <code>A</code> e restrição <code>F</code> serão considerados.</p>
             <form method="post" asp-action="WmcCustomerPreview" class="wmc-customer-import-form" data-wmc-submit-once>
@@ -220,7 +220,7 @@
             }
         </section>
 
-        <section class="mt-4" aria-labelledby="wmc-customer-regularization-title">
+        <section class="wmc-content-card" aria-labelledby="wmc-customer-regularization-title">
             <h2 id="wmc-customer-regularization-title">Regularização manual de clientes pendentes</h2>
             <p>Revise os clientes WMC já importados que ainda estão pendentes antes de liberá-los.</p>
             <form method="post" asp-action="WmcCustomerRegularizationPreview" data-wmc-submit-once>
@@ -261,7 +261,7 @@
 
         </section>
 
-        <section id="wmc-panel-products" class="wmc-tab-panel" data-wmc-tab-panel="products" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-products">
+        <section id="wmc-panel-products" class="wmc-tab-panel" data-wmc-tab-panel="products" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-products" hidden="@(initialTab == "products" ? null : "hidden")" aria-hidden="@(initialTab == "products" ? "false" : "true")">
         <section class="wmc-import-section" aria-labelledby="wmc-import-title">
 
             <section class="wmc-import-wizard" aria-labelledby="wmc-import-title">
@@ -634,7 +634,7 @@
             </section>
 
         </section>
-        <section id="wmc-panel-diagnostics" class="wmc-tab-panel" data-wmc-tab-panel="diagnostics" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-diagnostics">
+        <section id="wmc-panel-diagnostics" class="wmc-tab-panel" data-wmc-tab-panel="diagnostics" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-diagnostics" hidden="@(initialTab == "diagnostics" ? null : "hidden")" aria-hidden="@(initialTab == "diagnostics" ? "false" : "true")">
             <details class="wmc-diagnostics-disclosure" data-wmc-diagnostic-panel open="@(initialTab == "diagnostics" ? "open" : null)">
                 <summary><span><span class="wmc-step-kicker">Consulta técnica</span><strong>Diagnóstico de automação e elegibilidade</strong></span><span class="wmc-disclosure-hint">Expandir painel</span></summary>
                 @if (loadDiagnosticsRequested)
@@ -656,7 +656,6 @@
     </div>
 </section>
 
-<script src="~/js/wmc-integration-center.js" asp-append-version="true"></script>
 <script>
     (() => {
         const toggle = document.querySelector('[data-wmc-customer-preview-toggle]');
@@ -777,3 +776,7 @@
         });
     })();
 </script>
+
+@section Scripts {
+    <script src="~/js/wmc-integration-center.js" asp-append-version="true"></script>
+}
