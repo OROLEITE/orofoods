@@ -130,15 +130,18 @@ public class IntegrationsController(
         ViewBag.WmcCustomerRegularizationPreview = null;
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        ViewBag.WmcBrandQueryState = "not-queried";
         IReadOnlyList<WmcBrandRecord> brands = [];
         try
         {
             brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+            ViewBag.WmcBrandQueryState = "available";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
             TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
+            ViewBag.WmcBrandQueryState = "unavailable";
         }
         return View(new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
@@ -148,10 +151,11 @@ public class IntegrationsController(
     public async Task<IActionResult> WmcProducts(short brandCode, CancellationToken cancellationToken)
     {
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        ViewBag.WmcBrandQueryState = "available";
         var brand = brands.SingleOrDefault(item => item.Code == brandCode);
         if (brand is null) return BadRequest("Marca WMC inválida.");
         var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
-        SetWmcViewState();
+        SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
@@ -165,14 +169,17 @@ public class IntegrationsController(
         ViewBag.WmcCustomerPreview = await wmcCustomerImportService.PreviewAsync(sellerCode, cancellationToken);
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        ViewBag.WmcBrandQueryState = "not-queried";
         IReadOnlyList<WmcBrandRecord> brands = [];
         try
         {
             brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+            ViewBag.WmcBrandQueryState = "available";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "WMC brand loading failed while rendering customer preview. Operation={Operation}", "CustomerPreview");
+            ViewBag.WmcBrandQueryState = "unavailable";
             TempData["WmcPreviewError"] = "NÃ£o foi possÃ­vel consultar o espelho WMC agora. Tente novamente mais tarde.";
         }
 
@@ -196,6 +203,7 @@ public class IntegrationsController(
         if (wmcCustomerImportService is null) return Problem("Importação manual de clientes WMC indisponível.");
         ViewBag.WmcCustomerSellerCodes = await wmcCustomerImportService.GetSellerCodesAsync(cancellationToken);
         ViewBag.WmcCustomerPreview = null;
+        ViewBag.WmcBrandQueryState = "not-queried";
         WmcCustomerRegularizationPreview regularizationPreview;
         try
         {
@@ -229,6 +237,7 @@ public class IntegrationsController(
     public async Task<IActionResult> WmcConfirmSelection(short brandCode, string[]? selectedProductCodes, CancellationToken cancellationToken)
     {
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+        ViewBag.WmcBrandQueryState = "available";
         var brand = brands.SingleOrDefault(item => item.Code == brandCode);
         if (brand is null) return BadRequest("Marca WMC inválida.");
         var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
@@ -237,12 +246,12 @@ public class IntegrationsController(
         if (selected.Length == 0 || selected.Length != requested.Length)
         {
             ModelState.AddModelError("", "Seleção vazia ou desatualizada. Revise os produtos selecionados.");
-            SetWmcViewState();
+            SetWmcViewState("available");
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, requested));
         }
         var summary = new WmcProductImportSummary(selected.Length, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
             selected.Count(item => item.Changes.Count > 0), selected.Count(item => item.Changes.Count == 0));
-        SetWmcViewState();
+        SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Confirmation", brandCode, brand.Description, candidates, requested, summary));
     }
 
@@ -266,12 +275,12 @@ public class IntegrationsController(
         if (codes.Length == 0 || validSelection.Length != codes.Length || validSelection.Any(candidate => !candidate.Selectable))
         {
             ModelState.AddModelError("", "A conferência ficou desatualizada. Revise os produtos antes de confirmar.");
-            SetWmcViewState();
+            SetWmcViewState("available");
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, codes));
         }
         var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
         var refreshedCandidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
-        SetWmcViewState();
+        SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
             Candidates: refreshedCandidates, SelectedProductCodes: codes, ImportResult: result,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
@@ -279,23 +288,32 @@ public class IntegrationsController(
 
     private void SetWmcViewState()
     {
+        SetWmcViewState("not-queried");
+    }
+
+    private void SetWmcViewState(string brandQueryState)
+    {
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
+        ViewBag.WmcBrandQueryState = brandQueryState;
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WmcPreview(short[]? brandCodes, CancellationToken cancellationToken)
     {
+        ViewBag.WmcBrandQueryState = "not-queried";
         IReadOnlyList<WmcBrandRecord> brands = [];
         try
         {
             brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+            ViewBag.WmcBrandQueryState = "available";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
             TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
+            ViewBag.WmcBrandQueryState = "unavailable";
         }
         var availableCodes = brands.Select(brand => (short)brand.Code).ToHashSet();
         var selectedCodes = (brandCodes ?? [])
