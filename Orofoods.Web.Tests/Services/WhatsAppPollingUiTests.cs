@@ -27,6 +27,15 @@ public class WhatsAppPollingUiTests
     }
 
     [Fact]
+    public void Polling_keeps_template_composer_visible_for_open_conversations_in_both_window_states()
+    {
+        var script = ReadText(Path.Combine(FindRepositoryRoot(), "Orofoods.Web", "wwwroot", "js", "whatsapp-composer.js"));
+
+        Assert.Contains("templateForm.hidden = nextSelectedConversation.status === 'closed';", script);
+        Assert.DoesNotContain("templateForm.hidden = payload.serviceWindowOpen !== false || nextSelectedConversation.status === 'closed';", script);
+    }
+
+    [Fact]
     public void Sending_is_async_with_a_traditional_form_fallback_and_early_theme_bootstrap()
     {
         var root = FindRepositoryRoot();

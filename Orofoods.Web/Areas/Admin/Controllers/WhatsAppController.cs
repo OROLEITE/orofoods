@@ -330,9 +330,8 @@ public class WhatsAppController(
             .SingleOrDefaultAsync(item => item.Id == conversationId, cancellationToken);
         if (conversation is null)
             return NotFound();
-        if (conversation.Status == WhatsAppConversationStatus.Closed ||
-            WhatsAppServiceWindow.IsOpen(conversation.LastInboundAt, CurrentUtcNow()))
-            return BadRequest(new { error = "Modelos de retomada são oferecidos fora da janela de atendimento." });
+        if (conversation.Status == WhatsAppConversationStatus.Closed)
+            return BadRequest(new { error = "A conversa está fechada. Reabra o atendimento antes de consultar modelos." });
 
         try
         {
@@ -427,11 +426,6 @@ public class WhatsAppController(
         if (conversation.Status == WhatsAppConversationStatus.Closed)
         {
             TempData["WhatsAppError"] = "Conversa fechada. Reabra o atendimento antes de enviar.";
-            return SendOutcome(conversationId);
-        }
-        if (WhatsAppServiceWindow.IsOpen(conversation.LastInboundAt, CurrentUtcNow()))
-        {
-            TempData["WhatsAppError"] = "A janela de atendimento está aberta. Envie uma mensagem livre nesta conversa.";
             return SendOutcome(conversationId);
         }
         if (!TryNormalizeClientRequestId(clientRequestId, out var normalizedRequestId))

@@ -124,6 +124,24 @@ public class WhatsAppThemeSurfaceTests
     }
 
     [Fact]
+    public void Approved_template_form_is_not_hidden_by_the_service_window_for_open_conversations()
+    {
+        var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");
+        var formStart = markup.IndexOf("class=\"whatsapp-compose whatsapp-template-compose\"", StringComparison.Ordinal);
+        var formEnd = markup.IndexOf("</form>", formStart, StringComparison.Ordinal);
+
+        Assert.True(formStart >= 0);
+        Assert.True(formEnd > formStart);
+        var templateForm = markup[formStart..formEnd];
+
+        Assert.Contains("hidden=\"@(selected.Status == WhatsAppConversationStatus.Closed)\"", templateForm);
+        Assert.DoesNotContain("hidden=\"@(selected.Status == WhatsAppConversationStatus.Closed || Model.ServiceWindowOpen)\"", templateForm);
+        Assert.Contains("Enviar mensagem modelo", templateForm);
+        Assert.Contains("@if (Model.ServiceWindowOpen)", templateForm);
+        Assert.Contains("Modelo aprovado disponível", templateForm);
+    }
+
+    [Fact]
     public void New_conversation_dialog_buttons_have_clear_theme_states_and_mobile_layout()
     {
         var markup = Read("Orofoods.Web", "Areas", "Admin", "Views", "WhatsApp", "Index.cshtml");

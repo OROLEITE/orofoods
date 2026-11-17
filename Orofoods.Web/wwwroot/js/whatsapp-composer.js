@@ -601,7 +601,7 @@
                 const freeTextAllowed = payload.serviceWindowOpen === true && nextSelectedConversation.status !== 'closed';
                 form.hidden = !freeTextAllowed;
                 if (sendButton) sendButton.disabled = !freeTextAllowed || sendInFlight;
-                if (templateForm) templateForm.hidden = payload.serviceWindowOpen !== false || nextSelectedConversation.status === 'closed';
+                if (templateForm) templateForm.hidden = nextSelectedConversation.status === 'closed';
                 document.querySelectorAll('[data-conversation-action]').forEach(action => {
                     action.hidden = action.dataset.conversationAction !== nextSelectedConversation.status;
                 });
