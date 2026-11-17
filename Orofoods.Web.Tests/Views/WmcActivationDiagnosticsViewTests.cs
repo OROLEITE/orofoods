@@ -41,6 +41,7 @@ public sealed class WmcActivationDiagnosticsViewTests
         Assert.Contains("@lastCycle.CycleErrorCount", view, StringComparison.Ordinal);
         Assert.DoesNotContain("lastCycle.FailedCount + lastCycle.CycleErrorCount", view, StringComparison.Ordinal);
         Assert.Contains("Ignorados antes da reserva", view, StringComparison.Ordinal);
+        Assert.Contains("name=\"loadDiagnostics\"", view, StringComparison.Ordinal);
     }
 
     [Fact]

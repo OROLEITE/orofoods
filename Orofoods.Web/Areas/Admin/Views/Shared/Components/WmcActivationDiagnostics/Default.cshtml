@@ -86,6 +86,7 @@
         <hr />
         <h3 class="h5">Diagnóstico de elegibilidade por Order.Id</h3>
         <form method="get" asp-area="Admin" asp-controller="Integrations" asp-action="Wmc" class="row g-2 align-items-end">
+            <input type="hidden" name="loadDiagnostics" value="true" />
             <div class="col-auto">
                 <label class="form-label" for="diagnosticOrderId">Order.Id</label>
                 <input class="form-control" type="number" min="1" step="1" id="diagnosticOrderId" name="diagnosticOrderId" value="@(Model.OrderEligibility?.OrderId.ToString() ?? string.Empty)" />

@@ -8,16 +8,23 @@
     var customerPreview = ViewBag.WmcCustomerPreview as WmcCustomerImportPreview;
     var regularizationPreview = ViewBag.WmcCustomerRegularizationPreview as WmcCustomerRegularizationPreview;
     var brandQueryState = ViewBag.WmcBrandQueryState as string ?? "not-queried";
+    var loadBrandsRequested = string.Equals(Context.Request.Query["loadBrands"], "true", StringComparison.OrdinalIgnoreCase);
+    var loadDiagnosticsRequested = string.Equals(Context.Request.Query["loadDiagnostics"], "true", StringComparison.OrdinalIgnoreCase)
+        || !string.IsNullOrWhiteSpace(Context.Request.Query["diagnosticOrderId"]);
     var hasServerTabState = customerPreview is not null
         || regularizationPreview is not null
         || Model.Preview is not null
         || Model.Step is "Products" or "Confirmation" or "Result"
+        || loadBrandsRequested
+        || loadDiagnosticsRequested
         || !string.IsNullOrWhiteSpace(Context.Request.Query["diagnosticOrderId"]);
     var initialTab = !string.IsNullOrWhiteSpace(Context.Request.Query["diagnosticOrderId"])
         ? "diagnostics"
+        : loadDiagnosticsRequested
+            ? "diagnostics"
         : customerPreview is not null || regularizationPreview is not null
             ? "clients"
-            : Model.Preview is not null || Model.Step is "Products" or "Confirmation" or "Result" ? "products" : "overview";
+            : loadBrandsRequested || Model.Preview is not null || Model.Step is "Products" or "Confirmation" or "Result" ? "products" : "overview";
     var connectionLabel = brandQueryState switch
     {
         "available" => "Disponível",
@@ -282,7 +289,18 @@
                     <div class="alert alert-warning" role="alert">@previewError</div>
                 }
 
-                @if (Model.Step == "Brands")
+                @if (Model.Step == "Brands" && Model.Brands.Count == 0)
+                {
+                    <section class="wmc-brand-load-state" data-wmc-brand-load-state aria-live="polite">
+                        <span class="wmc-step-kicker">Consulta sob demanda</span>
+                        <h3>Marcas WMC ainda não carregadas</h3>
+                        <p>O carregamento da Central não depende do Firebird. Quando precisar importar produtos, carregue a lista de marcas nesta etapa.</p>
+                        <a asp-action="Wmc" asp-route-loadBrands="true" class="btn btn-primary" data-wmc-load-brands>
+                            @(brandQueryState == "unavailable" ? "Tentar novamente" : "Carregar marcas WMC")
+                        </a>
+                    </section>
+                }
+                else if (Model.Step == "Brands")
                 {
                     <section class="wmc-multi-brand-preview" aria-labelledby="wmc-multi-brand-preview-title">
                         <header class="wmc-panel-heading">
@@ -619,7 +637,18 @@
         <section id="wmc-panel-diagnostics" class="wmc-tab-panel" data-wmc-tab-panel="diagnostics" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-diagnostics">
             <details class="wmc-diagnostics-disclosure" data-wmc-diagnostic-panel open="@(initialTab == "diagnostics" ? "open" : null)">
                 <summary><span><span class="wmc-step-kicker">Consulta técnica</span><strong>Diagnóstico de automação e elegibilidade</strong></span><span class="wmc-disclosure-hint">Expandir painel</span></summary>
-                @await Component.InvokeAsync("WmcActivationDiagnostics")
+                @if (loadDiagnosticsRequested)
+                {
+                    @await Component.InvokeAsync("WmcActivationDiagnostics")
+                }
+                else
+                {
+                    <div class="wmc-diagnostics-load-state" data-wmc-diagnostics-load-state aria-live="polite">
+                        <span class="wmc-step-kicker">Consulta sob demanda</span>
+                        <p>O diagnóstico consulta o PostgreSQL somente quando solicitado.</p>
+                        <a asp-action="Wmc" asp-route-loadDiagnostics="true" class="btn btn-primary" data-wmc-load-diagnostics>Carregar diagnóstico</a>
+                    </div>
+                }
             </details>
         </section>
 

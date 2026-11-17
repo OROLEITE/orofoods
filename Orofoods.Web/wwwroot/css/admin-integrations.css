@@ -1196,6 +1196,7 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 .admin-authenticated .admin-wmc-page .btn-primary, .admin-authenticated .admin-wmc-page .admin-primary-action { border-color: #0E7490; background: #0E7490; color: #FFFFFF; }
 .admin-authenticated .admin-wmc-page .btn-primary:hover, .admin-authenticated .admin-wmc-page .btn-primary:focus-visible, .admin-authenticated .admin-wmc-page .admin-primary-action:hover, .admin-authenticated .admin-wmc-page .admin-primary-action:focus-visible { border-color: #0B5D75; background: #0B5D75; color: #FFFFFF; }
 .admin-authenticated .admin-wmc-page [data-wmc-submit-once][aria-busy="true"] { cursor: wait; }
+.admin-authenticated .admin-wmc-page [data-wmc-load-brands][aria-busy="true"], .admin-authenticated .admin-wmc-page [data-wmc-load-diagnostics][aria-busy="true"] { cursor: wait; opacity: .72; }
 .admin-authenticated .admin-wmc-page [data-wmc-submit-once] button[data-wmc-loading="true"], .admin-authenticated .admin-wmc-page [data-wmc-submit-once] button:disabled { opacity: .72; }
 
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page { --wmc-surface: var(--admin-dark-surface); --wmc-surface-muted: var(--admin-dark-surface-secondary); --wmc-border: var(--admin-dark-border); --wmc-text: var(--admin-dark-text); --wmc-muted: var(--admin-dark-muted); }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -123,27 +124,99 @@ public class IntegrationsController(
 
     public async Task<IActionResult> Wmc(CancellationToken cancellationToken)
     {
-        ViewBag.WmcCustomerSellerCodes = wmcCustomerImportService is null
-            ? []
-            : await wmcCustomerImportService.GetSellerCodesAsync(cancellationToken);
+        var loadBrands = string.Equals(Request.Query["loadBrands"], "true", StringComparison.OrdinalIgnoreCase);
         ViewBag.WmcCustomerPreview = null;
         ViewBag.WmcCustomerRegularizationPreview = null;
         ViewBag.IsRunning = wmcSyncCoordinator.IsRunning;
         ViewBag.LastRun = wmcSyncCoordinator.LastRun;
         ViewBag.WmcBrandQueryState = "not-queried";
         IReadOnlyList<WmcBrandRecord> brands = [];
+        if (loadBrands)
+        {
+            brands = await LoadWmcBrandsOnDemandAsync(cancellationToken);
+        }
+
+        var lastProductSyncAt = await LoadLastProductSyncForShellAsync(cancellationToken);
+
+        return View(new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: lastProductSyncAt));
+    }
+
+    private async Task<IReadOnlyList<WmcBrandRecord>> LoadWmcBrandsOnDemandAsync(CancellationToken requestCancellationToken)
+    {
+        const int timeoutSeconds = 5;
+        var stopwatch = Stopwatch.StartNew();
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(requestCancellationToken);
+        timeoutSource.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+
         try
         {
-            brands = await wmcBrandReader.GetAllAsync(cancellationToken);
+            var brands = await wmcBrandReader.GetAllAsync(timeoutSource.Token);
             ViewBag.WmcBrandQueryState = "available";
+            logger.LogInformation(
+                "WMC brand loading completed. Operation={Operation} DurationMs={DurationMs} BrandCount={BrandCount}",
+                "LoadBrands",
+                stopwatch.ElapsedMilliseconds,
+                brands.Count);
+            return brands;
+        }
+        catch (OperationCanceledException) when (!requestCancellationToken.IsCancellationRequested)
+        {
+            ViewBag.WmcBrandQueryState = "unavailable";
+            TempData["WmcPreviewError"] = "A consulta de marcas WMC excedeu o tempo limite. Tente novamente.";
+            logger.LogWarning(
+                "WMC brand loading timed out. Operation={Operation} DurationMs={DurationMs} TimeoutSeconds={TimeoutSeconds}",
+                "LoadBrands",
+                stopwatch.ElapsedMilliseconds,
+                timeoutSeconds);
+            return [];
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "WMC brand loading failed. Operation={Operation}", "LoadBrands");
-            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
             ViewBag.WmcBrandQueryState = "unavailable";
+            TempData["WmcPreviewError"] = "N\u00E3o foi poss\u00EDvel carregar as marcas WMC.";
+            logger.LogError(
+                ex,
+                "WMC brand loading failed. Operation={Operation} DurationMs={DurationMs}",
+                "LoadBrands",
+                stopwatch.ElapsedMilliseconds);
+            return [];
         }
-        return View(new WmcPreviewPageModel(brands, [], null, [], LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+    }
+
+    private async Task<DateTime?> LoadLastProductSyncForShellAsync(CancellationToken requestCancellationToken)
+    {
+        const int timeoutSeconds = 5;
+        var stopwatch = Stopwatch.StartNew();
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(requestCancellationToken);
+        timeoutSource.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+
+        try
+        {
+            var lastProductSyncAt = await wmcProductImportService.GetLastProductImportAsync(timeoutSource.Token);
+            logger.LogInformation(
+                "WMC product sync timestamp lookup completed. Operation={Operation} DurationMs={DurationMs}",
+                "LoadLastProductSync",
+                stopwatch.ElapsedMilliseconds);
+            return lastProductSyncAt;
+        }
+        catch (OperationCanceledException) when (!requestCancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "WMC product sync timestamp lookup timed out. Operation={Operation} DurationMs={DurationMs} TimeoutSeconds={TimeoutSeconds}",
+                "LoadLastProductSync",
+                stopwatch.ElapsedMilliseconds,
+                timeoutSeconds);
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "WMC product sync timestamp unavailable while rendering the integration center. Operation={Operation} DurationMs={DurationMs}",
+                "LoadLastProductSync",
+                stopwatch.ElapsedMilliseconds);
+            return null;
+        }
     }
 
     [HttpPost]

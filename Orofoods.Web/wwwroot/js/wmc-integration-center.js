@@ -71,6 +71,21 @@
     });
     updateMultiBrands();
 
+    document.querySelectorAll('[data-wmc-load-brands], [data-wmc-load-diagnostics]').forEach(control => {
+        control.addEventListener('click', event => {
+            if (control.dataset.wmcLoading === 'true') {
+                event.preventDefault();
+                return;
+            }
+            const loadingLabel = control.matches('[data-wmc-load-brands]') ? 'Carregando marcas...' : 'Carregando diagnóstico...';
+            control.dataset.wmcLoading = 'true';
+            control.dataset.wmcOriginalLabel = control.textContent?.trim() || '';
+            control.setAttribute('aria-busy', 'true');
+            control.setAttribute('aria-disabled', 'true');
+            control.textContent = loadingLabel;
+        });
+    });
+
     document.querySelectorAll('[data-wmc-submit-once]').forEach(form => {
         form.addEventListener('submit', event => {
             if (form.dataset.wmcSubmitting === 'true') {
