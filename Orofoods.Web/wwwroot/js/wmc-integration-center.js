@@ -7,7 +7,7 @@
     const serverState = tablist.dataset.wmcServerState === 'true';
     const validTabs = new Set(tabs.map(tab => tab.dataset.wmcTab));
 
-    const activate = (name, updateHash = true) => {
+    const activate = (name, updateHash = true, moveFocusToPanel = true) => {
         const selected = validTabs.has(name) ? name : 'overview';
         tabs.forEach(tab => {
             const isSelected = tab.dataset.wmcTab === selected;
@@ -23,7 +23,7 @@
             window.history.replaceState(null, '', `#${selected}`);
         }
         const panel = panels.find(item => item.dataset.wmcTabPanel === selected);
-        if (panel && document.activeElement?.matches('[data-wmc-tab]')) panel.focus({ preventScroll: true });
+        if (moveFocusToPanel && panel && document.activeElement?.matches('[data-wmc-tab]')) panel.focus({ preventScroll: true });
     };
 
     const hashTab = window.location.hash.slice(1);
@@ -37,7 +37,7 @@
             event.preventDefault();
             const nextIndex = key === 'Home' ? 0 : key === 'End' ? tabs.length - 1 : (index + (key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
             tabs[nextIndex].focus();
-            activate(tabs[nextIndex].dataset.wmcTab);
+            activate(tabs[nextIndex].dataset.wmcTab, false, false);
         });
     });
 
@@ -49,6 +49,7 @@
     const multiRows = [...document.querySelectorAll('[data-wmc-brand-row]')];
     const multiChecks = [...document.querySelectorAll('[data-wmc-brand-checkbox]')];
     const multiCount = document.getElementById('wmcMultiBrandSelectionCount');
+    const multiForm = document.querySelector('[data-wmc-requires-selection]');
     const updateMultiBrands = () => {
         const term = (multiSearch?.value || '').trim().toLocaleLowerCase();
         multiRows.forEach(row => {
@@ -56,9 +57,18 @@
         });
         const count = multiChecks.filter(input => input.checked).length;
         if (multiCount) multiCount.textContent = `${count} marca${count === 1 ? '' : 's'} selecionada${count === 1 ? '' : 's'}`;
+        const submit = multiForm?.querySelector('[data-wmc-submit-button]');
+        if (submit) submit.disabled = count === 0;
     };
     multiSearch?.addEventListener('input', updateMultiBrands);
     multiChecks.forEach(input => input.addEventListener('change', updateMultiBrands));
+    multiForm?.addEventListener('submit', event => {
+        const selectedCount = multiChecks.filter(input => input.checked).length;
+        if (selectedCount === 0) {
+            event.preventDefault();
+            multiSearch?.focus({ preventScroll: true });
+        }
+    });
     updateMultiBrands();
 
     document.querySelectorAll('[data-wmc-submit-once]').forEach(form => {
@@ -70,10 +80,10 @@
             form.dataset.wmcSubmitting = 'true';
             form.setAttribute('aria-busy', 'true');
             form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(button => {
+                const loadingLabel = button.getAttribute('data-wmc-loading') || (button.matches('[data-wmc-confirm-submit]') ? 'Importando...' : 'Processando...');
                 button.disabled = true;
                 button.dataset.wmcLoading = 'true';
                 button.dataset.wmcOriginalLabel = button.textContent || button.value || '';
-                const loadingLabel = button.getAttribute('data-wmc-loading') || (button.matches('[data-wmc-confirm-submit]') ? 'Importando...' : 'Processando...');
                 if ('value' in button && button.tagName === 'INPUT') button.value = loadingLabel;
                 else button.textContent = loadingLabel;
             });

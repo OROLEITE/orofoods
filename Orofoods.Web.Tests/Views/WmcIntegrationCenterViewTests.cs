@@ -68,6 +68,25 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.Contains("wmc-tab", css, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Wmc_center_preserves_multi_brand_state_and_guards_interaction_edges()
+    {
+        var view = ReadWebFile("Areas", "Admin", "Views", "Integrations", "Wmc.cshtml");
+        var script = ReadWebFile("wwwroot", "js", "wmc-integration-center.js");
+
+        Assert.Contains("Model.Preview is not null", view, StringComparison.Ordinal);
+        Assert.Contains("Model.SelectedBrandCodes.Contains", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-requires-selection", view, StringComparison.Ordinal);
+        Assert.Contains("selectedCount === 0", script, StringComparison.Ordinal);
+        Assert.Contains("const picker = document.querySelector('.wmc-brand-picker')", view, StringComparison.Ordinal);
+        Assert.Contains("picker?.querySelectorAll('.wmc-brand-row')", view, StringComparison.Ordinal);
+        Assert.Contains("activate(tabs[nextIndex].dataset.wmcTab, false, false)", script, StringComparison.Ordinal);
+
+        var loadingLabelIndex = script.IndexOf("const loadingLabel", StringComparison.Ordinal);
+        var loadingStateIndex = script.IndexOf("button.dataset.wmcLoading", StringComparison.Ordinal);
+        Assert.True(loadingLabelIndex >= 0 && loadingLabelIndex < loadingStateIndex);
+    }
+
     private static string ReadWebFile(params string[] parts)
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

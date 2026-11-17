@@ -10,13 +10,14 @@
     var brandQueryState = ViewBag.WmcBrandQueryState as string ?? "not-queried";
     var hasServerTabState = customerPreview is not null
         || regularizationPreview is not null
+        || Model.Preview is not null
         || Model.Step is "Products" or "Confirmation" or "Result"
         || !string.IsNullOrWhiteSpace(Context.Request.Query["diagnosticOrderId"]);
     var initialTab = !string.IsNullOrWhiteSpace(Context.Request.Query["diagnosticOrderId"])
         ? "diagnostics"
         : customerPreview is not null || regularizationPreview is not null
             ? "clients"
-            : Model.Step is "Products" or "Confirmation" or "Result" ? "products" : "overview";
+            : Model.Preview is not null || Model.Step is "Products" or "Confirmation" or "Result" ? "products" : "overview";
     var connectionLabel = brandQueryState switch
     {
         "available" => "Disponível",
@@ -289,7 +290,7 @@
                             <span class="wmc-readonly-badge">Somente leitura</span>
                         </header>
                         <p class="wmc-stage-copy">Selecione uma ou mais marcas para comparar os dados reais do espelho WMC antes de iniciar uma importação individual.</p>
-                        <form method="post" asp-action="WmcPreview" class="wmc-multi-brand-form" data-wmc-submit-once>
+                        <form method="post" asp-action="WmcPreview" class="wmc-multi-brand-form" data-wmc-submit-once data-wmc-requires-selection>
                             @Html.AntiForgeryToken()
                             <div class="wmc-brand-toolbar">
                                 <label class="form-label" for="wmcMultiBrandSearch">Pesquisar marcas</label>
@@ -300,7 +301,7 @@
                                 @foreach (var brand in Model.Brands.OrderBy(item => item.Description))
                                 {
                                     <label class="wmc-brand-row" data-wmc-brand-row data-brand-search="@brand.Code @brand.Description">
-                                        <input type="checkbox" name="brandCodes" value="@brand.Code" data-wmc-brand-checkbox />
+                                        <input type="checkbox" name="brandCodes" value="@brand.Code" data-wmc-brand-checkbox @(Model.SelectedBrandCodes.Contains((short)brand.Code) ? "checked" : null) />
                                         <span class="wmc-brand-code">@brand.Code</span>
                                         <span class="wmc-brand-description">@brand.Description</span>
                                         <span class="wmc-brand-count">@brand.ActiveProductCount ativos de @brand.ProductCount</span>
@@ -615,18 +616,16 @@
             </section>
 
         </section>
-        <p class="text-muted mt-4">A sincronização automática/global de clientes está desativada. As demais integrações permanecem separadas.</p>
-    </div>
-</section>
-
-        </section>
-
         <section id="wmc-panel-diagnostics" class="wmc-tab-panel" data-wmc-tab-panel="diagnostics" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-diagnostics">
             <details class="wmc-diagnostics-disclosure" data-wmc-diagnostic-panel open="@(initialTab == "diagnostics" ? "open" : null)">
                 <summary><span><span class="wmc-step-kicker">Consulta técnica</span><strong>Diagnóstico de automação e elegibilidade</strong></span><span class="wmc-disclosure-hint">Expandir painel</span></summary>
                 @await Component.InvokeAsync("WmcActivationDiagnostics")
             </details>
         </section>
+
+        <p class="text-muted mt-4">A sincronização automática/global de clientes está desativada. As demais integrações permanecem separadas.</p>
+    </div>
+</section>
 
 <script src="~/js/wmc-integration-center.js" asp-append-version="true"></script>
 <script>
@@ -653,7 +652,8 @@
 
     (() => {
         const search = document.getElementById('wmcBrandSearch');
-        const rows = [...document.querySelectorAll('.wmc-brand-row')];
+        const picker = document.querySelector('.wmc-brand-picker');
+        const rows = [...(picker?.querySelectorAll('.wmc-brand-row') ?? [])];
         const updateCount = () => {
             const count = rows.filter(row => row.querySelector('input')?.checked).length;
             const label = document.getElementById('wmcBrandSelectionCount');
