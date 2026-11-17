@@ -52,6 +52,20 @@ public sealed class WmcActivationDiagnosticsQueryTests
         Assert.Empty(db.ChangeTracker.Entries<Order>());
     }
 
+    [Fact]
+    public async Task Auxiliary_database_failure_returns_safe_diagnostics_instead_of_throwing()
+    {
+        var db = await TestDbContextFactory.CreateAsync();
+        var query = CreateQuery(db, enabled: false, workerEnabled: false, cutoff: null, fileDropEnabled: false);
+        await db.DisposeAsync();
+
+        var result = await query.ReadAsync();
+
+        Assert.Equal(0, result.MaxOrderId);
+        Assert.Equal(0, result.TotalOrderCount);
+        Assert.Equal("O diagnóstico está temporariamente indisponível.", result.DiagnosticInputError);
+    }
+
     [Theory]
     [InlineData(true, true, null, "Bloqueado: marco ausente ou inválido")]
     [InlineData(true, true, -1, "Bloqueado: marco ausente ou inválido")]

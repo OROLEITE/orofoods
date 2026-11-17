@@ -87,6 +87,25 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.True(loadingLabelIndex >= 0 && loadingLabelIndex < loadingStateIndex);
     }
 
+    [Fact]
+    public void Wmc_center_defers_brands_and_diagnostics_with_retryable_loading_states()
+    {
+        var view = ReadWebFile("Areas", "Admin", "Views", "Integrations", "Wmc.cshtml");
+        var script = ReadWebFile("wwwroot", "js", "wmc-integration-center.js");
+
+        Assert.Contains("loadBrands", view, StringComparison.Ordinal);
+        Assert.Contains("loadDiagnostics", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-load-brands", view, StringComparison.Ordinal);
+        Assert.Contains("Carregar marcas WMC", view, StringComparison.Ordinal);
+        Assert.Contains("Tentar novamente", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-load-diagnostics", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-brand-load-state", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-load-brands", script, StringComparison.Ordinal);
+        Assert.Contains("aria-busy", script, StringComparison.Ordinal);
+        Assert.Contains("wmcLoading", script, StringComparison.Ordinal);
+        Assert.Contains("event.preventDefault()", script, StringComparison.Ordinal);
+    }
+
     private static string ReadWebFile(params string[] parts)
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

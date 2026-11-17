@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orofoods.Web.Data;
 using Orofoods.Web.Integrations.Erp.Wmc;
@@ -11,42 +13,61 @@ public sealed class WmcActivationDiagnosticsQuery(
     ApplicationDbContext db,
     IOptions<WmcJsonOrderOptions> wmcJsonOrderOptions,
     IOptions<WmcFileDropOptions> wmcFileDropOptions,
-    WmcJsonOrderWorkerRuntime? workerRuntime = null)
+    WmcJsonOrderWorkerRuntime? workerRuntime = null,
+    ILogger<WmcActivationDiagnosticsQuery>? queryLogger = null)
 {
     private readonly WmcJsonOrderWorkerRuntime runtime = workerRuntime ?? new WmcJsonOrderWorkerRuntime();
+    private readonly ILogger<WmcActivationDiagnosticsQuery> logger = queryLogger ?? NullLogger<WmcActivationDiagnosticsQuery>.Instance;
 
     public async Task<WmcActivationDiagnostics> ReadAsync(
         int? diagnosticOrderId = null,
         CancellationToken cancellationToken = default)
     {
-        var aggregates = await db.Orders
-            .AsNoTracking()
-            .GroupBy(_ => 1)
-            .Select(group => new
-            {
-                MaxOrderId = (int?)group.Max(order => order.Id),
-                TotalOrderCount = group.LongCount()
-            })
-            .SingleOrDefaultAsync(cancellationToken);
         var jsonOptions = wmcJsonOrderOptions.Value;
+        try
+        {
+            var aggregates = await db.Orders
+                .AsNoTracking()
+                .GroupBy(_ => 1)
+                .Select(group => new
+                {
+                    MaxOrderId = (int?)group.Max(order => order.Id),
+                    TotalOrderCount = group.LongCount()
+                })
+                .SingleOrDefaultAsync(cancellationToken);
 
-        var inputError = diagnosticOrderId is <= 0
-            ? "Informe um Order.Id positivo."
-            : null;
-        var orderEligibility = diagnosticOrderId is > 0
-            ? await ReadOrderEligibilityAsync(diagnosticOrderId.Value, jsonOptions, cancellationToken)
-            : null;
+            var inputError = diagnosticOrderId is <= 0
+                ? "Informe um Order.Id positivo."
+                : null;
+            var orderEligibility = diagnosticOrderId is > 0
+                ? await ReadOrderEligibilityAsync(diagnosticOrderId.Value, jsonOptions, cancellationToken)
+                : null;
 
-        return new WmcActivationDiagnostics(
-            aggregates?.MaxOrderId ?? 0,
-            aggregates?.TotalOrderCount ?? 0,
-            jsonOptions.AutomaticWorkerStartAfterOrderId,
-            jsonOptions.Enabled,
-            jsonOptions.AutomaticWorkerEnabled,
-            wmcFileDropOptions.Value.Enabled,
-            runtime.Snapshot,
-            orderEligibility,
-            inputError);
+            return new WmcActivationDiagnostics(
+                aggregates?.MaxOrderId ?? 0,
+                aggregates?.TotalOrderCount ?? 0,
+                jsonOptions.AutomaticWorkerStartAfterOrderId,
+                jsonOptions.Enabled,
+                jsonOptions.AutomaticWorkerEnabled,
+                wmcFileDropOptions.Value.Enabled,
+                runtime.Snapshot,
+                orderEligibility,
+                inputError);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "WMC activation diagnostics unavailable. OrderId={OrderId}", diagnosticOrderId);
+            return new WmcActivationDiagnostics(
+                0,
+                0,
+                jsonOptions.AutomaticWorkerStartAfterOrderId,
+                jsonOptions.Enabled,
+                jsonOptions.AutomaticWorkerEnabled,
+                wmcFileDropOptions.Value.Enabled,
+                runtime.Snapshot,
+                null,
+                "O diagnóstico está temporariamente indisponível.");
+        }
     }
 
     private async Task<WmcOrderEligibilityDiagnostic> ReadOrderEligibilityAsync(
