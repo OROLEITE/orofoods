@@ -1150,3 +1150,69 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-preview-status { background: #164E63; color: #BAE6FD; }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-preview-status--ignore { background: #713F12; color: #FDE68A; }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-customer-preview-status--conflict { background: #7F1D1D; color: #FECACA; }
+
+/* WMC integration center */
+.admin-authenticated .admin-wmc-page { --wmc-primary: #0E7490; --wmc-primary-hover: #0B5D75; --wmc-surface: #FFFFFF; --wmc-surface-muted: #F8FAFC; --wmc-border: #E2E8F0; --wmc-text: #0F172A; --wmc-muted: #64748B; }
+.admin-authenticated .admin-wmc-page > .container { width: min(100% - 32px, 1440px); max-width: 1440px; }
+.admin-authenticated .admin-wmc-page .wmc-header-actions { gap: 10px; }
+.admin-authenticated .admin-wmc-page .wmc-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 18px 0 14px; padding: 5px; border: 1px solid var(--wmc-border); border-radius: 12px; background: var(--wmc-surface-muted); }
+.admin-authenticated .admin-wmc-page .wmc-tab { min-height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--wmc-muted); font-size: 12px; font-weight: 800; letter-spacing: .01em; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; }
+.admin-authenticated .admin-wmc-page .wmc-tab:hover { background: color-mix(in srgb, var(--wmc-primary) 10%, transparent); color: var(--wmc-primary-hover); }
+.admin-authenticated .admin-wmc-page .wmc-tab[aria-selected="true"] { background: #0E7490; color: #FFFFFF; box-shadow: 0 4px 10px rgba(14, 116, 144, .22); }
+.admin-authenticated .admin-wmc-page .wmc-tab:focus-visible, .admin-authenticated .admin-wmc-page .wmc-tab-panel:focus-visible, .admin-authenticated .admin-wmc-page summary:focus-visible { outline: 3px solid rgba(14, 116, 144, .36); outline-offset: 2px; }
+.admin-authenticated .admin-wmc-page .wmc-tab-panel { min-width: 0; }
+.admin-authenticated .admin-wmc-page .wmc-overview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.admin-authenticated .admin-wmc-page .wmc-overview-card, .admin-authenticated .admin-wmc-page .wmc-multi-brand-preview, .admin-authenticated .admin-wmc-page .wmc-multi-brand-result, .admin-authenticated .admin-wmc-page .wmc-diagnostics-disclosure { border: 1px solid var(--wmc-border); border-radius: 12px; background: var(--wmc-surface); box-shadow: 0 8px 22px rgba(15, 23, 42, .06); }
+.admin-authenticated .admin-wmc-page .wmc-overview-card { min-height: 112px; padding: 14px 16px; }
+.admin-authenticated .admin-wmc-page .wmc-overview-card--connection { border-top: 3px solid #0E7490; }
+.admin-authenticated .admin-wmc-page .wmc-overview-label { display: block; margin-bottom: 8px; color: var(--wmc-muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-authenticated .admin-wmc-page .wmc-overview-card strong { display: block; color: var(--wmc-text); font-size: 20px; line-height: 1.15; }
+.admin-authenticated .admin-wmc-page .wmc-overview-card small { display: block; margin-top: 7px; color: var(--wmc-muted); font-size: 11px; line-height: 1.35; }
+.admin-authenticated .admin-wmc-page .wmc-recent-operations { min-height: 0; padding: 16px; }
+.admin-authenticated .admin-wmc-page .wmc-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.admin-authenticated .admin-wmc-page .wmc-panel-heading h2, .admin-authenticated .admin-wmc-page .wmc-panel-heading h3 { margin: 2px 0 0; color: var(--wmc-text); font-size: 17px; }
+.admin-authenticated .admin-wmc-page .wmc-step-kicker { display: block; color: #0E7490; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-authenticated .admin-wmc-page .wmc-readonly-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 4px 8px; border: 1px solid rgba(14, 116, 144, .22); border-radius: 999px; background: rgba(14, 116, 144, .08); color: #0E7490; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.admin-authenticated .admin-wmc-page .wmc-empty-state { margin: 0; padding: 18px 0 4px; color: var(--wmc-muted); font-size: 13px; }
+.admin-authenticated .admin-wmc-page .wmc-operation-table { margin: 0; color: var(--wmc-text); font-size: 12px; }
+.admin-authenticated .admin-wmc-page .wmc-operation-table thead th { border: 0; background: #0F172A; color: #FFFFFF; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
+.admin-authenticated .admin-wmc-page .wmc-operation-table tbody td { border-color: var(--wmc-border); }
+.admin-authenticated .admin-wmc-page .wmc-multi-brand-preview, .admin-authenticated .admin-wmc-page .wmc-multi-brand-result { margin-bottom: 12px; padding: 14px 16px; }
+.admin-authenticated .admin-wmc-page .wmc-multi-brand-preview p { margin: 0 0 12px; }
+.admin-authenticated .admin-wmc-page .wmc-brand-grid--multi { max-height: 240px; }
+.admin-authenticated .admin-wmc-page .wmc-multi-brand-form .wmc-brand-row { grid-template-columns: auto 68px minmax(0, 1fr) auto; }
+.admin-authenticated .admin-wmc-page .wmc-brand-grid--multi input[type="checkbox"] { accent-color: #0E7490; }
+.admin-authenticated .admin-wmc-page .wmc-brand-preview-list { display: grid; gap: 6px; margin-top: 12px; }
+.admin-authenticated .admin-wmc-page .wmc-brand-preview-list details { border: 1px solid var(--wmc-border); border-radius: 9px; background: var(--wmc-surface-muted); }
+.admin-authenticated .admin-wmc-page .wmc-brand-preview-list summary { display: flex; justify-content: space-between; gap: 12px; padding: 9px 11px; cursor: pointer; color: var(--wmc-text); font-size: 12px; }
+.admin-authenticated .admin-wmc-page .wmc-brand-preview-list summary span { color: var(--wmc-muted); font-size: 11px; }
+.admin-authenticated .admin-wmc-page .wmc-brand-preview-details { padding: 0 11px 10px; color: var(--wmc-muted); font-size: 11px; }
+.admin-authenticated .admin-wmc-page .wmc-diagnostics-disclosure { overflow: hidden; }
+.admin-authenticated .admin-wmc-page .wmc-diagnostics-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; }
+.admin-authenticated .admin-wmc-page .wmc-diagnostics-disclosure > summary::-webkit-details-marker { display: none; }
+.admin-authenticated .admin-wmc-page .wmc-diagnostics-disclosure > summary strong { display: block; margin-top: 2px; color: var(--wmc-text); font-size: 15px; }
+.admin-authenticated .admin-wmc-page .wmc-disclosure-hint { color: var(--wmc-muted); font-size: 11px; }
+.admin-authenticated .admin-wmc-page .wmc-diagnostics-disclosure > section { margin: 0; border: 0; border-top: 1px solid var(--wmc-border); border-radius: 0; box-shadow: none; }
+.admin-authenticated .admin-wmc-page .btn-primary, .admin-authenticated .admin-wmc-page .admin-primary-action { border-color: #0E7490; background: #0E7490; color: #FFFFFF; }
+.admin-authenticated .admin-wmc-page .btn-primary:hover, .admin-authenticated .admin-wmc-page .btn-primary:focus-visible, .admin-authenticated .admin-wmc-page .admin-primary-action:hover, .admin-authenticated .admin-wmc-page .admin-primary-action:focus-visible { border-color: #0B5D75; background: #0B5D75; color: #FFFFFF; }
+.admin-authenticated .admin-wmc-page [data-wmc-submit-once][aria-busy="true"] { cursor: wait; }
+.admin-authenticated .admin-wmc-page [data-wmc-submit-once] button[data-wmc-loading="true"], .admin-authenticated .admin-wmc-page [data-wmc-submit-once] button:disabled { opacity: .72; }
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page { --wmc-surface: var(--admin-dark-surface); --wmc-surface-muted: var(--admin-dark-surface-secondary); --wmc-border: var(--admin-dark-border); --wmc-text: var(--admin-dark-text); --wmc-muted: var(--admin-dark-muted); }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-tabs { background: var(--admin-dark-surface-secondary); }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-operation-table thead th { background: #0F172A; }
+
+@media (max-width: 991.98px) {
+    .admin-authenticated .admin-wmc-page .wmc-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767.98px) {
+    .admin-authenticated .admin-wmc-page > .container { width: min(100% - 20px, 1440px); }
+    .admin-authenticated .admin-wmc-page .wmc-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+    .admin-authenticated .admin-wmc-page .wmc-overview-grid { grid-template-columns: 1fr; }
+    .admin-authenticated .admin-wmc-page .wmc-panel-heading { flex-direction: column; }
+    .admin-authenticated .admin-wmc-page .wmc-operation-table { min-width: 720px; }
+    .admin-authenticated .admin-wmc-page .wmc-multi-brand-form .wmc-brand-row { grid-template-columns: auto 58px minmax(0, 1fr); }
+    .admin-authenticated .admin-wmc-page .wmc-multi-brand-form .wmc-brand-count { grid-column: 3; }
+    .admin-authenticated .admin-wmc-page .wmc-diagnostics-disclosure > summary { align-items: flex-start; flex-direction: column; }
+}

@@ -41,7 +41,7 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("wmcImportConfirmationForm", view, StringComparison.Ordinal);
         Assert.Contains("var refreshedCandidates = await wmcProductImportService.GetCandidatesAsync", controller, StringComparison.Ordinal);
         Assert.Contains("submitted", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmc-legacy-preview", view, StringComparison.Ordinal);
         Assert.Contains("wmc-import-table", view, StringComparison.Ordinal);
         Assert.Contains("<th>EAN</th>", view, StringComparison.Ordinal);
@@ -64,7 +64,7 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Confirmar importação", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmc-preview-form", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmcSelectFiltered", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("name=\"brandCodes\"", view, StringComparison.Ordinal);
+        Assert.Contains("name=\"brandCodes\"", view, StringComparison.Ordinal);
         Assert.Contains(".wmc-product-table-scroll", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-price-cell", css, StringComparison.Ordinal);
         Assert.Contains("text-align:right", css, StringComparison.Ordinal);

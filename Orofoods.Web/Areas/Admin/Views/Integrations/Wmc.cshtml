@@ -7,6 +7,29 @@
     var lastRun = ViewBag.LastRun as WmcSyncRunResult;
     var customerPreview = ViewBag.WmcCustomerPreview as WmcCustomerImportPreview;
     var regularizationPreview = ViewBag.WmcCustomerRegularizationPreview as WmcCustomerRegularizationPreview;
+    var brandQueryState = ViewBag.WmcBrandQueryState as string ?? "not-queried";
+    var hasServerTabState = customerPreview is not null
+        || regularizationPreview is not null
+        || Model.Preview is not null
+        || Model.Step is "Products" or "Confirmation" or "Result"
+        || !string.IsNullOrWhiteSpace(Context.Request.Query["diagnosticOrderId"]);
+    var initialTab = !string.IsNullOrWhiteSpace(Context.Request.Query["diagnosticOrderId"])
+        ? "diagnostics"
+        : customerPreview is not null || regularizationPreview is not null
+            ? "clients"
+            : Model.Preview is not null || Model.Step is "Products" or "Confirmation" or "Result" ? "products" : "overview";
+    var connectionLabel = brandQueryState switch
+    {
+        "available" => "Disponível",
+        "unavailable" => "Indisponível",
+        _ => "Não consultado"
+    };
+    var connectionDescription = brandQueryState switch
+    {
+        "available" => "Última consulta WMC concluída",
+        "unavailable" => "A consulta WMC falhou nesta solicitação",
+        _ => "Nenhuma consulta WMC nesta solicitação"
+    };
 }
 
 <section class="section admin-wmc-page">
@@ -30,8 +53,6 @@
             </div>
         </header>
 
-        @await Component.InvokeAsync("WmcActivationDiagnostics")
-
         @if (TempData["WmcSyncMessage"] is string message)
         {
             <div class="alert alert-info mt-4" role="alert">@message</div>
@@ -45,10 +66,69 @@
             <div class="alert alert-warning mt-4" role="alert">@customerError</div>
         }
 
+        <nav class="wmc-tabs" aria-label="Integrações WMC" data-wmc-tabs data-wmc-initial-tab="@initialTab" data-wmc-server-state="@hasServerTabState.ToString().ToLowerInvariant()" role="tablist">
+            <button type="button" class="wmc-tab" id="wmc-tab-overview" data-wmc-tab="overview" role="tab" aria-controls="wmc-panel-overview" aria-selected="false">Visão Geral</button>
+            <button type="button" class="wmc-tab" id="wmc-tab-clients" data-wmc-tab="clients" role="tab" aria-controls="wmc-panel-clients" aria-selected="false">Clientes</button>
+            <button type="button" class="wmc-tab" id="wmc-tab-products" data-wmc-tab="products" role="tab" aria-controls="wmc-panel-products" aria-selected="false">Produtos</button>
+            <button type="button" class="wmc-tab" id="wmc-tab-diagnostics" data-wmc-tab="diagnostics" role="tab" aria-controls="wmc-panel-diagnostics" aria-selected="false">Diagnóstico</button>
+        </nav>
+
+        <section id="wmc-panel-overview" class="wmc-tab-panel" data-wmc-tab-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-overview">
+            <div class="wmc-overview-grid" aria-label="Indicadores WMC">
+                <article class="wmc-overview-card wmc-overview-card--connection">
+                    <span class="wmc-overview-label">Conexão WMC</span>
+                    <strong data-wmc-overview-connection>@connectionLabel</strong>
+                    <small>@connectionDescription</small>
+                </article>
+                <article class="wmc-overview-card">
+                    <span class="wmc-overview-label">Sincronização manual</span>
+                    <strong data-wmc-overview-operation>@(isRunning ? "Em execução" : lastRun is null ? "Aguardando operação" : lastRun.Status)</strong>
+                    <small>@(isRunning ? "Coordenador ocupado nesta instância" : "Sem worker automático habilitado por esta tela")</small>
+                </article>
+                <article class="wmc-overview-card">
+                    <span class="wmc-overview-label">Última sincronização manual</span>
+                    <strong>@(lastRun is null ? "Nenhuma" : lastRun.FinishedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))</strong>
+                    <small>@(lastRun is null ? "Nenhuma execução registrada nesta instância" : $"Iniciada às {lastRun.StartedAt.ToLocalTime():HH:mm}")</small>
+                </article>
+                <article class="wmc-overview-card">
+                    <span class="wmc-overview-label">Registros processados</span>
+                    <strong>@(lastRun is null ? "—" : (lastRun.Customers.RecordsRead + lastRun.Products.RecordsRead + lastRun.Sellers.RecordsRead + lastRun.Stock.RecordsRead).ToString("N0"))</strong>
+                    <small>@(lastRun is null ? "Sem ciclo concluído" : "Clientes, produtos, vendedores e estoque")</small>
+                </article>
+            </div>
+
+            <section class="wmc-overview-card wmc-recent-operations" aria-labelledby="wmc-recent-operations-title">
+                <header class="wmc-panel-heading">
+                    <div><span class="wmc-step-kicker">Acompanhamento</span><h2 id="wmc-recent-operations-title">Operação recente</h2></div>
+                    <span class="wmc-readonly-badge">Dados desta instância</span>
+                </header>
+                @if (lastRun is null)
+                {
+                    <p class="wmc-empty-state">Nenhuma sincronização manual foi registrada nesta instância.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table wmc-operation-table align-middle">
+                            <thead><tr><th>Entidade</th><th>Lidos</th><th>Criados</th><th>Atualizados</th><th>Ignorados</th><th>Erro</th></tr></thead>
+                            <tbody>
+                                <tr><td>Clientes</td><td>@lastRun.Customers.RecordsRead</td><td>@lastRun.Customers.RecordsCreated</td><td>@lastRun.Customers.RecordsUpdated</td><td>@lastRun.Customers.RecordsSkipped</td><td>@(lastRun.Customers.ErrorMessage ?? "—")</td></tr>
+                                <tr><td>Produtos</td><td>@lastRun.Products.RecordsRead</td><td>@lastRun.Products.RecordsCreated</td><td>@lastRun.Products.RecordsUpdated</td><td>@lastRun.Products.RecordsSkipped</td><td>@(lastRun.Products.ErrorMessage ?? "—")</td></tr>
+                                <tr><td>Vendedores</td><td>@lastRun.Sellers.RecordsRead</td><td>@lastRun.Sellers.RecordsCreated</td><td>@lastRun.Sellers.RecordsUpdated</td><td>@lastRun.Sellers.RecordsSkipped</td><td>@(lastRun.Sellers.ErrorMessage ?? "—")</td></tr>
+                                <tr><td>Estoque</td><td>@lastRun.Stock.RecordsRead</td><td>@lastRun.Stock.RecordsCreated</td><td>@lastRun.Stock.RecordsUpdated</td><td>@lastRun.Stock.RecordsSkipped</td><td>@(lastRun.Stock.ErrorMessage ?? "—")</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        </section>
+
+        <section id="wmc-panel-clients" class="wmc-tab-panel" data-wmc-tab-panel="clients" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-clients">
+
         <section class="mt-4" aria-labelledby="wmc-customer-import-title">
             <h2 id="wmc-customer-import-title">Importação manual de clientes</h2>
             <p>Informe o código do vendedor WMC. Somente clientes com situação <code>A</code> e restrição <code>F</code> serão considerados.</p>
-            <form method="post" asp-action="WmcCustomerPreview" class="wmc-customer-import-form">
+            <form method="post" asp-action="WmcCustomerPreview" class="wmc-customer-import-form" data-wmc-submit-once>
                 @Html.AntiForgeryToken()
                 <div class="wmc-customer-seller-field customer-search">
                     <label class="form-label" for="wmcSellerCode">CODVENDEDOR</label>
@@ -123,7 +203,7 @@
                 }
                 @if (customerPreview.Conflicts == 0 && customerPreview.NewCustomers + customerPreview.ExistingCustomers > 0)
                 {
-                    <form method="post" asp-action="WmcCustomerImport" class="mt-3" data-wmc-customer-confirmation>
+                    <form method="post" asp-action="WmcCustomerImport" class="mt-3" data-wmc-customer-confirmation data-wmc-submit-once>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="sellerCode" value="@customerPreview.SellerCode" />
                         <input type="hidden" name="confirm" value="true" />
@@ -136,7 +216,7 @@
         <section class="mt-4" aria-labelledby="wmc-customer-regularization-title">
             <h2 id="wmc-customer-regularization-title">Regularização manual de clientes pendentes</h2>
             <p>Revise os clientes WMC já importados que ainda estão pendentes antes de liberá-los.</p>
-            <form method="post" asp-action="WmcCustomerRegularizationPreview">
+            <form method="post" asp-action="WmcCustomerRegularizationPreview" data-wmc-submit-once>
                 @Html.AntiForgeryToken()
             <button type="submit" class="btn admin-primary-action wmc-customer-regularization-preview-button"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Gerar prévia de regularização</button>
             </form>
@@ -149,7 +229,7 @@
                 </div>
                 @if (regularizationPreview.BlockedCustomers == 0 && regularizationPreview.EligibleCustomers > 0)
                 {
-                    <form method="post" asp-action="WmcCustomerRegularization" class="mt-3" data-wmc-customer-confirmation>
+                    <form method="post" asp-action="WmcCustomerRegularization" class="mt-3" data-wmc-customer-confirmation data-wmc-submit-once>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="confirm" value="true" />
                         <button type="submit" class="btn admin-primary-action">Confirmar regularização</button>
@@ -172,28 +252,9 @@
             }
         </section>
 
-        @if (lastRun is not null)
-        {
-            <table class="table mt-3">
-                <thead>
-                    <tr>
-                        <th>Entidade</th>
-                        <th>Lidos</th>
-                        <th>Criados</th>
-                        <th>Atualizados</th>
-                        <th>Ignorados</th>
-                        <th>Erro</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td>Clientes</td><td>@lastRun.Customers.RecordsRead</td><td>@lastRun.Customers.RecordsCreated</td><td>@lastRun.Customers.RecordsUpdated</td><td>@lastRun.Customers.RecordsSkipped</td><td>@lastRun.Customers.ErrorMessage</td></tr>
-                    <tr><td>Produtos</td><td>@lastRun.Products.RecordsRead</td><td>@lastRun.Products.RecordsCreated</td><td>@lastRun.Products.RecordsUpdated</td><td>@lastRun.Products.RecordsSkipped</td><td>@lastRun.Products.ErrorMessage</td></tr>
-                    <tr><td>Vendedores</td><td>@lastRun.Sellers.RecordsRead</td><td>@lastRun.Sellers.RecordsCreated</td><td>@lastRun.Sellers.RecordsUpdated</td><td>@lastRun.Sellers.RecordsSkipped</td><td>@lastRun.Sellers.ErrorMessage</td></tr>
-                    <tr><td>Estoque</td><td>@lastRun.Stock.RecordsRead</td><td>@lastRun.Stock.RecordsCreated</td><td>@lastRun.Stock.RecordsUpdated</td><td>@lastRun.Stock.RecordsSkipped</td><td>@lastRun.Stock.ErrorMessage</td></tr>
-                </tbody>
-            </table>
-        }
+        </section>
 
+        <section id="wmc-panel-products" class="wmc-tab-panel" data-wmc-tab-panel="products" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-products">
         <section class="wmc-import-section" aria-labelledby="wmc-import-title">
 
             <section class="wmc-import-wizard" aria-labelledby="wmc-import-title">
@@ -223,7 +284,64 @@
 
                 @if (Model.Step == "Brands")
                 {
-                    <form method="post" asp-action="WmcProducts" class="wmc-brand-picker">
+                    <section class="wmc-multi-brand-preview" aria-labelledby="wmc-multi-brand-preview-title">
+                        <header class="wmc-panel-heading">
+                            <div><span class="wmc-step-kicker">Consulta em lote</span><h3 id="wmc-multi-brand-preview-title">Prévia de várias marcas</h3></div>
+                            <span class="wmc-readonly-badge">Somente leitura</span>
+                        </header>
+                        <p class="wmc-stage-copy">Selecione uma ou mais marcas para comparar os dados reais do espelho WMC antes de iniciar uma importação individual.</p>
+                        <form method="post" asp-action="WmcPreview" class="wmc-multi-brand-form" data-wmc-submit-once data-wmc-requires-selection>
+                            @Html.AntiForgeryToken()
+                            <div class="wmc-brand-toolbar">
+                                <label class="form-label" for="wmcMultiBrandSearch">Pesquisar marcas</label>
+                                <input class="form-control" id="wmcMultiBrandSearch" type="search" data-wmc-search="multi-brand" placeholder="Código ou descrição" autocomplete="off" />
+                                <span class="wmc-brand-selection-count" id="wmcMultiBrandSelectionCount" aria-live="polite">0 marcas selecionadas</span>
+                            </div>
+                            <div class="wmc-brand-grid wmc-brand-grid--multi" id="wmcMultiBrandGrid" role="group" aria-label="Selecionar várias marcas WMC">
+                                @foreach (var brand in Model.Brands.OrderBy(item => item.Description))
+                                {
+                                    <label class="wmc-brand-row" data-wmc-brand-row data-brand-search="@brand.Code @brand.Description">
+                                        <input type="checkbox" name="brandCodes" value="@brand.Code" data-wmc-brand-checkbox @(Model.SelectedBrandCodes.Contains((short)brand.Code) ? "checked" : null) />
+                                        <span class="wmc-brand-code">@brand.Code</span>
+                                        <span class="wmc-brand-description">@brand.Description</span>
+                                        <span class="wmc-brand-count">@brand.ActiveProductCount ativos de @brand.ProductCount</span>
+                                    </label>
+                                }
+                            </div>
+                            <div class="wmc-wizard-actions">
+                                <span class="wmc-action-hint">A prévia não grava dados.</span>
+                                <button type="submit" class="btn btn-primary" data-wmc-submit-button data-wmc-loading="Processando...">Gerar prévia</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    @if (Model.Preview is not null)
+                    {
+                        <section class="wmc-multi-brand-result" aria-labelledby="wmc-multi-brand-result-title">
+                            <header class="wmc-panel-heading"><div><span class="wmc-step-kicker">Resultado da consulta</span><h3 id="wmc-multi-brand-result-title">Resumo por marca</h3></div></header>
+                            <div class="wmc-import-summary" aria-label="Resumo da prévia de marcas">
+                                <article><span>Produtos lidos</span><strong>@Model.Preview.ProductsRead</strong></article>
+                                <article class="wmc-summary-new"><span>Novos ativos</span><strong>@Model.Preview.NewActiveProducts</strong></article>
+                                <article class="wmc-summary-existing"><span>Existentes ativos</span><strong>@Model.Preview.ExistingActiveProducts</strong></article>
+                                <article class="wmc-summary-blocked"><span>Bloqueados</span><strong>@Model.Preview.ProjectedBlockedProducts</strong></article>
+                            </div>
+                            @if (Model.Preview.ErrorMessage is not null)
+                            {
+                                <div class="alert alert-warning" role="alert">@Model.Preview.ErrorMessage</div>
+                            }
+                            <div class="wmc-brand-preview-list">
+                                @foreach (var brandPreview in Model.BrandPreviews)
+                                {
+                                    <details>
+                                        <summary><strong>@brandPreview.Code · @brandPreview.Description</strong><span>@brandPreview.Preview.ProductsRead produtos lidos</span></summary>
+                                        <div class="wmc-brand-preview-details">@brandPreview.Preview.ActiveEligibleProducts elegíveis · @brandPreview.Preview.InactiveIgnoredProducts inativos ignorados</div>
+                                    </details>
+                                }
+                            </div>
+                        </section>
+                    }
+
+                    <form method="post" asp-action="WmcProducts" class="wmc-brand-picker" data-wmc-submit-once>
                         @Html.AntiForgeryToken()
                         <div class="wmc-brand-toolbar">
                             <label class="form-label" for="wmcBrandSearch">Pesquisar marca</label>
@@ -254,7 +372,7 @@
                         <a asp-action="Wmc" class="btn btn-outline-secondary btn-sm">Trocar marca</a>
                     </header>
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
-                    <form method="post" asp-action="WmcConfirmSelection" id="wmcImportSelectionForm">
+                    <form method="post" asp-action="WmcConfirmSelection" id="wmcImportSelectionForm" data-wmc-submit-once>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
                         <div class="small text-muted mb-2" aria-label="Origem dos dados">
@@ -455,7 +573,7 @@
                             }
                         </ul>
                     </details>
-                    <form method="post" asp-action="WmcImportProducts" id="wmcImportConfirmationForm" class="wmc-wizard-actions wmc-confirmation-actions">
+                    <form method="post" asp-action="WmcImportProducts" id="wmcImportConfirmationForm" class="wmc-wizard-actions wmc-confirmation-actions" data-wmc-submit-once>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="brandCode" value="@Model.SelectedBrandCode" />
                         @foreach (var code in Model.SelectedProductCodes ?? []) { <input type="hidden" name="selectedProductCodes" value="@code" /> }
@@ -498,10 +616,18 @@
             </section>
 
         </section>
+        <section id="wmc-panel-diagnostics" class="wmc-tab-panel" data-wmc-tab-panel="diagnostics" role="tabpanel" tabindex="0" aria-labelledby="wmc-tab-diagnostics">
+            <details class="wmc-diagnostics-disclosure" data-wmc-diagnostic-panel open="@(initialTab == "diagnostics" ? "open" : null)">
+                <summary><span><span class="wmc-step-kicker">Consulta técnica</span><strong>Diagnóstico de automação e elegibilidade</strong></span><span class="wmc-disclosure-hint">Expandir painel</span></summary>
+                @await Component.InvokeAsync("WmcActivationDiagnostics")
+            </details>
+        </section>
+
         <p class="text-muted mt-4">A sincronização automática/global de clientes está desativada. As demais integrações permanecem separadas.</p>
     </div>
 </section>
 
+<script src="~/js/wmc-integration-center.js" asp-append-version="true"></script>
 <script>
     (() => {
         const toggle = document.querySelector('[data-wmc-customer-preview-toggle]');
@@ -526,7 +652,8 @@
 
     (() => {
         const search = document.getElementById('wmcBrandSearch');
-        const rows = [...document.querySelectorAll('.wmc-brand-row')];
+        const picker = document.querySelector('.wmc-brand-picker');
+        const rows = [...(picker?.querySelectorAll('.wmc-brand-row') ?? [])];
         const updateCount = () => {
             const count = rows.filter(row => row.querySelector('input')?.checked).length;
             const label = document.getElementById('wmcBrandSelectionCount');
