@@ -11,6 +11,8 @@ public sealed class WmcCustomerImportViewTests
 
         Assert.Contains("WmcCustomerPreview", view);
         Assert.Contains("WmcCustomerImport", view);
+        Assert.Contains("Consultar Clientes WMC", view);
+        Assert.Contains("Importar Clientes Selecionados", view);
         Assert.Contains("CODVENDEDOR", view);
         Assert.Contains("Confirmar importação", view);
         Assert.DoesNotContain("asp-action=\"WmcSyncNow\"", view);
@@ -53,6 +55,8 @@ public sealed class WmcCustomerImportViewTests
         Assert.Contains("Existente", view);
         Assert.Contains("Ignorado", view);
         Assert.Contains("Conflito", view);
+        Assert.Contains("Bloqueado", view);
+        Assert.Contains("BlockingReason", view);
         Assert.Contains("row.Reason", view);
     }
 
@@ -65,11 +69,11 @@ public sealed class WmcCustomerImportViewTests
 
         Assert.Contains("data-wmc-customer-preview-toggle", view);
         Assert.Contains("data-wmc-customer-preview-filter", view);
+        Assert.Contains("Visualizar Clientes (@customerPreview.Rows.Count)", view);
         Assert.Contains("data-wmc-customer-preview-table", view);
         Assert.Contains("hidden>", view);
         Assert.Contains("wmc-customer-regularization-summary", view);
         Assert.Contains("wmc-customer-regularization-blocked", view);
-        Assert.Contains("Exibir clientes (@customerPreview.Rows.Count)", view);
         Assert.Contains("Novos (@customerPreview.NewCustomers)", view);
         Assert.Contains("max-height: 400px", css);
         Assert.DoesNotContain("list=\"wmcSellerCodes\"", view);

@@ -24,8 +24,9 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Confirmar importação", view, StringComparison.Ordinal);
         Assert.Contains("wmcBrandSearch", view, StringComparison.Ordinal);
         Assert.Contains("wmcBrandSelectionCount", view, StringComparison.Ordinal);
-        Assert.Contains("Carregar produtos", view, StringComparison.Ordinal);
-        Assert.Contains("Confirmar alterações", view, StringComparison.Ordinal);
+        Assert.Contains("Consultar Produtos WMC", view, StringComparison.Ordinal);
+        Assert.Contains("Revisar Produtos Selecionados", view, StringComparison.Ordinal);
+        Assert.Contains("Importar Produtos Selecionados", view, StringComparison.Ordinal);
         Assert.DoesNotContain("Conferir alterações", view, StringComparison.Ordinal);
         Assert.Contains("simulationValidated", view, StringComparison.Ordinal);
         Assert.Contains("Preço proposto", view, StringComparison.Ordinal);

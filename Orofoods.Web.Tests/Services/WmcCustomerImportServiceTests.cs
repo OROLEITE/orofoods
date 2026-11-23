@@ -94,12 +94,13 @@ public sealed class WmcCustomerImportServiceTests
     public async Task Preview_blocks_when_wmc_seller_is_not_configured()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
-        var service = CreateService(db, new FakeCustomerReader([Row("C100", "A", "F", "04.252.011/0001-10", "V100")]), "Tabela BIMBO");
+        var service = CreateService(db, new FakeCustomerReader([Row("C100", "A", "F", "04.252.011/0001-10", "V100")]), validateSeller: true);
 
         var preview = await service.PreviewAsync("V100");
 
         Assert.Contains(preview.Rows, row => row.Reason!.Contains("vendedor", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal(1, preview.Conflicts);
+        Assert.Equal(1, preview.Blocked);
+        Assert.Equal(0, preview.Conflicts);
     }
 
     [Fact]
@@ -110,7 +111,7 @@ public sealed class WmcCustomerImportServiceTests
             new SalesRepresentative { Name = "Vendedor 1", WmcCode = "28", IsActive = true },
             new SalesRepresentative { Name = "Vendedor 2", WmcCode = "28", IsActive = true });
         await db.SaveChangesAsync();
-        var service = CreateService(db, new FakeCustomerReader([Row("C104", "A", "F", "04.252.011/0001-10", "28")]), "Tabela BIMBO");
+        var service = CreateService(db, new FakeCustomerReader([Row("C104", "A", "F", "04.252.011/0001-10", "28")]), validateSeller: true);
 
         var preview = await service.PreviewAsync("28");
 
@@ -118,14 +119,79 @@ public sealed class WmcCustomerImportServiceTests
     }
 
     [Fact]
-    public async Task Import_approves_new_customer_and_assigns_wmc_seller_and_bimbo_table()
+    public async Task Preview_keeps_cadastral_conflicts_separate_from_global_seller_block()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.Customers.Add(new Customer { WmcCode = "C105", LegalName = "Atual", TradeName = "Atual", Cnpj = "04.252.011/0001-10" });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeCustomerReader([
+            Row("C105", "A", "F", "11.222.333/0001-81", "V105"),
+            Row("C106", "A", "F", "03.932.292/0001-99", "V105")
+        ]), validateSeller: true);
+
+        var preview = await service.PreviewAsync("V105");
+
+        Assert.Equal(1, preview.Conflicts);
+        Assert.Equal(1, preview.Blocked);
+        Assert.Contains(preview.Rows, row => row.Disposition == WmcCustomerImportDisposition.Conflict);
+        Assert.Contains(preview.Rows, row => row.Disposition == WmcCustomerImportDisposition.Blocked);
+    }
+
+    [Fact]
+    public async Task Preview_preserves_invalid_cadastral_reason_when_seller_is_blocked()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var service = CreateService(db, new FakeCustomerReader([
+            Row("C107", "A", "F", "123", "V107"),
+            Row("C108", "A", "F", "03.932.292/0001-99", "V107")
+        ]), validateSeller: true);
+
+        var preview = await service.PreviewAsync("V107");
+
+        Assert.Equal(1, preview.Ignored);
+        Assert.Equal(1, preview.Blocked);
+        Assert.Contains(preview.Rows, row => row.WmcCode == "C107"
+            && row.Disposition == WmcCustomerImportDisposition.Ignore
+            && row.Reason!.Contains("CNPJ", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Preview_does_not_reclassify_ignored_pending_customer_as_seller_conflict()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var otherSeller = new SalesRepresentative { Name = "Outro vendedor", WmcCode = "OUTRO", IsActive = true };
+        db.AddRange(otherSeller, new Customer
+        {
+            WmcCode = "C109",
+            LegalName = "Cliente pendente",
+            TradeName = "Cliente pendente",
+            Cnpj = "03.932.292/0001-99",
+            Status = CustomerStatus.Pending,
+            IsActive = false,
+            SalesRepresentative = otherSeller
+        });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeCustomerReader([
+            Row("C109", "A", "F", "03.932.292/0001-99", "V109", "", "Fantasia")
+        ]), validateSeller: true);
+
+        var preview = await service.PreviewAsync("V109");
+
+        var row = Assert.Single(preview.Rows);
+        Assert.Equal(WmcCustomerImportDisposition.Ignore, row.Disposition);
+        Assert.Contains("NOME", row.Reason);
+        Assert.Equal(0, preview.Conflicts);
+        Assert.Equal(0, preview.Blocked);
+    }
+
+    [Fact]
+    public async Task Import_approves_new_customer_without_assigning_a_price_table()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var seller = new SalesRepresentative { Name = "Vendedor", WmcCode = "V100", IsActive = true };
-        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela BIMBO", IsActive = true };
-        db.AddRange(seller, table);
+        db.Add(seller);
         await db.SaveChangesAsync();
-        var service = CreateService(db, new FakeCustomerReader([Row("C101", "A", "F", "04.252.011/0001-10", "V100")]), "Tabela BIMBO");
+        var service = CreateService(db, new FakeCustomerReader([Row("C101", "A", "F", "04.252.011/0001-10", "V100")]), validateSeller: true);
 
         var result = await service.ImportAsync("V100");
 
@@ -135,7 +201,7 @@ public sealed class WmcCustomerImportServiceTests
         Assert.True(customer.IsActive);
         Assert.NotNull(customer.ApprovedAt);
         Assert.Equal(seller.Id, customer.SalesRepresentativeId);
-        Assert.Equal(table.Id, customer.PriceTableId);
+        Assert.Null(customer.PriceTableId);
     }
 
     [Fact]
@@ -143,12 +209,11 @@ public sealed class WmcCustomerImportServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var seller = new SalesRepresentative { Name = "Vendedor", WmcCode = "V100", IsActive = true };
-        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela BIMBO", IsActive = true };
         var existingTable = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela Existente", IsActive = true };
         var customer = new Customer { WmcCode = "C102", LegalName = "Antiga", TradeName = "Antiga", Cnpj = "04.252.011/0001-10", Status = CustomerStatus.Pending, IsActive = false, PriceTable = existingTable };
-        db.AddRange(seller, table, existingTable, customer);
+        db.AddRange(seller, existingTable, customer);
         await db.SaveChangesAsync();
-        var service = CreateService(db, new FakeCustomerReader([Row("C102", "A", "F", "04.252.011/0001-10", "V100", "Nova", "Nova")]), "Tabela BIMBO");
+        var service = CreateService(db, new FakeCustomerReader([Row("C102", "A", "F", "04.252.011/0001-10", "V100", "Nova", "Nova")]), validateSeller: true);
 
         var result = await service.ImportAsync("V100");
 
@@ -165,11 +230,10 @@ public sealed class WmcCustomerImportServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var seller = new SalesRepresentative { Name = "Vendedor", WmcCode = "V100", IsActive = true };
-        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "Tabela BIMBO", IsActive = true };
         var customer = new Customer { WmcCode = "C103", LegalName = "Pendente", TradeName = "Pendente", Cnpj = "04.252.011/0001-10", Status = CustomerStatus.Pending, IsActive = false };
-        db.AddRange(seller, table, customer);
+        db.AddRange(seller, customer);
         await db.SaveChangesAsync();
-        var service = CreateService(db, new FakeCustomerReader([Row("C103", "A", "F", "04.252.011/0001-10", "V100")]), "Tabela BIMBO");
+        var service = CreateService(db, new FakeCustomerReader([Row("C103", "A", "F", "04.252.011/0001-10", "V100")]), validateSeller: true);
 
         var preview = await service.PreviewPendingAsync();
         var refused = await service.RegularizePendingAsync(false);
@@ -186,8 +250,7 @@ public sealed class WmcCustomerImportServiceTests
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         var seller = new SalesRepresentative { Name = "Rodrigo", WmcCode = " 28 ", IsActive = true };
-        var table = new Orofoods.Web.Models.Pricing.PriceTable { Name = "TABELA BIMBO", IsActive = true };
-        db.AddRange(seller, table, new Customer
+        db.AddRange(seller, new Customer
         {
             WmcCode = "C-28",
             LegalName = "Cliente 28",
@@ -199,7 +262,7 @@ public sealed class WmcCustomerImportServiceTests
         await db.SaveChangesAsync();
         db.ChangeTracker.Clear();
 
-        var service = CreateService(db, new FakeCustomerReader([Row("C-28", "A", "F", "04.252.011/0001-10", "28")]), "TABELA BIMBO");
+        var service = CreateService(db, new FakeCustomerReader([Row("C-28", "A", "F", "04.252.011/0001-10", "28")]), validateSeller: true);
 
         var preview = await service.PreviewPendingAsync();
 
@@ -261,7 +324,8 @@ public sealed class WmcCustomerImportServiceTests
         Assert.Equal(1, preview.ExistingCustomers);
         Assert.Equal(2, preview.Ignored);
         Assert.Equal(0, preview.Conflicts);
-        Assert.Equal(preview.RecordsRead, preview.NewCustomers + preview.ExistingCustomers + preview.Ignored + preview.Conflicts);
+        Assert.Equal(0, preview.Blocked);
+        Assert.Equal(preview.RecordsRead, preview.NewCustomers + preview.ExistingCustomers + preview.Ignored + preview.Conflicts + preview.Blocked);
         Assert.Contains(preview.Rows, row => row.WmcCode == "C032" && row.Reason == "SITUACAO diferente de A.");
         Assert.Contains(preview.Rows, row => row.WmcCode == "C033" && row.Reason!.Contains("NOME", StringComparison.Ordinal));
         Assert.Contains(preview.Rows, row => row.Disposition == WmcCustomerImportDisposition.Existing);
@@ -279,9 +343,9 @@ public sealed class WmcCustomerImportServiceTests
         Assert.Empty(preview.Rows);
     }
 
-    private static WmcCustomerImportService CreateService(ApplicationDbContext db, IWmcCustomerReader reader, string? priceTableName = null) =>
+    private static WmcCustomerImportService CreateService(ApplicationDbContext db, IWmcCustomerReader reader, bool validateSeller = false) =>
         new(db, reader, NullLogger<WmcCustomerImportService>.Instance, TimeProvider.System,
-            priceTableName is null ? null : Options.Create(new WmcCustomerImportOptions { PriceTableName = priceTableName }));
+            validateSeller ? Options.Create(new WmcCustomerImportOptions()) : null);
 
     private static WmcCustomerRecord Row(string code, string situation, string restriction, string cnpj, string seller, string? legalName = null, string? tradeName = null) =>
         new(code, legalName ?? $"Razao {code}", tradeName ?? $"Fantasia {code}", cnpj, seller, situation, restriction);
