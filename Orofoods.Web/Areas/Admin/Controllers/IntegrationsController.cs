@@ -221,15 +221,20 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcProducts(short brandCode, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcProducts(short[]? brandCodes, short? brandCode, CancellationToken cancellationToken)
     {
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
         ViewBag.WmcBrandQueryState = "available";
-        var brand = brands.SingleOrDefault(item => item.Code == brandCode);
+        var selectedCodes = ResolveBrandCodes(brandCodes, brandCode);
+        var availableCodes = brands.Select(item => (short)item.Code).ToHashSet();
+        if (selectedCodes.Length == 0 || selectedCodes.Any(code => !availableCodes.Contains(code)))
+            return BadRequest("Selecione ao menos uma marca WMC vÃ¡lida.");
+        var brand = brands.SingleOrDefault(item => item.Code == selectedCodes.FirstOrDefault());
         if (brand is null) return BadRequest("Marca WMC inválida.");
-        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var candidates = await wmcProductImportService.GetCandidatesAsync(selectedCodes, cancellationToken);
         SetWmcViewState("available");
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates,
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, null, [], "Products", selectedCodes.Length == 1 ? selectedCodes[0] : null,
+            DescribeSelection(brands, selectedCodes), candidates,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
 
@@ -307,57 +312,110 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcConfirmSelection(short brandCode, string[]? selectedProductCodes, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcConfirmSelection(short[]? brandCodes, short? brandCode, string[]? selectedProductKeys, string[]? selectedProductCodes, CancellationToken cancellationToken)
     {
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
         ViewBag.WmcBrandQueryState = "available";
-        var brand = brands.SingleOrDefault(item => item.Code == brandCode);
+        var selectedBrands = ResolveBrandCodes(brandCodes, brandCode);
+        var availableCodes = brands.Select(item => (short)item.Code).ToHashSet();
+        if (selectedBrands.Length == 0 || selectedBrands.Any(code => !availableCodes.Contains(code))) return BadRequest("Marca WMC invÃ¡lida.");
+        var brand = brands.SingleOrDefault(item => item.Code == selectedBrands[0]);
         if (brand is null) return BadRequest("Marca WMC inválida.");
-        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
-        var requested = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
-        var selected = candidates.Where(candidate => requested.Contains(candidate.WmcCode, StringComparer.Ordinal) && candidate.Selectable).ToArray();
-        if (selected.Length == 0 || selected.Length != requested.Length)
+        var candidates = await wmcProductImportService.GetCandidatesAsync(selectedBrands, cancellationToken);
+        var requested = NormalizeSelectionKeys(selectedProductKeys, selectedProductCodes, selectedBrands);
+        var selected = candidates.Where(candidate => requested.Contains(ProductKey(candidate), StringComparer.Ordinal) && candidate.Selectable).ToArray();
+        if (selected.Length == 0 || selected.Length != requested.Count)
         {
             ModelState.AddModelError("", "Seleção vazia ou desatualizada. Revise os produtos selecionados.");
             SetWmcViewState("available");
-            return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, requested));
+            return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Products", selectedBrands.Length == 1 ? selectedBrands[0] : null,
+                DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested));
         }
         var summary = new WmcProductImportSummary(selected.Length, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
             selected.Count(item => item.Changes.Count > 0), selected.Count(item => item.Changes.Count == 0));
         SetWmcViewState("available");
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Confirmation", brandCode, brand.Description, candidates, requested, summary));
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Confirmation", selectedBrands.Length == 1 ? selectedBrands[0] : null,
+            DescribeSelection(brands, selectedBrands), candidates, SelectedProductCodes: selected.Select(item => item.WmcCode).ToArray(), Confirmation: summary,
+            SelectedProductKeys: requested));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcImportProducts(short brandCode, string[]? selectedProductCodes, string reimportExisting, bool simulationValidated, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcImportProducts(short[]? brandCodes, short? brandCode, string[]? selectedProductKeys, string[]? selectedProductCodes, string reimportExisting, bool simulationValidated, CancellationToken cancellationToken)
     {
         if (string.Equals(reimportExisting, "cancel", StringComparison.OrdinalIgnoreCase))
             return RedirectToAction(nameof(Wmc));
         if (!simulationValidated)
             return BadRequest("A conferência das alterações é obrigatória antes da confirmação.");
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
-        var brand = brands.SingleOrDefault(item => item.Code == brandCode);
+        var selectedBrands = ResolveBrandCodes(brandCodes, brandCode);
+        var availableCodes = brands.Select(item => (short)item.Code).ToHashSet();
+        if (selectedBrands.Length == 0 || selectedBrands.Any(code => !availableCodes.Contains(code))) return BadRequest("Marca WMC invÃ¡lida.");
+        var brand = brands.SingleOrDefault(item => item.Code == selectedBrands[0]);
         if (brand is null) return BadRequest("Marca WMC inválida.");
         if (reimportExisting is not ("true" or "false")) return BadRequest("Decisão inválida.");
-        var codes = (selectedProductCodes ?? []).Select(WmcProductRules.NormalizeCode).Distinct(StringComparer.Ordinal).ToArray();
-        var candidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var requested = NormalizeSelectionKeys(selectedProductKeys, selectedProductCodes, selectedBrands);
+        var candidates = await wmcProductImportService.GetCandidatesAsync(selectedBrands, cancellationToken);
         var validSelection = candidates
-            .Where(candidate => codes.Contains(candidate.WmcCode, StringComparer.Ordinal))
+            .Where(candidate => requested.Contains(ProductKey(candidate), StringComparer.Ordinal))
             .ToArray();
-        if (codes.Length == 0 || validSelection.Length != codes.Length || validSelection.Any(candidate => !candidate.Selectable))
+        if (requested.Count == 0 || validSelection.Length != requested.Count || validSelection.Any(candidate => !candidate.Selectable))
         {
             ModelState.AddModelError("", "A conferência ficou desatualizada. Revise os produtos antes de confirmar.");
             SetWmcViewState("available");
-            return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Products", brandCode, brand.Description, candidates, codes));
+            return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Products", selectedBrands.Length == 1 ? selectedBrands[0] : null,
+                DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested));
         }
-        var result = await wmcProductImportService.ImportAsync(brandCode, codes, reimportExisting == "true", cancellationToken);
-        var refreshedCandidates = await wmcProductImportService.GetCandidatesAsync(brandCode, cancellationToken);
+        var selections = validSelection.GroupBy(candidate => short.Parse(candidate.BrandCode!))
+            .ToDictionary(group => group.Key, group => (IReadOnlyCollection<string>)group.Select(item => item.WmcCode).ToArray());
+        var result = await wmcProductImportService.ImportAsync(selections, reimportExisting == "true", cancellationToken);
+        var refreshedCandidates = await wmcProductImportService.GetCandidatesAsync(selectedBrands, cancellationToken);
         SetWmcViewState("available");
-        return View(nameof(Wmc), new WmcPreviewPageModel(brands, [], null, [], "Result", brandCode, brand.Description,
-            Candidates: refreshedCandidates, SelectedProductCodes: codes, ImportResult: result,
+        return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Result", selectedBrands.Length == 1 ? selectedBrands[0] : null,
+            DescribeSelection(brands, selectedBrands), Candidates: refreshedCandidates, SelectedProductCodes: validSelection.Select(item => item.WmcCode).ToArray(), ImportResult: result,
+            SelectedProductKeys: requested,
             LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
     }
+
+    private static short[] ResolveBrandCodes(short[]? brandCodes, short? brandCode) =>
+        (brandCodes ?? [])
+            .Concat(brandCode is short scalar ? [scalar] : [])
+            .Distinct()
+            .ToArray();
+
+    private static IReadOnlyList<string> NormalizeSelectionKeys(
+        string[]? selectedProductKeys,
+        string[]? selectedProductCodes,
+        IReadOnlyList<short> selectedBrands)
+    {
+        if (selectedProductKeys is { Length: > 0 })
+        {
+            return selectedProductKeys
+                .Select(value => value.Split(':', 2))
+                .Where(parts => parts.Length == 2 && short.TryParse(parts[0], out var code) && selectedBrands.Contains(code))
+                .Select(parts => ProductKey(short.Parse(parts[0]), parts[1]))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        return selectedBrands.Count == 1
+            ? (selectedProductCodes ?? [])
+                .Select(code => ProductKey(selectedBrands[0], code))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray()
+            : [];
+    }
+
+    private static string ProductKey(WmcProductImportCandidate candidate) =>
+        $"{candidate.BrandCode}:{WmcProductRules.NormalizeCode(candidate.WmcCode)}";
+
+    private static string ProductKey(short brandCode, string code) =>
+        $"{brandCode}:{WmcProductRules.NormalizeCode(code)}";
+
+    private static string DescribeSelection(IReadOnlyList<WmcBrandRecord> brands, IReadOnlyList<short> selectedBrands) =>
+        selectedBrands.Count == 1
+            ? brands.First(brand => brand.Code == selectedBrands[0]).Description
+            : $"{selectedBrands.Count} marcas selecionadas";
 
     private void SetWmcViewState()
     {

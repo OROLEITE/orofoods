@@ -280,6 +280,11 @@
 .admin-authenticated .admin-wmc-page .wmc-price-cell { min-width: 120px; color: var(--wmc-text); }
 .admin-authenticated .admin-wmc-page .wmc-product-status { display: inline-flex; padding: 3px 7px; border-radius: 999px; background: rgba(14, 116, 144, .18); color: #A5F3FC; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .admin-authenticated .admin-wmc-page .wmc-product-status--blocked { background: rgba(245, 158, 11, .16); color: #FDE68A; }
+.admin-authenticated .admin-wmc-page .wmc-product-preview-controls { display: flex; justify-content: flex-end; margin: 10px 0 6px; }
+.admin-authenticated .admin-wmc-page .wmc-product-brand-group th { position: static; background: rgba(14, 116, 144, .16); color: #A5F3FC; font-size: 11px; text-transform: none; }
+.admin-authenticated .admin-wmc-page .wmc-block-reason { min-width: 180px; color: var(--wmc-text-soft); }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-product-brand-group th { background: #0B5D75; color: #E0F2FE; }
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-block-reason { color: #CBD5E1; }
 .admin-authenticated .admin-wmc-page .wmc-row-details { margin-top: 5px; color: var(--wmc-muted); }
 .admin-authenticated .admin-wmc-page .wmc-row-details summary,
 .admin-authenticated .admin-wmc-page .wmc-confirmation-details summary { color: #7DD3FC; cursor: pointer; font-size: 11px; }

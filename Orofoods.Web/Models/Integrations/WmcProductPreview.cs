@@ -33,7 +33,8 @@ public sealed record WmcPreviewPageModel(
     IReadOnlyList<string>? SelectedProductCodes = null,
     WmcProductImportSummary? Confirmation = null,
     WmcProductImportResult? ImportResult = null,
-    DateTime? LastProductSyncAt = null);
+    DateTime? LastProductSyncAt = null,
+    IReadOnlyList<string>? SelectedProductKeys = null);
 
 public sealed record WmcBrandPreviewResult(
     short Code,
@@ -100,7 +101,8 @@ public sealed record WmcProductImportCandidate(
     decimal? LocalBasePrice = null,
     string? LocalCommercialUnit = null,
     WmcProductUnitImportProposal? UnitProposal = null,
-    WmcProductPriceImportProposal? PriceProposal = null);
+    WmcProductPriceImportProposal? PriceProposal = null,
+    string? BlockReason = null);
 
 public sealed record WmcProductFieldChange(string Field, string CurrentValue, string WmcValue);
 

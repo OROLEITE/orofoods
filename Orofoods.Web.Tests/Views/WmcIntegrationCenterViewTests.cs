@@ -40,8 +40,7 @@ public sealed class WmcIntegrationCenterViewTests
             "WmcCustomerRegularization",
             "WmcProducts",
             "WmcConfirmSelection",
-            "WmcImportProducts",
-            "WmcPreview"
+            "WmcImportProducts"
         })
         {
             Assert.Contains($"asp-action=\"{action}\"", view, StringComparison.Ordinal);
@@ -51,7 +50,7 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.Contains("@await Component.InvokeAsync(\"WmcActivationDiagnostics\")", view, StringComparison.Ordinal);
         Assert.Contains("simulationValidated", view, StringComparison.Ordinal);
         Assert.Contains("reimportExisting", view, StringComparison.Ordinal);
-        Assert.Contains("selectedProductCodes", view, StringComparison.Ordinal);
+        Assert.Contains("selectedProductKeys", view, StringComparison.Ordinal);
         Assert.Contains("Consultar Produtos WMC", view, StringComparison.Ordinal);
         Assert.Contains("Importar Produtos Selecionados", view, StringComparison.Ordinal);
     }
@@ -95,8 +94,8 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.Contains("Model.SelectedBrandCodes.Contains", view, StringComparison.Ordinal);
         Assert.Contains("data-wmc-requires-selection", view, StringComparison.Ordinal);
         Assert.Contains("selectedCount === 0", script, StringComparison.Ordinal);
-        Assert.Contains("const picker = document.querySelector('.wmc-brand-picker')", view, StringComparison.Ordinal);
-        Assert.Contains("picker?.querySelectorAll('.wmc-brand-row')", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-search=\"multi-brand\"", view, StringComparison.Ordinal);
+        Assert.Equal(1, view.Split("data-wmc-requires-selection", StringSplitOptions.None).Length - 1);
         Assert.Contains("activate(tabs[nextIndex].dataset.wmcTab, false, false)", script, StringComparison.Ordinal);
 
         var loadingLabelIndex = script.IndexOf("const loadingLabel", StringComparison.Ordinal);
