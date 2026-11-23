@@ -16,13 +16,33 @@ public sealed class WmcProductImportService(
 {
     private readonly WmcPriceImportOptions priceOptions = priceOptions?.Value ?? new();
 
-    public async Task<IReadOnlyList<WmcProductImportCandidate>> GetCandidatesAsync(short brandCode, CancellationToken ct = default)
+    public Task<IReadOnlyList<WmcProductImportCandidate>> GetCandidatesAsync(short brandCode, CancellationToken ct = default) =>
+        GetCandidatesAsync((IReadOnlyCollection<short>)[brandCode], ct);
+
+    public async Task<IReadOnlyList<WmcProductImportCandidate>> GetCandidatesAsync(IReadOnlyCollection<short> brandCodes, CancellationToken ct = default)
     {
-        var source = await reader.GetAllByBrandWithUnitsAsync(brandCode, ct);
+        var selectedBrands = brandCodes.Distinct().ToArray();
+        if (selectedBrands.Length == 0) return [];
+        var source = new List<(short BrandCode, WmcProductRecord Row)>();
+        foreach (var brandCode in selectedBrands)
+        {
+            var rows = await reader.GetAllByBrandWithUnitsAsync(brandCode, ct);
+            source.AddRange(rows.Select(row => (brandCode, row)));
+        }
         var products = await db.Products.AsNoTracking().Where(p => p.WmcCode != null).ToListAsync(ct);
         var local = products.GroupBy(p => WmcProductRules.NormalizeCode(p.WmcCode), StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
-        var duplicates = WmcProductRules.FindDuplicateCodes(source).ToHashSet(StringComparer.Ordinal);
+        var duplicateKeys = source
+            .GroupBy(item => (item.BrandCode, Code: WmcProductRules.NormalizeCode(item.Row.CodProduto)))
+            .Where(group => group.Key.Code.Length == 0 || group.Count() > 1)
+            .Select(group => $"{group.Key.BrandCode}:{group.Key.Code}")
+            .ToHashSet(StringComparer.Ordinal);
+        var crossBrandCodes = source
+            .Where(item => WmcProductRules.NormalizeCode(item.Row.CodProduto).Length > 0)
+            .GroupBy(item => WmcProductRules.NormalizeCode(item.Row.CodProduto), StringComparer.Ordinal)
+            .Where(group => group.Select(item => item.BrandCode).Distinct().Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.Ordinal);
         var productIds = products.Select(product => product.Id).ToArray();
         var unitsByProduct = await db.WmcProductUnits.AsNoTracking()
             .Where(unit => productIds.Contains(unit.ProductId))
@@ -35,8 +55,10 @@ public sealed class WmcProductImportService(
                 .Where(item => item.PriceTableId == targetPriceTable.Id)
                 .ToDictionaryAsync(item => item.ProductId, item => item.Price, ct);
 
-        return source.Select(row =>
+        return source.Select(sourceItem =>
         {
+            var brandCode = sourceItem.BrandCode;
+            var row = sourceItem.Row;
             var code = WmcProductRules.NormalizeCode(row.CodProduto);
             local.TryGetValue(code, out var matches);
             var product = matches?.Count == 1 ? matches[0] : null;
@@ -61,17 +83,31 @@ public sealed class WmcProductImportService(
                 || sourceUnits.Count == 0
                 || !TryToSourceUnitDictionary(sourceUnits, out _);
             var duplicate = string.IsNullOrWhiteSpace(code)
-                || duplicates.Contains(code)
+                || duplicateKeys.Contains($"{brandCode}:{code}")
+                || crossBrandCodes.Contains(code)
                 || (matches?.Count ?? 0) > 1
                 || (product is null && string.IsNullOrWhiteSpace(row.Produto))
                 || invalidUnitSnapshot;
             var changed = changes.Length > 0;
-            var invalidSituation = !string.IsNullOrWhiteSpace(row.Situacao)
-                && WmcProductRules.ClassifySituation(row.Situacao) == WmcProductSituation.Unknown;
+            var invalidSituation = WmcProductRules.ClassifySituation(row.Situacao) == WmcProductSituation.Unknown;
             var status = duplicate ? "Inválido" : product is null ? "Novo" : changed ? "Com alterações" : "Já cadastrado";
             if (!unitProposal.SafeToApply) status += $" · unidades bloqueadas: {unitProposal.BlockReason}";
             if (!priceProposal.SafeToApply) status += $" · preço bloqueado: {priceProposal.BlockReason}";
             if (invalidSituation) status += " · situação inválida; venda bloqueada ao reimportar";
+            var blockReasons = new List<string>();
+            if (string.IsNullOrWhiteSpace(code)) blockReasons.Add("código WMC ausente");
+            if (duplicateKeys.Contains($"{brandCode}:{code}")) blockReasons.Add("código WMC duplicado na marca");
+            if (crossBrandCodes.Contains(code)) blockReasons.Add("código WMC aparece em mais de uma marca selecionada");
+            if ((matches?.Count ?? 0) > 1) blockReasons.Add("código WMC duplicado no cadastro local");
+            if (product is null && string.IsNullOrWhiteSpace(row.Produto)) blockReasons.Add("descrição WMC ausente para novo produto");
+            if (invalidUnitSnapshot && unitProposal.BlockReason is { } unitReason) blockReasons.Add(unitReason);
+            if (!unitProposal.SafeToApply && unitProposal.BlockReason is { } blockedUnitReason
+                && !blockReasons.Contains(blockedUnitReason, StringComparer.Ordinal))
+                blockReasons.Add($"unidades WMC bloqueadas: {blockedUnitReason}");
+            if (!priceProposal.SafeToApply && priceProposal.BlockReason is { } blockedPriceReason)
+                blockReasons.Add($"preço WMC bloqueado: {blockedPriceReason}");
+            if (invalidSituation) blockReasons.Add("situação WMC inválida");
+            var blocked = blockReasons.Count > 0;
             var localCommercialUnit = product is null
                 ? null
                 : string.IsNullOrWhiteSpace(product.CommercialUnitCode) ? product.Unit : product.CommercialUnitCode;
@@ -80,12 +116,12 @@ public sealed class WmcProductImportService(
                 row.Produto,
                 unitProposal.ProposedEan ?? Clean(row.Ean),
                 row.Situacao,
-                Clean(row.CodMarca),
+                brandCode.ToString(),
                 Clean(row.Marca),
                 Clean(row.Un),
                 product?.Id,
                 status,
-                !duplicate,
+                !blocked && !duplicate,
                 changes,
                 sourceUnits
                     .OrderBy(unit => NormalizeUnitCode(unit.UnitCode), StringComparer.Ordinal)
@@ -101,7 +137,8 @@ public sealed class WmcProductImportService(
                 LocalBasePrice: product?.BasePrice,
                 LocalCommercialUnit: localCommercialUnit,
                 UnitProposal: unitProposal,
-                PriceProposal: priceProposal);
+                PriceProposal: priceProposal,
+                BlockReason: blockReasons.Count == 0 ? null : string.Join("; ", blockReasons));
         }).ToArray();
     }
 
@@ -114,7 +151,8 @@ public sealed class WmcProductImportService(
         var updated = 0;
         var unchanged = 0;
         var blockedCodes = new HashSet<string>(StringComparer.Ordinal);
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var ownsTransaction = db.Database.CurrentTransaction is null;
+        await using var tx = ownsTransaction ? await db.Database.BeginTransactionAsync(ct) : null;
         try
         {
             var rows = await reader.GetAllByBrandWithUnitsAsync(brandCode, ct);
@@ -263,14 +301,78 @@ public sealed class WmcProductImportService(
             var result = new WmcProductImportResult(codes.Length, created, updated, unchanged, 0, "Succeeded", null, itemResults, completed, blockedCodes.Count);
             db.WmcProductImportAudits.Add(Audit(brandCode, started, result));
             await db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
+            if (ownsTransaction) await tx!.CommitAsync(ct);
             return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            if (ownsTransaction) await tx!.RollbackAsync(ct);
+            db.ChangeTracker.Clear();
+            if (!ownsTransaction) throw;
+            return await RecordFailureAsync(brandCode, codes.Length, started, ex.Message, ct);
+        }
+    }
+
+    public async Task<WmcProductImportResult> ImportAsync(
+        IReadOnlyDictionary<short, IReadOnlyCollection<string>> selections,
+        bool reimportExisting,
+        CancellationToken ct = default)
+    {
+        var normalized = selections
+            .Where(item => item.Value.Count > 0)
+            .ToDictionary(item => item.Key,
+                item => (IReadOnlyCollection<string>)item.Value
+                    .Select(WmcProductRules.NormalizeCode)
+                    .Where(code => code.Length > 0)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray());
+        if (normalized.Count == 0)
+            return new WmcProductImportResult(0, 0, 0, 0, 0, "Failed", "Nenhum produto elegível foi selecionado.", [], DateTime.UtcNow);
+
+        var allCandidates = await GetCandidatesAsync(normalized.Keys.ToArray(), ct);
+        var requestedKeys = normalized.SelectMany(item => item.Value.Select(code => $"{item.Key}:{code}")).ToHashSet(StringComparer.Ordinal);
+        var validCandidates = allCandidates.Where(candidate => requestedKeys.Contains($"{candidate.BrandCode}:{candidate.WmcCode}")).ToArray();
+        if (validCandidates.Length != requestedKeys.Count || validCandidates.Any(candidate => !candidate.Selectable))
+            return new WmcProductImportResult(requestedKeys.Count, 0, 0, 0, requestedKeys.Count, "Failed",
+                "A seleção contém produtos bloqueados ou desatualizados. Atualize a prévia.", [], DateTime.UtcNow);
+
+        if (normalized.Count == 1)
+        {
+            var single = normalized.Single();
+            return await ImportAsync(single.Key, single.Value, reimportExisting, ct);
+        }
+
+        var started = DateTime.UtcNow;
+        short? currentBrand = null;
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            var results = new List<WmcProductImportResult>();
+            foreach (var item in normalized.OrderBy(item => item.Key))
+            {
+                currentBrand = item.Key;
+                var result = await ImportAsync(item.Key, item.Value, reimportExisting, ct);
+                if (result.Status != "Succeeded") throw new InvalidOperationException(result.ErrorMessage ?? "A importação de uma marca falhou.");
+                results.Add(result);
+            }
+
+            await tx.CommitAsync(ct);
+            return new WmcProductImportResult(
+                results.Sum(result => result.Selected),
+                results.Sum(result => result.Created),
+                results.Sum(result => result.Updated),
+                results.Sum(result => result.Unchanged),
+                results.Sum(result => result.Errors),
+                "Succeeded", null,
+                results.SelectMany(result => result.Items).ToArray(),
+                results.Max(result => result.CompletedAt),
+                results.Sum(result => result.Blocked));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await tx.RollbackAsync(ct);
             db.ChangeTracker.Clear();
-            return await RecordFailureAsync(brandCode, codes.Length, started, ex.Message, ct);
+            return await RecordFailureAsync(currentBrand ?? normalized.Keys.Min(), requestedKeys.Count, started, ex.Message, ct);
         }
     }
 
