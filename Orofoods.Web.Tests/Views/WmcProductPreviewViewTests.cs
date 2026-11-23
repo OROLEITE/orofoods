@@ -22,8 +22,8 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Selecionar marcas", view, StringComparison.Ordinal);
         Assert.Contains("Conferir produtos", view, StringComparison.Ordinal);
         Assert.Contains("Confirmar importação", view, StringComparison.Ordinal);
-        Assert.Contains("wmcBrandSearch", view, StringComparison.Ordinal);
-        Assert.Contains("wmcBrandSelectionCount", view, StringComparison.Ordinal);
+        Assert.Contains("wmcMultiBrandSearch", view, StringComparison.Ordinal);
+        Assert.Contains("wmcMultiBrandSelectionCount", view, StringComparison.Ordinal);
         Assert.Contains("Consultar Produtos WMC", view, StringComparison.Ordinal);
         Assert.Contains("Revisar Produtos Selecionados", view, StringComparison.Ordinal);
         Assert.Contains("Importar Produtos Selecionados", view, StringComparison.Ordinal);
@@ -42,12 +42,12 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("wmcImportConfirmationForm", view, StringComparison.Ordinal);
         Assert.Contains("var refreshedCandidates = await wmcProductImportService.GetCandidatesAsync", controller, StringComparison.Ordinal);
         Assert.Contains("submitted", view, StringComparison.Ordinal);
-        Assert.Contains("asp-action=\"WmcPreview\"", view, StringComparison.Ordinal);
+        Assert.Contains("asp-action=\"WmcProducts\"", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmc-legacy-preview", view, StringComparison.Ordinal);
         Assert.Contains("wmc-import-table", view, StringComparison.Ordinal);
         Assert.Contains("<th>EAN</th>", view, StringComparison.Ordinal);
         Assert.Contains("<th>DUN</th>", view, StringComparison.Ordinal);
-        Assert.Contains("<th>Unidade / fator</th>", view, StringComparison.Ordinal);
+        Assert.Contains("<th>Unidade / CX</th>", view, StringComparison.Ordinal);
         Assert.Contains("item.Stock", view, StringComparison.Ordinal);
         Assert.Contains("var statusKind =", view, StringComparison.Ordinal);
         Assert.Contains("wmc-product-status--@statusKind", view, StringComparison.Ordinal);
@@ -66,6 +66,12 @@ public sealed class WmcProductPreviewViewTests
         Assert.DoesNotContain("wmc-preview-form", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmcSelectFiltered", view, StringComparison.Ordinal);
         Assert.Contains("name=\"brandCodes\"", view, StringComparison.Ordinal);
+        Assert.Contains("Visualizar Produtos Consultados", view, StringComparison.Ordinal);
+        Assert.Contains("Motivo do bloqueio", view, StringComparison.Ordinal);
+        Assert.Contains("Produtos consultados", view, StringComparison.Ordinal);
+        Assert.Contains("Elegíveis", view, StringComparison.Ordinal);
+        Assert.Equal(1, view.Split("data-wmc-requires-selection", StringSplitOptions.None).Length - 1);
+        Assert.Equal(1, CountOccurrences(view, "Consultar Produtos WMC"));
         Assert.Contains(".wmc-product-table-scroll", css, StringComparison.Ordinal);
         Assert.Contains(".wmc-price-cell", css, StringComparison.Ordinal);
         Assert.Contains("text-align:right", css, StringComparison.Ordinal);
@@ -83,6 +89,9 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains(".wmc-stepper", css, StringComparison.Ordinal);
         Assert.Contains("var(--admin-dark-surface)", css, StringComparison.Ordinal);
     }
+
+    private static int CountOccurrences(string text, string value) =>
+        text.Split(value, StringSplitOptions.None).Length - 1;
 
     [Fact]
     public void Official_product_preview_separates_WMC_source_from_local_commercial_data()

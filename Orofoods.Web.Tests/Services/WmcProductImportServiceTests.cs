@@ -124,6 +124,156 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
+    public async Task Multi_brand_preview_keeps_source_brand_and_blocks_cross_brand_code_conflicts()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new BrandReader(new Dictionary<short, IReadOnlyList<WmcProductRecord>>
+        {
+            [104] = [ValidRow("503813", "BIMBO", "Pao BIMBO")],
+            [107] = [ValidRow("503813", "ITALAC", "Pao ITALAC")]
+        });
+
+        var candidates = await new WmcProductImportService(db, reader).GetCandidatesAsync((short[])[104, 107]);
+
+        Assert.Equal(2, candidates.Count);
+        Assert.All(candidates, candidate => Assert.False(candidate.Selectable));
+        Assert.Contains(candidates, candidate => candidate.BrandCode == "104" && candidate.BrandName == "BIMBO" && candidate.BlockReason!.Contains("mais de uma marca", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(candidates, candidate => candidate.BrandCode == "107" && candidate.BrandName == "ITALAC");
+    }
+
+    [Fact]
+    public async Task Preview_blocks_invalid_price_before_manual_import()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "BLOCKED-PRICE", "Produto", "A", "PC", 5, 5, PrecoVenda: 0,
+            Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)])]);
+
+        var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(104));
+
+        Assert.False(candidate.Selectable);
+        Assert.Contains("PRECOVENDA", candidate.BlockReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Preview_blocks_missing_situation_before_manual_import()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "BLOCKED-SITUATION", "Produto", null, "PC", 5, 5, PrecoVenda: 10,
+            Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)])]);
+
+        var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(104));
+
+        Assert.False(candidate.Selectable);
+        Assert.Contains("situação WMC inválida", candidate.BlockReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Manual_multi_import_rejects_a_blocked_single_brand_selection()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "BLOCKED-PRICE", "Produto", "A", "PC", 5, 5, PrecoVenda: 0,
+            Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(
+            new Dictionary<short, IReadOnlyCollection<string>> { [104] = ["BLOCKED-PRICE"] }, reimportExisting: true);
+
+        Assert.Equal("Failed", result.Status);
+        Assert.Empty(await db.Products.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Multi_brand_import_preserves_explicit_existing_product_update_choice()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product { WmcCode = "503813", Sku = "503813", Name = "Antigo", ProductCategoryId = 1, BasePrice = 1m };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var reader = new BrandReader(new Dictionary<short, IReadOnlyList<WmcProductRecord>>
+        {
+            [104] = [ValidRow("503813", "BIMBO", "Novo nome", 20.39m)]
+        });
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(
+            new Dictionary<short, IReadOnlyCollection<string>> { [104] = ["503813"] }, reimportExisting: true);
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal(1, result.Updated);
+        Assert.Equal("Novo nome", product.Name);
+    }
+
+    [Fact]
+    public async Task Multi_brand_import_commits_selected_brands_as_one_controlled_operation()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new BrandReader(new Dictionary<short, IReadOnlyList<WmcProductRecord>>
+        {
+            [104] = [ValidRow("503813", "BIMBO", "Pao BIMBO")],
+            [107] = [ValidRow("503814", "ITALAC", "Pao ITALAC")]
+        });
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(
+            new Dictionary<short, IReadOnlyCollection<string>> { [104] = ["503813"], [107] = ["503814"] }, reimportExisting: true);
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.Equal(2, result.Selected);
+        Assert.Equal(2, await db.Products.CountAsync(product => product.WmcCode != null));
+    }
+
+    [Fact]
+    public async Task Multi_brand_import_rolls_back_all_brands_and_audits_the_failing_brand()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FailingSecondBrandReader();
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(
+            new Dictionary<short, IReadOnlyCollection<string>>
+            {
+                [104] = ["503813"],
+                [107] = ["503814"]
+            }, reimportExisting: true);
+
+        Assert.Equal("Failed", result.Status);
+        Assert.Empty(await db.Products.AsNoTracking().Where(product => product.WmcCode != null).ToListAsync());
+        var audit = Assert.Single(await db.WmcProductImportAudits.AsNoTracking().ToListAsync());
+        Assert.Equal(107, audit.BrandCode);
+        Assert.Equal("Failed", audit.Status);
+    }
+
+    [Fact]
+    public async Task Repeating_the_same_multi_brand_import_is_idempotent()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new BrandReader(new Dictionary<short, IReadOnlyList<WmcProductRecord>>
+        {
+            [104] = [ValidRow("503813", "BIMBO", "Pao BIMBO")],
+            [107] = [ValidRow("503814", "ITALAC", "Pao ITALAC")]
+        });
+        var service = new WmcProductImportService(db, reader);
+        var selections = new Dictionary<short, IReadOnlyCollection<string>>
+        {
+            [104] = ["503813"],
+            [107] = ["503814"]
+        };
+
+        var first = await service.ImportAsync(selections, reimportExisting: true);
+        var second = await service.ImportAsync(selections, reimportExisting: true);
+
+        Assert.Equal(2, first.Created);
+        Assert.Equal(0, second.Created);
+        Assert.Equal(0, second.Updated);
+        Assert.Equal(2, second.Unchanged);
+        Assert.Equal(2, await db.Products.AsNoTracking().CountAsync(product => product.WmcCode != null));
+    }
+
+    private static WmcProductRecord ValidRow(string code, string brand, string name, decimal price = 10m) =>
+        new(code, name, "A", "PC", 5, 5, PrecoVenda: price, CodMarca: brand == "BIMBO" ? "104" : "107", Marca: brand,
+            Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)]);
+
+    [Fact]
     public async Task Reimport_maps_valid_official_pc_and_cx_identifiers_without_touching_price_or_stock()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -665,5 +815,37 @@ public sealed class WmcProductImportServiceTests
             unitsQueryFailure is null
                 ? Task.FromResult<IReadOnlyList<WmcProductRecord>>(rows.Select(row => row with { Units = row.Units ?? [], UnitsSnapshotComplete = unitsSnapshotComplete }).ToArray())
                 : Task.FromException<IReadOnlyList<WmcProductRecord>>(unitsQueryFailure);
+    }
+
+    private sealed class BrandReader(IReadOnlyDictionary<short, IReadOnlyList<WmcProductRecord>> byBrand) : IWmcProductReader
+    {
+        public Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<WmcProductRecord>>(byBrand.Values.SelectMany(rows => rows).ToArray());
+
+        public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<WmcProductRecord>>(byBrand.GetValueOrDefault(brandCode ?? 0, []));
+
+        public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandWithUnitsAsync(short? brandCode, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<WmcProductRecord>>(byBrand.GetValueOrDefault(brandCode ?? 0, [])
+                .Select(row => row with { Units = row.Units ?? [], UnitsSnapshotComplete = true }).ToArray());
+    }
+
+    private sealed class FailingSecondBrandReader : IWmcProductReader
+    {
+        private readonly BrandReader inner = new(new Dictionary<short, IReadOnlyList<WmcProductRecord>>
+        {
+            [104] = [ValidRow("503813", "BIMBO", "Pao BIMBO")],
+            [107] = [ValidRow("503814", "ITALAC", "Pao ITALAC")]
+        });
+        private int secondBrandCalls;
+
+        public Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default) => inner.GetAllAsync(cancellationToken);
+        public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default) => inner.GetAllByBrandAsync(brandCode, cancellationToken);
+        public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandWithUnitsAsync(short? brandCode, CancellationToken cancellationToken = default)
+        {
+            if (brandCode == 107 && Interlocked.Increment(ref secondBrandCalls) > 1)
+                return Task.FromException<IReadOnlyList<WmcProductRecord>>(new InvalidOperationException("falha controlada na segunda marca"));
+            return inner.GetAllByBrandWithUnitsAsync(brandCode, cancellationToken);
+        }
     }
 }
