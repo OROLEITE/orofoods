@@ -12,7 +12,8 @@ public enum WmcCustomerImportDisposition
     Update,
     Existing,
     Ignore,
-    Conflict
+    Conflict,
+    Blocked
 }
 
 public sealed record WmcCustomerImportPreviewRow(
@@ -30,8 +31,10 @@ public sealed record WmcCustomerImportPreview(
     int ExistingCustomers,
     int Ignored,
     int Conflicts,
+    int Blocked,
     IReadOnlyList<WmcCustomerImportPreviewRow> Rows,
-    string? ErrorMessage = null);
+    string? ErrorMessage = null,
+    string? BlockingReason = null);
 
 public sealed record WmcCustomerImportResult(
     int RecordsRead,
@@ -59,7 +62,6 @@ public sealed class WmcCustomerImportService(
     TimeProvider timeProvider,
     IOptions<WmcCustomerImportOptions>? importOptions = null)
 {
-    private readonly WmcCustomerImportOptions options = importOptions?.Value ?? new();
     private readonly bool readinessConfigured = importOptions is not null;
 
     public async Task<IReadOnlyList<string>> GetSellerCodesAsync(CancellationToken cancellationToken = default)
@@ -120,18 +122,23 @@ public sealed class WmcCustomerImportService(
                         return ClassifyExcluded(row);
 
                     var disposition = Classify(row, byCode, byCnpj, duplicateCodes, duplicateCnpjs);
-                    if (!readiness.IsReady)
+                    if (!readiness.IsReady && disposition.Disposition is WmcCustomerImportDisposition.Create
+                        or WmcCustomerImportDisposition.Update
+                        or WmcCustomerImportDisposition.Existing)
                     {
                         return disposition with
                         {
-                            Disposition = WmcCustomerImportDisposition.Conflict,
+                            Disposition = WmcCustomerImportDisposition.Blocked,
                             Reason = readiness.Reason
                         };
                     }
 
                     var existing = byCode.GetValueOrDefault(NormalizeCode(row.CodCliente))?.SingleOrDefault()
                         ?? byCnpj.GetValueOrDefault(NormalizeCnpj(row.Cnpj))?.SingleOrDefault();
-                    if (existing is not null && existing.Status == CustomerStatus.Pending
+                    if ((disposition.Disposition is WmcCustomerImportDisposition.Create
+                        or WmcCustomerImportDisposition.Update
+                        or WmcCustomerImportDisposition.Existing)
+                        && existing is not null && existing.Status == CustomerStatus.Pending
                         && existing.SalesRepresentativeId is int existingSellerId
                         && existingSellerId != readiness.SellerId)
                     {
@@ -153,7 +160,9 @@ public sealed class WmcCustomerImportService(
                 previewRows.Count(row => row.Disposition is WmcCustomerImportDisposition.Update or WmcCustomerImportDisposition.Existing),
                 previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Ignore),
                 previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Conflict),
-                previewRows);
+                previewRows.Count(row => row.Disposition == WmcCustomerImportDisposition.Blocked),
+                previewRows,
+                BlockingReason: readiness.IsReady ? null : readiness.Reason);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -186,9 +195,12 @@ public sealed class WmcCustomerImportService(
             return new(preview.RecordsRead, 0, 0, preview.Ignored, preview.Conflicts, "A importação foi bloqueada por conflitos cadastrais.");
         }
 
+        if (preview.Blocked > 0)
+            return new(preview.RecordsRead, 0, 0, preview.Ignored, 0, $"A importação foi bloqueada: {preview.BlockingReason}");
+
         var readiness = await ResolveCommercialReadinessAsync(preview.SellerCode, cancellationToken);
         if (!readiness.IsReady)
-            return new(preview.RecordsRead, 0, 0, preview.Ignored, preview.Conflicts + preview.Rows.Count, readiness.Reason);
+            return new(preview.RecordsRead, 0, 0, preview.Ignored, 0, $"A importação foi bloqueada: {readiness.Reason}");
 
         var sourceRows = await customerReader.GetBySellerAsync(preview.SellerCode, cancellationToken);
         var customers = await db.Customers.ToListAsync(cancellationToken);
@@ -216,8 +228,7 @@ public sealed class WmcCustomerImportService(
                     Status = CustomerStatus.Approved,
                     IsActive = true,
                     ApprovedAt = timeProvider.GetUtcNow().UtcDateTime,
-                    SalesRepresentativeId = readiness.SellerId == 0 ? null : readiness.SellerId,
-                    PriceTableId = readiness.PriceTableId == 0 ? null : readiness.PriceTableId
+                    SalesRepresentativeId = readiness.SellerId == 0 ? null : readiness.SellerId
                 };
                 db.Customers.Add(customer);
                 byCode[code] = customer;
@@ -247,11 +258,6 @@ public sealed class WmcCustomerImportService(
                 if (existing.SalesRepresentativeId is null && readiness.SellerId > 0)
                 {
                     existing.SalesRepresentativeId = readiness.SellerId;
-                    changed = true;
-                }
-                if (existing.PriceTableId is null && readiness.PriceTableId > 0)
-                {
-                    existing.PriceTableId = readiness.PriceTableId;
                     changed = true;
                 }
                 existing.Status = CustomerStatus.Approved;
@@ -309,7 +315,7 @@ public sealed class WmcCustomerImportService(
             return new(0, 0, "Confirme explicitamente a regularização após revisar a prévia.");
         var preview = await PreviewPendingAsync(cancellationToken);
         if (preview.ErrorMessage is not null || preview.BlockedCustomers > 0)
-            return new(0, preview.BlockedCustomers, preview.ErrorMessage ?? "A regularização foi bloqueada para os clientes sem vendedor ou tabela válidos.");
+            return new(0, preview.BlockedCustomers, preview.ErrorMessage ?? "A regularização foi bloqueada para os clientes sem vendedor WMC válido.");
 
         var sourceRows = await customerReader.GetAllAsync(cancellationToken);
         var pending = await db.Customers.Where(customer => customer.Status == CustomerStatus.Pending && customer.WmcCode != null).ToListAsync(cancellationToken);
@@ -320,7 +326,6 @@ public sealed class WmcCustomerImportService(
             var readiness = await ResolveCommercialReadinessAsync(NormalizeCode(source.CodVendedor), cancellationToken);
             if (!readiness.IsReady || !IsEligible(source)) continue;
             if (customer.SalesRepresentativeId is null) customer.SalesRepresentativeId = readiness.SellerId;
-            if (customer.PriceTableId is null) customer.PriceTableId = readiness.PriceTableId;
             customer.Status = CustomerStatus.Approved;
             customer.IsActive = true;
             customer.ApprovedAt ??= timeProvider.GetUtcNow().UtcDateTime;
@@ -389,21 +394,10 @@ public sealed class WmcCustomerImportService(
         if (!matches[0].IsActive)
             return CommercialReadiness.Blocked("O vendedor WMC configurado está inativo.");
 
-        if (string.IsNullOrWhiteSpace(options.PriceTableName))
-            return CommercialReadiness.Blocked("A identificação da TABELA BIMBO não está configurada neste ambiente.");
-
-        var tables = await db.PriceTables.AsNoTracking().ToListAsync(cancellationToken);
-        var tableMatches = tables.Where(item => string.Equals(NormalizeTableName(item.Name), NormalizeTableName(options.PriceTableName), StringComparison.Ordinal)).ToList();
-        if (tableMatches.Count != 1)
-            return CommercialReadiness.Blocked("A TABELA BIMBO não existe ou está ambígua neste ambiente.");
-        if (!tableMatches[0].IsActive)
-            return CommercialReadiness.Blocked("A TABELA BIMBO configurada está inativa.");
-        return new(true, null, matches[0].Id, tableMatches[0].Id);
+        return new(true, null, matches[0].Id);
     }
 
-    private static string NormalizeTableName(string value) => string.Join(' ', value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
-
-    private sealed record CommercialReadiness(bool IsReady, string? Reason, int SellerId = 0, int PriceTableId = 0)
+    private sealed record CommercialReadiness(bool IsReady, string? Reason, int SellerId = 0)
     {
         public static CommercialReadiness Blocked(string reason) => new(false, reason);
     }
@@ -437,7 +431,7 @@ public sealed class WmcCustomerImportService(
     }
 
     private static WmcCustomerImportPreview EmptyPreview(string sellerCode, string error) =>
-        new(sellerCode, 0, 0, 0, 0, 0, [], error);
+        new(sellerCode, 0, 0, 0, 0, 0, 0, [], error);
 
     private static string NormalizeCode(string? value) => value?.Trim() ?? "";
     private static string NormalizeCnpj(string value) => new(value.Where(char.IsDigit).ToArray());

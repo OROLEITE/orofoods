@@ -52,6 +52,8 @@ public sealed class WmcIntegrationCenterViewTests
         Assert.Contains("simulationValidated", view, StringComparison.Ordinal);
         Assert.Contains("reimportExisting", view, StringComparison.Ordinal);
         Assert.Contains("selectedProductCodes", view, StringComparison.Ordinal);
+        Assert.Contains("Consultar Produtos WMC", view, StringComparison.Ordinal);
+        Assert.Contains("Importar Produtos Selecionados", view, StringComparison.Ordinal);
     }
 
     [Fact]

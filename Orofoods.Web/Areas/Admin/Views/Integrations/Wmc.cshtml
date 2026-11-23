@@ -143,7 +143,7 @@
             <input class="form-control" id="wmcSellerCode" name="sellerCode" required maxlength="30" placeholder="Código do vendedor WMC" autocomplete="off" />
                     <small class="wmc-customer-filter-help">Somente clientes ativos e sem restrição</small>
                 </div>
-                <button type="submit" class="btn admin-primary-action customer-filter-submit wmc-customer-preview-button">Gerar pr&eacute;via</button>
+                <button type="submit" class="btn admin-primary-action customer-filter-submit wmc-customer-preview-button">Consultar Clientes WMC</button>
             </form>
 
             @if (customerPreview is not null)
@@ -152,12 +152,21 @@
                 {
                     <div class="alert alert-warning mt-3" role="alert">@customerPreview.ErrorMessage</div>
                 }
+                @if (customerPreview.BlockingReason is not null)
+                {
+                    <div class="alert alert-warning mt-3" role="alert"><strong>Importação bloqueada.</strong> @customerPreview.BlockingReason</div>
+                }
+                else if (customerPreview.Conflicts > 0)
+                {
+                    <div class="alert alert-warning mt-3" role="alert"><strong>Importação bloqueada.</strong> Existem @customerPreview.Conflicts conflito(s) cadastral(is) para tratamento explícito.</div>
+                }
                 <div class="wmc-customer-preview-summary" aria-label="Resumo da prévia">
                     <article><span>Consultados</span><strong>@customerPreview.RecordsRead</strong></article>
                     <article class="wmc-customer-preview-summary--normal"><span>Novos</span><strong>@customerPreview.NewCustomers</strong></article>
                     <article class="wmc-customer-preview-summary--normal"><span>Existentes</span><strong>@customerPreview.ExistingCustomers</strong></article>
                     <article class="wmc-customer-preview-summary--warning"><span>Ignorados</span><strong>@customerPreview.Ignored</strong></article>
                     <article class="wmc-customer-preview-summary--critical"><span>Conflitos</span><strong>@customerPreview.Conflicts</strong></article>
+                    <article class="wmc-customer-preview-summary--critical"><span>Bloqueados</span><strong>@customerPreview.Blocked</strong></article>
                 </div>
                 <dl class="row mt-3 wmc-customer-preview-legacy-summary">
                     <dt class="col-sm-3">Vendedor WMC</dt><dd class="col-sm-9">@customerPreview.SellerCode</dd>
@@ -166,11 +175,12 @@
                     <dt class="col-sm-3">Existentes</dt><dd class="col-sm-9">@customerPreview.ExistingCustomers</dd>
                     <dt class="col-sm-3">Ignorados</dt><dd class="col-sm-9">@customerPreview.Ignored</dd>
                     <dt class="col-sm-3">Conflitos</dt><dd class="col-sm-9">@customerPreview.Conflicts</dd>
+                    <dt class="col-sm-3">Bloqueados</dt><dd class="col-sm-9">@customerPreview.Blocked</dd>
                 </dl>
                 @if (customerPreview.Rows.Count > 0)
                 {
             <div class="wmc-customer-preview-controls mt-3">
-                <button type="button" class="btn admin-secondary-action wmc-customer-preview-toggle" data-wmc-customer-preview-toggle aria-expanded="false" aria-controls="wmcCustomerPreviewTable">Exibir clientes (@customerPreview.Rows.Count)</button>
+                <button type="button" class="btn admin-secondary-action wmc-customer-preview-toggle" data-wmc-customer-preview-toggle aria-expanded="false" aria-controls="wmcCustomerPreviewTable">Visualizar Clientes (@customerPreview.Rows.Count)</button>
                 <label class="wmc-customer-preview-filter" for="wmcCustomerPreviewFilter">Filtrar lista</label>
                 <select class="form-select wmc-customer-preview-filter-select" id="wmcCustomerPreviewFilter" data-wmc-customer-preview-filter>
                     <option value="all">Todos (@customerPreview.Rows.Count)</option>
@@ -178,6 +188,7 @@
                     <option value="existing">Existentes (@customerPreview.ExistingCustomers)</option>
                     <option value="ignore">Ignorados (@customerPreview.Ignored)</option>
                     <option value="conflict">Conflitos (@customerPreview.Conflicts)</option>
+                    <option value="blocked">Bloqueados (@customerPreview.Blocked)</option>
                 </select>
             </div>
             <div class="table-responsive mt-2 wmc-customer-preview-table-wrap" id="wmcCustomerPreviewTable" data-wmc-customer-preview-table hidden>
@@ -193,6 +204,7 @@
                                     WmcCustomerImportDisposition.Existing => "Existente",
                                     WmcCustomerImportDisposition.Ignore => "Ignorado",
                                     WmcCustomerImportDisposition.Conflict => "Conflito",
+                                    WmcCustomerImportDisposition.Blocked => "Bloqueado",
                                     _ => row.Disposition.ToString()
                                 };
                         <tr data-wmc-customer-preview-row data-disposition="@row.Disposition.ToString().ToLowerInvariant()">
@@ -208,13 +220,13 @@
                         </table>
                     </div>
                 }
-                @if (customerPreview.Conflicts == 0 && customerPreview.NewCustomers + customerPreview.ExistingCustomers > 0)
+                @if (customerPreview.Conflicts == 0 && customerPreview.Blocked == 0 && customerPreview.NewCustomers + customerPreview.ExistingCustomers > 0)
                 {
                     <form method="post" asp-action="WmcCustomerImport" class="mt-3" data-wmc-customer-confirmation data-wmc-submit-once>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="sellerCode" value="@customerPreview.SellerCode" />
                         <input type="hidden" name="confirm" value="true" />
-                        <button type="submit" class="btn admin-primary-action">Confirmar importação</button>
+                        <button type="submit" class="btn admin-primary-action">Importar Clientes Selecionados</button>
                     </form>
                 }
             }
@@ -225,7 +237,7 @@
             <p>Revise os clientes WMC já importados que ainda estão pendentes antes de liberá-los.</p>
             <form method="post" asp-action="WmcCustomerRegularizationPreview" data-wmc-submit-once>
                 @Html.AntiForgeryToken()
-            <button type="submit" class="btn admin-primary-action wmc-customer-regularization-preview-button"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Gerar prévia de regularização</button>
+            <button type="submit" class="btn admin-primary-action wmc-customer-regularization-preview-button"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Consultar Clientes Pendentes</button>
             </form>
             @if (regularizationPreview is not null)
             {
@@ -328,7 +340,7 @@
                             </div>
                             <div class="wmc-wizard-actions">
                                 <span class="wmc-action-hint">A prévia não grava dados.</span>
-                                <button type="submit" class="btn btn-primary" data-wmc-submit-button data-wmc-loading="Processando...">Gerar prévia</button>
+                            <button type="submit" class="btn btn-primary" data-wmc-submit-button data-wmc-loading="Processando...">Consultar Produtos WMC</button>
                             </div>
                         </form>
                     </section>
@@ -379,7 +391,7 @@
                         </div>
                         <div class="wmc-wizard-actions">
                             <span class="wmc-action-hint">Escolha uma marca para carregar seus produtos.</span>
-                            <button type="submit" class="btn btn-primary">Carregar produtos</button>
+                            <button type="submit" class="btn btn-primary">Consultar Produtos WMC</button>
                         </div>
                     </form>
                 }
@@ -552,7 +564,7 @@
                         <div class="wmc-wizard-actions">
                             <a asp-action="Wmc" class="btn btn-outline-secondary">Voltar</a>
                             <span class="wmc-action-hint">Selecione apenas produtos liberados para continuar.</span>
-                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection">Confirmar alterações</button>
+                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection">Revisar Produtos Selecionados</button>
                         </div>
                     </form>
                 }
@@ -599,7 +611,7 @@
                         <a asp-action="Wmc" class="btn btn-outline-secondary">Cancelar</a>
                         <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="false" checked /> Importar somente novos</label>
                         <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="true" /> Atualizar existentes</label>
-                        <button class="btn btn-primary" type="submit" data-wmc-confirm-submit>Confirmar importação</button>
+                        <button class="btn btn-primary" type="submit" data-wmc-confirm-submit>Importar Produtos Selecionados</button>
                     </form>
                 }
                 else if (Model.Step == "Result" && Model.ImportResult is not null)
@@ -672,7 +684,7 @@
             const expanded = toggle.getAttribute('aria-expanded') === 'true';
             toggle.setAttribute('aria-expanded', (!expanded).toString());
             table.hidden = expanded;
-            toggle.textContent = expanded ? `Exibir clientes (${rows.length})` : 'Recolher clientes';
+            toggle.textContent = expanded ? `Visualizar Clientes (${rows.length})` : 'Recolher clientes';
             if (!expanded) updateFilter();
         });
         filter?.addEventListener('change', updateFilter);
