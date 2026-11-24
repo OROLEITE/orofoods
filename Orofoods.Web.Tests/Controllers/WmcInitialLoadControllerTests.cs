@@ -113,6 +113,24 @@ public sealed class WmcInitialLoadControllerTests
         Assert.NotNull(controller.TempData["WmcPreviewError"]);
     }
 
+    [Fact]
+    public async Task Products_load_propagates_request_cancellation()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var brandReader = new CountingBrandReader
+        {
+            Error = new OperationCanceledException("Request was canceled.")
+        };
+        var controller = CreateController(db, brandReader, new CountingCustomerReader());
+        SetQuery(controller, ("loadBrands", "true"));
+        using var requestCancellation = new CancellationTokenSource();
+        requestCancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Wmc(requestCancellation.Token));
+        Assert.True(brandReader.CapturedToken.IsCancellationRequested);
+        Assert.Null(controller.TempData["WmcPreviewError"]);
+    }
+
     private static IntegrationsController CreateController(
         ApplicationDbContext db,
         CountingBrandReader brandReader,
@@ -159,10 +177,12 @@ public sealed class WmcInitialLoadControllerTests
         public IReadOnlyList<WmcBrandRecord> Result { get; init; } = [];
         public Exception? Error { get; init; }
         public int ReadCount { get; private set; }
+        public CancellationToken CapturedToken { get; private set; }
 
         public Task<IReadOnlyList<WmcBrandRecord>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             ReadCount++;
+            CapturedToken = cancellationToken;
             if (Error is not null) throw Error;
             return Task.FromResult(Result);
         }
