@@ -323,15 +323,16 @@ public class IntegrationsController(
         if (brand is null) return BadRequest("Marca WMC inválida.");
         var candidates = await wmcProductImportService.GetCandidatesAsync(selectedBrands, cancellationToken);
         var requested = NormalizeSelectionKeys(selectedProductKeys, selectedProductCodes, selectedBrands);
-        var selected = candidates.Where(candidate => requested.Contains(ProductKey(candidate), StringComparer.Ordinal) && candidate.Selectable).ToArray();
-        if (selected.Length == 0 || selected.Length != requested.Count)
+        var validation = ValidateSelection(candidates, requested);
+        if (!validation.IsValid)
         {
-            ModelState.AddModelError("", "Seleção vazia ou desatualizada. Revise os produtos selecionados.");
+            ModelState.AddModelError("", validation.ErrorMessage!);
             SetWmcViewState("available");
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Products", selectedBrands.Length == 1 ? selectedBrands[0] : null,
                 DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested));
         }
-        var summary = new WmcProductImportSummary(selected.Length, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
+        var selected = validation.Selected;
+        var summary = new WmcProductImportSummary(selected.Count, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
             selected.Count(item => item.Changes.Count > 0), selected.Count(item => item.Changes.Count == 0));
         SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Confirmation", selectedBrands.Length == 1 ? selectedBrands[0] : null,
@@ -356,16 +357,15 @@ public class IntegrationsController(
         if (reimportExisting is not ("true" or "false")) return BadRequest("Decisão inválida.");
         var requested = NormalizeSelectionKeys(selectedProductKeys, selectedProductCodes, selectedBrands);
         var candidates = await wmcProductImportService.GetCandidatesAsync(selectedBrands, cancellationToken);
-        var validSelection = candidates
-            .Where(candidate => requested.Contains(ProductKey(candidate), StringComparer.Ordinal))
-            .ToArray();
-        if (requested.Count == 0 || validSelection.Length != requested.Count || validSelection.Any(candidate => !candidate.Selectable))
+        var validation = ValidateSelection(candidates, requested);
+        if (!validation.IsValid)
         {
-            ModelState.AddModelError("", "A conferência ficou desatualizada. Revise os produtos antes de confirmar.");
+            ModelState.AddModelError("", validation.ErrorMessage!);
             SetWmcViewState("available");
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Products", selectedBrands.Length == 1 ? selectedBrands[0] : null,
                 DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested));
         }
+        var validSelection = validation.Selected;
         var selections = validSelection.GroupBy(candidate => short.Parse(candidate.BrandCode!))
             .ToDictionary(group => group.Key, group => (IReadOnlyCollection<string>)group.Select(item => item.WmcCode).ToArray());
         var result = await wmcProductImportService.ImportAsync(selections, reimportExisting == "true", cancellationToken);
@@ -392,7 +392,7 @@ public class IntegrationsController(
         {
             return selectedProductKeys
                 .Select(value => value.Split(':', 2))
-                .Where(parts => parts.Length == 2 && short.TryParse(parts[0], out var code) && selectedBrands.Contains(code))
+                .Where(parts => parts.Length == 2 && short.TryParse(parts[0], out _))
                 .Select(parts => ProductKey(short.Parse(parts[0]), parts[1]))
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
@@ -411,6 +411,31 @@ public class IntegrationsController(
 
     private static string ProductKey(short brandCode, string code) =>
         $"{brandCode}:{WmcProductRules.NormalizeCode(code)}";
+
+    private static SelectionValidation ValidateSelection(
+        IReadOnlyList<WmcProductImportCandidate> candidates,
+        IReadOnlyList<string> requested)
+    {
+        if (requested.Count == 0)
+            return SelectionValidation.Invalid("Selecione ao menos um produto elegível para continuar.");
+
+        var selected = candidates
+            .Where(candidate => requested.Contains(ProductKey(candidate), StringComparer.Ordinal))
+            .ToArray();
+        if (selected.Length != requested.Count)
+            return SelectionValidation.Invalid("A prévia de produtos está desatualizada. Consulte os produtos novamente antes de continuar.");
+        if (selected.Any(candidate => !candidate.Selectable))
+            return SelectionValidation.Invalid("A seleção contém produto bloqueado. Remova-o e selecione apenas produtos elegíveis.");
+
+        return SelectionValidation.Valid(selected);
+    }
+
+    private sealed record SelectionValidation(bool IsValid, IReadOnlyList<WmcProductImportCandidate> Selected, string? ErrorMessage)
+    {
+        public static SelectionValidation Valid(IReadOnlyList<WmcProductImportCandidate> selected) => new(true, selected, null);
+
+        public static SelectionValidation Invalid(string message) => new(false, [], message);
+    }
 
     private static string DescribeSelection(IReadOnlyList<WmcBrandRecord> brands, IReadOnlyList<short> selectedBrands) =>
         selectedBrands.Count == 1
