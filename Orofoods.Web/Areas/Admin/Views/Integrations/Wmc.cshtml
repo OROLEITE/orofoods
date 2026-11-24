@@ -353,6 +353,7 @@
                     var existingCandidates = eligibleCandidates.Count(item => item.ProductId is not null);
                     var blockedCandidates = Model.Candidates.Count(item => !item.Selectable);
                     var selectedProductKeys = (Model.SelectedProductKeys ?? []).ToHashSet(StringComparer.Ordinal);
+                    var selectedEligibleCount = eligibleCandidates.Count(item => selectedProductKeys.Contains($"{item.BrandCode}:{item.WmcCode}", StringComparer.Ordinal));
                     <header class="wmc-stage-heading">
                         <div><span class="wmc-step-kicker">Etapa 2</span><h4>Produtos consultados · @Model.SelectedBrandDescription</h4></div>
                         <a asp-action="Wmc" class="btn btn-outline-secondary btn-sm">Trocar marcas</a>
@@ -372,9 +373,6 @@
                     {
                         <div class="alert alert-info" role="status">Não há produtos novos nesta consulta. A atualização de produtos existentes continua disponível somente mediante seleção e confirmação explícita.</div>
                     }
-                    <div class="wmc-product-preview-controls">
-                        <button type="button" class="btn btn-outline-secondary" data-wmc-product-preview-toggle aria-expanded="false" aria-controls="wmcProductPreviewTable">Visualizar Produtos Consultados</button>
-                    </div>
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
                     <form method="post" asp-action="WmcConfirmSelection" id="wmcImportSelectionForm" data-wmc-submit-once>
                         @Html.AntiForgeryToken()
@@ -406,7 +404,7 @@
                             </div>
                             <span class="wmc-product-selection-count" id="wmcProductSelectionCount" aria-live="polite">0 de 0 produtos selecionados</span>
                         </div>
-                        <div class="wmc-product-table-scroll" id="wmcProductPreviewTable" data-wmc-product-preview-table hidden>
+                        <div class="wmc-product-table-scroll" id="wmcProductPreviewTable" data-wmc-product-preview-table>
                             <table class="wmc-import-table">
                                 <caption class="visually-hidden">Produtos da marca selecionada</caption>
                                 <thead><tr><th>Sel.</th><th>Marca</th><th>Código WMC</th><th>Descrição</th><th>Unidade / CX</th><th>Situação</th><th>Status</th><th>Motivo do bloqueio</th><th>EAN</th><th>DUN</th><th>Preço WMC</th><th>Preço local</th><th>Preço proposto</th><th>Estoque</th></tr></thead>
@@ -553,7 +551,7 @@
                         <div class="wmc-wizard-actions">
                             <a asp-action="Wmc" class="btn btn-outline-secondary">Voltar</a>
                             <span class="wmc-action-hint">Selecione apenas produtos liberados para continuar.</span>
-                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection" @(eligibleCandidates.Length == 0 ? "disabled" : null)>Revisar Produtos Selecionados</button>
+                            <button type="submit" class="btn btn-primary" id="wmcReviewSelection" @(eligibleCandidates.Length == 0 || selectedEligibleCount == 0 ? "disabled" : null)>Revisar Produtos Selecionados</button>
                         </div>
                     </form>
                 }
@@ -659,18 +657,6 @@
 
 <script>
     (() => {
-        const toggle = document.querySelector('[data-wmc-product-preview-toggle]');
-        const table = document.querySelector('[data-wmc-product-preview-table]');
-        if (!toggle || !table) return;
-        toggle.addEventListener('click', () => {
-            const expanded = toggle.getAttribute('aria-expanded') === 'true';
-            toggle.setAttribute('aria-expanded', (!expanded).toString());
-            table.hidden = expanded;
-            toggle.textContent = expanded ? 'Visualizar Produtos Consultados' : 'Recolher Produtos Consultados';
-        });
-    })();
-
-    (() => {
         const toggle = document.querySelector('[data-wmc-customer-preview-toggle]');
         const table = document.querySelector('[data-wmc-customer-preview-table]');
         const filter = document.querySelector('[data-wmc-customer-preview-filter]');
@@ -705,6 +691,7 @@
         const nextPage = document.getElementById('wmcProductNextPage');
         const selectAll = document.getElementById('wmcSelectAll');
         const deselectAll = document.getElementById('wmcDeselectAll');
+        const review = document.getElementById('wmcReviewSelection');
         const pageSize = 25;
         let page = 1;
 
@@ -739,6 +726,7 @@
             if (nextPage) nextPage.disabled = page >= pageCount;
             if (selectAll) selectAll.disabled = filteredEligibleCount === 0;
             if (deselectAll) deselectAll.disabled = filteredSelectedCount === 0;
+            if (review) review.disabled = selectedCount === 0;
         };
 
         checkboxes.forEach(input => input.addEventListener('change', update));

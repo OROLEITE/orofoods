@@ -66,7 +66,7 @@ public sealed class WmcProductPreviewViewTests
         Assert.DoesNotContain("wmc-preview-form", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmcSelectFiltered", view, StringComparison.Ordinal);
         Assert.Contains("name=\"brandCodes\"", view, StringComparison.Ordinal);
-        Assert.Contains("Visualizar Produtos Consultados", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-wmc-product-preview-toggle", view, StringComparison.Ordinal);
         Assert.Contains("Motivo do bloqueio", view, StringComparison.Ordinal);
         Assert.Contains("Produtos consultados", view, StringComparison.Ordinal);
         Assert.Contains("Elegíveis", view, StringComparison.Ordinal);
@@ -116,7 +116,7 @@ public sealed class WmcProductPreviewViewTests
     }
 
     [Fact]
-    public void Product_stage_restores_server_selection_and_keeps_preview_independent()
+    public void Product_stage_restores_server_selection_and_keeps_table_visible()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
         var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
@@ -127,12 +127,12 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("item.Selectable ? null : \"disabled\"", view, StringComparison.Ordinal);
         Assert.Contains("Atualizar existentes", view, StringComparison.Ordinal);
 
-        var previewButton = view
+        var tableContainer = view
             .Split('\n')
-            .Single(line => line.Contains("<button", StringComparison.Ordinal)
-                && line.Contains("data-wmc-product-preview-toggle", StringComparison.Ordinal));
-        Assert.Contains("type=\"button\"", previewButton, StringComparison.Ordinal);
-        Assert.DoesNotContain("disabled", previewButton, StringComparison.Ordinal);
+            .Single(line => line.Contains("<div", StringComparison.Ordinal)
+                && line.Contains("data-wmc-product-preview-table", StringComparison.Ordinal));
+        Assert.DoesNotContain(" hidden", tableContainer, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-wmc-product-preview-toggle", view, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -146,6 +146,28 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("if (count) count.textContent = `${selectedCount} de ${eligibleCount} produtos selecionados`", view, StringComparison.Ordinal);
         Assert.Contains("filteredCheckboxes().filter(input => !input.disabled).forEach", view, StringComparison.Ordinal);
         Assert.Contains("filteredCheckboxes().forEach(input => { input.checked = false; });", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Product_stage_shows_detail_table_by_default_and_disables_empty_review()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+
+        var tableContainer = view
+            .Split('\n')
+            .Single(line => line.Contains("<div", StringComparison.Ordinal)
+                && line.Contains("data-wmc-product-preview-table", StringComparison.Ordinal));
+        Assert.DoesNotContain(" hidden", tableContainer, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-wmc-product-preview-toggle", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Visualizar Produtos Consultados", view, StringComparison.Ordinal);
+        Assert.Contains("<th>Código WMC</th>", view, StringComparison.Ordinal);
+        Assert.Contains("<th>Descrição</th>", view, StringComparison.Ordinal);
+        Assert.Contains("<th>Unidade / CX</th>", view, StringComparison.Ordinal);
+        Assert.Contains("<th>Situação</th>", view, StringComparison.Ordinal);
+        Assert.Contains("<th>Motivo do bloqueio</th>", view, StringComparison.Ordinal);
+        Assert.Contains("const review = document.getElementById('wmcReviewSelection')", view, StringComparison.Ordinal);
+        Assert.Contains("if (review) review.disabled = selectedCount === 0", view, StringComparison.Ordinal);
     }
 
     [Fact]
