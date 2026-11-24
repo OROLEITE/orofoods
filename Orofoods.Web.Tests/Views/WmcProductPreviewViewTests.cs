@@ -116,6 +116,26 @@ public sealed class WmcProductPreviewViewTests
     }
 
     [Fact]
+    public void Product_stage_restores_server_selection_and_keeps_preview_independent()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+
+        Assert.Contains("var selectedProductKeys = (Model.SelectedProductKeys ?? []).ToHashSet(StringComparer.Ordinal);", view, StringComparison.Ordinal);
+        Assert.Contains("var productKey = $\"{item.BrandCode}:{item.WmcCode}\";", view, StringComparison.Ordinal);
+        Assert.Contains("@(isSelected ? \"checked\" : null)", view, StringComparison.Ordinal);
+        Assert.Contains("item.Selectable ? null : \"disabled\"", view, StringComparison.Ordinal);
+        Assert.Contains("Atualizar existentes", view, StringComparison.Ordinal);
+
+        var previewButton = view
+            .Split('\n')
+            .Single(line => line.Contains("<button", StringComparison.Ordinal)
+                && line.Contains("data-wmc-product-preview-toggle", StringComparison.Ordinal));
+        Assert.Contains("type=\"button\"", previewButton, StringComparison.Ordinal);
+        Assert.DoesNotContain("disabled", previewButton, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Wmc_brand_grid_uses_admin_dark_tokens_for_rows_selection_and_scrollbar()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
