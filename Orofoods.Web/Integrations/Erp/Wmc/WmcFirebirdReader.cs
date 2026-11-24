@@ -45,24 +45,21 @@ public sealed class WmcFirebirdReader(
         var failurePhase = "Connection";
         var results = new List<T>();
 
-        try
+        async Task ExecuteCommandAsync(DbConnection connection, DbTransaction? transaction)
         {
-            await using var connection = await connectionFactory.OpenAsync(cancellationToken);
-            connectionTimer.Stop();
-            connectionMs = connectionTimer.ElapsedMilliseconds;
-
-            failurePhase = "Transaction";
-            await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Snapshot, cancellationToken);
             failurePhase = "CommandSetup";
-            await using var command = new FbCommand(sql, connection, (FbTransaction)transaction)
-            {
-                CommandTimeout = options.Value.CommandTimeoutSeconds
-            };
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.CommandTimeout = options.Value.CommandTimeoutSeconds;
+            command.Transaction = transaction;
             if (parameters is not null)
             {
                 foreach (var (name, value) in parameters)
                 {
-                    command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+                    var parameter = command.CreateParameter();
+                    parameter.ParameterName = name;
+                    parameter.Value = value ?? DBNull.Value;
+                    command.Parameters.Add(parameter);
                 }
             }
 
@@ -81,14 +78,42 @@ public sealed class WmcFirebirdReader(
             resultTimer.Stop();
             resultReadMs = resultTimer.ElapsedMilliseconds;
 
-            failurePhase = "Commit";
-            await transaction.CommitAsync(cancellationToken);
+            failurePhase = "ResultClose";
+        }
+
+        try
+        {
+            await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+            connectionTimer.Stop();
+            connectionMs = connectionTimer.ElapsedMilliseconds;
+
+            DbTransaction? transaction = null;
+            if (queryKind is null)
+            {
+                failurePhase = "Transaction";
+                transaction = await connection.BeginTransactionAsync(IsolationLevel.Snapshot, cancellationToken);
+            }
+
+            await using var transactionScope = transaction;
+            await ExecuteCommandAsync(connection, transaction);
+
+            if (transaction is not null)
+            {
+                failurePhase = "Commit";
+                await transaction.CommitAsync(cancellationToken);
+            }
+            else
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
             totalTimer.Stop();
             if (queryKind is not null)
             {
                 logger.LogInformation(
-                    "WMC Firebird read completed. QueryKind={QueryKind} ConnectionMs={ConnectionMs} SqlExecutionMs={SqlExecutionMs} ResultReadMs={ResultReadMs} ResultCount={ResultCount} TotalMs={TotalMs}",
+                    "WMC Firebird read completed. QueryKind={QueryKind} TransactionMode={TransactionMode} ConnectionMs={ConnectionMs} SqlExecutionMs={SqlExecutionMs} ResultReadMs={ResultReadMs} ResultCount={ResultCount} TotalMs={TotalMs}",
                     queryKind,
+                    transaction is null ? "Implicit" : "Explicit",
                     connectionMs,
                     sqlExecutionMs,
                     resultReadMs,
@@ -103,8 +128,9 @@ public sealed class WmcFirebirdReader(
             if (queryKind is not null)
             {
                 logger.LogWarning(
-                    "WMC Firebird read canceled. QueryKind={QueryKind} FailurePhase={FailurePhase} ConnectionMs={ConnectionMs} SqlExecutionMs={SqlExecutionMs} ResultReadMs={ResultReadMs} ResultCount={ResultCount} TotalMs={TotalMs} ExceptionType={ExceptionType}",
+                    "WMC Firebird read canceled. QueryKind={QueryKind} TransactionMode={TransactionMode} FailurePhase={FailurePhase} ConnectionMs={ConnectionMs} SqlExecutionMs={SqlExecutionMs} ResultReadMs={ResultReadMs} ResultCount={ResultCount} TotalMs={TotalMs} ExceptionType={ExceptionType}",
                     queryKind,
+                    queryKind is null ? "Explicit" : "Implicit",
                     failurePhase,
                     connectionMs ?? connectionTimer.ElapsedMilliseconds,
                     sqlExecutionMs ?? sqlTimer?.ElapsedMilliseconds,
@@ -121,8 +147,9 @@ public sealed class WmcFirebirdReader(
             if (queryKind is not null)
             {
                 logger.LogError(
-                    "WMC Firebird read failed. QueryKind={QueryKind} FailurePhase={FailurePhase} ConnectionMs={ConnectionMs} SqlExecutionMs={SqlExecutionMs} ResultReadMs={ResultReadMs} ResultCount={ResultCount} TotalMs={TotalMs} ExceptionType={ExceptionType}",
+                    "WMC Firebird read failed. QueryKind={QueryKind} TransactionMode={TransactionMode} FailurePhase={FailurePhase} ConnectionMs={ConnectionMs} SqlExecutionMs={SqlExecutionMs} ResultReadMs={ResultReadMs} ResultCount={ResultCount} TotalMs={TotalMs} ExceptionType={ExceptionType}",
                     queryKind,
+                    queryKind is null ? "Explicit" : "Implicit",
                     failurePhase,
                     connectionMs ?? connectionTimer.ElapsedMilliseconds,
                     sqlExecutionMs ?? sqlTimer?.ElapsedMilliseconds,
@@ -149,8 +176,10 @@ public sealed class WmcFirebirdReader(
     }
 
     private static string? GetQueryKind(string sql) =>
-        sql.Contains("stats.ACTIVE_PRODUCT_COUNT", StringComparison.OrdinalIgnoreCase)
-            && sql.Contains("MARCAS", StringComparison.OrdinalIgnoreCase)
+        string.Equals(NormalizeSql(sql), NormalizeSql(WmcBrandReader.BrandListSql), StringComparison.OrdinalIgnoreCase)
             ? "BrandList"
             : null;
+
+    private static string NormalizeSql(string sql) =>
+        string.Join(' ', sql.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 }

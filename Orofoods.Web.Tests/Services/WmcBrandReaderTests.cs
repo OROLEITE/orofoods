@@ -55,7 +55,8 @@ public sealed class WmcBrandReaderTests
         Assert.NotNull(classifier);
         Assert.Equal(
             "BrandList",
-            classifier!.Invoke(null, ["SELECT m.CODMARCA, stats.ACTIVE_PRODUCT_COUNT FROM MARCAS m JOIN (SELECT p.CODMARCA FROM PRODUTOS p) stats ON stats.CODMARCA = m.CODMARCA"]));
+            classifier!.Invoke(null, [WmcBrandReader.BrandListSql]));
+        Assert.Null(classifier.Invoke(null, ["SELECT m.CODMARCA, stats.ACTIVE_PRODUCT_COUNT FROM MARCAS m JOIN (SELECT p.CODMARCA FROM PRODUTOS p) stats ON stats.CODMARCA = m.CODMARCA"]));
         Assert.Null(classifier.Invoke(null, ["SELECT CODCLIENTE, NOME FROM CLIENTES"]));
     }
 

@@ -9,9 +9,11 @@ public interface IWmcBrandReader
 
 public sealed class WmcBrandReader(IWmcFirebirdReader reader) : IWmcBrandReader
 {
+    internal const string BrandListSql = "SELECT m.CODMARCA, m.DESCRICAO, stats.TOTAL_PRODUCT_COUNT, stats.ACTIVE_PRODUCT_COUNT FROM MARCAS m JOIN (SELECT p.CODMARCA, COUNT(p.CODPRODUTO) AS TOTAL_PRODUCT_COUNT, SUM(CASE WHEN p.SITUACAO = 'A' THEN 1 ELSE 0 END) AS ACTIVE_PRODUCT_COUNT FROM PRODUTOS p GROUP BY p.CODMARCA) stats ON stats.CODMARCA = m.CODMARCA WHERE stats.ACTIVE_PRODUCT_COUNT > 0 ORDER BY m.DESCRICAO";
+
     public Task<IReadOnlyList<WmcBrandRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
         reader.QueryAsync(
-            "SELECT m.CODMARCA, m.DESCRICAO, stats.TOTAL_PRODUCT_COUNT, stats.ACTIVE_PRODUCT_COUNT FROM MARCAS m JOIN (SELECT p.CODMARCA, COUNT(p.CODPRODUTO) AS TOTAL_PRODUCT_COUNT, SUM(CASE WHEN p.SITUACAO = 'A' THEN 1 ELSE 0 END) AS ACTIVE_PRODUCT_COUNT FROM PRODUTOS p GROUP BY p.CODMARCA) stats ON stats.CODMARCA = m.CODMARCA WHERE stats.ACTIVE_PRODUCT_COUNT > 0 ORDER BY m.DESCRICAO",
+            BrandListSql,
             Map,
             cancellationToken: cancellationToken);
 
