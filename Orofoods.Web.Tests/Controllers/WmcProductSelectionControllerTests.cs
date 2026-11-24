@@ -89,6 +89,32 @@ public sealed class WmcProductSelectionControllerTests
         Assert.Empty(db.WmcProductImportAudits);
     }
 
+    [Fact]
+    public async Task Manual_import_of_empty_selection_returns_products_without_import_audit()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcImportProducts(
+            [Bimbo], null, null, null, "false", true, CancellationToken.None);
+
+        AssertProductsError(controller, result, "Selecione ao menos um produto elegível para continuar.");
+        Assert.Empty(db.WmcProductImportAudits);
+    }
+
+    [Fact]
+    public async Task Manual_import_of_stale_selection_returns_products_without_import_audit()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcImportProducts(
+            [Bimbo], null, ["104:NOT-IN-PREVIA"], null, "false", true, CancellationToken.None);
+
+        AssertProductsError(controller, result, "A prévia de produtos está desatualizada. Consulte os produtos novamente antes de continuar.");
+        Assert.Empty(db.WmcProductImportAudits);
+    }
+
     private static WmcPreviewPageModel AssertProductsError(
         IntegrationsController controller,
         IActionResult result,
