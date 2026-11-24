@@ -26,7 +26,7 @@ public sealed class AdminCompactVisualRegressionTests
 
         Assert.DoesNotContain("wmc-bimbo-product-name", view, StringComparison.Ordinal);
         Assert.Contains("class=\"wmc-import-table\"", view, StringComparison.Ordinal);
-        Assert.Contains("class=\"wmc-description-cell\"", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-description-cell", view, StringComparison.Ordinal);
         Assert.Contains("class=\"wmc-row-details\"", view, StringComparison.Ordinal);
         Assert.Contains("<summary>Detalhes</summary>", view, StringComparison.Ordinal);
         Assert.Contains("class=\"wmc-row-details-content\"", view, StringComparison.Ordinal);

@@ -270,25 +270,42 @@
 .admin-authenticated .admin-wmc-page .wmc-product-selection-toolbar { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(150px, 200px) auto auto; align-items: end; gap: 9px; margin: 10px 0; padding: 10px; border: 1px solid var(--wmc-border); border-radius: 8px; background: var(--wmc-surface-muted); }
 .admin-authenticated .admin-wmc-page .wmc-product-selection-actions { display: flex; gap: 6px; }
 .admin-authenticated .admin-wmc-page .wmc-product-selection-count { color: #A5F3FC; font-size: 11px; font-weight: 700; white-space: nowrap; }
-.admin-authenticated .admin-wmc-page .wmc-product-table-scroll { overflow-x: auto; border: 1px solid var(--wmc-border); border-radius: 8px; }
-.admin-authenticated .admin-wmc-page .wmc-import-table { width: 100%; min-width: 1180px; border-collapse: collapse; color: var(--wmc-text-soft); font-size: 11px; }
+.admin-authenticated .admin-wmc-page .wmc-product-table-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--wmc-border); border-radius: 8px; }
+.admin-authenticated .admin-wmc-page .wmc-import-table { width: 100%; min-width: 1120px; table-layout: fixed; border-collapse: collapse; color: var(--wmc-text-soft); font-size: 11px; }
 .admin-authenticated .admin-wmc-page .wmc-import-table th { position: sticky; top: 0; z-index: 1; padding: 8px; border-bottom: 1px solid var(--wmc-border-strong); background: #0F172A; color: var(--wmc-text-soft); font-size: 10px; text-align: left; text-transform: uppercase; }
 .admin-authenticated .admin-wmc-page .wmc-import-table td { padding: 8px; border-bottom: 1px solid var(--wmc-border); vertical-align: top; }
 .admin-authenticated .admin-wmc-page .wmc-import-table tbody tr:hover { background: rgba(14, 116, 144, .08); }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--selection { width: 58px; text-align: center; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--wmc-code { width: 100px; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--product { width: 29%; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--unit { width: 110px; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--situation { width: 78px; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--status { width: 108px; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--wmc-price { width: 118px; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--orofoods-price { width: 155px; }
+.admin-authenticated .admin-wmc-page .wmc-import-table .wmc-column--details { width: 150px; }
 .admin-authenticated .admin-wmc-page .wmc-code-cell { color: #A5F3FC; white-space: nowrap; }
-.admin-authenticated .admin-wmc-page .wmc-description-cell { max-width: 210px; color: var(--wmc-text); }
-.admin-authenticated .admin-wmc-page .wmc-price-cell { min-width: 120px; color: var(--wmc-text); }
+.admin-authenticated .admin-wmc-page .wmc-description-cell { max-width: none; color: var(--wmc-text); line-height: 1.35; overflow-wrap: anywhere; word-break: break-word; }
+.admin-authenticated .admin-wmc-page .wmc-price-cell { min-width: 0; color: var(--wmc-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.admin-authenticated .admin-wmc-page .wmc-price-value { display: block; white-space: nowrap; }
+.admin-authenticated .admin-wmc-page .wmc-price-label,
+.admin-authenticated .admin-wmc-page .wmc-price-proposed { display: block; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
+.admin-authenticated .admin-wmc-page .wmc-price-proposed { color: #A5F3FC; }
 .admin-authenticated .admin-wmc-page .wmc-product-status { display: inline-flex; padding: 3px 7px; border-radius: 999px; background: rgba(14, 116, 144, .18); color: #A5F3FC; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .admin-authenticated .admin-wmc-page .wmc-product-status--blocked { background: rgba(245, 158, 11, .16); color: #FDE68A; }
 .admin-authenticated .admin-wmc-page .wmc-product-preview-controls { display: flex; justify-content: flex-end; margin: 10px 0 6px; }
 .admin-authenticated .admin-wmc-page .wmc-product-brand-group th { position: static; background: rgba(14, 116, 144, .16); color: #A5F3FC; font-size: 11px; text-transform: none; }
-.admin-authenticated .admin-wmc-page .wmc-block-reason { min-width: 180px; color: var(--wmc-text-soft); }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-product-brand-group th { background: #0B5D75; color: #E0F2FE; }
-html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-wmc-page .wmc-block-reason { color: #CBD5E1; }
+.admin-authenticated .admin-wmc-page .wmc-details-cell { min-width: 0; }
 .admin-authenticated .admin-wmc-page .wmc-row-details { margin-top: 5px; color: var(--wmc-muted); }
 .admin-authenticated .admin-wmc-page .wmc-row-details summary,
 .admin-authenticated .admin-wmc-page .wmc-confirmation-details summary { color: #7DD3FC; cursor: pointer; font-size: 11px; }
-.admin-authenticated .admin-wmc-page .wmc-row-details-content { margin-top: 6px; padding: 7px; border-left: 2px solid var(--wmc-primary); background: #0F172A; color: var(--wmc-text-soft); }
+.admin-authenticated .admin-wmc-page .wmc-row-details-content { width: min(360px, calc(100vw - 48px)); max-width: 100%; margin-top: 6px; padding: 7px; border-left: 2px solid var(--wmc-primary); background: #0F172A; color: var(--wmc-text-soft); overflow-wrap: anywhere; word-break: break-word; }
+.admin-authenticated .admin-wmc-page .wmc-product-detail-grid { display: grid; grid-template-columns: minmax(105px, auto) minmax(0, 1fr); gap: 3px 8px; margin: 0; font-size: 10px; }
+.admin-authenticated .admin-wmc-page .wmc-product-detail-grid dt { color: var(--wmc-muted); font-weight: 700; }
+.admin-authenticated .admin-wmc-page .wmc-product-detail-grid dd { min-width: 0; margin: 0; color: var(--wmc-text-soft); overflow-wrap: anywhere; }
+.admin-authenticated .admin-wmc-page .wmc-detail-source { display: block; color: var(--wmc-muted); line-height: 1.3; }
+.admin-authenticated .admin-wmc-page .wmc-detail-block-reason { color: #FDE68A !important; }
 .admin-authenticated .admin-wmc-page .wmc-unit-proposal { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 5px 0; font-size: 10px; }
 .admin-authenticated .admin-wmc-page .wmc-unit-proposal dt { color: var(--wmc-muted); }
 .admin-authenticated .admin-wmc-page .wmc-unit-proposal dd { margin: 0; color: var(--wmc-text-soft); }

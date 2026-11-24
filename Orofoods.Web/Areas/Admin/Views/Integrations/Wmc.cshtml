@@ -407,7 +407,7 @@
                         <div class="wmc-product-table-scroll" id="wmcProductPreviewTable" data-wmc-product-preview-table>
                             <table class="wmc-import-table">
                                 <caption class="visually-hidden">Produtos da marca selecionada</caption>
-                                <thead><tr><th>Sel.</th><th>Marca</th><th>Código WMC</th><th>Descrição</th><th>Unidade / CX</th><th>Situação</th><th>Status</th><th>Motivo do bloqueio</th><th>EAN</th><th>DUN</th><th>Preço WMC</th><th>Preço local</th><th>Preço proposto</th><th>Estoque</th></tr></thead>
+                                <thead><tr><th class="wmc-column--selection" data-wmc-column="selection">Sel.</th><th class="wmc-column--wmc-code" data-wmc-column="wmc-code">Código WMC</th><th class="wmc-column--product" data-wmc-column="product">Produto</th><th class="wmc-column--unit" data-wmc-column="unit">Unidade / CX</th><th class="wmc-column--situation" data-wmc-column="situation">Situação</th><th class="wmc-column--status" data-wmc-column="status">Status</th><th class="wmc-column--wmc-price" data-wmc-column="wmc-price">Preço WMC</th><th class="wmc-column--orofoods-price" data-wmc-column="orofoods-price">Preço Orofoods</th><th class="wmc-column--details" data-wmc-column="details">Detalhes</th></tr></thead>
                                 <tbody id="wmcProductRows">
                                 @{ var renderedBrand = ""; }
                                 @foreach (var item in Model.Candidates.OrderBy(item => item.BrandName).ThenBy(item => item.WmcCode))
@@ -415,7 +415,7 @@
                                     var currentBrand = $"{item.BrandCode} · {item.BrandName}";
                                     if (!string.Equals(renderedBrand, currentBrand, StringComparison.Ordinal))
                                     {
-                                        <tr class="wmc-product-brand-group"><th colspan="14">@currentBrand</th></tr>
+                                        <tr class="wmc-product-brand-group"><th colspan="9">@currentBrand</th></tr>
                                         renderedBrand = currentBrand;
                                     }
                                     var masterUnit = item.Units.FirstOrDefault(unit => unit.IsMaster);
@@ -425,71 +425,89 @@
                                     var productKey = $"{item.BrandCode}:{item.WmcCode}";
                                     var isSelected = item.Selectable && selectedProductKeys.Contains(productKey);
                                     <tr class="wmc-import-row wmc-import-row--@statusKind" data-wmc-product-row data-status-kind="@statusKind" data-product-search="@item.WmcCode @item.Name">
-                                        <td><input type="checkbox" name="selectedProductKeys" value="@productKey" data-wmc-product-checkbox @(isSelected ? "checked" : null) @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
-                                        <td>@(item.BrandName ?? "—")</td>
-                                        <td class="wmc-code-cell"><strong>@item.WmcCode</strong></td>
-                                        <td class="wmc-description-cell" title="@item.Name">@item.Name</td>
-                                        <td class="wmc-unit-cell">@(primaryUnit is null ? "—" : $"{primaryUnit.UnitCode} / CX {masterUnit?.Factor?.ToString() ?? "—"}")</td>
-                                        <td>@(item.Situation ?? "—")</td>
-                                        <td><span class="wmc-product-status wmc-product-status--@statusKind">@statusLabel</span></td>
-                                        <td class="wmc-block-reason">@(item.BlockReason ?? (item.Selectable ? "—" : item.Status))</td>
-                                        <td class="wmc-code-cell">@(item.Ean ?? "—")</td>
-                                        <td class="wmc-code-cell">@(masterUnit?.Barcode ?? "—")</td>
-                                        <td class="wmc-price-cell">
+                                        <td class="wmc-column--selection"><input type="checkbox" name="selectedProductKeys" value="@productKey" data-wmc-product-checkbox @(isSelected ? "checked" : null) @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
+                                        <td class="wmc-column--wmc-code wmc-code-cell"><strong>@item.WmcCode</strong></td>
+                                        <td class="wmc-column--product wmc-description-cell" title="@item.Name">@item.Name</td>
+                                        <td class="wmc-column--unit wmc-unit-cell">@(primaryUnit is null ? "—" : $"{primaryUnit.UnitCode} / CX {masterUnit?.Factor?.ToString() ?? "—"}")</td>
+                                        <td class="wmc-column--situation">@(item.Situation ?? "—")</td>
+                                        <td class="wmc-column--status"><span class="wmc-product-status wmc-product-status--@statusKind">@statusLabel</span></td>
+                                        <td class="wmc-column--wmc-price wmc-price-cell">
                                             @if (item.PrecoVenda is decimal precoVenda)
                                             {
-                                                <strong>@precoVenda.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
-                                                <small class="text-muted d-block">PRODUTOS.PRECOVENDA</small>
+                                                <strong class="wmc-price-value">@precoVenda.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
                                             }
                                             else
                                             {
                                                 <span>—</span>
                                             }
                                         </td>
-                                        <td class="wmc-price-cell">
+                                        <td class="wmc-column--orofoods-price wmc-price-cell">
                                             @if (item.LocalBasePrice is decimal localBasePrice)
                                             {
-                                                <strong>@localBasePrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) / @(item.LocalCommercialUnit ?? "unidade não definida")</strong>
-                                                <small class="text-muted d-block">Cadastro Orofoods; não é preço WMC.</small>
-                                                @if (item.PriceProposal?.CurrentTargetPrice is decimal currentTargetPrice)
-                                                {
-                                                    <small class="text-muted d-block">@item.PriceProposal.TargetPriceTableName: @currentTargetPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</small>
-                                                }
-                                                @if (localBasePrice == 1.00m && string.Equals(item.LocalCommercialUnit, "PCT", StringComparison.OrdinalIgnoreCase))
-                                                {
-                                                    <small class="text-warning d-block">R$ 1,00/PCT é placeholder local de homologação.</small>
-                                                }
+                                                <strong class="wmc-price-value">@localBasePrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
+                                                <small class="wmc-price-label">Atual · @(item.LocalCommercialUnit ?? "unidade não definida")</small>
                                             }
                                             else
                                             {
-                                                <span>—</span>
+                                                <span class="wmc-price-label">Não cadastrado</span>
+                                            }
+                                            @if (item.PriceProposal?.ProposedPrice is decimal proposedPrice && item.PriceProposal.SafeToApply)
+                                            {
+                                                <small class="wmc-price-proposed">Após confirmação: @proposedPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</small>
                                             }
                                         </td>
-                                        <td class="wmc-price-cell">
-                                            @if (item.PriceProposal?.ProposedPrice is decimal proposedPrice)
-                                            {
-                                                <strong>@proposedPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</strong>
-                                                @if (item.PriceProposal.SafeToApply)
-                                                {
-                                                    <small class="text-success d-block">Será gravado no preço base</small>
-                                                }
-                                                else
-                                                {
-                                                    <small class="text-warning d-block">Bloqueado: @item.PriceProposal.BlockReason</small>
-                                                }
-                                            }
-                                            else
-                                            {
-                                                <span>—</span>
-                                                <small class="text-warning d-block">Bloqueado: @item.PriceProposal?.BlockReason</small>
-                                            }
-                                        </td>
-                                        <td class="wmc-stock-cell">@(item.Stock?.ToString("0.###") ?? "—")</td>
-                                        <td>
+                                        <td class="wmc-column--details wmc-details-cell">
                                             <details class="wmc-row-details">
                                                 <summary>Detalhes</summary>
                                                 <div class="wmc-row-details-content">
-                                                    <span class="wmc-detail-status">@item.Status</span>
+                                                    <dl class="wmc-product-detail-grid">
+                                                        <dt>Marca</dt>
+                                                        <dd>@(item.BrandName ?? "—")</dd>
+                                                        <dt>Status</dt>
+                                                        <dd>@item.Status</dd>
+                                                        <dt>Motivo do bloqueio</dt>
+                                                        <dd class="wmc-detail-block-reason">@(item.BlockReason ?? (item.Selectable ? "—" : item.Status))</dd>
+                                                        <dt>EAN</dt>
+                                                        <dd>@(item.Ean ?? "—")</dd>
+                                                        <dt>DUN</dt>
+                                                        <dd>@(masterUnit?.Barcode ?? "—")</dd>
+                                                        <dt>Estoque consultado</dt>
+                                                        <dd>@(item.Stock?.ToString("0.###") ?? "—")</dd>
+                                                        <dt>Preço WMC</dt>
+                                                        <dd>
+                                                            @(item.PrecoVenda?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")
+                                                            <small class="wmc-detail-source">Origem técnica: PRODUTOS.PRECOVENDA</small>
+                                                        </dd>
+                                                        <dt>Preço Orofoods atual</dt>
+                                                        <dd>
+                                                            @(item.LocalBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")
+                                                            <small class="wmc-detail-source">Cadastro local · unidade @(item.LocalCommercialUnit ?? "não definida")</small>
+                                                            @if (item.LocalBasePrice == 1.00m && string.Equals(item.LocalCommercialUnit, "PCT", StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                <small class="text-warning wmc-detail-source">R$ 1,00/PCT é placeholder local de homologação.</small>
+                                                            }
+                                                        </dd>
+                                                        @if (item.PriceProposal?.CurrentTargetPrice is decimal currentTargetPrice)
+                                                        {
+                                                            <dt>Preço da tabela atual</dt>
+                                                            <dd>@item.PriceProposal.TargetPriceTableName: @currentTargetPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</dd>
+                                                        }
+                                                        @if (item.PriceProposal?.ProposedPrice is decimal detailProposedPrice)
+                                                        {
+                                                            <dt>Preço proposto</dt>
+                                                            <dd>
+                                                                @detailProposedPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                                                                @if (!item.PriceProposal.SafeToApply)
+                                                                {
+                                                                    <small class="text-warning wmc-detail-source">Bloqueado: @item.PriceProposal.BlockReason</small>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <small class="text-success wmc-detail-source">Será gravado no preço base</small>
+                                                                }
+                                                            </dd>
+                                                        }
+                                                    </dl>
                                                     @if (item.UnitProposal is { } proposal)
                                                     {
                                                         <dl class="wmc-unit-proposal">
