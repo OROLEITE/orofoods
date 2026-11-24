@@ -136,6 +136,19 @@ public sealed class WmcProductPreviewViewTests
     }
 
     [Fact]
+    public void Product_selection_controls_apply_to_the_filtered_result_and_keep_global_count()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+
+        Assert.Contains("const filteredCheckboxes = () => filteredRows()", view, StringComparison.Ordinal);
+        Assert.Contains("const filteredEligibleCount = filteredCheckboxes().filter", view, StringComparison.Ordinal);
+        Assert.Contains("if (count) count.textContent = `${selectedCount} de ${eligibleCount} produtos selecionados`", view, StringComparison.Ordinal);
+        Assert.Contains("filteredCheckboxes().filter(input => !input.disabled).forEach", view, StringComparison.Ordinal);
+        Assert.Contains("filteredCheckboxes().forEach(input => { input.checked = false; });", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Wmc_brand_grid_uses_admin_dark_tokens_for_rows_selection_and_scrollbar()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

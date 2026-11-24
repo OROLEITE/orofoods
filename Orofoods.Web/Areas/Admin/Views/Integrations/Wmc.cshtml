@@ -717,6 +717,9 @@
                 return matchesText && matchesStatus;
             });
         };
+        const filteredCheckboxes = () => filteredRows()
+            .map(row => row.querySelector('[data-wmc-product-checkbox]'))
+            .filter(input => input);
 
         const update = () => {
             const filtered = filteredRows();
@@ -728,21 +731,23 @@
 
             const selectedCount = checkboxes.filter(input => input.checked).length;
             const eligibleCount = checkboxes.filter(input => !input.disabled).length;
+            const filteredEligibleCount = filteredCheckboxes().filter(input => !input.disabled).length;
+            const filteredSelectedCount = filteredCheckboxes().filter(input => input.checked).length;
             if (count) count.textContent = `${selectedCount} de ${eligibleCount} produtos selecionados`;
             if (pageStatus) pageStatus.textContent = `${filtered.length === 0 ? 0 : first + 1}–${Math.min(first + pageSize, filtered.length)} de ${filtered.length} produtos`;
             if (previousPage) previousPage.disabled = page <= 1;
             if (nextPage) nextPage.disabled = page >= pageCount;
-            if (selectAll) selectAll.disabled = eligibleCount === 0;
-            if (deselectAll) deselectAll.disabled = selectedCount === 0;
+            if (selectAll) selectAll.disabled = filteredEligibleCount === 0;
+            if (deselectAll) deselectAll.disabled = filteredSelectedCount === 0;
         };
 
         checkboxes.forEach(input => input.addEventListener('change', update));
         selectAll?.addEventListener('click', () => {
-            checkboxes.filter(input => !input.disabled).forEach(input => { input.checked = true; });
+            filteredCheckboxes().filter(input => !input.disabled).forEach(input => { input.checked = true; });
             update();
         });
         deselectAll?.addEventListener('click', () => {
-            checkboxes.forEach(input => { input.checked = false; });
+            filteredCheckboxes().forEach(input => { input.checked = false; });
             update();
         });
         search?.addEventListener('input', () => { page = 1; update(); });
