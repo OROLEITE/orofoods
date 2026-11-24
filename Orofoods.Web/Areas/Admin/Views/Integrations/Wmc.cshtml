@@ -352,6 +352,7 @@
                     var newCandidates = eligibleCandidates.Count(item => item.ProductId is null);
                     var existingCandidates = eligibleCandidates.Count(item => item.ProductId is not null);
                     var blockedCandidates = Model.Candidates.Count(item => !item.Selectable);
+                    var selectedProductKeys = (Model.SelectedProductKeys ?? []).ToHashSet(StringComparer.Ordinal);
                     <header class="wmc-stage-heading">
                         <div><span class="wmc-step-kicker">Etapa 2</span><h4>Produtos consultados · @Model.SelectedBrandDescription</h4></div>
                         <a asp-action="Wmc" class="btn btn-outline-secondary btn-sm">Trocar marcas</a>
@@ -423,8 +424,10 @@
                                     var primaryUnit = item.Units.FirstOrDefault(unit => !unit.IsMaster) ?? item.Units.FirstOrDefault();
                                     var statusKind = item.Selectable ? (item.ProductId is null ? "new" : "existing") : "blocked";
                                     var statusLabel = statusKind switch { "new" => "Novo", "existing" => "Existente", _ => "Bloqueado" };
+                                    var productKey = $"{item.BrandCode}:{item.WmcCode}";
+                                    var isSelected = item.Selectable && selectedProductKeys.Contains(productKey);
                                     <tr class="wmc-import-row wmc-import-row--@statusKind" data-wmc-product-row data-status-kind="@statusKind" data-product-search="@item.WmcCode @item.Name">
-                                        <td><input type="checkbox" name="selectedProductKeys" value="@item.BrandCode:@item.WmcCode" data-wmc-product-checkbox @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
+                                        <td><input type="checkbox" name="selectedProductKeys" value="@productKey" data-wmc-product-checkbox @(isSelected ? "checked" : null) @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
                                         <td>@(item.BrandName ?? "—")</td>
                                         <td class="wmc-code-cell"><strong>@item.WmcCode</strong></td>
                                         <td class="wmc-description-cell" title="@item.Name">@item.Name</td>
@@ -714,6 +717,9 @@
                 return matchesText && matchesStatus;
             });
         };
+        const filteredCheckboxes = () => filteredRows()
+            .map(row => row.querySelector('[data-wmc-product-checkbox]'))
+            .filter(input => input);
 
         const update = () => {
             const filtered = filteredRows();
@@ -725,21 +731,23 @@
 
             const selectedCount = checkboxes.filter(input => input.checked).length;
             const eligibleCount = checkboxes.filter(input => !input.disabled).length;
+            const filteredEligibleCount = filteredCheckboxes().filter(input => !input.disabled).length;
+            const filteredSelectedCount = filteredCheckboxes().filter(input => input.checked).length;
             if (count) count.textContent = `${selectedCount} de ${eligibleCount} produtos selecionados`;
             if (pageStatus) pageStatus.textContent = `${filtered.length === 0 ? 0 : first + 1}–${Math.min(first + pageSize, filtered.length)} de ${filtered.length} produtos`;
             if (previousPage) previousPage.disabled = page <= 1;
             if (nextPage) nextPage.disabled = page >= pageCount;
-            if (selectAll) selectAll.disabled = eligibleCount === 0;
-            if (deselectAll) deselectAll.disabled = selectedCount === 0;
+            if (selectAll) selectAll.disabled = filteredEligibleCount === 0;
+            if (deselectAll) deselectAll.disabled = filteredSelectedCount === 0;
         };
 
         checkboxes.forEach(input => input.addEventListener('change', update));
         selectAll?.addEventListener('click', () => {
-            checkboxes.filter(input => !input.disabled).forEach(input => { input.checked = true; });
+            filteredCheckboxes().filter(input => !input.disabled).forEach(input => { input.checked = true; });
             update();
         });
         deselectAll?.addEventListener('click', () => {
-            checkboxes.forEach(input => { input.checked = false; });
+            filteredCheckboxes().forEach(input => { input.checked = false; });
             update();
         });
         search?.addEventListener('input', () => { page = 1; update(); });
