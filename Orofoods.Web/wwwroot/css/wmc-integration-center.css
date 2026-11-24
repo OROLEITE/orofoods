@@ -266,6 +266,13 @@
 .admin-authenticated .admin-wmc-page .wmc-action-hint { margin-right: auto; font-size: 11px; }
 .admin-authenticated .admin-wmc-page .wmc-stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0 8px; }
 .admin-authenticated .admin-wmc-page .wmc-stage-heading h4 { margin: 3px 0 0; font-size: 16px; }
+.admin-authenticated .admin-wmc-page .wmc-confirmation-actions .wmc-reimport-choice { display: flex; flex: 1 1 320px; align-items: flex-start; gap: 8px; min-width: min(100%, 320px); margin: 0; padding: 8px 10px; border: 1px solid var(--wmc-border); border-radius: 8px; background: var(--wmc-surface-muted); color: var(--wmc-text-soft); font-size: 11px; line-height: 1.35; }
+.admin-authenticated .admin-wmc-page .wmc-confirmation-actions .wmc-reimport-choice input { flex: 0 0 auto; margin-top: 2px; accent-color: var(--wmc-primary); }
+.admin-authenticated .admin-wmc-page .wmc-confirmation-actions .wmc-reimport-choice span { display: flex; flex-direction: column; gap: 2px; }
+.admin-authenticated .admin-wmc-page .wmc-confirmation-actions .wmc-reimport-choice small { color: var(--wmc-muted); font-size: 10px; }
+.admin-authenticated .admin-wmc-page .wmc-confirmation-actions [data-wmc-reimport-state],.admin-authenticated .admin-wmc-page .wmc-confirmation-actions [data-wmc-reimport-authorization] { flex-basis: 100%; }
+.admin-authenticated .admin-wmc-page .wmc-confirmation-actions [data-wmc-reimport-state="disabled"],.admin-authenticated .admin-wmc-page .wmc-confirmation-actions [data-wmc-reimport-authorization="disabled"] { border-color: rgba(245,158,11,.45); color: #FDE68A; }
+.admin-authenticated .admin-wmc-page .wmc-confirmation-actions [data-wmc-reimport-state="enabled"],.admin-authenticated .admin-wmc-page .wmc-confirmation-actions [data-wmc-reimport-authorization="enabled"] { border-color: rgba(34,197,94,.45); color: #BBF7D0; }
 
 .admin-authenticated .admin-wmc-page .wmc-product-selection-toolbar { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(150px, 200px) auto auto; align-items: end; gap: 9px; margin: 10px 0; padding: 10px; border: 1px solid var(--wmc-border); border-radius: 8px; background: var(--wmc-surface-muted); }
 .admin-authenticated .admin-wmc-page .wmc-product-selection-actions { display: flex; gap: 6px; }
