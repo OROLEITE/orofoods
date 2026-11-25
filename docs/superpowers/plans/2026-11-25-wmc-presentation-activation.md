@@ -49,7 +49,7 @@
 - Consumes: `WmcProductRules.ClassifySituation`, the existing manual `ImportAsync` flow, and the existing `WmcManualProductImportReadinessEvaluator`.
 - Produces: a new product with `IsActive=true` only when the validated WMC row is active; `IsAvailable` remains false; existing products retain their local `IsActive`.
 
-- [ ] **Step 1: Write failing import tests**
+- [x] **Step 1: Write failing import tests**
 
   Add tests for:
 
@@ -57,19 +57,19 @@
   - active WMC row mapped onto an existing locally inactive product updates `IsWmcActive` but leaves `IsActive=false` and `IsAvailable` unchanged;
   - inactive WMC input remains rejected before any product activation.
 
-- [ ] **Step 2: Run the focused tests and confirm the new rule fails**
+- [x] **Step 2: Run the focused tests and confirm the new rule fails**
 
   Run the WMC import and selection tests with `--no-restore --configuration Release`. The new-product activation assertion must fail against the current `IsActive=false` initializer.
 
-- [ ] **Step 3: Implement the smallest import change**
+- [x] **Step 3: Implement the smallest import change**
 
   Determine the situation before constructing a new `Product`; initialize `IsActive` from `WmcProductSituation.Active` and leave `IsAvailable=false`. Do not change the existing-product branch, inventory handling, readiness evaluator, or automatic sync service.
 
-- [ ] **Step 4: Run the focused tests to confirm the rule passes**
+- [x] **Step 4: Run the focused tests to confirm the rule passes**
 
   Re-run the tests from Step 2 and the relevant readiness tests. Expected: all pass, including the existing-product preservation assertions.
 
-- [ ] **Step 5: Commit the isolated behavior change**
+- [x] **Step 5: Commit the isolated behavior change**
 
   Commit only the service and its tests with a message such as `fix(wmc): activate new active products in cadastro`.
 
@@ -91,7 +91,7 @@
   - `WmcProductConfirmationLocalState` with product flags, local unit labels, `QuantityOnHand`, `QuantityReserved`, derived non-negative `AvailableQuantity`, and `IsManuallyAdjusted`;
   - read-status and known blocker strings for unavailable/partial data.
 
-- [ ] **Step 1: Write failing presentation tests**
+- [x] **Step 1: Write failing presentation tests**
 
   Use the existing test database and fake WMC reader to cover:
 
@@ -102,23 +102,23 @@
   - reader/local lookup failure represented as an unavailable presentation state;
   - no tracked entities and no database writes from the composer.
 
-- [ ] **Step 2: Run the presentation tests and confirm they fail**
+- [x] **Step 2: Run the presentation tests and confirm they fail**
 
   Run the new service test class in Release without restore. Expected: compile failure because the presentation records/service do not yet exist.
 
-- [ ] **Step 3: Implement the display-only records**
+- [x] **Step 3: Implement the display-only records**
 
   Add nullable local state for absent products/inventory. Use explicit source labels (`ESTOQUEDISPONIVEL`, `ESTOQUEATUAL`, `ESTOQUERESERVADO`) and `UnitSemantics = "não confirmada"` unless the source contract provides a unit. Keep official unit/factor/EAN/DUN data sourced from the candidate proposals.
 
-- [ ] **Step 4: Implement the composer with read-only queries**
+- [x] **Step 4: Implement the composer with read-only queries**
 
   Re-query only the selected brand rows through the existing reader, query local products and inventories using `AsNoTracking`, map one or zero local states per selected candidate, derive only `max(onHand-reserved, 0)`, and collect known blockers from candidate block reasons and persisted flags. Catch read failures per source and preserve the candidate with an explicit unavailable marker.
 
-- [ ] **Step 5: Run the presentation tests to confirm they pass**
+- [x] **Step 5: Run the presentation tests to confirm they pass**
 
   Expected: all presentation and no-write assertions pass.
 
-- [ ] **Step 6: Commit the read-only presentation slice**
+- [x] **Step 6: Commit the read-only presentation slice**
 
   Commit only the new model, composer, and tests with a message such as `feat(wmc): add read-only confirmation diagnostics`.
 
@@ -134,23 +134,23 @@
 - Consumes: `WmcProductConfirmationPresentationService.BuildAsync` from Task 2.
 - Produces: confirmation model data for the Razor view while preserving `WmcImportProducts`, `WmcConfirmSelection`, `selectedProductKeys`, `simulationValidated`, `reimportExisting`, and antiforgery fields.
 
-- [ ] **Step 1: Write failing controller/view contract tests**
+- [x] **Step 1: Write failing controller/view contract tests**
 
   Assert the confirmation model contains one presentation per selected candidate, that selection keys and reimport state are unchanged, and that the controller source still requires antiforgery and the same POST action/field names.
 
-- [ ] **Step 2: Run focused controller/view tests and confirm they fail**
+- [x] **Step 2: Run focused controller/view tests and confirm they fail**
 
   Expected: missing model property/service integration assertions fail.
 
-- [ ] **Step 3: Integrate the composer in `WmcConfirmSelection`**
+- [x] **Step 3: Integrate the composer in `WmcConfirmSelection`**
 
   Inject the presentation service, build the optional collection after selection validation, and pass it into `WmcPreviewPageModel`. Keep invalid-selection rendering and the POST import path unchanged.
 
-- [ ] **Step 4: Run focused controller/view tests to confirm they pass**
+- [x] **Step 4: Run focused controller/view tests to confirm they pass**
 
   Verify selection persistence, inactive blocking, explicit reimport authorization, and antiforgery/POST contracts.
 
-- [ ] **Step 5: Commit the controller/model integration**
+- [x] **Step 5: Commit the controller/model integration**
 
   Commit with a message such as `feat(wmc): compose confirmation diagnostics`.
 
@@ -165,23 +165,23 @@
 - Consumes: optional confirmation presentations from Task 3 and the existing candidate/summary/reimport model.
 - Produces: one compact card per selected product with three WMC/Orofoods/commercial sections, responsive three/two/one-column diagnostics, source-separated stock, known blockers, and preserved authorization controls.
 
-- [ ] **Step 1: Write failing view/CSS tests**
+- [x] **Step 1: Write failing view/CSS tests**
 
   Assert card headers contain WMC code/description/brand/situation, sections contain official unit/price/factor/EAN/DUN fields, stock origins are distinct, all four flags have labels, unavailable values use the explicit fallback, grid and mobile rules exist, ciano colors remain, and the checkbox/action names remain unchanged.
 
-- [ ] **Step 2: Run the view tests and confirm they fail**
+- [x] **Step 2: Run the view tests and confirm they fail**
 
   Expected: new presentation markers and CSS selectors are absent.
 
-- [ ] **Step 3: Implement the compact confirmation markup and CSS**
+- [x] **Step 3: Implement the compact confirmation markup and CSS**
 
   Render each card from the display-only model. Keep `reimportExisting` unchecked, the authorization area outside the cards, and all existing hidden selection/antiforgery fields. Use `#0E7490` and `#0B5D75` through the existing WMC variables and collapse the grid at the current mobile breakpoint.
 
-- [ ] **Step 4: Run view tests to confirm they pass**
+- [x] **Step 4: Run view tests to confirm they pass**
 
   Expected: all view/CSS contract tests pass without browser-side writes.
 
-- [ ] **Step 5: Commit the visual slice**
+- [x] **Step 5: Commit the visual slice**
 
   Commit with a message such as `feat(wmc): present stock and activation diagnostics`.
 
@@ -191,22 +191,29 @@
 - No additional source changes unless verification exposes a scoped regression.
 - Review: all files changed by Tasks 1–4 and `git diff` against `origin/main`.
 
-- [ ] **Step 1: Run formatting/diff safety checks**
+- [x] **Step 1: Run formatting/diff safety checks**
 
   Run `git diff --check` and verify no `WmcSyncService`, migration, database, order-export, BIMBO, or App Settings files changed.
 
-- [ ] **Step 2: Run focused WMC tests**
+- [x] **Step 2: Run focused WMC tests**
 
   Run the import-service, presentation-service, controller, view, readiness, inventory, and relevant WMC security test classes in Release.
 
-- [ ] **Step 3: Run Release build and complete suite**
+- [x] **Step 3: Run Release build and complete suite**
 
     Run `dotnet build Orofoods.slnx --no-restore --configuration Release -m:1` and `dotnet test Orofoods.slnx --no-restore --configuration Release -m:1 --logger "console;verbosity=minimal"`. Serial execution avoids the known shared-project dependency race in the Windows sandbox. Record exact counts and warnings.
 
-- [ ] **Step 4: Verify configuration and worktree**
+- [x] **Step 4: Verify configuration and worktree**
 
   Confirm local `WmcSync.Enabled=false`, no real import/migration/database/deploy command was executed, the worktree is clean apart from intentional commits, and capture the final commit SHA.
 
-- [ ] **Step 5: Report risks and 101900 procedure**
+- [x] **Step 5: Report risks and 101900 procedure**
 
   Report that the already imported `101900` was not updated directly. Provide a separate future procedure requiring an explicit read-only data check, a reviewed manual activation action, and rollback evidence before any retroactive change.
+
+## Execution evidence
+
+- Release build: `dotnet build Orofoods.slnx --configuration Release --no-restore -m:1` -> 0 errors, 4 warnings.
+- Complete suite: `dotnet test Orofoods.slnx --configuration Release --no-restore -m:1 --logger "console;verbosity=minimal"` -> 2,055 passed, 2 skipped, 0 failed (2,057 total).
+- Focused checks: import service 43 passed; presentation service 4 passed; selection controller 15 passed; presentation view 10 passed.
+- Final scope checks: `git diff --check` clean; `WmcSync.Enabled=false`; no navigation implementation, migration, database, import, Staging, push, PR, merge, or deploy operation performed.
