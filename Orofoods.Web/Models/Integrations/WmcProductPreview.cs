@@ -162,20 +162,6 @@ public sealed record WmcProductImportSummary(
     int ExistingWithChanges,
     int ExistingWithoutChanges)
 {
-    public WmcProductImportSummary(
-        int selected,
-        int newProducts,
-        int existingProducts,
-        int changedProducts,
-        int unchangedProducts)
-        : this(selected, selected, 0, newProducts, changedProducts, unchangedProducts)
-    {
-    }
-
-    public int ExistingProducts => ExistingWithChanges + ExistingWithoutChanges;
-    public int ChangedProducts => ExistingWithChanges;
-    public int UnchangedProducts => ExistingWithoutChanges;
-
     public static WmcProductImportSummary From(
         IEnumerable<WmcProductImportCandidate> candidates,
         IEnumerable<WmcProductImportCandidate> selected)
