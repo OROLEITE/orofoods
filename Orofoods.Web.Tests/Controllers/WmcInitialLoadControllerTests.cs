@@ -151,6 +151,7 @@ public sealed class WmcInitialLoadControllerTests
             brandReader,
             new WmcProductPreviewService(db, products),
             new WmcProductImportService(db, products, Options.Create(new WmcPriceImportOptions())),
+            new WmcProductConfirmationPresentationService(db, products),
             NullLogger<IntegrationsController>.Instance,
             null!,
             null!,
