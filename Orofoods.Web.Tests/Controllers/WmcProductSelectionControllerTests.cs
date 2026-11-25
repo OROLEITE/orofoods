@@ -17,6 +17,7 @@ namespace Orofoods.Web.Tests.Controllers;
 public sealed class WmcProductSelectionControllerTests
 {
     private const short Bimbo = 104;
+    private const short Aviacao = 205;
 
     [Fact]
     public async Task Empty_selection_reports_empty_state_only_after_continue_attempt()
@@ -92,7 +93,41 @@ public sealed class WmcProductSelectionControllerTests
         Assert.Equal("Confirmation", model.Step);
         Assert.NotNull(model.Confirmation);
         Assert.Equal(1, model.Confirmation!.ExistingProducts);
+        Assert.Equal(0, model.Confirmation.NewProducts);
+        Assert.Equal(1, model.Confirmation.ExistingWithChanges);
+        Assert.Equal(0, model.Confirmation.ExistingWithoutChanges);
         Assert.Equal(["104:503813"], model.SelectedProductKeys);
+    }
+
+    [Fact]
+    public async Task New_aviacao_product_is_counted_only_as_new_and_keeps_official_confirmation_data()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcConfirmSelection(
+            [Aviacao], null, [$"{Aviacao}:101900"], null, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        var summary = Assert.IsType<WmcProductImportSummary>(model.Confirmation);
+        Assert.Equal(1, summary.Consulted);
+        Assert.Equal(1, summary.Selected);
+        Assert.Equal(0, summary.Blocked);
+        Assert.Equal(1, summary.NewProducts);
+        Assert.Equal(0, summary.ExistingWithChanges);
+        Assert.Equal(0, summary.ExistingWithoutChanges);
+
+        var candidate = Assert.Single(model.Candidates!);
+        Assert.Equal("101900", candidate.WmcCode);
+        Assert.Equal("UN", candidate.UnitProposal!.PrimaryUnitCode);
+        Assert.Equal("CX", candidate.UnitProposal.MasterUnitCode);
+        Assert.Equal(24m, candidate.UnitProposal.ProposedMasterFactor);
+        Assert.Equal("7899679701348", candidate.UnitProposal.ProposedEan13);
+        Assert.Equal("17899679701345", candidate.UnitProposal.ProposedDun14);
+        Assert.Equal(24m, candidate.UnitProposal.ProposedPackageQuantity);
+        Assert.Equal(24m, candidate.UnitProposal.ProposedConversionQuantity);
+        Assert.Contains(candidate.Units, unit => unit.UnitCode == "CX" && unit.IsMaster && unit.Factor == 24m);
     }
 
     [Fact]
@@ -205,6 +240,8 @@ public sealed class WmcProductSelectionControllerTests
         Assert.Equal(10m, candidate.PriceProposal!.CurrentBasePrice);
         Assert.Equal(10m, candidate.PriceProposal.ProposedPrice);
         Assert.Equal(1, model.Confirmation!.UnchangedProducts);
+        Assert.Equal(0, model.Confirmation.ExistingWithChanges);
+        Assert.Equal(1, model.Confirmation.ExistingWithoutChanges);
     }
 
     [Fact]
@@ -311,7 +348,8 @@ public sealed class WmcProductSelectionControllerTests
     {
         public Task<IReadOnlyList<WmcBrandRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<WmcBrandRecord>>([
-                new WmcBrandRecord(Bimbo, "BIMBO", 3, 3)
+                new WmcBrandRecord(Bimbo, "BIMBO", 4, 3),
+                new WmcBrandRecord(Aviacao, "AVIAÇÃO", 1, 1)
             ]);
     }
 
@@ -328,17 +366,27 @@ public sealed class WmcProductSelectionControllerTests
             new WmcProductRecord(
                 "503816", "Pão BIMBO inativo", "I", "PC", 5m, 5m,
                 CodMarca: Bimbo.ToString(), PrecoVenda: 12m,
-                Units: Units, UnitsSnapshotComplete: true, Marca: "BIMBO")
+                Units: Units, UnitsSnapshotComplete: true, Marca: "BIMBO"),
+            new WmcProductRecord(
+                "101900", "Biscoito AVIAÇÃO", "A", "UN", 24m, 24m,
+                CodMarca: Aviacao.ToString(), UnAltern: "CX", QtdeEmbalagem: 24m, QtdeConversao: 24m,
+                PrecoVenda: 12m, Ean13: "7899679701348", Dun14: "17899679701345",
+                Units: AviacaoUnits, UnitsSnapshotComplete: true, Marca: "AVIAÇÃO")
         ];
 
         public Task<IReadOnlyList<WmcProductRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Rows);
 
         public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandAsync(short? brandCode, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Rows);
+            Task.FromResult(ByBrand(brandCode));
 
         public Task<IReadOnlyList<WmcProductRecord>> GetAllByBrandWithUnitsAsync(short? brandCode, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Rows);
+            Task.FromResult(ByBrand(brandCode));
+
+        private static IReadOnlyList<WmcProductRecord> ByBrand(short? brandCode) =>
+            brandCode is null
+                ? Rows
+                : Rows.Where(row => row.CodMarca == brandCode.Value.ToString()).ToArray();
 
         private static WmcProductRecord Valid(string code, string name, decimal price) =>
             new(code, name, "A", "PC", 5m, 5m,
@@ -349,6 +397,12 @@ public sealed class WmcProductSelectionControllerTests
         [
             new("PC", "PACOTE", 1m, "7899679701348", false),
             new("CX", "CAIXA", 18m, "17899679701345", true)
+        ];
+
+        private static IReadOnlyList<WmcProductUnitRecord> AviacaoUnits =>
+        [
+            new("UN", "UNIDADE", 1m, "7899679701348", false),
+            new("CX", "CAIXA", 24m, "17899679701345", true)
         ];
     }
 }
