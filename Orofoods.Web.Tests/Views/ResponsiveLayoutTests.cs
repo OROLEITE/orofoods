@@ -36,4 +36,17 @@ public class ResponsiveLayoutTests
         Assert.Contains(".site-header .navbar-collapse{background:#fff", styles);
         Assert.Contains(".site-header .navbar-nav .btn{display:flex;width:100%", styles);
     }
+
+    [Fact]
+    public void Admin_navigation_preference_has_a_mobile_offcanvas_and_desktop_style_contract()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_AdminLayout.cshtml"));
+        var styles = File.ReadAllText(Path.Combine(projectPath, "wwwroot", "css", "admin-navigation.css"));
+
+        Assert.Contains("class=\"admin-sidebar d-none d-xl-flex\"", layout);
+        Assert.Contains("class=\"offcanvas offcanvas-start admin-offcanvas\"", layout);
+        Assert.Contains(".admin-navigation-preference__select", styles);
+        Assert.Contains(".admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference", styles);
+    }
 }

@@ -174,6 +174,17 @@ public class AuthenticatedNavigationTests
     }
 
     [Fact]
+    public void Admin_layout_loads_the_navigation_behavior_script_after_the_shared_shell()
+    {
+        var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var layout = File.ReadAllText(Path.Combine(projectPath, "Views", "Shared", "_AdminLayout.cshtml"));
+
+        Assert.Contains("<div class=\"admin-shell\" data-admin-shell>", layout);
+        Assert.Contains("<script src=\"~/js/admin-navigation.js\"", layout);
+        Assert.Contains("@await RenderSectionAsync(\"Scripts\", required: false)", layout);
+    }
+
+    [Fact]
     public void Customer_experience_uses_shared_design_system_and_a_four_step_registration_wizard()
     {
         var projectPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

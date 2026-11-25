@@ -6,6 +6,7 @@
     var isAdministrator = User.IsInRole(ApplicationRoles.Administrator);
     var isOperator = User.IsInRole(ApplicationRoles.Operator);
     var isCommercialUser = isAdministrator || User.IsInRole(ApplicationRoles.Seller) || User.IsInRole(ApplicationRoles.CommercialManager);
+    var isWhatsAppPage = controller == "WhatsApp";
     var crmActive = controller is "Commercial" or "Customers" or "Opportunities" or "Notifications" or "WhatsApp";
     var operationActive = controller is "Orders" or "WmcOrderImports" or "Products" or "Inventory" or "Drivers" or "PaymentTerminals" or "DriverPaymentTerminalAssignments";
     var registrationsActive = controller is "Categories" or "PriceTables" or "PaymentTerms";
@@ -16,7 +17,7 @@
 }
 
 <div class="admin-sidebar-header"><img class="admin-sidebar-logo" src="~/images/logo-orofoods-transparent.png" asp-append-version="true" alt="Orofoods" /><h2>Administração</h2><span>Operação interna</span></div>
-<nav id="@prefix-admin-menu" class="admin-nav" aria-label="Seções administrativas">
+<nav id="@prefix-admin-menu" class="admin-nav" aria-label="Seções administrativas" data-admin-navigation-menu>
     @if (isAdministrator)
     {
         <a class="admin-nav-link @Active("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index" title="Dashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span class="admin-nav-label">Dashboard</span></a>
@@ -97,6 +98,17 @@
                 <a class="admin-nav-link admin-nav-link--nested @Active("Integrations")" asp-area="Admin" asp-controller="Integrations" asp-action="Index"><i class="fa-solid fa-plug" aria-hidden="true"></i><span>Integrações</span></a>
                 <a class="admin-nav-link admin-nav-link--nested @Active("OrderSettings")" asp-area="Admin" asp-controller="OrderSettings" asp-action="Index"><i class="fa-solid fa-coins" aria-hidden="true"></i><span>Pedido mínimo</span></a>
             </div>
+        </div>
+    }
+    @if (!isWhatsAppPage)
+    {
+        <div class="admin-navigation-preference" data-admin-navigation-preference>
+            <label class="admin-navigation-preference__label" for="@prefix-admin-navigation-mode">Abrir telas administrativas</label>
+            <select id="@prefix-admin-navigation-mode" class="admin-navigation-preference__select" data-admin-navigation-mode aria-label="Preferência de navegação administrativa" aria-describedby="@prefix-admin-navigation-mode-help">
+                <option value="new" selected="selected">Nova aba</option>
+                <option value="same">Mesma aba</option>
+            </select>
+            <small id="@prefix-admin-navigation-mode-help" class="admin-navigation-preference__hint">Ações de gravação permanecem nesta aba.</small>
         </div>
     }
 </nav>
