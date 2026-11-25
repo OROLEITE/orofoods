@@ -155,11 +155,43 @@ public sealed record WmcProductImportCandidate(
 public sealed record WmcProductFieldChange(string Field, string CurrentValue, string WmcValue);
 
 public sealed record WmcProductImportSummary(
+    int Consulted,
     int Selected,
+    int Blocked,
     int NewProducts,
-    int ExistingProducts,
-    int ChangedProducts,
-    int UnchangedProducts);
+    int ExistingWithChanges,
+    int ExistingWithoutChanges)
+{
+    public WmcProductImportSummary(
+        int selected,
+        int newProducts,
+        int existingProducts,
+        int changedProducts,
+        int unchangedProducts)
+        : this(selected, selected, 0, newProducts, changedProducts, unchangedProducts)
+    {
+    }
+
+    public int ExistingProducts => ExistingWithChanges + ExistingWithoutChanges;
+    public int ChangedProducts => ExistingWithChanges;
+    public int UnchangedProducts => ExistingWithoutChanges;
+
+    public static WmcProductImportSummary From(
+        IEnumerable<WmcProductImportCandidate> candidates,
+        IEnumerable<WmcProductImportCandidate> selected)
+    {
+        var consulted = candidates.ToArray();
+        var selectedProducts = selected.ToArray();
+
+        return new(
+            consulted.Length,
+            selectedProducts.Length,
+            consulted.Count(candidate => !candidate.Selectable),
+            selectedProducts.Count(candidate => candidate.ProductId is null),
+            selectedProducts.Count(candidate => candidate.ProductId is not null && candidate.Changes.Count > 0),
+            selectedProducts.Count(candidate => candidate.ProductId is not null && candidate.Changes.Count == 0));
+    }
+}
 
 public sealed record WmcProductImportItemResult(string WmcCode, string Status, string? Detail);
 
