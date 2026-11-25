@@ -230,13 +230,14 @@ public sealed class WmcProductImportService(
                 if (isNew)
                 {
                     if (string.IsNullOrWhiteSpace(row.Produto)) throw new InvalidOperationException($"Nome WMC ausente para novo produto {code}.");
+                    var wmcSituation = WmcProductRules.ClassifySituation(row.Situacao);
                     product = new Product
                     {
                         WmcCode = code,
                         Sku = PlaceholderSku(code),
                         Name = "",
                         ProductCategoryId = pending.Id,
-                        IsActive = false,
+                        IsActive = wmcSituation == WmcProductSituation.Active,
                         IsAvailable = false,
                         IsWmcActive = false,
                         WmcStockAvailable = false
