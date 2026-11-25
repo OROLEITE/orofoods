@@ -76,6 +76,83 @@ public sealed class WmcProductSelectionControllerTests
     }
 
     [Fact]
+    public async Task Missing_reimport_authorization_keeps_existing_product_unchanged()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcImportProducts(
+            [Bimbo], null, ["104:503813"], null, null, true, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        Assert.Equal("Result", model.Step);
+        Assert.NotNull(model.ImportResult);
+        Assert.Equal(0, model.ImportResult!.Updated);
+        Assert.Equal(1, model.ImportResult.Unchanged);
+        Assert.Contains(model.ImportResult.Items, item => item.WmcCode == "503813"
+            && item.Status == "Ignorado"
+            && item.Detail!.Contains("reimporta\u00e7\u00e3o recusada", StringComparison.Ordinal));
+        var product = Assert.Single(db.Products.Where(item => item.WmcCode == "503813"));
+        Assert.Equal("P\u00e3o BIMBO antigo", product.Name);
+        Assert.Equal(1m, product.BasePrice);
+        Assert.Equal(["104:503813"], model.SelectedProductKeys);
+    }
+
+    [Fact]
+    public async Task Explicit_reimport_authorization_updates_existing_product_and_preserves_selection()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcImportProducts(
+            [Bimbo], null, ["104:503813"], null, "true", true, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        Assert.Equal("Result", model.Step);
+        Assert.NotNull(model.ImportResult);
+        Assert.Equal(1, model.ImportResult!.Updated);
+        Assert.Contains(model.ImportResult.Items, item => item.WmcCode == "503813" && item.Status == "Atualizado");
+        var product = Assert.Single(db.Products.Where(item => item.WmcCode == "503813"));
+        Assert.Equal("P\u00e3o BIMBO existente", product.Name);
+        Assert.Equal(10m, product.BasePrice);
+        Assert.Equal(["104:503813"], model.SelectedProductKeys);
+    }
+
+    [Fact]
+    public async Task Equal_wmc_price_is_presented_as_unchanged_when_the_existing_record_matches()
+    {
+        await using var db = await CreateDbAsync();
+        var product = Assert.Single(db.Products.Local);
+        product.Name = "P\u00e3o BIMBO existente";
+        product.WmcBrandCode = Bimbo.ToString();
+        product.Brand = "BIMBO";
+        product.Unit = "PC";
+        product.Ean = "7899679701348";
+        product.Ean13 = "7899679701348";
+        product.Dun14 = "17899679701345";
+        product.BasePrice = 10m;
+        db.WmcProductUnits.AddRange(
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "PC", Description = "PACOTE", Factor = 1m, Barcode = "7899679701348", IsMaster = false },
+            new WmcProductUnit { ProductId = product.Id, UnitCode = "CX", Description = "CAIXA", Factor = 18m, Barcode = "17899679701345", IsMaster = true });
+        await db.SaveChangesAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcConfirmSelection(
+            [Bimbo], null, ["104:503813"], null, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        var candidate = Assert.Single(model.Candidates!, item => item.WmcCode == "503813");
+        Assert.Equal("J\u00e1 cadastrado", candidate.Status);
+        Assert.DoesNotContain(candidate.Changes, change => change.Field == "Pre\u00e7o base");
+        Assert.Equal(10m, candidate.PriceProposal!.CurrentBasePrice);
+        Assert.Equal(10m, candidate.PriceProposal.ProposedPrice);
+        Assert.Equal(1, model.Confirmation!.UnchangedProducts);
+    }
+
+    [Fact]
     public async Task Manual_import_of_blocked_selection_returns_products_without_import_audit()
     {
         await using var db = await CreateDbAsync();

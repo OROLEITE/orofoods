@@ -582,9 +582,11 @@
                         <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Selecionados</span><strong>@Model.Confirmation.Selected</strong></article>
                         <article class="wmc-summary-new admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Novos</span><strong>@Model.Confirmation.NewProducts</strong></article>
                         <article class="wmc-summary-existing admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Existentes</span><strong>@Model.Confirmation.ExistingProducts</strong></article>
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Com alterações</span><strong>@Model.Confirmation.ChangedProducts</strong></article>
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Sem alterações</span><strong>@Model.Confirmation.UnchangedProducts</strong></article>
                         <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--warning"><span>Bloqueados</span><strong>@blockedCount</strong></article>
                     </div>
-                    <details class="wmc-confirmation-details">
+                    <details class="wmc-confirmation-details" open>
                         <summary>Ver alterações, preços e unidades oficiais</summary>
                         <ul>
                             @foreach (var item in (Model.Candidates ?? []).Where(item => (Model.SelectedProductKeys ?? []).Contains($"{item.BrandCode}:{item.WmcCode}", StringComparer.Ordinal)))
@@ -596,6 +598,7 @@
                                         <ul class="wmc-change-list">
                                             <li><strong>Preço anterior:</strong> @(pricePreview.CurrentBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
                                             <li><strong>Novo preço WMC:</strong> @(pricePreview.ProposedPrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
+                                            <li><strong>Unidade do preço WMC:</strong> @(pricePreview.SourceUnitCode ?? "—")</li>
                                         </ul>
                                     }
                                     @if (item.Changes.Count > 0)
@@ -614,8 +617,19 @@
                         @foreach (var key in Model.SelectedProductKeys ?? []) { <input type="hidden" name="selectedProductKeys" value="@key" /> }
                         <input type="hidden" name="simulationValidated" value="true" />
                         <a asp-action="Wmc" class="btn btn-outline-secondary">Cancelar</a>
-                        <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="false" checked /> Importar somente novos</label>
-                        <label class="wmc-reimport-choice"><input type="radio" name="reimportExisting" value="true" /> Atualizar existentes</label>
+                        <div class="wmc-reimport-choice" data-wmc-reimport-state="disabled" aria-live="polite">
+                            Atualização de existentes desativada: produtos já cadastrados serão mantidos sem alteração.
+                        </div>
+                        <label class="wmc-reimport-choice">
+                            <input type="checkbox" name="reimportExisting" value="true" data-wmc-reimport-toggle />
+                            <span>
+                                <strong>Atualizar produtos já cadastrados conforme WMC</strong>
+                                <small>Se marcado, preços e dados cadastrais autorizados poderão ser alterados.</small>
+                            </span>
+                        </label>
+                        <div class="wmc-reimport-choice" data-wmc-reimport-authorization aria-live="polite">
+                            Autorização para existentes desativada antes do envio.
+                        </div>
                         <button class="btn btn-primary" type="submit" data-wmc-confirm-submit>Importar Produtos Selecionados</button>
                     </form>
                 }
@@ -766,6 +780,26 @@
     (() => {
         const form = document.getElementById('wmcImportConfirmationForm');
         if (!form) return;
+        const toggle = form.querySelector('[data-wmc-reimport-toggle]');
+        const state = form.querySelector('[data-wmc-reimport-state]');
+        const authorization = form.querySelector('[data-wmc-reimport-authorization]');
+        const updateAuthorizationState = () => {
+            const enabled = toggle?.checked === true;
+            if (state) {
+                state.dataset.wmcReimportState = enabled ? 'enabled' : 'disabled';
+                state.textContent = enabled
+                    ? 'Atualização de existentes ativada: preços e dados cadastrais autorizados poderão ser alterados.'
+                    : 'Atualização de existentes desativada: produtos já cadastrados serão mantidos sem alteração.';
+            }
+            if (authorization) {
+                authorization.dataset.wmcAuthorization = enabled ? 'enabled' : 'disabled';
+                authorization.textContent = enabled
+                    ? 'Autorização para existentes ativada antes do envio.'
+                    : 'Autorização para existentes desativada antes do envio.';
+            }
+        };
+        toggle?.addEventListener('change', updateAuthorizationState);
+        updateAuthorizationState();
         let submitted = false;
         form.addEventListener('submit', event => {
             if (submitted) {

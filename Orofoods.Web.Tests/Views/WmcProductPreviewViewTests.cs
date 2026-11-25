@@ -134,7 +134,7 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("var productKey = $\"{item.BrandCode}:{item.WmcCode}\";", view, StringComparison.Ordinal);
         Assert.Contains("@(isSelected ? \"checked\" : null)", view, StringComparison.Ordinal);
         Assert.Contains("item.Selectable ? null : \"disabled\"", view, StringComparison.Ordinal);
-        Assert.Contains("Atualizar existentes", view, StringComparison.Ordinal);
+        Assert.Contains("Atualizar produtos j\u00e1 cadastrados conforme WMC", view, StringComparison.Ordinal);
 
         var tableContainer = view
             .Split('\n')
@@ -182,6 +182,35 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Motivo do bloqueio", view, StringComparison.Ordinal);
         Assert.Contains("const review = document.getElementById('wmcReviewSelection')", view, StringComparison.Ordinal);
         Assert.Contains("if (review) review.disabled = selectedCount === 0", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Confirmation_requires_explicit_reimport_authorization_and_shows_change_summary()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var controller = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Controllers", "IntegrationsController.cs"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var confirmationCss = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "wmc-integration-center.css"));
+
+        Assert.Contains("string? reimportExisting", controller, StringComparison.Ordinal);
+        Assert.Contains("string.IsNullOrWhiteSpace(reimportExisting)", controller, StringComparison.Ordinal);
+        Assert.Contains("type=\"checkbox\"", view, StringComparison.Ordinal);
+        Assert.Contains("name=\"reimportExisting\"", view, StringComparison.Ordinal);
+        Assert.Contains("value=\"true\"", view, StringComparison.Ordinal);
+        Assert.Contains("Atualizar produtos j\u00e1 cadastrados conforme WMC", view, StringComparison.Ordinal);
+        Assert.Contains("pre\u00e7os e dados cadastrais autorizados", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-reimport-state", view, StringComparison.Ordinal);
+        Assert.Contains("Atualiza\u00e7\u00e3o de existentes desativada", view, StringComparison.Ordinal);
+        Assert.Contains("Autoriza\u00e7\u00e3o para existentes ativada", view, StringComparison.Ordinal);
+        Assert.Contains("data-wmc-reimport-authorization", view, StringComparison.Ordinal);
+        Assert.Contains(".wmc-confirmation-actions .wmc-reimport-choice", confirmationCss, StringComparison.Ordinal);
+        Assert.Contains("[data-wmc-reimport-state=\"disabled\"]", confirmationCss, StringComparison.Ordinal);
+        Assert.DoesNotContain("type=\"radio\" name=\"reimportExisting\"", view, StringComparison.Ordinal);
+        Assert.Contains("Com altera\u00e7\u00f5es", view, StringComparison.Ordinal);
+        Assert.Contains("Sem altera\u00e7\u00f5es", view, StringComparison.Ordinal);
+        Assert.Contains("ChangedProducts", view, StringComparison.Ordinal);
+        Assert.Contains("UnchangedProducts", view, StringComparison.Ordinal);
+        Assert.Contains("<details class=\"wmc-confirmation-details\" open>", view, StringComparison.Ordinal);
     }
 
     [Fact]
