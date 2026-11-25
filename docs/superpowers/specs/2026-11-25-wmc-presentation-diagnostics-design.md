@@ -1,7 +1,7 @@
 # WMC confirmation presentation and diagnostic design
 
-**Status:** Approved for implementation  
-**Base:** `origin/main` at `08e532cd031aa1fc5fdd7a1d373ce61973c7b883`  
+**Status:** Approved for implementation
+**Base:** `origin/main` at `08e532cd031aa1fc5fdd7a1d373ce61973c7b883`
 **Worktree:** `C:\Dev\Orofoods\.worktrees\review-wmc-import-stock-ui`
 
 ## Intent
