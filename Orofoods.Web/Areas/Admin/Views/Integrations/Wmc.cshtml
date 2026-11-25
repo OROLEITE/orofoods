@@ -624,6 +624,7 @@
                 else if (Model.Step == "Confirmation" && Model.Confirmation is not null)
                 {
                     var blockedCount = Model.Confirmation.Blocked;
+                    var confirmationPresentations = Model.ConfirmationPresentations ?? [];
                     <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Etapa 3</span><h4>Confirmar importação · @Model.SelectedBrandDescription</h4></div></header>
                     <p class="wmc-stage-copy">Revise o resumo antes de gravar os produtos selecionados no catálogo local.</p>
                     <div class="wmc-import-summary" aria-label="Resumo da seleção">
@@ -641,6 +642,9 @@
                             @foreach (var item in (Model.Candidates ?? []).Where(item => (Model.SelectedProductKeys ?? []).Contains($"{item.BrandCode}:{item.WmcCode}", StringComparer.Ordinal)))
                             {
                                 var unitProposal = item.UnitProposal;
+                                var presentation = confirmationPresentations.FirstOrDefault(candidate =>
+                                    string.Equals(candidate.Candidate.BrandCode, item.BrandCode, StringComparison.Ordinal)
+                                    && string.Equals(candidate.Candidate.WmcCode, item.WmcCode, StringComparison.Ordinal));
                                 <li class="wmc-confirmation-product">
                                     <div class="wmc-confirmation-product-heading"><strong>@item.WmcCode</strong> · @item.Name · @item.Status</div>
                                     @if (item.PriceProposal is { } pricePreview)
@@ -704,6 +708,149 @@
                                         </div>
                                     }
                                     @if (item.PriceProposal is { SafeToApply: false } priceProposal) { <small class="text-warning d-block">Preço bloqueado: @priceProposal.BlockReason</small> }
+                                    @if (presentation is not null)
+                                    {
+                                        var wmcStock = presentation.WmcStock;
+                                        var localState = presentation.LocalState;
+                                        <section class="wmc-confirmation-diagnostic-sections" aria-label="Diagnóstico somente leitura de @item.WmcCode">
+                                            <article class="wmc-confirmation-diagnostic-section wmc-confirmation-diagnostic-section--wmc">
+                                                <h5>Dados oficiais WMC</h5>
+                                                <dl class="wmc-confirmation-diagnostic-grid">
+                                                    <dt>Situação WMC</dt>
+                                                    <dd>@(item.Situation ?? "—")</dd>
+                                                    <dt>Unidade principal</dt>
+                                                    <dd>@(item.Unit ?? unitProposal?.PrimaryUnitCode ?? "—")</dd>
+                                                    <dt>Unidade master</dt>
+                                                    <dd>@(unitProposal?.MasterUnitCode ?? "—")</dd>
+                                                    <dt>Preço oficial (PRECOVENDA)</dt>
+                                                    <dd>@(item.PrecoVenda?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</dd>
+                                                    <dt>EAN</dt>
+                                                    <dd>@(unitProposal?.ProposedEan13 ?? unitProposal?.ProposedEan ?? item.Ean ?? "—")</dd>
+                                                    <dt>DUN</dt>
+                                                    <dd>@(unitProposal?.ProposedDun14 ?? "—")</dd>
+                                                    <dt>Fator principal</dt>
+                                                    <dd>@(unitProposal?.ProposedPrimaryFactor?.ToString() ?? "—")</dd>
+                                                    <dt>Fator master</dt>
+                                                    <dd>@(unitProposal?.ProposedMasterFactor?.ToString() ?? "—")</dd>
+                                                    <dt>QTDE_EMB</dt>
+                                                    <dd>@(unitProposal?.ProposedPackageQuantity?.ToString() ?? "—")</dd>
+                                                    <dt>QTDE_CONV</dt>
+                                                    <dd>@(unitProposal?.ProposedConversionQuantity?.ToString() ?? "—")</dd>
+                                                </dl>
+                                                <div class="wmc-confirmation-diagnostic-subheading">Unidades alternativas oficiais</div>
+                                                @if (item.Units.Count > 0)
+                                                {
+                                                    <ul class="wmc-confirmation-diagnostic-list">
+                                                        @foreach (var unit in item.Units)
+                                                        {
+                                                            <li><strong>@unit.UnitCode</strong> · fator @(unit.Factor?.ToString() ?? "—") · @(unit.IsMaster ? "master" : "alternativa") · EAN/DUN @(unit.Barcode ?? "—")</li>
+                                                        }
+                                                    </ul>
+                                                }
+                                                else
+                                                {
+                                                    <p class="wmc-confirmation-diagnostic-muted">Não informado pelo WMC.</p>
+                                                }
+                                                <div class="wmc-confirmation-stock-block">
+                                                    <strong>Estoque WMC</strong>
+                                                    @if (wmcStock is null)
+                                                    {
+                                                        <p class="wmc-confirmation-diagnostic-muted">Indisponível: consulta WMC não retornou este produto (@presentation.WmcReadStatus).</p>
+                                                    }
+                                                    else
+                                                    {
+                                                        <dl class="wmc-confirmation-diagnostic-grid">
+                                                            <dt>Disponível</dt>
+                                                            <dd>@(wmcStock.EstoqueDisponivel?.ToString() ?? "indisponível")</dd>
+                                                            <dt>Atual</dt>
+                                                            <dd>@(wmcStock.EstoqueAtual?.ToString() ?? "indisponível")</dd>
+                                                            <dt>Reservado</dt>
+                                                            <dd>@(wmcStock.EstoqueReservado?.ToString() ?? "indisponível")</dd>
+                                                            <dt>Semântica da unidade</dt>
+                                                            <dd>@(wmcStock.UnitSemantics ?? "não confirmada")</dd>
+                                                        </dl>
+                                                        <small class="wmc-confirmation-diagnostic-source">Fonte: Consulta WMC somente leitura · @wmcStock.ConsultedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss zzz")</small>
+                                                    }
+                                                </div>
+                                            </article>
+                                            <article class="wmc-confirmation-diagnostic-section wmc-confirmation-diagnostic-section--local">
+                                                <h5>Cadastro Orofoods</h5>
+                                                @if (localState is null)
+                                                {
+                                                    <p class="wmc-confirmation-diagnostic-muted">Ainda não cadastrado no catálogo Orofoods.</p>
+                                                    <p class="wmc-confirmation-diagnostic-source">Leitura local: @presentation.LocalReadStatus.</p>
+                                                }
+                                                else
+                                                {
+                                                    <dl class="wmc-confirmation-diagnostic-grid">
+                                                        <dt>Produto</dt>
+                                                        <dd>#@localState.ProductId · @(localState.Name ?? localState.Sku ?? "—")</dd>
+                                                        <dt>Unidade local</dt>
+                                                        <dd>@(localState.Unit ?? "—")</dd>
+                                                        <dt>Unidade comercial</dt>
+                                                        <dd>@(localState.CommercialUnitCode ?? "—")</dd>
+                                                        <dt>Unidade logística</dt>
+                                                        <dd>@(localState.LogisticsUnitCode ?? "—")</dd>
+                                                        <dt>EAN / EAN13</dt>
+                                                        <dd>@(localState.Ean13 ?? localState.Ean ?? "—")</dd>
+                                                        <dt>DUN14</dt>
+                                                        <dd>@(localState.Dun14 ?? "—")</dd>
+                                                        <dt>Unidade WMC alternativa</dt>
+                                                        <dd>@(localState.WmcAlternateUnit ?? "—")</dd>
+                                                        <dt>QTDE_EMB / QTDE_CONV</dt>
+                                                        <dd>@(localState.WmcPackageQuantity?.ToString() ?? "—") / @(localState.WmcConversionQuantity?.ToString() ?? "—")</dd>
+                                                    </dl>
+                                                    <small class="wmc-confirmation-diagnostic-source">Leitura local: @presentation.LocalReadStatus · sem alterações persistidas por esta consulta.</small>
+                                                }
+                                            </article>
+                                            <article class="wmc-confirmation-diagnostic-section wmc-confirmation-diagnostic-section--commercial">
+                                                <h5>Disponibilidade comercial</h5>
+                                                @if (localState is null)
+                                                {
+                                                    <p class="wmc-confirmation-diagnostic-muted">Estado atual: novo produto, ainda não cadastrado.</p>
+                                                    <p>@(presentation.NewProductExpectedState ?? "Após a importação manual, o estado cadastral será reavaliado pelo fluxo autorizado.")</p>
+                                                }
+                                                else
+                                                {
+                                                    <dl class="wmc-confirmation-diagnostic-grid">
+                                                        <dt data-field="IsWmcActive">Situação WMC (IsWmcActive)</dt>
+                                                        <dd>@(localState.IsWmcActive ? "Ativo" : "Inativo")</dd>
+                                                        <dt data-field="IsActive">Situação Orofoods (IsActive)</dt>
+                                                        <dd>@(localState.IsActive ? "Ativo" : "Inativo")</dd>
+                                                        <dt data-field="IsAvailable">Disponibilidade para venda (IsAvailable)</dt>
+                                                        <dd>@(localState.IsAvailable ? "Disponível" : "Indisponível")</dd>
+                                                        <dt data-field="WmcInitialLoadReady">Carga inicial pronta (WmcInitialLoadReady)</dt>
+                                                        <dd>@(localState.WmcInitialLoadReady ? "Pronta" : "Pendente")</dd>
+                                                        <dt>Estoque local</dt>
+                                                        <dd>
+                                                            @if (localState.QuantityOnHand is null)
+                                                            {
+                                                                <span>Indisponível (@localState.InventoryReadStatus)</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>Físico @localState.QuantityOnHand · reservado @(localState.QuantityReserved ?? 0) · disponível @(localState.AvailableQuantity ?? 0)</span>
+                                                            }
+                                                        </dd>
+                                                    </dl>
+                                                }
+                                                <div class="wmc-confirmation-diagnostic-subheading">Motivos conhecidos</div>
+                                                @if (presentation.KnownBlockers.Count > 0)
+                                                {
+                                                    <ul class="wmc-confirmation-diagnostic-list wmc-confirmation-diagnostic-list--warning">
+                                                        @foreach (var blocker in presentation.KnownBlockers)
+                                                        {
+                                                            <li>@blocker</li>
+                                                        }
+                                                    </ul>
+                                                }
+                                                else
+                                                {
+                                                    <p class="wmc-confirmation-diagnostic-muted">Nenhum bloqueio conhecido nesta consulta.</p>
+                                                }
+                                            </article>
+                                        </section>
+                                    }
                                 </li>
                             }
                         </ul>
