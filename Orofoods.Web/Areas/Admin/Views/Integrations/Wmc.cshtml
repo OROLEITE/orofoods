@@ -646,7 +646,7 @@
                                     string.Equals(candidate.Candidate.BrandCode, item.BrandCode, StringComparison.Ordinal)
                                     && string.Equals(candidate.Candidate.WmcCode, item.WmcCode, StringComparison.Ordinal));
                                 <li class="wmc-confirmation-product">
-                                    <div class="wmc-confirmation-product-heading"><strong>@item.WmcCode</strong> · @item.Name · @item.Status</div>
+                                    <div class="wmc-confirmation-product-heading"><strong>@item.WmcCode</strong> · @item.Name · @(item.BrandName ?? item.BrandCode ?? "Marca não informada") · @item.Status</div>
                                     @if (item.PriceProposal is { } pricePreview)
                                     {
                                         <dl class="wmc-confirmation-data-grid">
