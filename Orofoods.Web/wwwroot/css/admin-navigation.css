@@ -122,6 +122,53 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     scrollbar-width: thin;
 }
 
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference {
+    margin-top: 14px;
+    padding: 12px 10px 4px;
+    border-top: 1px solid var(--nav-border);
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--admin-sidebar-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__select,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__select {
+    display: block;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 30px 6px 10px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-item-hover);
+    color: var(--nav-text-active);
+    font: 600 13px 'DM Sans', sans-serif;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__select:focus-visible,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__select:focus-visible {
+    border-color: var(--admin-sidebar-accent);
+    outline: 2px solid var(--nav-focus);
+    outline-offset: 2px;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__hint,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__hint {
+    display: block;
+    margin-top: 6px;
+    color: var(--admin-sidebar-muted);
+    font-size: 11px;
+    line-height: 1.35;
+}
+
 .admin-nav-cluster {
     position: relative;
     margin-top: 2px;
@@ -273,6 +320,31 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     overflow: visible;
 }
 
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference {
+    padding-inline: 4px;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference__label,
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference__hint,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference__label,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference__hint {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference__select,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-shell.admin-sidebar-collapsed .admin-sidebar .admin-navigation-preference__select {
+    width: 56px;
+    padding-inline: 5px;
+    font-size: 11px;
+}
+
 .admin-sidebar-collapsed .admin-nav-link,
 .admin-sidebar-collapsed .admin-nav-group {
     justify-content: center;
@@ -328,6 +400,11 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
 
 .admin-offcanvas .admin-nav {
     overflow: visible;
+}
+
+html:not([data-theme="dark"]) body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-offcanvas .admin-navigation-preference,
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-offcanvas .admin-navigation-preference {
+    margin-top: 18px;
 }
 
 @media (max-width: 1199.98px) {
@@ -402,6 +479,21 @@ html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page))
     border-color: #334155;
     background: #1E293B;
     color: #CBD5E1;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference {
+    border-color: #334155;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__select {
+    border-color: #475569;
+    background: #1E293B;
+    color: #F8FAFC;
+}
+
+html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) :is(.admin-sidebar, .admin-offcanvas) .admin-navigation-preference__select:focus-visible {
+    border-color: #38BDF8;
+    outline-color: #38BDF8;
 }
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-toggle:hover,
 html[data-theme="dark"] body.admin-authenticated:not(:has(.whatsapp-inbox-page)) .admin-sidebar-toggle:focus-visible,
