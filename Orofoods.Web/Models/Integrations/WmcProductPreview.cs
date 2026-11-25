@@ -34,7 +34,9 @@ public sealed record WmcPreviewPageModel(
     WmcProductImportSummary? Confirmation = null,
     WmcProductImportResult? ImportResult = null,
     DateTime? LastProductSyncAt = null,
-    IReadOnlyList<string>? SelectedProductKeys = null);
+    IReadOnlyList<string>? SelectedProductKeys = null,
+    string ProductSituationFilter = WmcProductSituationFilter.Active,
+    WmcProductImportCounters? ProductCounters = null);
 
 public sealed record WmcBrandPreviewResult(
     short Code,
@@ -83,6 +85,39 @@ public sealed record WmcProductPriceImportProposal(
     bool SafeToApply,
     string? BlockReason);
 
+public static class WmcProductSituationFilter
+{
+    public const string Active = "active";
+    public const string Inactive = "inactive";
+    public const string All = "all";
+
+    public static string Normalize(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        Inactive => Inactive,
+        All => All,
+        _ => Active
+    };
+}
+
+public sealed record WmcProductImportCounters(
+    int Total,
+    int Active,
+    int Inactive,
+    int Eligible,
+    int Blocked)
+{
+    public static WmcProductImportCounters From(IEnumerable<WmcProductImportCandidate> candidates)
+    {
+        var rows = candidates.ToArray();
+        return new(
+            rows.Length,
+            rows.Count(candidate => candidate.SituationKind == WmcProductSituationFilter.Active),
+            rows.Count(candidate => candidate.SituationKind == WmcProductSituationFilter.Inactive),
+            rows.Count(candidate => candidate.Selectable),
+            rows.Count(candidate => !candidate.Selectable));
+    }
+}
+
 public sealed record WmcProductImportCandidate(
     string WmcCode,
     string Name,
@@ -102,7 +137,8 @@ public sealed record WmcProductImportCandidate(
     string? LocalCommercialUnit = null,
     WmcProductUnitImportProposal? UnitProposal = null,
     WmcProductPriceImportProposal? PriceProposal = null,
-    string? BlockReason = null);
+    string? BlockReason = null,
+    string SituationKind = "unknown");
 
 public sealed record WmcProductFieldChange(string Field, string CurrentValue, string WmcValue);
 

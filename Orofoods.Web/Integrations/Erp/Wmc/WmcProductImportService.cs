@@ -71,6 +71,7 @@ public sealed class WmcProductImportService(
                 ? targetPrice
                 : (decimal?)null;
             var priceProposal = BuildPriceProposal(product, row, targetPriceTable, currentTargetPrice);
+            var situation = WmcProductRules.ClassifySituation(row.Situacao);
             var changes = product is null
                 ? Array.Empty<WmcProductFieldChange>()
                 : GetChanges(product, row, unitProposal, priceProposal)
@@ -89,12 +90,14 @@ public sealed class WmcProductImportService(
                 || (product is null && string.IsNullOrWhiteSpace(row.Produto))
                 || invalidUnitSnapshot;
             var changed = changes.Length > 0;
-            var invalidSituation = WmcProductRules.ClassifySituation(row.Situacao) == WmcProductSituation.Unknown;
+            var inactiveSituation = situation == WmcProductSituation.Inactive;
+            var invalidSituation = situation == WmcProductSituation.Unknown;
             var status = duplicate ? "Inválido" : product is null ? "Novo" : changed ? "Com alterações" : "Já cadastrado";
             if (!unitProposal.SafeToApply) status += $" · unidades bloqueadas: {unitProposal.BlockReason}";
             if (!priceProposal.SafeToApply) status += $" · preço bloqueado: {priceProposal.BlockReason}";
             if (invalidSituation) status += " · situação inválida; venda bloqueada ao reimportar";
             var blockReasons = new List<string>();
+            if (inactiveSituation) blockReasons.Add("Produto inativo no WMC; somente consulta.");
             if (string.IsNullOrWhiteSpace(code)) blockReasons.Add("código WMC ausente");
             if (duplicateKeys.Contains($"{brandCode}:{code}")) blockReasons.Add("código WMC duplicado na marca");
             if (crossBrandCodes.Contains(code)) blockReasons.Add("código WMC aparece em mais de uma marca selecionada");
@@ -138,7 +141,13 @@ public sealed class WmcProductImportService(
                 LocalCommercialUnit: localCommercialUnit,
                 UnitProposal: unitProposal,
                 PriceProposal: priceProposal,
-                BlockReason: blockReasons.Count == 0 ? null : string.Join("; ", blockReasons));
+                BlockReason: blockReasons.Count == 0 ? null : string.Join("; ", blockReasons),
+                SituationKind: situation switch
+                {
+                    WmcProductSituation.Active => WmcProductSituationFilter.Active,
+                    WmcProductSituation.Inactive => WmcProductSituationFilter.Inactive,
+                    _ => "unknown"
+                });
         }).ToArray();
     }
 
@@ -165,6 +174,9 @@ public sealed class WmcProductImportService(
                 throw new InvalidOperationException("A seleção mudou ou contém produto inválido/duplicado. Atualize a prévia.");
 
             var requestedRows = codes.Select(code => byCode[code][0]).ToArray();
+            if (requestedRows.Any(row => WmcProductRules.ClassifySituation(row.Situacao) == WmcProductSituation.Inactive))
+                throw new InvalidOperationException("A importação manual não aceita produtos WMC inativos (SITUACAO = 'I').");
+
             var unitsByCode = requestedRows.ToDictionary(
                 row => WmcProductRules.NormalizeCode(row.CodProduto),
                 row => ReadAndValidateUnits(row),
