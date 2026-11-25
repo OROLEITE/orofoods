@@ -32,7 +32,9 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Preço proposto", view, StringComparison.Ordinal);
         Assert.Contains("PriceProposal", view, StringComparison.Ordinal);
         Assert.Contains("Preço Orofoods atual", view, StringComparison.Ordinal);
-        Assert.Contains("Preço WMC / será persistido", view, StringComparison.Ordinal);
+        Assert.Contains("Preço WMC proposto", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Preço WMC / será persistido", view, StringComparison.Ordinal);
+        Assert.Contains("dados de produtos existentes só serão aplicados", view, StringComparison.Ordinal);
         Assert.Contains("Selecionar todos", view, StringComparison.Ordinal);
         Assert.Contains("Desmarcar todos", view, StringComparison.Ordinal);
         Assert.Contains("wmcProductSelectionCount", view, StringComparison.Ordinal);
@@ -236,9 +238,16 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("ProposedDun14", view, StringComparison.Ordinal);
         Assert.Contains("ProposedPackageQuantity", view, StringComparison.Ordinal);
         Assert.Contains("ProposedConversionQuantity", view, StringComparison.Ordinal);
+        Assert.Contains("proposal.ProposedEan13 ?? proposal.ProposedEan ?? \"—\"", view, StringComparison.Ordinal);
+        Assert.Contains("proposal.ProposedDun14 ?? \"—\"", view, StringComparison.Ordinal);
+        Assert.Contains("proposal.ProposedPrimaryFactor?.ToString() ?? \"—\"", view, StringComparison.Ordinal);
+        Assert.Contains("proposal.ProposedMasterFactor?.ToString() ?? \"—\"", view, StringComparison.Ordinal);
+        Assert.Contains("proposal.ProposedPackageQuantity?.ToString() ?? \"—\"", view, StringComparison.Ordinal);
+        Assert.Contains("proposal.ProposedConversionQuantity?.ToString() ?? \"—\"", view, StringComparison.Ordinal);
         Assert.Contains("Unidades alternativas", view, StringComparison.Ordinal);
         Assert.Contains("<details class=\"wmc-confirmation-details\" open>", view, StringComparison.Ordinal);
         Assert.Contains(".wmc-confirmation-product", confirmationCss, StringComparison.Ordinal);
+        Assert.Contains(".wmc-confirmation-persistence-note", confirmationCss, StringComparison.Ordinal);
         Assert.Contains("var(--wmc-surface-muted)", confirmationCss, StringComparison.Ordinal);
     }
 

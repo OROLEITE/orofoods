@@ -635,7 +635,8 @@
                         <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--warning"><span>Bloqueados</span><strong>@blockedCount</strong></article>
                     </div>
                     <details class="wmc-confirmation-details" open>
-                        <summary>Ver dados WMC, diferenças e valores a persistir</summary>
+                        <summary>Ver dados WMC, diferenças e propostas de importação</summary>
+                        <p class="wmc-confirmation-persistence-note">Produtos novos elegíveis serão importados após a confirmação; dados de produtos existentes só serão aplicados se a autorização abaixo estiver marcada.</p>
                         <ul>
                             @foreach (var item in (Model.Candidates ?? []).Where(item => (Model.SelectedProductKeys ?? []).Contains($"{item.BrandCode}:{item.WmcCode}", StringComparer.Ordinal)))
                             {
@@ -647,7 +648,7 @@
                                         <dl class="wmc-confirmation-data-grid">
                                             <dt>Preço Orofoods atual</dt>
                                             <dd>@(pricePreview.CurrentBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</dd>
-                                            <dt>Preço WMC / será persistido</dt>
+                                            <dt>Preço WMC proposto</dt>
                                             <dd>@(pricePreview.ProposedPrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</dd>
                                             <dt>Unidade do preço WMC</dt>
                                             <dd>@(pricePreview.SourceUnitCode ?? "—")</dd>
