@@ -76,9 +76,12 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("UnitProposal", view, StringComparison.Ordinal);
         Assert.Contains("EAN atual", view, StringComparison.Ordinal);
         Assert.Contains("DUN proposto", view, StringComparison.Ordinal);
-        Assert.Contains("Fator PC atual", view, StringComparison.Ordinal);
-        Assert.Contains("Fator CX atual", view, StringComparison.Ordinal);
-        Assert.Contains("Fator CX proposto", view, StringComparison.Ordinal);
+        Assert.Contains("Unidade principal", view, StringComparison.Ordinal);
+        Assert.Contains("Unidade master", view, StringComparison.Ordinal);
+        Assert.Contains("Fator unidade principal atual", view, StringComparison.Ordinal);
+        Assert.Contains("Fator unidade master atual", view, StringComparison.Ordinal);
+        Assert.Contains("QTDE_EMB atual", view, StringComparison.Ordinal);
+        Assert.Contains("QTDE_CONV proposto", view, StringComparison.Ordinal);
         Assert.Contains("wmc-import-summary", view, StringComparison.Ordinal);
         Assert.Contains("Confirmar importação", view, StringComparison.Ordinal);
         Assert.DoesNotContain("wmc-preview-form", view, StringComparison.Ordinal);
@@ -121,8 +124,8 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Dados WMC · Firebird, somente leitura", view, StringComparison.Ordinal);
         Assert.Contains("Cadastro Orofoods · local, somente leitura", view, StringComparison.Ordinal);
         Assert.Contains("PRODUTOS.PRECOVENDA", view, StringComparison.Ordinal);
-        Assert.Contains("EAN da PC", view, StringComparison.Ordinal);
-        Assert.Contains("DUN da CX", view, StringComparison.Ordinal);
+        Assert.Contains("EAN unidade principal", view, StringComparison.Ordinal);
+        Assert.Contains("Código da master", view, StringComparison.Ordinal);
         Assert.Contains("UNMASTER=", view, StringComparison.Ordinal);
         Assert.DoesNotContain("Aplicação de preços bloqueada", view, StringComparison.Ordinal);
         Assert.Contains("Será gravado no preço base", view, StringComparison.Ordinal);
@@ -130,7 +133,7 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("R$ 1,00/PCT é placeholder local de homologação", view, StringComparison.Ordinal);
         Assert.Contains("PrecoVenda: row.PrecoVenda", importService, StringComparison.Ordinal);
         Assert.Contains("LocalBasePrice: product?.BasePrice", importService, StringComparison.Ordinal);
-        Assert.Contains("ApplyMappedFields(current, row)", importService, StringComparison.Ordinal);
+        Assert.Contains("ApplyMappedFields(current, row, unitProposal)", importService, StringComparison.Ordinal);
     }
 
     [Fact]

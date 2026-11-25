@@ -431,7 +431,7 @@
                         <div class="wmc-product-table-scroll" id="wmcProductPreviewTable" data-wmc-product-preview-table>
                             <table class="wmc-import-table">
                                 <caption class="visually-hidden">Produtos da marca selecionada</caption>
-                                <thead><tr><th class="wmc-column--selection" data-wmc-column="selection">Sel.</th><th class="wmc-column--wmc-code" data-wmc-column="wmc-code">Código WMC</th><th class="wmc-column--product" data-wmc-column="product">Produto</th><th class="wmc-column--unit" data-wmc-column="unit">Unidade / CX</th><th class="wmc-column--situation" data-wmc-column="situation">Situação</th><th class="wmc-column--status" data-wmc-column="status">Status</th><th class="wmc-column--wmc-price" data-wmc-column="wmc-price">Preço WMC</th><th class="wmc-column--orofoods-price" data-wmc-column="orofoods-price">Preço Orofoods</th><th class="wmc-column--details" data-wmc-column="details">Detalhes</th></tr></thead>
+                                <thead><tr><th class="wmc-column--selection" data-wmc-column="selection">Sel.</th><th class="wmc-column--wmc-code" data-wmc-column="wmc-code">Código WMC</th><th class="wmc-column--product" data-wmc-column="product">Produto</th><th class="wmc-column--unit" data-wmc-column="unit">Unidade / master</th><th class="wmc-column--situation" data-wmc-column="situation">Situação</th><th class="wmc-column--status" data-wmc-column="status">Status</th><th class="wmc-column--wmc-price" data-wmc-column="wmc-price">Preço WMC</th><th class="wmc-column--orofoods-price" data-wmc-column="orofoods-price">Preço Orofoods</th><th class="wmc-column--details" data-wmc-column="details">Detalhes</th></tr></thead>
                                 <tbody id="wmcProductRows">
                                 @{ var renderedBrand = ""; }
                                 @foreach (var item in Model.Candidates.OrderBy(item => item.BrandName).ThenBy(item => item.WmcCode))
@@ -442,8 +442,12 @@
                                         <tr class="wmc-product-brand-group"><th colspan="9">@currentBrand</th></tr>
                                         renderedBrand = currentBrand;
                                     }
-                                    var masterUnit = item.Units.FirstOrDefault(unit => unit.IsMaster);
-                                    var primaryUnit = item.Units.FirstOrDefault(unit => !unit.IsMaster) ?? item.Units.FirstOrDefault();
+                                    var masterUnit = item.UnitProposal?.MasterUnitCode is { } masterCode
+                                        ? item.Units.FirstOrDefault(unit => string.Equals(unit.UnitCode, masterCode, StringComparison.OrdinalIgnoreCase))
+                                        : item.Units.FirstOrDefault(unit => unit.IsMaster);
+                                    var primaryUnit = item.UnitProposal?.PrimaryUnitCode is { } primaryCode
+                                        ? item.Units.FirstOrDefault(unit => string.Equals(unit.UnitCode, primaryCode, StringComparison.OrdinalIgnoreCase))
+                                        : item.Units.FirstOrDefault(unit => !unit.IsMaster) ?? item.Units.FirstOrDefault();
                                     var statusKind = item.Selectable ? (item.ProductId is null ? "new" : "existing") : "blocked";
                                     var statusLabel = item.SituationKind == WmcProductSituationFilter.Inactive
                                         ? "Inativo (consulta)"
@@ -456,7 +460,7 @@
                                         <td class="wmc-column--selection"><input type="checkbox" name="selectedProductKeys" value="@productKey" data-wmc-product-checkbox @(isSelected ? "checked" : null) @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
                                         <td class="wmc-column--wmc-code wmc-code-cell"><strong>@item.WmcCode</strong></td>
                                         <td class="wmc-column--product wmc-description-cell" title="@item.Name">@item.Name</td>
-                                        <td class="wmc-column--unit wmc-unit-cell">@(primaryUnit is null ? "—" : $"{primaryUnit.UnitCode} / CX {masterUnit?.Factor?.ToString() ?? "—"}")</td>
+                                        <td class="wmc-column--unit wmc-unit-cell">@(primaryUnit is null ? "—" : masterUnit is null ? primaryUnit.UnitCode : $"{primaryUnit.UnitCode} / {masterUnit.UnitCode} {masterUnit.Factor?.ToString() ?? "—"}")</td>
                                         <td class="wmc-column--situation">@(item.Situation ?? "—")</td>
                                         <td class="wmc-column--status"><span class="wmc-product-status wmc-product-status--@statusKind">@statusLabel</span></td>
                                         <td class="wmc-column--wmc-price wmc-price-cell">
@@ -539,20 +543,32 @@
                                                     @if (item.UnitProposal is { } proposal)
                                                     {
                                                         <dl class="wmc-unit-proposal">
+                                                            <dt>Unidade principal</dt>
+                                                            <dd>@(proposal.PrimaryUnitCode ?? "—")</dd>
+                                                            <dt>Unidade master</dt>
+                                                            <dd>@(proposal.MasterUnitCode ?? "—")</dd>
                                                             <dt>EAN atual</dt>
                                                             <dd>@(proposal.CurrentEan13 ?? "—") &rarr; @(proposal.ProposedEan13 ?? "—")</dd>
                                                             <dt>DUN atual</dt>
                                                             <dd>@(proposal.CurrentDun14 ?? "—")</dd>
                                                             <dt>DUN proposto</dt>
                                                             <dd>@(proposal.ProposedDun14 ?? "—")</dd>
-                                                            <dt>Fator PC atual</dt>
-                                                            <dd>@(proposal.CurrentPcFactor?.ToString() ?? "—")</dd>
-                                                            <dt>Fator PC proposto</dt>
-                                                            <dd>@(proposal.ProposedPcFactor?.ToString() ?? "—")</dd>
-                                                            <dt>Fator CX atual</dt>
-                                                            <dd>@(proposal.CurrentCxFactor?.ToString() ?? "—")</dd>
-                                                            <dt>Fator CX proposto</dt>
-                                                            <dd>@(proposal.ProposedCxFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator unidade principal atual</dt>
+                                                            <dd>@(proposal.CurrentPrimaryFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator unidade principal proposto</dt>
+                                                            <dd>@(proposal.ProposedPrimaryFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator unidade master atual</dt>
+                                                            <dd>@(proposal.CurrentMasterFactor?.ToString() ?? "—")</dd>
+                                                            <dt>Fator unidade master proposto</dt>
+                                                            <dd>@(proposal.ProposedMasterFactor?.ToString() ?? "—")</dd>
+                                                            <dt>QTDE_EMB atual</dt>
+                                                            <dd>@(proposal.CurrentPackageQuantity?.ToString() ?? "—")</dd>
+                                                            <dt>QTDE_EMB proposto</dt>
+                                                            <dd>@(proposal.ProposedPackageQuantity?.ToString() ?? "—")</dd>
+                                                            <dt>QTDE_CONV atual</dt>
+                                                            <dd>@(proposal.CurrentConversionQuantity?.ToString() ?? "—")</dd>
+                                                            <dt>QTDE_CONV proposto</dt>
+                                                            <dd>@(proposal.ProposedConversionQuantity?.ToString() ?? "—")</dd>
                                                         </dl>
                                                         @if (!proposal.SafeToApply)
                                                         {
@@ -565,7 +581,11 @@
                                                             @foreach (var unit in item.Units)
                                                             {
                                                                 var unitCode = unit.UnitCode.Trim().ToUpperInvariant();
-                                                                var barcodeLabel = unitCode switch { "PC" => "EAN da PC", "CX" => "DUN da CX", _ => "CODBARRAS" };
+                                                                var barcodeLabel = unit.IsMaster
+                                                                    ? "Código da master"
+                                                                    : string.Equals(unitCode, item.UnitProposal?.PrimaryUnitCode, StringComparison.OrdinalIgnoreCase)
+                                                                        ? "EAN unidade principal"
+                                                                        : "CODBARRAS";
                                                                 <li><strong>@unitCode</strong> · FATOR @(unit.Factor?.ToString() ?? "—") · @barcodeLabel: @(unit.Barcode ?? "—") · UNMASTER=@(unit.IsMaster ? "true" : "false")</li>
                                                             }
                                                         </ul>
