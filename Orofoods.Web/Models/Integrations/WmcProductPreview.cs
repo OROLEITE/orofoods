@@ -36,7 +36,8 @@ public sealed record WmcPreviewPageModel(
     DateTime? LastProductSyncAt = null,
     IReadOnlyList<string>? SelectedProductKeys = null,
     string ProductSituationFilter = WmcProductSituationFilter.Active,
-    WmcProductImportCounters? ProductCounters = null);
+    WmcProductImportCounters? ProductCounters = null,
+    IReadOnlyList<WmcProductConfirmationPresentation>? ConfirmationPresentations = null);
 
 public sealed record WmcBrandPreviewResult(
     short Code,

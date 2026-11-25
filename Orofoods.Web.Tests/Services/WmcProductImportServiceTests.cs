@@ -197,6 +197,53 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
+    public async Task Manual_import_creates_active_avicao_product_as_cadastral_active_but_not_available_for_sale()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "101900", "Produto AVIAÇÃO", "A", "UN", 5, 5,
+            Ean: "7899679701348", UnAltern: "CX", QtdeEmbalagem: 24, QtdeConversao: 24, PrecoVenda: 10,
+            Units: [new("UN", "UNIDADE", 1m, "7899679701348", false), new("CX", "CAIXA", 24m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["101900"], true);
+
+        var product = await db.Products.AsNoTracking().SingleAsync(item => item.WmcCode == "101900");
+        Assert.Equal("Succeeded", result.Status);
+        Assert.True(product.IsActive);
+        Assert.False(product.IsAvailable);
+        Assert.True(product.IsWmcActive);
+        Assert.True(product.WmcStockAvailable);
+        Assert.False(product.WmcInitialLoadReady);
+        Assert.Contains(result.Items, item => item.Detail?.Contains("local-product-disabled", StringComparison.Ordinal) == true);
+        Assert.Empty(await db.ProductInventories.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Manual_reimport_does_not_change_existing_product_activation_when_wmc_is_active()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "101900", Sku = "101900", Name = "Produto local", ProductCategoryId = 1,
+            IsActive = false, IsAvailable = false, IsWmcActive = false, WmcStockAvailable = false,
+            BasePrice = 2m
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "101900", "Produto AVIAÇÃO", "A", "UN", 5, 5, PrecoVenda: 10,
+            Units: [new("UN", "UNIDADE", 1m, "7899679701348", false), new("CX", "CAIXA", 24m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["101900"], true);
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.False(product.IsActive);
+        Assert.False(product.IsAvailable);
+        Assert.True(product.IsWmcActive);
+    }
+
+    [Fact]
     public async Task Preview_explains_duplicate_master_as_a_real_unit_inconsistency()
     {
         await using var db = await TestDbContextFactory.CreateAsync();

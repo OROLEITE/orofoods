@@ -131,6 +131,26 @@ public sealed class WmcProductSelectionControllerTests
     }
 
     [Fact]
+    public async Task Confirmation_composes_read_only_presentation_without_changing_selection_or_reimport_contract()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcConfirmSelection(
+            [Aviacao], null, [$"{Aviacao}:101900"], null, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        var presentation = Assert.Single(model.ConfirmationPresentations!);
+        Assert.Equal("101900", presentation.Candidate.WmcCode);
+        Assert.True(presentation.IsNewProduct);
+        Assert.Equal("available", presentation.WmcReadStatus);
+        Assert.Null(presentation.LocalState);
+        Assert.Equal(["205:101900"], model.SelectedProductKeys);
+        Assert.Equal("Confirmation", model.Step);
+    }
+
+    [Fact]
     public async Task Product_stage_defaults_to_active_and_reports_global_situation_counters()
     {
         await using var db = await CreateDbAsync();
@@ -329,6 +349,7 @@ public sealed class WmcProductSelectionControllerTests
             brandReader,
             new WmcProductPreviewService(db, productReader),
             new WmcProductImportService(db, productReader),
+            new WmcProductConfirmationPresentationService(db, productReader),
             NullLogger<IntegrationsController>.Instance,
             null!,
             null!,

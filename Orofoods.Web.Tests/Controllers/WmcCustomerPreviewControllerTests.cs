@@ -34,6 +34,7 @@ public sealed class WmcCustomerPreviewControllerTests
             new EmptyBrandReader(),
             new WmcProductPreviewService(db, products),
             new WmcProductImportService(db, products, Options.Create(new WmcPriceImportOptions())),
+            new WmcProductConfirmationPresentationService(db, products),
             NullLogger<IntegrationsController>.Instance,
             null!,
             null!,

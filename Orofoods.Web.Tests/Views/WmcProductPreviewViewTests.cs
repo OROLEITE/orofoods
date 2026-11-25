@@ -252,6 +252,32 @@ public sealed class WmcProductPreviewViewTests
     }
 
     [Fact]
+    public void Confirmation_cards_show_read_only_wmc_local_and_commercial_diagnostics()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));
+        var view = File.ReadAllText(Path.Combine(root, "Areas", "Admin", "Views", "Integrations", "Wmc.cshtml"));
+        var confirmationCss = File.ReadAllText(Path.Combine(root, "wwwroot", "css", "wmc-integration-center.css"));
+
+        Assert.Contains("Model.ConfirmationPresentations", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-confirmation-diagnostic-sections", view, StringComparison.Ordinal);
+        Assert.Contains("Dados oficiais WMC", view, StringComparison.Ordinal);
+        Assert.Contains("Cadastro Orofoods", view, StringComparison.Ordinal);
+        Assert.Contains("Disponibilidade comercial", view, StringComparison.Ordinal);
+        Assert.Contains("Estoque WMC", view, StringComparison.Ordinal);
+        Assert.Contains("Estoque local", view, StringComparison.Ordinal);
+        Assert.Contains("IsWmcActive", view, StringComparison.Ordinal);
+        Assert.Contains("IsActive", view, StringComparison.Ordinal);
+        Assert.Contains("IsAvailable", view, StringComparison.Ordinal);
+        Assert.Contains("WmcInitialLoadReady", view, StringComparison.Ordinal);
+        Assert.Contains("Consulta WMC somente leitura", view, StringComparison.Ordinal);
+        Assert.Contains("não confirmada", view, StringComparison.Ordinal);
+        Assert.Contains("Após a importação manual", view, StringComparison.Ordinal);
+        Assert.Contains("Motivos conhecidos", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-confirmation-diagnostic-sections", confirmationCss, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 900px)", confirmationCss, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Wmc_brand_grid_uses_admin_dark_tokens_for_rows_selection_and_scrollbar()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Orofoods.Web"));

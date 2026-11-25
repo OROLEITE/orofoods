@@ -24,6 +24,7 @@ public class IntegrationsController(
     IWmcBrandReader wmcBrandReader,
     WmcProductPreviewService wmcProductPreviewService,
     WmcProductImportService wmcProductImportService,
+    WmcProductConfirmationPresentationService wmcProductConfirmationPresentationService,
     ILogger<IntegrationsController> logger,
     IHostEnvironment hostEnvironment,
     WmcBimboStagingImportService wmcBimboStagingImportService,
@@ -339,12 +340,15 @@ public class IntegrationsController(
         }
         var selected = validation.Selected;
         var summary = WmcProductImportSummary.From(candidates, selected);
+        var confirmationPresentations = await wmcProductConfirmationPresentationService
+            .BuildAsync(selectedBrands, selected, cancellationToken);
         SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Confirmation", selectedBrands.Length == 1 ? selectedBrands[0] : null,
             DescribeSelection(brands, selectedBrands), candidates, SelectedProductCodes: selected.Select(item => item.WmcCode).ToArray(), Confirmation: summary,
             SelectedProductKeys: requested,
             ProductSituationFilter: normalizedSituationFilter,
-            ProductCounters: WmcProductImportCounters.From(candidates)));
+            ProductCounters: WmcProductImportCounters.From(candidates),
+            ConfirmationPresentations: confirmationPresentations));
     }
 
     [HttpPost]
