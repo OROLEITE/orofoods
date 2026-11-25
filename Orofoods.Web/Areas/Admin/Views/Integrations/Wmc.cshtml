@@ -829,7 +829,7 @@
                                                             }
                                                             else
                                                             {
-                                                                <span>Físico @localState.QuantityOnHand · reservado @(localState.QuantityReserved ?? 0) · disponível @(localState.AvailableQuantity ?? 0)</span>
+                                                                <span>Físico @localState.QuantityOnHand · reservado @(localState.QuantityReserved?.ToString() ?? "indisponível") · disponível @(localState.AvailableQuantity?.ToString() ?? "indisponível")</span>
                                                             }
                                                         </dd>
                                                     </dl>
