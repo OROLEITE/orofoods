@@ -338,8 +338,7 @@ public class IntegrationsController(
                 ProductCounters: WmcProductImportCounters.From(candidates)));
         }
         var selected = validation.Selected;
-        var summary = new WmcProductImportSummary(selected.Count, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
-            selected.Count(item => item.Changes.Count > 0), selected.Count(item => item.Changes.Count == 0));
+        var summary = WmcProductImportSummary.From(candidates, selected);
         SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Confirmation", selectedBrands.Length == 1 ? selectedBrands[0] : null,
             DescribeSelection(brands, selectedBrands), candidates, SelectedProductCodes: selected.Select(item => item.WmcCode).ToArray(), Confirmation: summary,
