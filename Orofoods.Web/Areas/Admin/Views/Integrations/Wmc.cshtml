@@ -623,37 +623,85 @@
                 }
                 else if (Model.Step == "Confirmation" && Model.Confirmation is not null)
                 {
-                    var blockedCount = Model.Candidates?.Count(item => !item.Selectable) ?? 0;
+                    var blockedCount = Model.Confirmation.Blocked;
                     <header class="wmc-stage-heading"><div><span class="wmc-step-kicker">Etapa 3</span><h4>Confirmar importação · @Model.SelectedBrandDescription</h4></div></header>
                     <p class="wmc-stage-copy">Revise o resumo antes de gravar os produtos selecionados no catálogo local.</p>
                     <div class="wmc-import-summary" aria-label="Resumo da seleção">
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Consultados</span><strong>@Model.Confirmation.Consulted</strong></article>
                         <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Selecionados</span><strong>@Model.Confirmation.Selected</strong></article>
                         <article class="wmc-summary-new admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Novos</span><strong>@Model.Confirmation.NewProducts</strong></article>
-                        <article class="wmc-summary-existing admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Existentes</span><strong>@Model.Confirmation.ExistingProducts</strong></article>
-                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Com alterações</span><strong>@Model.Confirmation.ChangedProducts</strong></article>
-                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Sem alterações</span><strong>@Model.Confirmation.UnchangedProducts</strong></article>
+                        <article class="wmc-summary-existing admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Existentes com alterações</span><strong>@Model.Confirmation.ExistingWithChanges</strong></article>
+                        <article class="admin-dashboard-indicator admin-dashboard-indicator--normal"><span>Existentes sem alterações</span><strong>@Model.Confirmation.ExistingWithoutChanges</strong></article>
                         <article class="wmc-summary-blocked admin-dashboard-indicator admin-dashboard-indicator--warning"><span>Bloqueados</span><strong>@blockedCount</strong></article>
                     </div>
                     <details class="wmc-confirmation-details" open>
-                        <summary>Ver alterações, preços e unidades oficiais</summary>
+                        <summary>Ver dados WMC, diferenças e valores a persistir</summary>
                         <ul>
                             @foreach (var item in (Model.Candidates ?? []).Where(item => (Model.SelectedProductKeys ?? []).Contains($"{item.BrandCode}:{item.WmcCode}", StringComparer.Ordinal)))
                             {
-                                <li>
-                                    <strong>@item.WmcCode</strong> · @item.Status
+                                var unitProposal = item.UnitProposal;
+                                <li class="wmc-confirmation-product">
+                                    <div class="wmc-confirmation-product-heading"><strong>@item.WmcCode</strong> · @item.Name · @item.Status</div>
                                     @if (item.PriceProposal is { } pricePreview)
                                     {
-                                        <ul class="wmc-change-list">
-                                            <li><strong>Preço anterior:</strong> @(pricePreview.CurrentBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
-                                            <li><strong>Novo preço WMC:</strong> @(pricePreview.ProposedPrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</li>
-                                            <li><strong>Unidade do preço WMC:</strong> @(pricePreview.SourceUnitCode ?? "—")</li>
+                                        <dl class="wmc-confirmation-data-grid">
+                                            <dt>Preço Orofoods atual</dt>
+                                            <dd>@(pricePreview.CurrentBasePrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</dd>
+                                            <dt>Preço WMC / será persistido</dt>
+                                            <dd>@(pricePreview.ProposedPrice?.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "—")</dd>
+                                            <dt>Unidade do preço WMC</dt>
+                                            <dd>@(pricePreview.SourceUnitCode ?? "—")</dd>
+                                        </dl>
+                                    }
+                                    @if (unitProposal is { } proposal)
+                                    {
+                                        <dl class="wmc-confirmation-data-grid">
+                                            <dt>Unidade principal</dt>
+                                            <dd>@(proposal.PrimaryUnitCode ?? "—")</dd>
+                                            <dt>Unidade master</dt>
+                                            <dd>@(proposal.MasterUnitCode ?? "—")</dd>
+                                            <dt>EAN oficial (atual → WMC)</dt>
+                                            <dd>@(proposal.CurrentEan13 ?? proposal.CurrentEan ?? "—") → @(proposal.ProposedEan13 ?? proposal.ProposedEan ?? "—")</dd>
+                                            <dt>DUN oficial (atual → WMC)</dt>
+                                            <dd>@(proposal.CurrentDun14 ?? "—") → @(proposal.ProposedDun14 ?? "—")</dd>
+                                            <dt>Fator oficial principal (atual → WMC)</dt>
+                                            <dd>@(proposal.CurrentPrimaryFactor?.ToString() ?? "—") → @(proposal.ProposedPrimaryFactor?.ToString() ?? "—")</dd>
+                                            <dt>Fator oficial master (atual → WMC)</dt>
+                                            <dd>@(proposal.CurrentMasterFactor?.ToString() ?? "—") → @(proposal.ProposedMasterFactor?.ToString() ?? "—")</dd>
+                                            <dt>QTDE_EMB (atual → WMC)</dt>
+                                            <dd>@(proposal.CurrentPackageQuantity?.ToString() ?? "—") → @(proposal.ProposedPackageQuantity?.ToString() ?? "—")</dd>
+                                            <dt>QTDE_CONV (atual → WMC)</dt>
+                                            <dd>@(proposal.CurrentConversionQuantity?.ToString() ?? "—") → @(proposal.ProposedConversionQuantity?.ToString() ?? "—")</dd>
+                                        </dl>
+                                        @if (!proposal.SafeToApply)
+                                        {
+                                            <small class="text-warning d-block">Unidades bloqueadas: @proposal.BlockReason</small>
+                                        }
+                                    }
+                                    @if (item.Units.Count > 0)
+                                    {
+                                        <div class="wmc-confirmation-unit-heading">Unidades alternativas e master oficiais</div>
+                                        <ul class="wmc-confirmation-unit-list">
+                                            @foreach (var unit in item.Units)
+                                            {
+                                                <li><strong>@unit.UnitCode</strong> · @(string.IsNullOrWhiteSpace(unit.Description) ? "—" : unit.Description) · FATOR @(unit.Factor?.ToString() ?? "—") · @if (unit.IsMaster) { <span>master</span> } else { <span>alternativa</span> } · CÓDIGO @(unit.Barcode ?? "—")</li>
+                                            }
                                         </ul>
                                     }
-                                    @if (item.Changes.Count > 0)
+                                    @if (item.ProductId is not null)
                                     {
-                                        <ul class="wmc-change-list">@foreach (var change in item.Changes) { <li><strong>@change.Field:</strong> @change.CurrentValue &rarr; @change.WmcValue</li> }</ul>
+                                        <div class="wmc-confirmation-differences">
+                                            <strong>Diferenças detectadas pelo serviço</strong>
+                                            @if (item.Changes.Count > 0)
+                                            {
+                                                <ul class="wmc-change-list">@foreach (var change in item.Changes) { <li><strong>@change.Field:</strong> @change.CurrentValue &rarr; @change.WmcValue</li> }</ul>
+                                            }
+                                            else
+                                            {
+                                                <small>Nenhuma diferença detectada entre o cadastro Orofoods e o snapshot WMC.</small>
+                                            }
+                                        </div>
                                     }
-                                    @if (item.UnitProposal is { SafeToApply: false } unitProposal) { <small class="text-warning d-block">Unidades bloqueadas: @unitProposal.BlockReason</small> }
                                     @if (item.PriceProposal is { SafeToApply: false } priceProposal) { <small class="text-warning d-block">Preço bloqueado: @priceProposal.BlockReason</small> }
                                 </li>
                             }

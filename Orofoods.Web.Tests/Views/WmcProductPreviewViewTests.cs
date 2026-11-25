@@ -31,8 +31,8 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("simulationValidated", view, StringComparison.Ordinal);
         Assert.Contains("Preço proposto", view, StringComparison.Ordinal);
         Assert.Contains("PriceProposal", view, StringComparison.Ordinal);
-        Assert.Contains("Preço anterior", view, StringComparison.Ordinal);
-        Assert.Contains("Novo preço WMC", view, StringComparison.Ordinal);
+        Assert.Contains("Preço Orofoods atual", view, StringComparison.Ordinal);
+        Assert.Contains("Preço WMC / será persistido", view, StringComparison.Ordinal);
         Assert.Contains("Selecionar todos", view, StringComparison.Ordinal);
         Assert.Contains("Desmarcar todos", view, StringComparison.Ordinal);
         Assert.Contains("wmcProductSelectionCount", view, StringComparison.Ordinal);
@@ -219,11 +219,27 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains(".wmc-confirmation-actions .wmc-reimport-choice", confirmationCss, StringComparison.Ordinal);
         Assert.Contains("[data-wmc-reimport-state=\"disabled\"]", confirmationCss, StringComparison.Ordinal);
         Assert.DoesNotContain("type=\"radio\" name=\"reimportExisting\"", view, StringComparison.Ordinal);
-        Assert.Contains("Com altera\u00e7\u00f5es", view, StringComparison.Ordinal);
-        Assert.Contains("Sem altera\u00e7\u00f5es", view, StringComparison.Ordinal);
-        Assert.Contains("ChangedProducts", view, StringComparison.Ordinal);
-        Assert.Contains("UnchangedProducts", view, StringComparison.Ordinal);
+        Assert.Contains("Existentes com", view, StringComparison.Ordinal);
+        Assert.Contains("Existentes sem", view, StringComparison.Ordinal);
+        Assert.Contains("Consultados", view, StringComparison.Ordinal);
+        Assert.Contains("Model.Confirmation.Consulted", view, StringComparison.Ordinal);
+        Assert.Contains("Model.Confirmation.Selected", view, StringComparison.Ordinal);
+        Assert.Contains("Model.Confirmation.Blocked", view, StringComparison.Ordinal);
+        Assert.Contains("ExistingWithChanges", view, StringComparison.Ordinal);
+        Assert.Contains("ExistingWithoutChanges", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-confirmation-product", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-confirmation-data-grid", view, StringComparison.Ordinal);
+        Assert.Contains("wmc-confirmation-unit-list", view, StringComparison.Ordinal);
+        Assert.Contains("ProposedPrimaryFactor", view, StringComparison.Ordinal);
+        Assert.Contains("ProposedMasterFactor", view, StringComparison.Ordinal);
+        Assert.Contains("ProposedEan13", view, StringComparison.Ordinal);
+        Assert.Contains("ProposedDun14", view, StringComparison.Ordinal);
+        Assert.Contains("ProposedPackageQuantity", view, StringComparison.Ordinal);
+        Assert.Contains("ProposedConversionQuantity", view, StringComparison.Ordinal);
+        Assert.Contains("Unidades alternativas", view, StringComparison.Ordinal);
         Assert.Contains("<details class=\"wmc-confirmation-details\" open>", view, StringComparison.Ordinal);
+        Assert.Contains(".wmc-confirmation-product", confirmationCss, StringComparison.Ordinal);
+        Assert.Contains("var(--wmc-surface-muted)", confirmationCss, StringComparison.Ordinal);
     }
 
     [Fact]

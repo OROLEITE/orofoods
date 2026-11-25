@@ -92,7 +92,7 @@ public sealed class WmcProductSelectionControllerTests
         var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
         Assert.Equal("Confirmation", model.Step);
         Assert.NotNull(model.Confirmation);
-        Assert.Equal(1, model.Confirmation!.ExistingProducts);
+        Assert.Equal(1, model.Confirmation!.ExistingWithChanges);
         Assert.Equal(0, model.Confirmation.NewProducts);
         Assert.Equal(1, model.Confirmation.ExistingWithChanges);
         Assert.Equal(0, model.Confirmation.ExistingWithoutChanges);
@@ -239,8 +239,7 @@ public sealed class WmcProductSelectionControllerTests
         Assert.DoesNotContain(candidate.Changes, change => change.Field == "Pre\u00e7o base");
         Assert.Equal(10m, candidate.PriceProposal!.CurrentBasePrice);
         Assert.Equal(10m, candidate.PriceProposal.ProposedPrice);
-        Assert.Equal(1, model.Confirmation!.UnchangedProducts);
-        Assert.Equal(0, model.Confirmation.ExistingWithChanges);
+        Assert.Equal(0, model.Confirmation!.ExistingWithChanges);
         Assert.Equal(1, model.Confirmation.ExistingWithoutChanges);
     }
 
