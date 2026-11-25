@@ -221,8 +221,9 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcProducts(short[]? brandCodes, short? brandCode, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcProducts(short[]? brandCodes, short? brandCode, CancellationToken cancellationToken, string? situationFilter = null)
     {
+        var normalizedSituationFilter = WmcProductSituationFilter.Normalize(situationFilter);
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
         ViewBag.WmcBrandQueryState = "available";
         var selectedCodes = ResolveBrandCodes(brandCodes, brandCode);
@@ -235,7 +236,9 @@ public class IntegrationsController(
         SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedCodes, null, [], "Products", selectedCodes.Length == 1 ? selectedCodes[0] : null,
             DescribeSelection(brands, selectedCodes), candidates,
-            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken),
+            ProductSituationFilter: normalizedSituationFilter,
+            ProductCounters: WmcProductImportCounters.From(candidates)));
     }
 
     [HttpPost]
@@ -312,8 +315,9 @@ public class IntegrationsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcConfirmSelection(short[]? brandCodes, short? brandCode, string[]? selectedProductKeys, string[]? selectedProductCodes, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcConfirmSelection(short[]? brandCodes, short? brandCode, string[]? selectedProductKeys, string[]? selectedProductCodes, CancellationToken cancellationToken, string? situationFilter = null)
     {
+        var normalizedSituationFilter = WmcProductSituationFilter.Normalize(situationFilter);
         var brands = await wmcBrandReader.GetAllAsync(cancellationToken);
         ViewBag.WmcBrandQueryState = "available";
         var selectedBrands = ResolveBrandCodes(brandCodes, brandCode);
@@ -329,7 +333,9 @@ public class IntegrationsController(
             ModelState.AddModelError("", validation.ErrorMessage!);
             SetWmcViewState("available");
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Products", selectedBrands.Length == 1 ? selectedBrands[0] : null,
-                DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested));
+                DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested,
+                ProductSituationFilter: normalizedSituationFilter,
+                ProductCounters: WmcProductImportCounters.From(candidates)));
         }
         var selected = validation.Selected;
         var summary = new WmcProductImportSummary(selected.Count, selected.Count(item => item.ProductId is null), selected.Count(item => item.ProductId is not null),
@@ -337,13 +343,16 @@ public class IntegrationsController(
         SetWmcViewState("available");
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Confirmation", selectedBrands.Length == 1 ? selectedBrands[0] : null,
             DescribeSelection(brands, selectedBrands), candidates, SelectedProductCodes: selected.Select(item => item.WmcCode).ToArray(), Confirmation: summary,
-            SelectedProductKeys: requested));
+            SelectedProductKeys: requested,
+            ProductSituationFilter: normalizedSituationFilter,
+            ProductCounters: WmcProductImportCounters.From(candidates)));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WmcImportProducts(short[]? brandCodes, short? brandCode, string[]? selectedProductKeys, string[]? selectedProductCodes, string? reimportExisting, bool simulationValidated, CancellationToken cancellationToken)
+    public async Task<IActionResult> WmcImportProducts(short[]? brandCodes, short? brandCode, string[]? selectedProductKeys, string[]? selectedProductCodes, string? reimportExisting, bool simulationValidated, CancellationToken cancellationToken, string? situationFilter = null)
     {
+        var normalizedSituationFilter = WmcProductSituationFilter.Normalize(situationFilter);
         var normalizedReimportExisting = string.IsNullOrWhiteSpace(reimportExisting)
             ? "false"
             : reimportExisting.Trim().ToLowerInvariant();
@@ -366,7 +375,9 @@ public class IntegrationsController(
             ModelState.AddModelError("", validation.ErrorMessage!);
             SetWmcViewState("available");
             return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Products", selectedBrands.Length == 1 ? selectedBrands[0] : null,
-                DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested));
+                DescribeSelection(brands, selectedBrands), candidates, SelectedProductKeys: requested,
+                ProductSituationFilter: normalizedSituationFilter,
+                ProductCounters: WmcProductImportCounters.From(candidates)));
         }
         var validSelection = validation.Selected;
         var selections = validSelection.GroupBy(candidate => short.Parse(candidate.BrandCode!))
@@ -377,7 +388,9 @@ public class IntegrationsController(
         return View(nameof(Wmc), new WmcPreviewPageModel(brands, selectedBrands, null, [], "Result", selectedBrands.Length == 1 ? selectedBrands[0] : null,
             DescribeSelection(brands, selectedBrands), Candidates: refreshedCandidates, SelectedProductCodes: validSelection.Select(item => item.WmcCode).ToArray(), ImportResult: result,
             SelectedProductKeys: requested,
-            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken)));
+            LastProductSyncAt: await wmcProductImportService.GetLastProductImportAsync(cancellationToken),
+            ProductSituationFilter: normalizedSituationFilter,
+            ProductCounters: WmcProductImportCounters.From(refreshedCandidates)));
     }
 
     private static short[] ResolveBrandCodes(short[]? brandCodes, short? brandCode) =>
@@ -427,6 +440,8 @@ public class IntegrationsController(
             .ToArray();
         if (selected.Length != requested.Count)
             return SelectionValidation.Invalid("A prévia de produtos está desatualizada. Consulte os produtos novamente antes de continuar.");
+        if (selected.Any(candidate => WmcProductRules.ClassifySituation(candidate.Situation) == WmcProductSituation.Inactive))
+            return SelectionValidation.Invalid("A sele\u00e7\u00e3o cont\u00e9m produto inativo ou com situa\u00e7\u00e3o WMC inv\u00e1lida.");
         if (selected.Any(candidate => !candidate.Selectable))
             return SelectionValidation.Invalid("A seleção contém produto bloqueado. Remova-o e selecione apenas produtos elegíveis.");
 

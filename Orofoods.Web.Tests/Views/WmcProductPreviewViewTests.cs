@@ -36,6 +36,15 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("Selecionar todos", view, StringComparison.Ordinal);
         Assert.Contains("Desmarcar todos", view, StringComparison.Ordinal);
         Assert.Contains("wmcProductSelectionCount", view, StringComparison.Ordinal);
+        Assert.Contains("name=\"situationFilter\"", view, StringComparison.Ordinal);
+        Assert.Contains("option value=\"active\"", view, StringComparison.Ordinal);
+        Assert.Contains("option value=\"inactive\"", view, StringComparison.Ordinal);
+        Assert.Contains("option value=\"all\"", view, StringComparison.Ordinal);
+        Assert.Contains("data-situation-kind", view, StringComparison.Ordinal);
+        Assert.Contains(">Ativos<", view, StringComparison.Ordinal);
+        Assert.Contains(">Inativos<", view, StringComparison.Ordinal);
+        Assert.Contains(">Eleg", view, StringComparison.Ordinal);
+        Assert.Contains(">Bloqueados<", view, StringComparison.Ordinal);
         Assert.Contains("data-wmc-product-checkbox", view, StringComparison.Ordinal);
         Assert.Contains("wmcProductPreviousPage", view, StringComparison.Ordinal);
         Assert.Contains("wmcProductNextPage", view, StringComparison.Ordinal);
@@ -134,6 +143,7 @@ public sealed class WmcProductPreviewViewTests
         Assert.Contains("var productKey = $\"{item.BrandCode}:{item.WmcCode}\";", view, StringComparison.Ordinal);
         Assert.Contains("@(isSelected ? \"checked\" : null)", view, StringComparison.Ordinal);
         Assert.Contains("item.Selectable ? null : \"disabled\"", view, StringComparison.Ordinal);
+        Assert.Contains("SituationKind", view, StringComparison.Ordinal);
         Assert.Contains("Atualizar produtos j\u00e1 cadastrados conforme WMC", view, StringComparison.Ordinal);
 
         var tableContainer = view

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Orofoods.Web.Integrations.Erp.Wmc;
 using Orofoods.Web.Models.Catalog;
 using Orofoods.Web.Models.Inventory;
+using Orofoods.Web.Models.Integrations;
 using Orofoods.Web.Models.Pricing;
 using Orofoods.Web.Tests.Infrastructure;
 
@@ -142,6 +143,33 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
+    public async Task Multi_brand_preview_keeps_inactive_rows_as_read_only_and_reports_global_counters()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new BrandReader(new Dictionary<short, IReadOnlyList<WmcProductRecord>>
+        {
+            [104] = [ValidRow("ACTIVE-BIMBO", "BIMBO", "Ativo BIMBO"), InactiveRow("INACTIVE-BIMBO", "BIMBO", "Inativo BIMBO")],
+            [107] = [ValidRow("ACTIVE-ITALAC", "ITALAC", "Ativo ITALAC"), InactiveRow("INACTIVE-ITALAC", "ITALAC", "Inativo ITALAC")]
+        });
+
+        var candidates = await new WmcProductImportService(db, reader).GetCandidatesAsync((short[])[104, 107]);
+        var counters = WmcProductImportCounters.From(candidates);
+
+        Assert.Equal(4, counters.Total);
+        Assert.Equal(2, counters.Active);
+        Assert.Equal(2, counters.Inactive);
+        Assert.Equal(2, counters.Eligible);
+        Assert.Equal(2, counters.Blocked);
+        Assert.All(candidates.Where(candidate => candidate.SituationKind == "inactive"), candidate =>
+        {
+            Assert.False(candidate.Selectable);
+            Assert.Contains("inativo", candidate.BlockReason, StringComparison.OrdinalIgnoreCase);
+        });
+        Assert.Contains(candidates, candidate => candidate.BrandCode == "104" && candidate.SituationKind == "inactive");
+        Assert.Contains(candidates, candidate => candidate.BrandCode == "107" && candidate.SituationKind == "inactive");
+    }
+
+    [Fact]
     public async Task Preview_blocks_invalid_price_before_manual_import()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -167,6 +195,42 @@ public sealed class WmcProductImportServiceTests
 
         Assert.False(candidate.Selectable);
         Assert.Contains("situação WMC inválida", candidate.BlockReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Direct_import_revalidates_inactive_situation_before_writing()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([InactiveRow("INACTIVE", "BIMBO", "Produto inativo")]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(104, ["INACTIVE"], reimportExisting: true);
+
+        Assert.Equal("Failed", result.Status);
+        Assert.Contains("ativo", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(await db.Products.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Multi_brand_import_rejects_inactive_selection_without_writing_the_other_brand()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new BrandReader(new Dictionary<short, IReadOnlyList<WmcProductRecord>>
+        {
+            [104] = [ValidRow("ACTIVE-BIMBO", "BIMBO", "Ativo BIMBO")],
+            [107] = [InactiveRow("INACTIVE-ITALAC", "ITALAC", "Inativo ITALAC")]
+        });
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(
+            new Dictionary<short, IReadOnlyCollection<string>>
+            {
+                [104] = ["ACTIVE-BIMBO"],
+                [107] = ["INACTIVE-ITALAC"]
+            }, reimportExisting: true);
+
+        Assert.Equal("Failed", result.Status);
+        Assert.Empty(await db.Products.AsNoTracking().Where(product => product.WmcCode != null).ToListAsync());
     }
 
     [Fact]
@@ -272,6 +336,9 @@ public sealed class WmcProductImportServiceTests
     private static WmcProductRecord ValidRow(string code, string brand, string name, decimal price = 10m) =>
         new(code, name, "A", "PC", 5, 5, PrecoVenda: price, CodMarca: brand == "BIMBO" ? "104" : "107", Marca: brand,
             Units: [new("PC", "PACOTE", 1, "7899679701348", false), new("CX", "CAIXA", 18, "17899679701345", true)]);
+
+    private static WmcProductRecord InactiveRow(string code, string brand, string name) =>
+        ValidRow(code, brand, name) with { Situacao = "I" };
 
     [Fact]
     public async Task Reimport_maps_valid_official_pc_and_cx_identifiers_without_touching_price_or_stock()

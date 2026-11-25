@@ -348,10 +348,11 @@
 
                 else if (Model.Step == "Products" && Model.Candidates is not null)
                 {
+                    var productCounters = Model.ProductCounters ?? WmcProductImportCounters.From(Model.Candidates);
                     var eligibleCandidates = Model.Candidates.Where(item => item.Selectable).ToArray();
                     var newCandidates = eligibleCandidates.Count(item => item.ProductId is null);
                     var existingCandidates = eligibleCandidates.Count(item => item.ProductId is not null);
-                    var blockedCandidates = Model.Candidates.Count(item => !item.Selectable);
+                    var blockedCandidates = productCounters.Blocked;
                     var selectedProductKeys = (Model.SelectedProductKeys ?? []).ToHashSet(StringComparer.Ordinal);
                     var selectedEligibleCount = eligibleCandidates.Count(item => selectedProductKeys.Contains($"{item.BrandCode}:{item.WmcCode}", StringComparer.Ordinal));
                     <header class="wmc-stage-heading">
@@ -359,12 +360,15 @@
                         <a asp-action="Wmc" class="btn btn-outline-secondary btn-sm">Trocar marcas</a>
                     </header>
                     <div class="wmc-import-summary" aria-label="Resumo não sobreposto dos produtos consultados">
-                        <article><span>Produtos consultados</span><strong>@Model.Candidates.Count</strong></article>
+                        <article><span>Produtos consultados (total)</span><strong>@productCounters.Total</strong></article>
+                        <article><span>Ativos</span><strong>@productCounters.Active</strong></article>
+                        <article><span>Inativos</span><strong>@productCounters.Inactive</strong></article>
+                        <article><span>Elegíveis</span><strong>@productCounters.Eligible</strong></article>
                         <article class="wmc-summary-new"><span>Elegíveis novos</span><strong>@newCandidates</strong></article>
                         <article class="wmc-summary-existing"><span>Elegíveis existentes</span><strong>@existingCandidates</strong></article>
                         <article class="wmc-summary-blocked"><span>Bloqueados</span><strong>@blockedCandidates</strong></article>
                     </div>
-                    <p class="wmc-stage-copy">As categorias acima não se sobrepõem: novos e existentes compõem os elegíveis; elegíveis e bloqueados compõem os consultados.</p>
+                    <p class="wmc-stage-copy">Ativos e inativos são contados pela situação WMC; somente ativos sem bloqueios compõem os elegíveis.</p>
                     @if (newCandidates == 0 && existingCandidates == 0)
                     {
                         <div class="alert alert-warning" role="alert">Nenhum produto está elegível para importação. A ação permanece indisponível até que os bloqueios sejam tratados.</div>
@@ -391,11 +395,31 @@
                             </div>
                             <div class="wmc-product-status-field">
                                 <label for="wmcProductStatusFilter">Filtrar situação</label>
-                                <select class="form-select" id="wmcProductStatusFilter">
-                                    <option value="all">Todos</option>
-                                    <option value="new">Novos</option>
-                                    <option value="existing">Existentes</option>
-                                    <option value="blocked">Bloqueados</option>
+                                <select class="form-select" id="wmcProductStatusFilter" name="situationFilter">
+                                    @if (Model.ProductSituationFilter == WmcProductSituationFilter.Active)
+                                    {
+                                        <option value="active" selected="selected">Ativos</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="active">Ativos</option>
+                                    }
+                                    @if (Model.ProductSituationFilter == WmcProductSituationFilter.Inactive)
+                                    {
+                                        <option value="inactive" selected="selected">Inativos</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="inactive">Inativos</option>
+                                    }
+                                    @if (Model.ProductSituationFilter == WmcProductSituationFilter.All)
+                                    {
+                                        <option value="all" selected="selected">Todos</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="all">Todos</option>
+                                    }
                                 </select>
                             </div>
                             <div class="wmc-product-selection-actions" role="group" aria-label="Seleção de produtos">
@@ -421,10 +445,14 @@
                                     var masterUnit = item.Units.FirstOrDefault(unit => unit.IsMaster);
                                     var primaryUnit = item.Units.FirstOrDefault(unit => !unit.IsMaster) ?? item.Units.FirstOrDefault();
                                     var statusKind = item.Selectable ? (item.ProductId is null ? "new" : "existing") : "blocked";
-                                    var statusLabel = statusKind switch { "new" => "Novo", "existing" => "Existente", _ => "Bloqueado" };
+                                    var statusLabel = item.SituationKind == WmcProductSituationFilter.Inactive
+                                        ? "Inativo (consulta)"
+                                        : statusKind switch { "new" => "Novo", "existing" => "Existente", _ => "Bloqueado" };
                                     var productKey = $"{item.BrandCode}:{item.WmcCode}";
                                     var isSelected = item.Selectable && selectedProductKeys.Contains(productKey);
-                                    <tr class="wmc-import-row wmc-import-row--@statusKind" data-wmc-product-row data-status-kind="@statusKind" data-product-search="@item.WmcCode @item.Name">
+                                    var isVisibleBySituation = Model.ProductSituationFilter == WmcProductSituationFilter.All
+                                        || item.SituationKind == Model.ProductSituationFilter;
+                                    <tr class="wmc-import-row wmc-import-row--@statusKind" data-wmc-product-row data-status-kind="@statusKind" data-situation-kind="@item.SituationKind" data-product-search="@item.WmcCode @item.Name" hidden="@(isVisibleBySituation ? null : "hidden")">
                                         <td class="wmc-column--selection"><input type="checkbox" name="selectedProductKeys" value="@productKey" data-wmc-product-checkbox @(isSelected ? "checked" : null) @(item.Selectable ? null : "disabled") aria-label="Selecionar @item.WmcCode" /></td>
                                         <td class="wmc-column--wmc-code wmc-code-cell"><strong>@item.WmcCode</strong></td>
                                         <td class="wmc-column--product wmc-description-cell" title="@item.Name">@item.Name</td>
@@ -615,6 +643,7 @@
                         @Html.AntiForgeryToken()
                         @foreach (var selectedBrand in Model.SelectedBrandCodes) { <input type="hidden" name="brandCodes" value="@selectedBrand" /> }
                         @foreach (var key in Model.SelectedProductKeys ?? []) { <input type="hidden" name="selectedProductKeys" value="@key" /> }
+                        <input type="hidden" name="situationFilter" value="@Model.ProductSituationFilter" />
                         <input type="hidden" name="simulationValidated" value="true" />
                         <a asp-action="Wmc" class="btn btn-outline-secondary">Cancelar</a>
                         <div class="wmc-reimport-choice" data-wmc-reimport-state="disabled" aria-live="polite">
@@ -729,11 +758,11 @@
 
         const filteredRows = () => {
             const term = (search?.value ?? '').trim().toLocaleLowerCase();
-            const selectedStatus = statusFilter?.value ?? 'all';
+            const selectedSituation = statusFilter?.value ?? 'active';
             return rows.filter(row => {
                 const matchesText = term.length === 0 || (row.dataset.productSearch ?? '').toLocaleLowerCase().includes(term);
-                const matchesStatus = selectedStatus === 'all' || row.dataset.statusKind === selectedStatus;
-                return matchesText && matchesStatus;
+                const matchesSituation = selectedSituation === 'all' || row.dataset.situationKind === selectedSituation;
+                return matchesText && matchesSituation;
             });
         };
         const filteredCheckboxes = () => filteredRows()

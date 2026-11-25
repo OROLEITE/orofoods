@@ -59,6 +59,26 @@ public sealed class WmcProductSelectionControllerTests
     }
 
     [Fact]
+    public async Task Manual_import_of_inactive_selection_is_rejected_without_an_import_audit()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcImportProducts(
+            [Bimbo], null, ["104:503816"], null, "true", true, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        Assert.Equal("Products", model.Step);
+        var error = Assert.Single(controller.ModelState[string.Empty]!.Errors);
+        Assert.Contains("inativo", error.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        var inactive = Assert.Single(model.Candidates!, candidate => candidate.WmcCode == "503816");
+        Assert.False(inactive.Selectable);
+        Assert.Equal("inactive", inactive.SituationKind);
+        Assert.Empty(db.WmcProductImportAudits);
+    }
+
+    [Fact]
     public async Task Existing_eligible_selection_reaches_confirmation_without_implying_update()
     {
         await using var db = await CreateDbAsync();
@@ -73,6 +93,41 @@ public sealed class WmcProductSelectionControllerTests
         Assert.NotNull(model.Confirmation);
         Assert.Equal(1, model.Confirmation!.ExistingProducts);
         Assert.Equal(["104:503813"], model.SelectedProductKeys);
+    }
+
+    [Fact]
+    public async Task Product_stage_defaults_to_active_and_reports_global_situation_counters()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcProducts([Bimbo], null, CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        Assert.Equal("Products", model.Step);
+        Assert.Equal(WmcProductSituationFilter.Active, model.ProductSituationFilter);
+        Assert.NotNull(model.ProductCounters);
+        Assert.Equal(4, model.ProductCounters!.Total);
+        Assert.Equal(3, model.ProductCounters.Active);
+        Assert.Equal(1, model.ProductCounters.Inactive);
+        Assert.Equal(2, model.ProductCounters.Eligible);
+        Assert.Equal(2, model.ProductCounters.Blocked);
+    }
+
+    [Fact]
+    public async Task Product_filter_state_is_preserved_through_confirmation()
+    {
+        await using var db = await CreateDbAsync();
+        var controller = CreateController(db);
+
+        var result = await controller.WmcConfirmSelection(
+            [Bimbo], null, ["104:503813"], null, CancellationToken.None, WmcProductSituationFilter.All);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<WmcPreviewPageModel>(view.Model);
+        Assert.Equal("Confirmation", model.Step);
+        Assert.Equal(WmcProductSituationFilter.All, model.ProductSituationFilter);
     }
 
     [Fact]
@@ -269,6 +324,10 @@ public sealed class WmcProductSelectionControllerTests
             new WmcProductRecord(
                 "503815", "Pão BIMBO bloqueado", "A", "PC", 5m, 5m,
                 CodMarca: Bimbo.ToString(), PrecoVenda: 0m,
+                Units: Units, UnitsSnapshotComplete: true, Marca: "BIMBO"),
+            new WmcProductRecord(
+                "503816", "Pão BIMBO inativo", "I", "PC", 5m, 5m,
+                CodMarca: Bimbo.ToString(), PrecoVenda: 12m,
                 Units: Units, UnitsSnapshotComplete: true, Marca: "BIMBO")
         ];
 
