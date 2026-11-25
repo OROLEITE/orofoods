@@ -125,6 +125,112 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
+    public async Task Preview_accepts_avicao_unit_and_master_without_a_pc_unit()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "AV-001", "Biscoito AVIAÇÃO", "A", "UN", 5, 5,
+            Ean: "7899679701348", UnAltern: "CX", QtdeEmbalagem: 24, QtdeConversao: 24, PrecoVenda: 10,
+            Units: [new("UN", "UNIDADE", 1m, "7899679701348", false), new("CX", "CAIXA", 24m, "17899679701345", true)])]);
+
+        var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(1));
+
+        Assert.True(candidate.Selectable);
+        Assert.Null(candidate.UnitProposal!.BlockReason);
+        Assert.Equal("UN", candidate.UnitProposal.PrimaryUnitCode);
+        Assert.Equal("CX", candidate.UnitProposal.MasterUnitCode);
+        Assert.Equal(1m, candidate.UnitProposal.ProposedPrimaryFactor);
+        Assert.Equal(24m, candidate.UnitProposal.ProposedMasterFactor);
+        Assert.Equal(24m, candidate.UnitProposal.ProposedPackageQuantity);
+        Assert.Equal(24m, candidate.UnitProposal.ProposedConversionQuantity);
+        Assert.Null(candidate.UnitProposal.ProposedPcFactor);
+    }
+
+    [Fact]
+    public async Task Preview_accepts_pt_primary_and_cp_master_units_for_any_brand()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "PT-001", "Produto PT", "A", "PT", 5, 5,
+            Ean: "7899679701348", UnAltern: "CP", PrecoVenda: 10,
+            Units: [new("PT", "PACOTE", 1m, "7899679701348", false), new("CP", "CAIXA", 12m, "17899679701345", true)])]);
+
+        var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(7));
+
+        Assert.True(candidate.Selectable);
+        Assert.Null(candidate.UnitProposal!.BlockReason);
+        Assert.Equal("PT", candidate.UnitProposal.PrimaryUnitCode);
+        Assert.Equal("CP", candidate.UnitProposal.MasterUnitCode);
+        Assert.Equal(12m, candidate.UnitProposal.ProposedMasterFactor);
+    }
+
+    [Fact]
+    public async Task Manual_import_releases_avicao_without_changing_local_commercial_configuration()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
+        var product = new Product
+        {
+            WmcCode = "AV-001", Sku = "AV-001", Name = "Produto local", ProductCategoryId = 1,
+            Unit = "LOCAL", CommercialUnitCode = "PCT", LogisticsUnitCode = "CX", PackagesPerCase = 18,
+            BasePrice = 1m, IsActive = true, IsAvailable = true, IsWmcActive = true, WmcStockAvailable = true
+        };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "AV-001", "Biscoito AVIAÇÃO", "A", "UN", 5, 5,
+            Ean: "7899679701348", UnAltern: "CX", QtdeEmbalagem: 24, QtdeConversao: 24, PrecoVenda: 10,
+            Units: [new("UN", "UNIDADE", 1m, "7899679701348", false), new("CX", "CAIXA", 24m, "17899679701345", true)])]);
+
+        var result = await new WmcProductImportService(db, reader).ImportAsync(1, ["AV-001"], true);
+
+        Assert.Equal("Succeeded", result.Status);
+        Assert.True(product.WmcInitialLoadReady);
+        Assert.Equal("UN", product.Unit);
+        Assert.Equal("CX", product.WmcAlternateUnit);
+        Assert.Equal(24m, product.WmcPackageQuantity);
+        Assert.Equal(24m, product.WmcConversionQuantity);
+        Assert.Equal("PCT", product.CommercialUnitCode);
+        Assert.Equal("CX", product.LogisticsUnitCode);
+        Assert.Equal(18, product.PackagesPerCase);
+        Assert.Equal(10m, product.BasePrice);
+    }
+
+    [Fact]
+    public async Task Preview_explains_duplicate_master_as_a_real_unit_inconsistency()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "UNIT-001", "Produto", "A", "UN", 5, 5, PrecoVenda: 10,
+            Units: [
+                new("UN", "UNIDADE", 1m, "7899679701348", false),
+                new("CX", "CAIXA", 12m, "17899679701345", true),
+                new("CP", "CAIXA", 12m, "17899679701345", true)])]);
+
+        var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(1));
+
+        Assert.False(candidate.Selectable);
+        Assert.Contains("mais de uma unidade master", candidate.BlockReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Preview_explains_invalid_factor_and_supplied_barcode()
+    {
+        await using var db = await TestDbContextFactory.CreateAsync();
+        var reader = new FakeReader([new WmcProductRecord(
+            "UNIT-002", "Produto", "A", "UN", 5, 5, PrecoVenda: 10,
+            Units: [
+                new("UN", "UNIDADE", 0m, "nao-e-gtin", false),
+                new("CX", "CAIXA", 12m, "17899679701345", true)])]);
+
+        var candidate = Assert.Single(await new WmcProductImportService(db, reader).GetCandidatesAsync(1));
+
+        Assert.False(candidate.Selectable);
+        Assert.Contains("fator", candidate.BlockReason, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("código de barras", candidate.BlockReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Multi_brand_preview_keeps_source_brand_and_blocks_cross_brand_code_conflicts()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
@@ -397,7 +503,7 @@ public sealed class WmcProductImportServiceTests
     }
 
     [Fact]
-    public async Task Empty_or_invalid_unit_barcodes_preserve_local_identifiers_but_keep_valid_cx_factor()
+    public async Task Invalid_unit_snapshot_preserves_local_identifiers_and_unit_data()
     {
         await using var db = await TestDbContextFactory.CreateAsync();
         db.ProductCategories.Add(new ProductCategory { Name = "Local", Slug = "local" });
@@ -423,9 +529,10 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal("EAN-LOCAL", persisted.Ean);
         Assert.Equal("7890000000000", persisted.Ean13);
         Assert.Equal("17890000000000", persisted.Dun14);
-        Assert.Equal(1m, Assert.Single(units, unit => unit.UnitCode == "PC").Factor);
+        Assert.False(product.WmcInitialLoadReady);
+        Assert.Equal(2m, Assert.Single(units, unit => unit.UnitCode == "PC").Factor);
         Assert.Equal("EAN-LOCAL-UNIT", Assert.Single(units, unit => unit.UnitCode == "PC").Barcode);
-        Assert.Equal(18m, Assert.Single(units, unit => unit.UnitCode == "CX").Factor);
+        Assert.Equal(6m, Assert.Single(units, unit => unit.UnitCode == "CX").Factor);
         Assert.Equal("DUN-LOCAL-UNIT", Assert.Single(units, unit => unit.UnitCode == "CX").Barcode);
     }
 
@@ -461,7 +568,7 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal("Novo nome", product.Name);
         Assert.Equal("Marca WMC", product.Brand);
         Assert.Equal("EAN local", product.Ean);
-        Assert.Equal("FD", product.WmcAlternateUnit);
+        Assert.Null(product.WmcAlternateUnit);
         Assert.Equal(1m, product.BasePrice);
         Assert.Equal(18m, product.PromotionalPrice);
         Assert.Equal(2m, product.WmcPackageQuantity);
@@ -571,7 +678,7 @@ public sealed class WmcProductImportServiceTests
         await db.SaveChangesAsync();
         var reader = new FakeReader([new WmcProductRecord(code, "Produto", "A", "PC", null, null,
             QtdeEmbalagem: 6, QtdeConversao: 12,
-            Units: [new("PC", "PACOTE", 1m, "7890000000001", false), new("CX", "CAIXA", cxFactor, "17890000000001", true)])]);
+            Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", cxFactor, "17899679701345", true)])]);
 
         var result = await new WmcProductImportService(db, reader).ImportAsync(5, [code], true);
 
@@ -579,8 +686,8 @@ public sealed class WmcProductImportServiceTests
         Assert.Equal("Succeeded", result.Status);
         Assert.Equal(1m, Assert.Single(units, unit => unit.UnitCode == "PC").Factor);
         Assert.Equal(cxFactor, Assert.Single(units, unit => unit.UnitCode == "CX").Factor);
-        Assert.Equal(99m, product.WmcPackageQuantity);
-        Assert.Equal(88m, product.WmcConversionQuantity);
+        Assert.Equal(6m, product.WmcPackageQuantity);
+        Assert.Equal(12m, product.WmcConversionQuantity);
     }
 
     [Fact]
@@ -641,7 +748,7 @@ public sealed class WmcProductImportServiceTests
         await db.SaveChangesAsync();
         var reader = new FakeReader([
             new WmcProductRecord("OLD", "Alteração ignorada", "A", "PC", null, null, Units: [new("CX", "CAIXA", 18m, "NEW-CX", true)]),
-            new WmcProductRecord("NEW", "Novo", "A", "PC", null, null, Units: [new("PC", "PACOTE", 1m, "NEW-PC", false), new("CX", "CAIXA", 12m, "NEW-CX", true)]),
+            new WmcProductRecord("NEW", "Novo", "A", "PC", null, null, Units: [new("PC", "PACOTE", 1m, "7899679701348", false), new("CX", "CAIXA", 12m, "17899679701345", true)]),
             new WmcProductRecord("KEEP", "Não selecionado", "A", "PC", null, null, Units: [new("PC", "PACOTE", 1m, "CHANGED-PC", false)])]);
 
         var result = await new WmcProductImportService(db, reader).ImportAsync(3, ["OLD", "NEW"], false);

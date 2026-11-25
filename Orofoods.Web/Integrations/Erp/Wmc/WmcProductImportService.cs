@@ -66,7 +66,7 @@ public sealed class WmcProductImportService(
                 ? productUnits
                 : [];
             var sourceUnits = row.Units ?? [];
-            var unitProposal = BuildUnitProposal(product, currentUnits, sourceUnits, row.UnitsSnapshotComplete);
+            var unitProposal = BuildUnitProposal(product, currentUnits, row, row.UnitsSnapshotComplete);
             var currentTargetPrice = product is not null && targetPrices.TryGetValue(product.Id, out var targetPrice)
                 ? targetPrice
                 : (decimal?)null;
@@ -250,7 +250,7 @@ public sealed class WmcProductImportService(
                 var productUnits = !isNew && existingUnitsByProduct.TryGetValue(current.Id, out var localUnits)
                     ? localUnits
                     : [];
-                var unitProposal = BuildUnitProposal(current, productUnits, officialUnits, row.UnitsSnapshotComplete);
+                var unitProposal = BuildUnitProposal(current, productUnits, row, row.UnitsSnapshotComplete);
                 var currentTargetPrice = targetItems.FirstOrDefault(item => item.ProductId == current.Id)?.Price;
                 var priceProposal = BuildPriceProposal(current, row, targetPriceTable, currentTargetPrice);
                 var priceChanged = priceProposal.SafeToApply
@@ -261,10 +261,11 @@ public sealed class WmcProductImportService(
                     || (unitProposal.SafeToApply && officialUnits.Count > 0 && !UnitSetsEqual(productUnits, officialUnits));
                 var beforeBasePrice = current.BasePrice;
                 var beforeTargetPrice = currentTargetPrice;
-                ApplyMappedFields(current, row);
+                ApplyMappedFields(current, row, unitProposal);
                 if (unitProposal.SafeToApply)
                     ApplyOfficialUnitFields(current, unitProposal);
-                if (officialUnits.Count > 0) ReconcileUnits(current, productUnits, officialUnits, isNew);
+                if (unitProposal.SafeToApply && officialUnits.Count > 0)
+                    ReconcileUnits(current, productUnits, officialUnits, isNew);
 
                 var detail = new List<string>();
                 if (!unitProposal.SafeToApply)
@@ -284,7 +285,7 @@ public sealed class WmcProductImportService(
                     detail.Add($"Preço bloqueado: {priceProposal.BlockReason}");
                 }
                 if (unitProposal.SafeToApply && HasUnitFieldChanges(unitProposal))
-                    detail.Add("EAN-13, DUN-14 e fatores oficiais aplicados.");
+                    detail.Add("Identificadores, fatores e quantidades oficiais aplicados.");
 
                 var inventory = inventories.GetValueOrDefault(current.Id);
                 var stockValid = WmcProductRules.TryNormalizeStock(row.EstoqueDisponivel, out var availableQuantity, out _);
@@ -294,8 +295,13 @@ public sealed class WmcProductImportService(
                     ? availableQuantity
                     : Math.Min(availableQuantity, inventory.AvailableQuantity);
                 var readiness = stockValid
-                    ? WmcInitialLoadReadinessEvaluator.Evaluate(source: row, product: current, units: officialUnits,
-                        effectiveAvailableQuantity, inventory?.IsManuallyAdjusted == true)
+                    ? WmcManualProductImportReadinessEvaluator.Evaluate(
+                        source: row,
+                        product: current,
+                        units: officialUnits,
+                        unitsSnapshotComplete: row.UnitsSnapshotComplete,
+                        effectiveAvailableQuantity,
+                        inventory?.IsManuallyAdjusted == true)
                     : WmcInitialLoadReadinessResult.Blocked("stock-invalid");
                 current.WmcInitialLoadReady = readiness.IsReady;
                 detail.Add(readiness.IsReady
@@ -456,11 +462,17 @@ public sealed class WmcProductImportService(
     private static IEnumerable<WmcProductFieldChange> GetUnitFieldChanges(WmcProductUnitImportProposal proposal)
     {
         if (!proposal.SafeToApply) yield break;
-        if (proposal.ProposedEan is { } ean && !string.Equals(proposal.CurrentEan, ean, StringComparison.Ordinal)) yield return new("EAN oficial da PC", proposal.CurrentEan ?? "", ean);
-        if (proposal.ProposedEan13 is { } ean13 && !string.Equals(proposal.CurrentEan13, ean13, StringComparison.Ordinal)) yield return new("EAN-13 oficial da PC", proposal.CurrentEan13 ?? "", ean13);
-        if (proposal.ProposedDun14 is { } dun14 && !string.Equals(proposal.CurrentDun14, dun14, StringComparison.Ordinal)) yield return new("DUN-14 oficial da CX", proposal.CurrentDun14 ?? "", dun14);
-        if (proposal.ProposedPcFactor is decimal pcFactor && proposal.CurrentPcFactor != pcFactor) yield return new("Fator oficial da PC", proposal.CurrentPcFactor?.ToString() ?? "", pcFactor.ToString());
-        if (proposal.ProposedCxFactor is decimal cxFactor && proposal.CurrentCxFactor != cxFactor) yield return new("Fator oficial da CX", proposal.CurrentCxFactor?.ToString() ?? "", cxFactor.ToString());
+        if (proposal.ProposedEan is { } ean && !string.Equals(proposal.CurrentEan, ean, StringComparison.Ordinal)) yield return new("EAN oficial da unidade principal", proposal.CurrentEan ?? "", ean);
+        if (proposal.ProposedEan13 is { } ean13 && !string.Equals(proposal.CurrentEan13, ean13, StringComparison.Ordinal)) yield return new("EAN-13 oficial da unidade principal", proposal.CurrentEan13 ?? "", ean13);
+        if (proposal.ProposedDun14 is { } dun14 && !string.Equals(proposal.CurrentDun14, dun14, StringComparison.Ordinal)) yield return new("DUN-14 oficial da unidade master", proposal.CurrentDun14 ?? "", dun14);
+        if (proposal.ProposedPrimaryFactor is decimal primaryFactor && proposal.CurrentPrimaryFactor != primaryFactor)
+            yield return new($"Fator oficial da {proposal.PrimaryUnitCode}", proposal.CurrentPrimaryFactor?.ToString() ?? "", primaryFactor.ToString());
+        if (proposal.ProposedMasterFactor is decimal masterFactor && proposal.CurrentMasterFactor != masterFactor)
+            yield return new($"Fator oficial da {proposal.MasterUnitCode}", proposal.CurrentMasterFactor?.ToString() ?? "", masterFactor.ToString());
+        if (proposal.ProposedPackageQuantity is decimal packageQuantity && proposal.CurrentPackageQuantity != packageQuantity)
+            yield return new("QTDE_EMB oficial", proposal.CurrentPackageQuantity?.ToString() ?? "", packageQuantity.ToString());
+        if (proposal.ProposedConversionQuantity is decimal conversionQuantity && proposal.CurrentConversionQuantity != conversionQuantity)
+            yield return new("QTDE_CONV oficial", proposal.CurrentConversionQuantity?.ToString() ?? "", conversionQuantity.ToString());
     }
 
     private static bool HasUnitFieldChanges(WmcProductUnitImportProposal proposal) => GetUnitFieldChanges(proposal).Any();
@@ -484,7 +496,7 @@ public sealed class WmcProductImportService(
             {
                 if (Clean(incoming.Description) is { } description) existing.Description = description;
                 if (incoming.Factor is > 0) existing.Factor = incoming.Factor;
-                if (IsValidUnitBarcode(code, incoming.Barcode)) existing.Barcode = Clean(incoming.Barcode);
+                if (IsValidUnitBarcode(incoming.Barcode)) existing.Barcode = Clean(incoming.Barcode);
                 existing.IsMaster = incoming.IsMaster;
                 continue;
             }
@@ -493,7 +505,7 @@ public sealed class WmcProductImportService(
                 UnitCode = code,
                 Description = Clean(incoming.Description) ?? "",
                 Factor = incoming.Factor is > 0 ? incoming.Factor : null,
-                Barcode = IsValidUnitBarcode(code, incoming.Barcode) ? Clean(incoming.Barcode) : null,
+                Barcode = IsValidUnitBarcode(incoming.Barcode) ? Clean(incoming.Barcode) : null,
                 IsMaster = incoming.IsMaster
             };
             if (isNew) product.WmcUnits.Add(unit);
@@ -514,7 +526,7 @@ public sealed class WmcProductImportService(
             if (!sourceByCode.TryGetValue(code, out var official)
                 || (Clean(official.Description) is { } description && !string.Equals(local.Description.Trim(), description, StringComparison.Ordinal))
                 || (official.Factor is > 0 && local.Factor != official.Factor)
-                || (IsValidUnitBarcode(code, official.Barcode) && !string.Equals(Clean(local.Barcode), Clean(official.Barcode), StringComparison.Ordinal))
+                || (IsValidUnitBarcode(official.Barcode) && !string.Equals(Clean(local.Barcode), Clean(official.Barcode), StringComparison.Ordinal))
                 || local.IsMaster != official.IsMaster) return false;
         }
         return true;
@@ -548,70 +560,65 @@ public sealed class WmcProductImportService(
         return units;
     }
 
-    private static WmcProductUnitImportProposal BuildUnitProposal(Product? product, IReadOnlyCollection<WmcProductUnit> current, IReadOnlyList<WmcProductUnitRecord> source, bool snapshotComplete)
+    private static WmcProductUnitImportProposal BuildUnitProposal(
+        Product? product,
+        IReadOnlyCollection<WmcProductUnit> current,
+        WmcProductRecord sourceRow,
+        bool snapshotComplete)
     {
-        var reasons = new List<string>();
-        var currentPc = current.FirstOrDefault(unit => NormalizeUnitCode(unit.UnitCode) == "PC");
-        var currentCx = current.FirstOrDefault(unit => NormalizeUnitCode(unit.UnitCode) == "CX");
-        var pcUnits = source.Where(unit => NormalizeUnitCode(unit.UnitCode) == "PC").ToArray();
-        var cxUnits = source.Where(unit => NormalizeUnitCode(unit.UnitCode) == "CX").ToArray();
-        if (!snapshotComplete) reasons.Add("snapshot de PRODUTOS_UNCONV incompleto");
-        if (!TryToSourceUnitDictionary(source, out _)) reasons.Add("unidades WMC vazias ou duplicadas");
-        if (pcUnits.Length != 1) reasons.Add("a origem não confirmou uma única unidade PC");
-        if (cxUnits.Length != 1 || !cxUnits[0].IsMaster) reasons.Add("a origem não confirmou uma única unidade CX master");
-        var pc = pcUnits.Length == 1 ? pcUnits[0] : null;
-        var cx = cxUnits.Length == 1 && cxUnits[0].IsMaster ? cxUnits[0] : null;
-        var proposedEan = pc is not null && IsValidUnitBarcode("PC", pc.Barcode) ? Clean(pc.Barcode) : null;
-        var proposedDun = cx is not null && IsValidUnitBarcode("CX", cx.Barcode) ? Clean(cx.Barcode) : null;
-        var proposedPcFactor = pc?.Factor is > 0 ? pc.Factor : null;
-        var proposedCxFactor = cx?.Factor is > 0 ? cx.Factor : null;
-        if (pc is not null && proposedEan is null) reasons.Add("EAN-13 da PC ausente ou inválido");
-        if (cx is not null && proposedDun is null) reasons.Add("DUN-14 da CX master ausente ou inválido");
-        if (pc is not null && proposedPcFactor is null) reasons.Add("fator da PC ausente ou inválido");
-        if (cx is not null && proposedCxFactor is null) reasons.Add("fator da CX ausente ou inválido");
-        return new(product?.Ean, proposedEan, product?.Ean13, proposedEan, product?.Dun14, proposedDun,
-            currentPc?.Factor, proposedPcFactor, currentCx?.Factor, proposedCxFactor,
-            reasons.Count == 0, reasons.Count == 0 ? null : string.Join("; ", reasons));
+        var source = sourceRow.Units ?? [];
+        var validation = WmcManualProductUnitValidation.Validate(
+            sourceRow,
+            source,
+            snapshotComplete);
+        var currentPrimary = validation.PrimaryUnitCode is { } primaryCode
+            ? current.FirstOrDefault(unit => NormalizeUnitCode(unit.UnitCode) == primaryCode)
+            : null;
+        var currentMaster = validation.MasterUnitCode is { } masterCode
+            ? current.FirstOrDefault(unit => NormalizeUnitCode(unit.UnitCode) == masterCode)
+            : null;
+        return new(
+            validation.PrimaryUnitCode,
+            validation.MasterUnitCode,
+            product?.Ean,
+            validation.ProposedEan,
+            product?.Ean13,
+            validation.ProposedEan13,
+            product?.Dun14,
+            validation.ProposedDun14,
+            currentPrimary?.Factor,
+            validation.PrimaryUnit?.Factor is > 0 ? validation.PrimaryUnit.Factor : null,
+            currentMaster?.Factor,
+            validation.MasterUnit?.Factor is > 0 ? validation.MasterUnit.Factor : null,
+            product?.WmcPackageQuantity,
+            validation.ProposedPackageQuantity is > 0 ? validation.ProposedPackageQuantity : null,
+            product?.WmcConversionQuantity,
+            validation.ProposedConversionQuantity is > 0 ? validation.ProposedConversionQuantity : null,
+            validation.IsValid,
+            validation.BlockReason);
     }
 
     private static void ApplyOfficialUnitFields(Product product, WmcProductUnitImportProposal proposal)
     {
-        if (proposal.ProposedEan is { } ean && proposal.ProposedEan13 is { } ean13)
-        {
-            product.Ean = ean;
-            product.Ean13 = ean13;
-        }
+        if (proposal.ProposedEan is { } ean) product.Ean = ean;
+        if (proposal.ProposedEan13 is { } ean13) product.Ean13 = ean13;
         if (proposal.ProposedDun14 is { } dun14) product.Dun14 = dun14;
     }
 
-    private static bool IsValidUnitBarcode(string unitCode, string? value) => unitCode switch
-    {
-        "PC" => IsValidBarcode(value, 13),
-        "CX" => IsValidBarcode(value, 14),
-        _ => !string.IsNullOrWhiteSpace(value)
-    };
+    private static bool IsValidUnitBarcode(string? value) => WmcManualProductUnitValidation.IsValidBarcode(value);
 
-    private static bool IsValidBarcode(string? value, int length)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return false;
-        var digits = value.Trim();
-        if (digits.Length != length || digits.Any(character => character is < '0' or > '9')) return false;
-        var sum = 0;
-        for (var index = digits.Length - 2; index >= 0; index--)
-        {
-            var positionFromRight = digits.Length - 1 - index;
-            sum += (digits[index] - '0') * (positionFromRight % 2 == 1 ? 3 : 1);
-        }
-        return (10 - (sum % 10)) % 10 == digits[^1] - '0';
-    }
-
-    private static void ApplyMappedFields(Product product, WmcProductRecord row)
+    private static void ApplyMappedFields(Product product, WmcProductRecord row, WmcProductUnitImportProposal unitProposal)
     {
         if (!string.IsNullOrWhiteSpace(row.Produto)) product.Name = row.Produto.Trim();
         if (Clean(row.CodMarca) is { } brandCode) product.WmcBrandCode = brandCode;
         if (Clean(row.Marca) is { } brand) product.Brand = brand;
-        if (Clean(row.Un) is { } unit) product.Unit = unit;
-        if (Clean(row.UnAltern) is { } alt) product.WmcAlternateUnit = alt;
+        if (unitProposal.SafeToApply)
+        {
+            if (Clean(row.Un) is { } unit) product.Unit = unit;
+            if (Clean(row.UnAltern) is { } alt) product.WmcAlternateUnit = alt;
+            if (row.QtdeEmbalagem is > 0) product.WmcPackageQuantity = row.QtdeEmbalagem;
+            if (row.QtdeConversao is > 0) product.WmcConversionQuantity = row.QtdeConversao;
+        }
         var situation = WmcProductRules.ClassifySituation(row.Situacao);
         if (situation == WmcProductSituation.Active) product.IsWmcActive = true;
         else if (situation == WmcProductSituation.Inactive) product.IsWmcActive = false;

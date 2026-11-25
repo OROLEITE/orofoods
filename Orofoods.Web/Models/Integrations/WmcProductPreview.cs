@@ -62,18 +62,30 @@ public sealed record WmcProductUnitPreview(
     bool IsMaster);
 
 public sealed record WmcProductUnitImportProposal(
+    string? PrimaryUnitCode,
+    string? MasterUnitCode,
     string? CurrentEan,
     string? ProposedEan,
     string? CurrentEan13,
     string? ProposedEan13,
     string? CurrentDun14,
     string? ProposedDun14,
-    decimal? CurrentPcFactor,
-    decimal? ProposedPcFactor,
-    decimal? CurrentCxFactor,
-    decimal? ProposedCxFactor,
+    decimal? CurrentPrimaryFactor,
+    decimal? ProposedPrimaryFactor,
+    decimal? CurrentMasterFactor,
+    decimal? ProposedMasterFactor,
+    decimal? CurrentPackageQuantity,
+    decimal? ProposedPackageQuantity,
+    decimal? CurrentConversionQuantity,
+    decimal? ProposedConversionQuantity,
     bool SafeToApply,
-    string? BlockReason);
+    string? BlockReason)
+{
+    public decimal? CurrentPcFactor => string.Equals(PrimaryUnitCode, "PC", StringComparison.OrdinalIgnoreCase) ? CurrentPrimaryFactor : null;
+    public decimal? ProposedPcFactor => string.Equals(PrimaryUnitCode, "PC", StringComparison.OrdinalIgnoreCase) ? ProposedPrimaryFactor : null;
+    public decimal? CurrentCxFactor => string.Equals(MasterUnitCode, "CX", StringComparison.OrdinalIgnoreCase) ? CurrentMasterFactor : null;
+    public decimal? ProposedCxFactor => string.Equals(MasterUnitCode, "CX", StringComparison.OrdinalIgnoreCase) ? ProposedMasterFactor : null;
+}
 
 public sealed record WmcProductPriceImportProposal(
     decimal? CurrentBasePrice,
